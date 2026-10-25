@@ -1,0 +1,110 @@
+/* KO SPORT service worker — fast repeat visits + offline fallback.
+   Products/prices are always fetched fresh from the network first. */
+const V = "ko-v85";
+const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
+const KEEP = [SHELL, ASSET, IMG, DATA];
+
+self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(SHELL).then((c) => c.add(new Request("/", { cache: "reload" }))).catch(() => {}));
+  self.skipWaiting();
+});
+self.addEventListener("activate", (e) => {
+  e.waitUntil((async () => {
+    for (const k of await caches.keys()) if (!KEEP.includes(k)) await caches.delete(k);
+    await self.clients.claim();
+  })());
+});
+
+async function trim(name, max) {
+  const c = await caches.open(name), ks = await c.keys();
+  for (let i = 0; i < ks.length - max; i++) await c.delete(ks[i]);
+}
+async function networkFirst(req, name, timeout) {
+  const c = await caches.open(name);
+  try {
+    const r = await Promise.race([
+      fetch(req),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), timeout || 6000)),
+    ]);
+    if (r && r.ok) c.put(req, r.clone());
+    return r;
+  } catch (err) {
+    const hit = await c.match(req, { ignoreSearch: false });
+    if (hit) return hit;
+    throw err;
+  }
+}
+async function cacheFirst(req, name, max) {
+  const c = await caches.open(name);
+  const hit = await c.match(req);
+  if (hit) return hit;
+  const r = await fetch(req);
+  if (r && r.ok) { c.put(req, r.clone()); if (max) trim(name, max); }
+  return r;
+}
+async function swr(req, name, max) {
+  const c = await caches.open(name);
+  const hit = await c.match(req);
+  const net = fetch(req).then((r) => { if (r && r.ok) { c.put(req, r.clone()); trim(name, max); } return r; }).catch(() => null);
+  return hit || (await net) || Response.error();
+}
+
+self.addEventListener("fetch", (e) => {
+  const req = e.request, url = new URL(req.url);
+  if (req.method !== "GET" || url.origin !== location.origin) return;
+  const p = url.pathname;
+  if (p.startsWith("/admin") || p.startsWith("/media/") || p === "/sw.js" || req.headers.has("range")) return;
+
+  // pages: network first, fall back to the last cached home page
+  if (req.mode === "navigate") {
+    e.respondWith((async () => {
+      try {
+        const r = await networkFirst(req, SHELL, 5000);
+        return r;
+      } catch {
+        const c = await caches.open(SHELL);
+        return (await c.match(req)) || (await c.match("/")) ||
+          new Response("<meta charset=utf-8><meta name=viewport content='width=device-width'><body style='font-family:sans-serif;text-align:center;padding:3rem;background:#121212;color:#fff'><h2>لا يوجد اتصال بالإنترنت</h2><p>تحقق من الشبكة وحاول مرة أخرى.</p>",
+            { status: 503, headers: { "content-type": "text/html;charset=utf-8" } });
+      }
+    })());
+    return;
+  }
+  if (p.startsWith("/api/")) {
+    // only catalogue/settings reads are cached; everything else goes straight to the network
+    if (p === "/api/products" || p === "/api/settings") e.respondWith(networkFirst(req, DATA, 4000));
+    return;
+  }
+  if (p.startsWith("/assets/")) { e.respondWith(url.searchParams.has("v") ? cacheFirst(req, ASSET, 80) : swr(req, ASSET, 80)); return; }
+  if (p.startsWith("/img/")) { e.respondWith(swr(req, IMG, 200)); return; }
+  if (/\.(png|svg|webmanifest|woff2?)$/.test(p)) e.respondWith(swr(req, ASSET, 80));
+});
+
+// ---- push notifications ----
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data ? e.data.text() : "" }; }
+  const opt = {
+    body: d.body || "", icon: "/assets/icons/icon-192.png", badge: "/assets/icons/badge-96.png",
+    dir: "rtl", lang: "ar", data: { url: d.url || "/" }, timestamp: d.ts || Date.now(),
+  };
+  if (d.image) opt.image = d.image;
+  if (d.tag) { opt.tag = d.tag; opt.renotify = true; }
+  e.waitUntil((async () => {
+    try { const st = await (await fetch("/api/settings")).json(); if (st && st.design && st.design.appIcon192) opt.icon = st.design.appIcon192; } catch {}
+    return self.registration.showNotification(d.title || "KO SPORT", opt);
+  })());
+});
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const to = new URL((e.notification.data && e.notification.data.url) || "/", self.location.origin).href;
+  e.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const c of all) {
+      if (new URL(c.url).origin === self.location.origin) {
+        try { await c.focus(); if ("navigate" in c) await c.navigate(to); return; } catch {}
+      }
+    }
+    await self.clients.openWindow(to);
+  })());
+});

@@ -1,0 +1,502 @@
+{
+  "currency": "$",
+  "store": {
+    "name": "KO SPORT",
+    "tagline": "أول موقع داخل سوريا متخصص بالأدوات الرياضية",
+    "whatsapp": "963998676991",
+    "phone": "",
+    "facebook": "https://www.facebook.com/profile.php?id=61554838800297",
+    "instagram": "https://www.instagram.com/ko.sport_2/",
+    "address": "سوريا - دمشق - قدسيا",
+    "footerNote": "توصيل فوري داخل دمشق عن طريق يلا غو، وشحن لكل المحافظات عن طريق القدموس.",
+    "announcement": "",
+    "seoTitle": "KO SPORT | للمُعدات الرياضية الفاخرة",
+    "seoDescription": "اول موقع داخل سوريا متخصص بالادوات الرياضية. متجر KO Sport للمُعدات الرياضية الفاخرة — ملاكمة، MMA، كمال أجسام، كرة قدم وسلة. شحن لكل المحافظات السورية.",
+    "shareImage": "https://assets.wuiltstore.com/cmvbga2u300vr01nj330mey1z_generated-image-2026-01-17T01-37-44-849Z.webp"
+  },
+  "design": {
+    "primary": "#d9232d",
+    "dark": "#121212",
+    "background": "#f5f3ef",
+    "headingFont": "Changa",
+    "logoImage": "",
+    "logoText1": "KO",
+    "logoText2": "SPORT",
+    "heroTitle": "عدّتك الرياضية كاملة، لعند باب بيتك",
+    "heroText": "قفازات ملاكمة، معدات جيم، كرة قدم وسلة وأكتر — والدفع عند الاستلام.",
+    "heroImage": "",
+    "showHeroStats": true,
+    "showCategoryTiles": true,
+    "hideOutOfStock": false,
+    "groups": [
+      {
+        "name": "ملاكمة وفنون قتالية",
+        "cats": [
+          "قفازات ملاكمة",
+          "قفاز MMA",
+          "ملاكمة",
+          "باندج",
+          "واقية راس",
+          "واقية اسنان",
+          "واقية قصبة",
+          "واقية مقتل",
+          "أحزمة",
+          "شورتات",
+          "ادوات مدرب"
+        ]
+      },
+      {
+        "name": "كمال أجسام ولياقة",
+        "cats": [
+          "كفوف جيم",
+          "سترابس",
+          "حزام ظهر",
+          "مشدات",
+          "شيكرات",
+          "أوزان",
+          "مطاط مقاومة",
+          "حبل قفز",
+          "ادوات كالستنكس",
+          "معدات تمرين",
+          "كمال أجسام",
+          "هاند غريب",
+          "ملابس تمرين"
+        ]
+      },
+      {
+        "name": "كرة قدم وسلة ومضرب",
+        "cats": [
+          "كرة قدم",
+          "كرات قدم",
+          "منوعات كرة قدم",
+          "كفوف حراسة",
+          "كرة سلة",
+          "ادوات كرة المضرب"
+        ]
+      },
+      {
+        "name": "منوعات",
+        "cats": [
+          "ادوات سباحة",
+          "ادوات تزلج",
+          "اكسسوارات متنوعة",
+          "بدون قسم"
+        ]
+      }
+    ],
+    "catLabels": {
+      "بدون قسم": "منتجات أخرى"
+    },
+    "intro": true,
+    "logoRatio": 1,
+    "logoSize": "m",
+    "favicon": "",
+    "headingWeight": 700,
+    "bodyFont": "system",
+    "bodyWeight": 400,
+    "announceOn": null,
+    "announceClosable": true,
+    "zoomMode": "hover",
+    "buyNow": true,
+    "slides": [],
+    "headerBg": "#121212",
+    "headerText": "#ffffff",
+    "textColor": "#121212",
+    "footerBg": "#121212",
+    "footerText": "#bbbbbb",
+    "heroBg": "#121212",
+    "homeText": "#121212",
+    "productText": "#121212",
+    "priceColor": "#121212",
+    "themeId": "modern",
+    "radius": 14,
+    "btnShape": "rounded",
+    "cardStyle": "border",
+    "layout": {
+      "hdr": "classic",
+      "hero": "box",
+      "card": "classic",
+      "cat": "tile",
+      "title": "plain",
+      "ftr": "classic",
+      "cols": "m",
+      "dens": "normal",
+      "ann": "static",
+      "pdp": "side"
+    }
+  },
+  "delivery": {
+    "freeOver": 0,
+    "note": "منتواصل معك لنأكد الطلب قبل الشحن.",
+    "zones": [
+      {
+        "gov": "دمشق",
+        "method": "door",
+        "fee": null
+      },
+      {
+        "gov": "ريف دمشق",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "حلب",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "حمص",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "حماة",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "اللاذقية",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "طرطوس",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "إدلب",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "درعا",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "السويداء",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "القنيطرة",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "دير الزور",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "الرقة",
+        "method": "qadmous",
+        "fee": null
+      },
+      {
+        "gov": "الحسكة",
+        "method": "qadmous",
+        "fee": null
+      }
+    ]
+  },
+  "payments": [
+    {
+      "id": "cod",
+      "name": "الدفع عند الاستلام (ليرة سورية)",
+      "details": "بتدفع للمندوب لما يوصلك الطلب.",
+      "enabled": true,
+      "qr": "",
+      "manual": false
+    },
+    {
+      "id": "shamcash",
+      "name": "تحويل شام كاش (دولار)",
+      "details": "امسح الباركود وحوّل المبلغ، وبعدين ابعتلنا صورة الإشعار على واتساب. بعد ما نتأكد من التحويل منشحن طلبك.",
+      "enabled": true,
+      "qr": "",
+      "manual": true
+    }
+  ],
+  "home": {
+    "sections": [
+      {
+        "id": "s1",
+        "type": "slider",
+        "on": true,
+        "title": ""
+      },
+      {
+        "id": "s2",
+        "type": "categories",
+        "on": true,
+        "title": "تسوّق حسب القسم"
+      },
+      {
+        "id": "s3",
+        "type": "new",
+        "on": true,
+        "title": "وصل حديثاً",
+        "count": 15,
+        "layout": "row"
+      },
+      {
+        "id": "s4",
+        "type": "best",
+        "on": true,
+        "title": "الأكثر مبيعاً",
+        "count": 20,
+        "layout": "row"
+      },
+      {
+        "id": "s5",
+        "type": "groups",
+        "on": true,
+        "title": ""
+      }
+    ]
+  },
+  "checkout": {
+    "nameMode": "full3",
+    "phoneOn": true,
+    "phoneReq": true,
+    "emailOn": false,
+    "emailReq": false,
+    "altPhone": false,
+    "postal": false,
+    "notes": true,
+    "note": "",
+    "notePos": "below",
+    "thanks": "شكراً لطلبك من KO SPORT! رح نتواصل معك قريباً لنأكد الطلب والتوصيل."
+  },
+  "shipping": {
+    "carriers": [
+      {
+        "id": "yallago",
+        "name": "توصيل فوري لباب البيت (يلا غو)",
+        "type": "door",
+        "on": true,
+        "note": "توصيل مأجور داخل دمشق",
+        "payments": [
+          "cod",
+          "shamcash"
+        ],
+        "govs": [
+          {
+            "name": "دمشق وريفها",
+            "fee": null,
+            "branches": []
+          }
+        ]
+      },
+      {
+        "id": "qadmous",
+        "name": "شركة القدموس للشحن",
+        "type": "branch",
+        "on": true,
+        "note": "الاستلام من فرع القدموس اللي بتختاره",
+        "payments": [
+          "shamcash"
+        ],
+        "govs": [
+          {
+            "name": "حماة",
+            "fee": null,
+            "branches": [
+              {
+                "name": "فرع العاصي",
+                "address": "وسط المدينة، ساحة العاصي، بجانب شركة البراق (سامسونج)"
+              },
+              {
+                "name": "فرع الكراج",
+                "address": "منطقة الكراجات العامة"
+              },
+              {
+                "name": "فرع سلمية",
+                "address": "مدينة سلمية، المركز الرئيسي"
+              },
+              {
+                "name": "فرع مصياف",
+                "address": "مدينة مصياف، الشارع العام"
+              },
+              {
+                "name": "فرع سلحب والسقيلبية",
+                "address": "المقرات الرئيسية داخل السوق التجاري في كل مدينة"
+              }
+            ]
+          },
+          {
+            "name": "دمشق وريفها",
+            "fee": null,
+            "branches": [
+              {
+                "name": "فرع الحمرا",
+                "address": "شارع الحمرا، بجانب لاميراد مول، وبجوار عصير أبو الشكر تماماً"
+              },
+              {
+                "name": "فرع البرامكة",
+                "address": "منطقة الفحامة، زقاق الجن"
+              },
+              {
+                "name": "فرع الحريقة",
+                "address": "أسواق الحريقة، مقابل المصرف التجاري السوري"
+              },
+              {
+                "name": "فرع شارع بغداد",
+                "address": "ساحة التحرير"
+              },
+              {
+                "name": "فرع جرمانا",
+                "address": "ساحة جرمانا الرئيسية"
+              },
+              {
+                "name": "فرع ضاحية الأسد",
+                "address": "جزر ضاحية الأسد، المركز التجاري"
+              },
+              {
+                "name": "فروع القلمون والريف",
+                "address": "مكاتب رئيسية في وسط مدن (النبك، يبرود، دير عطية، قطنا، والقطيفة)"
+              }
+            ]
+          },
+          {
+            "name": "حلب",
+            "fee": null,
+            "branches": [
+              {
+                "name": "فرع الفرقان",
+                "address": "حي الفرقان، الموقع الجديد خلف جامع أهل بدر (شارع صيدلية العناية)"
+              },
+              {
+                "name": "فرع الجميلية",
+                "address": "حي الجميلية، مقابل مبنى البريد والاتصالات مباشرة"
+              },
+              {
+                "name": "فرع بارون",
+                "address": "شارع بارون، أمام المتحف الوطني"
+              }
+            ]
+          },
+          {
+            "name": "اللاذقية",
+            "fee": null,
+            "branches": [
+              {
+                "name": "فرع 8 آذار",
+                "address": "شارع 8 آذار الرئيسي"
+              },
+              {
+                "name": "فرع الجامعة",
+                "address": "حي سبيرو، مقابل السكن الجامعي"
+              },
+              {
+                "name": "فرع الزراعة",
+                "address": "حي الزراعة التجاري"
+              },
+              {
+                "name": "باقي فروع المدينة",
+                "address": "سقوبين، سوق التجار، والرمل الشمالي"
+              },
+              {
+                "name": "فروع ريف اللاذقية",
+                "address": "جبلة (الفرع الرئيسي بجانب الملعب ورأس العين)، والقرداحة الرئيسي"
+              }
+            ]
+          },
+          {
+            "name": "طرطوس",
+            "fee": null,
+            "branches": [
+              {
+                "name": "فرع المدينة",
+                "address": "الكورنيش، بجانب حديقة الباسل مباشرة"
+              },
+              {
+                "name": "فرع المنطقة الصناعية",
+                "address": "المنطقة الصناعية، بجانب معمل شفيق للتنك"
+              },
+              {
+                "name": "فرع المحطة",
+                "address": "محطة القدموس، مقابل منتجع الرمال الذهبية"
+              },
+              {
+                "name": "فروع ريف طرطوس",
+                "address": "مكاتب عامة في (صافيتا بالحارة الشرقية، بانياس كورنيش البحر، دريكيش، الشيخ بدر، الشيخ سعد، ومدينة القدموس بجانب المؤسسة)"
+              }
+            ]
+          },
+          {
+            "name": "حمص",
+            "fee": null,
+            "branches": [
+              {
+                "name": "فروع المدينة",
+                "address": "تتوزع المكاتب في أحياء: الحضارة، الزهراء، والحمرا"
+              },
+              {
+                "name": "فرع شين وحواش",
+                "address": "شين (الشارع العام)، وحواش (وسط قرية الحواش بوادي النصارى)"
+              }
+            ]
+          },
+          {
+            "name": "درعا",
+            "fee": null,
+            "branches": [
+              {
+                "name": "فرع القصور",
+                "address": "طريق البانوراما"
+              },
+              {
+                "name": "مكتب أزرع",
+                "address": "أزرع"
+              },
+              {
+                "name": "مكتب الصنمين",
+                "address": "الصنمين"
+              }
+            ]
+          },
+          {
+            "name": "السويداء",
+            "fee": null,
+            "branches": [
+              {
+                "name": "الفرع الرئيسي",
+                "address": "ساحة تشرين (نزلة الوادي)"
+              }
+            ]
+          },
+          {
+            "name": "دير الزور",
+            "fee": null,
+            "branches": [
+              {
+                "name": "الفرع الرئيسي",
+                "address": "حي الجورة"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "discounts": [],
+  "pages": [],
+  "promos": [],
+  "audio": {
+    "music": {
+      "on": false,
+      "src": "",
+      "volume": 40,
+      "loop": true,
+      "button": true
+    },
+    "sfx": {
+      "on": false,
+      "style": "soft",
+      "volume": 60
+    }
+  }
+}

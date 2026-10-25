@@ -1,0 +1,23 @@
+{
+  "name": "KO SPORT | للمُعدات الرياضية الفاخرة",
+  "short_name": "KO SPORT",
+  "description": "أول موقع داخل سوريا متخصص بالأدوات الرياضية — توصيل لكل المحافظات والدفع عند الاستلام.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "categories": ["shopping", "sports"],
+  "icons": [
+    { "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "السلة", "url": "/#/cart", "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

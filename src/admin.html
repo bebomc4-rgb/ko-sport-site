@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="/admin.webmanifest">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="KO لوحة التحكم">
+<link rel="apple-touch-icon" href="/assets/icons/admin-apple.png">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>لوحة تحكم KO SPORT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Changa:wght@700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/store.css?v=85">
+<link rel="stylesheet" href="/assets/admin.css?v=85">
+<link rel="stylesheet" href="/assets/promo.css?v=85">
+<link rel="stylesheet" href="/assets/pwabar.css?v=85">
+</head>
+<body class="admin wuilt">
+<aside class="w-side" data-side>
+  <div class="w-brand"><small>متجري ›</small><b data-store-name>KO SPORT</b>
+    <small class="w-who" data-who></small>
+    <a class="w-preview" href="/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> معاينة المتجر</a>
+    <button type="button" class="w-install" data-adm-install hidden>📲 ثبّت لوحة التحكم كتطبيق</button></div>
+  <nav class="w-nav" data-tabs hidden>
+    <div class="w-grp">متجري</div>
+    <button data-tab="dash"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الرئيسية</span></button>
+    <button data-tab="orders" class="on"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الطلبات</span><span data-newcount class="pill" hidden></span></button>
+    <button data-tab="products"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M20 12 12 20 3 11V3h8zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>المنتجات</span></button>
+    <button data-tab="collections"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16v13H4zM8 7V4h8v3M9 12h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>المجموعات</span></button>
+    <button data-tab="customers"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>العملاء</span></button>
+    <button data-tab="bot"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 5h16v11H9l-5 4zM9 10h.01M12 10h.01M15 10h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>المجيب K FAST</span></button>
+    <button data-tab="discounts"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 8a2 2 0 0 0 0 4v4h18v-4a2 2 0 0 1 0-4V4H3zM9 13l5-5M9.5 8.5h.01M13.5 12.5h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الخصومات</span></button>
+    <div class="w-grp">التصميم</div>
+    <button data-tab="appearance"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 4h16v16H4zM4 9h16M9 9v11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>المظهر</span></button>
+    <button data-tab="themes"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>قوالب التصميم</span></button>
+    <button data-tab="pages"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الصفحات</span></button>
+    <div class="w-grp">التسويق</div>
+    <button data-tab="promos"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 10v4h3l7 4V6L6 10zM17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الإعلانات الترويجية</span></button>
+    <button data-tab="push"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9zM10 20a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الإشعارات</span></button>
+    <button data-tab="reviews"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>التقييمات</span><span data-revcount class="pill" hidden></span></button>
+    <button data-tab="carts"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 8v4l3 2M21 12a9 9 0 1 1-3-6.7M21 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>السلّات المتروكة</span><span data-cartcount class="pill" hidden></span></button>
+    <button data-tab="reports"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>التقارير</span></button>
+    <div class="w-grp">الإعدادات</div>
+    <button data-tab="general"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الإعدادات العامة</span></button>
+    <button data-tab="delivery"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الشحن</span></button>
+    <button data-tab="payments"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 6h18v12H3zM3 10h18M7 15h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الدفع</span></button>
+    <details class="w-more" data-w-more><summary>⚙️ إعدادات متقدمة</summary>
+    <button data-tab="tax"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 19 19 5M7.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM16.5 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الضريبة</span></button>
+    <button data-tab="domain"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>النطاق</span></button>
+    <button data-tab="legal"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الصفحات القانونية</span></button>
+    <button data-tab="apps"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 14v6M14 17h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>التطبيقات</span></button>
+    <button data-tab="images"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15.5 9.5h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>نقل الصور من Wuilt</span></button>
+    <button data-tab="staff"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-5-5.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الموظفون وربط المتجر</span></button>
+    <button data-tab="dev"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>أدوات المطورين</span></button>
+    </details>
+    <button type="button" class="w-logout" data-logout hidden><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>تسجيل الخروج</span></button>
+  </nav>
+</aside>
+<div class="w-shade" data-side-close></div>
+<header class="w-top"><button type="button" class="w-burger" data-side-open aria-label="القائمة"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><b data-page-title>لوحة التحكم</b><a class="w-preview sm" href="/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></header>
+
+<main id="adm">
+  <form class="login form" data-login>
+    <h3>دخول لوحة التحكم</h3>
+    <div class="field"><label for="pw">كلمة السر</label><input id="pw" type="password" autocomplete="current-password" required></div>
+    <button class="btn btn-red">دخول</button>
+    <div class="msg" data-login-msg style="color:var(--red)"></div>
+  </form>
+
+  <section data-view="dash" hidden>
+    <div class="w-page-head"><h1>أهلاً بك 👋</h1><p>نظرة سريعة على متجرك</p></div>
+    <div class="d-stats" data-dash-stats></div>
+    <div class="d-grid">
+      <div class="w-card"><div class="d-card-head"><h3>آخر الطلبات</h3><button type="button" class="w-link" data-goto="orders">كل الطلبات ←</button></div><div data-dash-orders></div></div>
+      <div class="w-card"><div class="d-card-head"><h3>اختصارات</h3></div><div class="d-quick">
+        <button type="button" data-goto="products">🏷 المنتجات والأسعار</button>
+        <button type="button" data-goto="collections">🗂 المجموعات</button>
+        <button type="button" data-goto="discounts">🎁 الخصومات</button>
+        <button type="button" data-goto="appearance" data-ap-go="home">⌂ أقسام الصفحة الرئيسية</button>
+        <button type="button" data-goto="appearance" data-ap-go="slider">🖼 الشريحة الرئيسية</button>
+        <a href="/" target="_blank" rel="noopener">👁 شوف متجرك</a></div></div>
+    </div>
+  </section>
+  <section data-view="orders" hidden>
+    <div class="w-page-head"><h1>الطلبات</h1><p>تابع طلبات متجرك وغيّر حالتها.</p></div>
+    <div class="adm-bar">
+      <div class="chips" data-status-filter></div>
+      <input type="search" data-order-q placeholder="بحث بالاسم أو الرقم أو رقم الطلب">
+      <button class="btn btn-ghost sm" data-refresh>تحديث</button>
+    </div>
+    <div class="stats" data-stats></div>
+    <div data-orders></div>
+    <button class="more" data-more-orders hidden>طلبات أقدم</button>
+  </section>
+
+  <section data-view="products" hidden>
+    <div class="w-page-head"><h1>المنتجات</h1><p>أضف منتجاتك وعدّل أسعارها وصورها.</p></div>
+    <div class="adm-bar">
+      <input type="search" data-prod-q placeholder="بحث عن منتج">
+      <select data-prod-cat><option value="">كل الأقسام</option></select>
+      <select data-prod-stock><option value="">الكل</option><option value="in">متوفر</option><option value="out">خالص</option><option value="hidden">مخفي</option></select>
+      <button class="btn btn-dark sm" data-new-product>+ منتج جديد</button>
+    </div>
+    <div class="ai-bar">
+      <details class="ai-tools"><summary>🛠 أدوات الوصف والإملاء</summary><div class="ai-tools-in">
+      <button class="btn btn-ghost sm" data-desc-fill>📚 طبّق الأوصاف الجاهزة (للفاضي)</button>
+      <button class="btn btn-ghost sm" data-desc-all>♻️ طبّقها على الكل</button>
+      <button class="btn btn-ghost sm" data-spell>🔤 صحّح الإملاء</button>
+      <button class="btn btn-ghost sm" data-ai-all>✨ اكتب وصف ومواصفات لكل المنتجات</button>
+            </div></details>
+      <span data-ai-msg class="hint"></span>
+    </div>
+    <div class="prod-count" data-prod-count></div>
+    <div class="ptable" data-products></div>
+    <div class="savebar" data-savebar hidden>
+      <span data-dirty-count></span>
+      <button class="btn btn-ghost sm" data-discard>تراجع</button>
+      <button class="btn btn-red sm" data-save>حفظ التغييرات</button>
+    </div>
+  </section>
+
+  <section data-view="collections" hidden>
+    <div class="w-page-head w-head-row"><div><h1>المجموعات</h1><p>أقسام متجرك وصورها ومنتجاتها.</p></div><div class="w-head-acts"><button type="button" class="w-btn ghost sm" data-wc-open>⬇️ جيب المجموعات من Wuilt</button><button type="button" class="w-btn sm" data-coll-new>+ إنشاء مجموعة</button></div></div>
+    <div class="w-card w-tablecard">
+      <div class="cu-bar"><input type="search" data-coll-q placeholder="ابحث عن مجموعة"></div>
+      <div class="w-table coll-table" data-coll-list></div>
+    </div>
+    <details class="labels w-card"><summary>تغيير أسماء كل الأقسام دفعة وحدة</summary><div data-labels></div></details>
+  </section>
+
+  <section data-view="colledit" hidden>
+    <div class="w-page-head w-head-row"><div><button type="button" class="w-back" data-goto="collections">‹ المجموعات</button><h1 data-ce-title>تعديل المجموعة</h1></div><div class="w-head-acts"><a class="w-btn ghost sm" data-ce-view target="_blank">معاينة</a></div></div>
+    <div class="ce-grid">
+      <div class="ce-main">
+        <div class="w-card"><div class="field"><label>الاسم</label><input data-ce-name maxlength="60"><small class="hint" data-ce-inner></small><div class="msg" data-ce-err></div></div>
+          <div class="field"><label>الوصف</label><textarea data-ce-desc rows="5" maxlength="1000" placeholder="بيطلع للزبون فوق منتجات المجموعة"></textarea></div></div>
+        <div class="w-card"><div class="ce-ph"><h3>منتجات المجموعة <span data-ce-count></span></h3><div><button type="button" class="w-link" data-ce-sort>ترتيب المنتجات</button><button type="button" class="w-link" data-ce-add>أضف منتجات</button></div></div>
+          <input type="search" data-ce-q placeholder="بحث عن المنتجات" class="ce-q"><div class="ce-list" data-ce-list></div></div>
+        <div class="w-card"><h3>التهيئة لمحركات البحث (SEO)</h3>
+          <div class="field"><label>رابط URL لمجموعة المنتجات</label><div class="coupon-row"><span class="pg-pre" dir="ltr">/#/c/</span><input data-ce-slug maxlength="60"></div><small class="hint" dir="ltr" data-ce-url></small></div>
+          <div class="field"><label>العنوان <small class="hint">أقصى حد 60 حرفاً</small></label><input data-ce-seot maxlength="60"></div>
+          <div class="field"><label>الوصف <small class="hint">الحد الأقصى 160 حرف</small></label><textarea data-ce-seod rows="3" maxlength="160" placeholder="بيساعد بظهور المجموعة بنتائج البحث"></textarea></div></div>
+      </div>
+      <div class="ce-side"><div class="w-card"><h3>صورة المجموعة</h3><div class="ce-img" data-ce-img></div>
+        <label class="w-btn sm ce-up">أضف صورة<input type="file" accept="image/*" data-ce-file hidden></label><small class="hint">jpg, png, webp, gif — إذا ما في صورة بتطلع صورة أول منتج.</small><button type="button" class="btn btn-ghost sm" data-ce-noimg>إزالة الصورة</button></div></div>
+    </div>
+    <div class="savebar ce-save"><span data-ce-msg>عدّل وبعدين اكبس احفظ</span><button type="button" class="btn btn-ghost sm" data-goto="collections">إلغاء</button><button type="button" class="btn btn-red sm" data-ce-save>احفظ</button></div>
+  </section>
+  <section data-view="customers" hidden>
+    <div class="w-page-head w-head-row"><div><h1>العملاء</h1><p>كل زبائنك: يلي طلبوا، ويلي ضفتهم أو استوردتهم.</p></div>
+      <div class="w-head-acts"><label class="w-btn ghost sm">⇪ استيراد<input type="file" accept=".csv,text/csv" data-cust-import hidden></label><button type="button" class="w-btn ghost sm" data-cust-export>⇩ استخراج</button><button type="button" class="w-btn sm" data-cust-add>إضافة عميل</button></div></div>
+    <div class="w-card w-tablecard">
+      <div class="cu-bar"><div class="cu-tabs" data-cu-tabs></div><input type="search" data-cust-q placeholder="البحث بالاسم أو الرقم أو المحافظة أو التصنيف"></div>
+      <div class="cu-bulk" data-cu-bulk hidden><b data-cu-sel></b><button type="button" data-cu-act="block">حظر</button><button type="button" data-cu-act="unblock">إلغاء الحظر</button><button type="button" data-cu-act="tag">إضافة تصنيف</button></div>
+      <div data-cust-list></div>
+    </div>
+  </section>
+  <section data-view="delivery" hidden>
+    <div class="w-page-head"><h1>الشحن</h1><p>شركات الشحن والمحافظات والفروع.</p></div>
+    <div class="form">
+      <h3>شركات الشحن والتوصيل</h3>
+      <small class="hint">الزبون بيختار المحافظة، وبعدها شركة الشحن المتاحة إلها، وبعدها الفرع (للقدموس) أو بيكتب عنوانه (للتوصيل لباب البيت). وبتطلعله طرق الدفع اللي بتسمح فيها لهالشركة. خلّي السعر فاضي إذا بيتحدد عند التأكيد.</small>
+      <div data-carriers-ed></div>
+      <button class="btn btn-ghost sm" data-add-carrier>+ شركة شحن جديدة</button>
+    </div>
+    <div class="form" style="margin-top:14px"><h3>🏋️ الأغراض التقيلة</h3><div data-heavy></div></div>
+    <div class="form" style="margin-top:14px">
+      <div class="row2">
+        <div class="field"><label>توصيل مجاني للطلبات فوق (0 = موقّف)</label><input type="number" min="0" step="1" dir="ltr" data-k="delivery.freeOver" data-num></div>
+        <div class="field"><label>ملاحظة تحت زر تأكيد الطلب</label><input data-k="delivery.note" maxlength="200"></div>
+      </div>
+    </div>
+  </section>
+
+  <section data-view="payments" hidden>
+    <div class="w-page-head"><h1>الدفع</h1><p>طرق الدفع يلي بيختار منها الزبون.</p></div>
+    <div class="form">
+      <h3>طرق الدفع</h3>
+      <small class="hint">إذا رفعت <b>باركود</b> لطريقة دفع (متل شام كاش)، بيطلع للزبون ليحوّل عليه. وإذا علّمت «بدها تأكيد تحويل»، الطلب بيوصلك بحالة «بانتظار التحويل» لحتى تتأكد وتغيّرها لـ «تم الدفع».</small>
+      <small class="hint">الزبون بيختار وحدة من الطرق المفعّلة بصفحة إتمام الطلب. التفاصيل (متل رقم الحساب أو طريقة التحويل) بتطلعله وقت الاختيار وبعد ما يأكد الطلب.</small>
+      <div data-payments></div>
+      <button class="btn btn-ghost sm" data-add-pay>+ طريقة دفع جديدة</button>
+    </div>
+  </section>
+
+  <section data-view="reviews" hidden>
+    <div class="w-page-head"><h1>التقييمات</h1><p>آراء الزبائن بمنتجاتك.</p></div>
+    <div class="form">
+      <h3>تقييمات الزبائن</h3>
+      <small class="hint">الزبون بيكتب رأيه من صفحة المنتج. التقييم ما بيظهر بالموقع إلا بعد ما تكبس «نشر» (إلا إذا فعّلت النشر الفوري من «التصميم ← الإعدادات العامة للمنتج»).</small>
+      <div class="seg" data-rev-filter><button type="button" data-rf="pending" class="on">بانتظار الموافقة</button><button type="button" data-rf="ok">منشورة</button><button type="button" data-rf="all">الكل</button></div>
+      <div class="rev-list" data-rev-list></div>
+    </div>
+  </section>
+
+  <section data-view="themes" hidden>
+    <div class="w-page-head"><h1>قوالب التصميم</h1><p>اختار شكل متجرك من القوالب الجاهزة.</p></div>
+    <div class="packs-wrap"><div class="th-head"><div><h3>🏆 قوالب متكاملة — من أول زيارة لحد الطلب</h3><small class="hint">كل قالب بيغيّر الشكل والسلوك كله: التخطيط والألوان والخطوط وصفحة الرئيسية وطريقة فتح الصفحة والشريط السفلي، ومعها ميزات بيع حقيقية (عدّاد عرض، شريط توصيل مجاني، شارات ثقة، اقتراحات بالسلة). بتعاين قبل ما تثبّت، ومافي شي بينحفظ إلا لما تكبس «حفظ». صورك ومنتجاتك وشرائحك بتضل متل ما هي.</small></div></div><div class="packs-grid" data-packs></div></div>
+    <div class="th-current" data-th-current></div>
+    <div class="th-head">
+      <div><h3>قوالب التصميم</h3><small class="hint">قوالب جاهزة. كل قالب بيغيّر ألوان كل منطقة بالموقع + الخطوط + شكل الأزرار والبطاقات. الكتابة دايماً بتطلع مقروءة لحالها. بعد التثبيت اكبس «حفظ» لينتشر لكل الزوار.</small></div>
+      <div class="th-tools"><div class="seg" data-pv-mode><button type="button" data-pvm="mob">📱 موبايل</button><button type="button" data-pvm="desk">💻 كمبيوتر</button></div><div class="th-filter" data-th-filter></div></div>
+    </div>
+    <div class="th-grid" data-th-grid></div>
+  </section>
+
+  <dialog class="th-dlg mob" data-th-dlg>
+    <div class="th-dlg-bar">
+      <b data-th-dlg-name></b>
+      <div class="seg" data-th-dev><button type="button" data-dev="mob" class="on">📱 موبايل</button><button type="button" data-dev="desk">💻 كمبيوتر</button></div>
+      <button class="btn btn-red sm" data-th-dlg-apply>تثبيت القالب</button>
+      <button class="btn btn-ghost sm" data-th-dlg-close>إغلاق</button>
+    </div>
+    <div class="th-frame-wrap"><iframe data-th-frame title="معاينة القالب" loading="lazy"></iframe></div>
+  </dialog>
+
+  <section data-view="appearance" hidden>
+    <div class="w-page-head"><h1>المظهر</h1><p>تخصيص شكل وهيئة المتجر</p></div>
+    <div class="ap-wrap">
+      <nav class="ap-nav w-card"><div class="ap-grp">الشكل العام</div><button type="button" data-apnav="logo"><i>◎</i>الشعار</button><button type="button" data-apnav="colors"><i>◐</i>الألوان</button><button type="button" data-apnav="fonts"><i>Ƒ</i>الخطوط</button><button type="button" data-apnav="cur"><i>💱</i>العملة (دولار / ليرة)</button><div class="ap-grp">التصميم</div><button type="button" data-apnav="announce"><i>▭</i>شريط التنبيهات</button><button type="button" data-apnav="slider"><i>▤</i>الشريحة الرئيسية</button><button type="button" data-apnav="product"><i>▣</i>طريقة عرض المنتج</button><button type="button" data-apnav="price"><i>🏷</i>السعر والخصم</button><button type="button" data-apnav="card"><i>💎</i>شكل بطاقة المنتج والحركة</button><button type="button" data-apnav="menu"><i>☰</i>القائمة الرئيسية للمتجر</button><button type="button" data-apnav="home"><i>⌂</i>الصفحة الرئيسية لمتجرك</button><button type="button" data-apnav="footer"><i>▁</i>إضافة فوتر (تذييل)</button><button type="button" data-apnav="layout"><i>▦</i>تخطيط القالب</button><button type="button" data-apnav="sound"><i>♪</i>الصوت والموسيقى</button><div class="ap-grp">مؤثرات وحركة</div><button type="button" data-apnav="fx"><i>✦</i>المؤثرات والحركة</button><button type="button" data-apnav="dark"><i>☾</i>الوضع الداكن</button><div class="ap-grp">ألعاب وتنقل</div><button type="button" data-apnav="bnav"><i>▬</i>شريط التنقل السفلي</button><button type="button" data-apnav="kx"><i>✨</i>نافذة الأقسام (البلور)</button><button type="button" data-apnav="games"><i>🎮</i>قسم الألعاب</button><button type="button" data-apnav="conv"><i>🛍</i>ميزات تزيد المبيعات</button><div class="ap-grp">تواصل معنا</div><button type="button" data-apnav="contact"><i>✉</i>معلومات التواصل</button><button type="button" data-apnav="social"><i>👍</i>الشبكات الاجتماعية</button><div class="ap-grp">إتمام الطلب</div><button type="button" data-apnav="checkout"><i>🛒</i>تحديد بيانات إتمام الطلب</button><button type="button" data-apnav="seo"><i>🔍</i>محركات البحث والمشاركة</button></nav>
+      <div class="ap-body w-card">
+      <button type="button" class="ap-back" data-ap-back>→ رجوع لكل إعدادات المظهر</button>
+      <div class="ap-panel" data-ap="logo" hidden>
+        <div class="ap-head"><h2>الشعار</h2><p>ارفع شعار متجرك وأيقونته.</p></div>
+        <div class="logo-preview" data-logo-preview></div>
+        <div class="buy-row" style="margin:0">
+          <label class="btn btn-ghost sm">رفع شعار (صورة)<input type="file" accept="image/*" data-upload="design.logoImage" hidden></label>
+          <button class="btn btn-ghost sm" data-clear="design.logoImage">إزالة صورة الشعار</button>
+        </div>
+        <small class="hint">إذا رفعت صورة شعار بتطلع بدل النص. الأفضل PNG بخلفية شفافة.</small>
+        <div class="row2">
+          <div class="field"><label>النص الملوّن (بدون صورة)</label><input data-k="design.logoText1" maxlength="20"></div>
+          <div class="field"><label>النص العادي</label><input data-k="design.logoText2" maxlength="30"></div>
+        </div>
+        <div class="field"><label>حجم الشعار</label>
+          <div class="seg" data-seg="design.logoSize"><button type="button" data-v="l">كبير</button><button type="button" data-v="m">متوسط</button><button type="button" data-v="s">صغير</button></div>
+        </div>
+        <div class="field"><label>شكل الشعار</label><label class="switch"><input type="checkbox" data-k="design.logoRound" data-default-true><span></span> شعار دائري (أي صورة بترفعها بتصير دائرة)</label></div>
+        <div class="field"><label>حجم الشعار الدائري <b class="w-val">24px</b></label><input type="range" min="24" max="120" step="2" data-k="design.logoPx" data-num class="w-range" data-suf="px" value="24"></div>
+        <div class="field"><label>أيقونة التطبيق والإشعارات</label><div class="buy-row" style="margin:0"><button type="button" class="btn btn-ghost sm" data-make-icons>⟳ اعمل أيقونة التطبيق من الشعار</button><span class="app-ic-prev" data-app-icon-prev></span></div>
+          <small class="hint">بتنعمل تلقائياً كل ما ترفع شعار. بتصير هي أيقونة التطبيق، والمتصفح، والإشعارات، وشريط التثبيت. بعد التغيير الزبون ممكن يحتاج يعيد تثبيت التطبيق ليتحدّث الأيقونة.</small></div>
+        <div class="field"><label>أيقونة المتجر (Favicon)</label>
+          <div class="fav-row"><div class="fav-prev" data-fav-preview></div>
+            <label class="btn btn-ghost sm">رفع أيقونة<input type="file" accept="image/png,image/jpeg,image/webp" data-upload="design.favicon" hidden></label>
+            <button class="btn btn-ghost sm" data-clear="design.favicon">إزالة</button></div>
+          <small class="hint">الأيقونة الصغيرة جنب اسم متجرك بتبويب المتصفح. PNG أو JPG، أقل شي 32×32. منحوّلها لـ 64×64.</small>
+        </div>
+      </div>
+      <div class="ap-panel" data-ap="colors" hidden>
+        <div class="ap-head"><h2>الألوان</h2><p>كل منطقة إلها خلفية وكتابة. «تلقائي» بيختار أبيض أو أسود حسب الخلفية، والكتابة دايماً بتضل مقروءة.</p></div>
+        <div class="field"><label>القالب</label><div class="th-mini" data-th-mini></div></div>
+        <div class="theme-preview" data-theme-preview></div>
+        <div class="theme-rows" data-theme-rows></div>
+        <h3>الأشكال</h3>
+        <div class="field"><label>دوران الزوايا <b data-radius-val></b></label><input type="range" min="0" max="24" step="1" data-k="design.radius" data-num></div>
+        <div class="field"><label>شكل الأزرار</label><div class="seg" data-seg="design.btnShape"><button type="button" data-v="square">مربّع</button><button type="button" data-v="rounded">مدوّر</button><button type="button" data-v="pill">كبسولة</button></div></div>
+        <div class="field"><label>شكل البطاقات</label><div class="seg" data-seg="design.cardStyle"><button type="button" data-v="flat">بدون إطار</button><button type="button" data-v="border">إطار خفيف</button><button type="button" data-v="shadow">ظل</button></div></div>
+      </div>
+      <div class="ap-panel" data-ap="fonts" hidden>
+        <div class="ap-head"><h2>الخطوط</h2><p>اختار خط العناوين وخط النص ونمطهن.</p></div>
+        <div class="row2">
+          <div class="field"><label>خط العناوين</label><select data-k="design.headingFont" data-fonts></select></div>
+          <div class="field"><label>نمط الخط</label><select data-k="design.headingWeight" data-weights data-num></select></div>
+        </div>
+        <div class="font-preview" data-font-preview>عدّتك الرياضية كاملة</div>
+        <div class="row2">
+          <div class="field"><label>خط النص</label><select data-k="design.bodyFont" data-fonts></select></div>
+          <div class="field"><label>نمط الخط</label><select data-k="design.bodyWeight" data-weights data-num></select></div>
+        </div>
+        <div class="font-preview body" data-body-preview>قفازات ملاكمة، معدات جيم، كرة قدم وسلة — والدفع عند الاستلام.</div>
+        <small class="hint">«خط الجهاز» هو الأسرع لأنه ما بيحتاج تحميل.</small>
+      </div>
+      <div class="ap-panel" data-ap="announce" hidden>
+        <div class="ap-head"><h2>شريط التنبيهات</h2><p>شريط صغير بأعلى المتجر لعروضك وأخبارك.</p></div>
+        <label class="switch"><input type="checkbox" data-k="design.announceOn"><span></span> تمكين شريط التنبيهات</label>
+        <label class="switch"><input type="checkbox" data-k="design.announceClosable"><span></span> الزبون بيقدر يسكّر الشريط</label>
+        <div class="field"><label>نص التنبيه</label><input data-k="store.announcement" placeholder="مثلاً: خصم 10% على كل القفازات لآخر الشهر 🔥" maxlength="160"><small class="hint">بحد أقصى 160 حرف</small></div>
+      </div>
+      <div class="ap-panel" data-ap="slider" hidden>
+        <div class="ap-head"><h2>الشريحة الرئيسية</h2><p>اعرض المنتجات المميزة وآخر العروض بأول الصفحة الرئيسية. صورة الكمبيوتر 1600×500 (16/5)، وصورة الهاتف 800×1200 (2/3). الصيغ: jpg, png, webp, gif.</p></div>
+        <div data-slides></div>
+        <button class="btn btn-ghost sm" data-add-slide>+ أضف شريحة</button>
+        <details class="ap-more"><summary>إذا ما في شرائح: الواجهة العادية</summary>
+          <div class="field"><label>العنوان الكبير</label><input data-k="design.heroTitle" maxlength="80"></div>
+          <div class="field"><label>النص تحت العنوان</label><textarea data-k="design.heroText" rows="2" maxlength="240"></textarea></div>
+          <div class="hero-prev" data-hero-preview></div>
+          <div class="buy-row" style="margin:0">
+            <label class="btn btn-ghost sm">رفع صورة خلفية<input type="file" accept="image/*" data-upload="design.heroImage" hidden></label>
+            <button class="btn btn-ghost sm" data-clear="design.heroImage">شيل الصورة</button>
+          </div>
+          <label class="check"><input type="checkbox" data-k="design.showHeroStats"> إظهار الأرقام (عدد المنتجات والأقسام)</label>
+        </details>
+        <h3>شكل الشريحة وحركتها</h3>
+        <div class="field"><label>شكل الشريحة</label><div class="fx-tiles" data-seg="design.sliderShape"><button type="button" data-v="theme"><span class="hsi hsi-theme"><i></i><i></i><i></i></span><small>حسب الثيم</small></button><button type="button" data-v="full"><span class="hsi hsi-full"><i></i><i></i><i></i></span><small>بعرض الشاشة</small></button><button type="button" data-v="round"><span class="hsi hsi-round"><i></i><i></i><i></i></span><small>زوايا دائرية</small></button><button type="button" data-v="curve"><span class="hsi hsi-curve"><i></i><i></i><i></i></span><small>منحنية من تحت</small></button><button type="button" data-v="peek"><span class="hsi hsi-peek"><i></i><i></i><i></i></span><small>بالنص مع الجوانب</small></button></div>
+          <small class="hint">«بالنص مع الجوانب»: الصورة بنص الشاشة وبيبيّن طرف يلي قبلها ويلي بعدها، وبتمشي مع الإصبع.</small></div>
+        <div data-peek-opts hidden>
+          <div class="field"><label>حجم الصورة يلي بالنص <b class="w-val">80%</b></label><input type="range" min="60" max="100" step="2" data-k="design.sliderSize" data-num class="w-range" value="80"><small class="hint">كبّر أو صغّر. كل ما صغّرتها بيبيّن أكتر من الصورة يلي قبلها ويلي بعدها.</small></div>
+          <div class="w-two"><div class="field"><label>المسافة بينها وبين يلي قبلها وبعدها (بكسل)</label><div class="w-step"><button type="button" data-stp="2">+</button><input type="number" data-k="design.sliderGap" data-numopt data-base="10" min="0" max="40" dir="ltr" placeholder="10"><button type="button" data-stp="-2">−</button></div></div>
+            <div class="field" data-peek-side><label>حجم يلي عالجوانب <b class="w-val">86%</b></label><input type="range" min="50" max="100" step="2" data-k="design.sliderSide" data-num class="w-range" value="86"></div></div>
+          <div class="field"><label>مؤثّر الحركة</label><div class="fx-tiles" data-seg="design.sliderCarFx"><button type="button" data-v="scale"><span class="fxi fxi-scale"><i></i><i></i><i></i></span><small>تكبير الوسط</small></button><button type="button" data-v="fade"><span class="fxi fxi-fade"><i></i><i></i><i></i></span><small>تلاشي الجوانب</small></button><button type="button" data-v="cover"><span class="fxi fxi-cover"><i></i><i></i><i></i></span><small>ثلاثي الأبعاد</small></button><button type="button" data-v="stack"><span class="fxi fxi-stack"><i></i><i></i><i></i></span><small>مكدّس</small></button><button type="button" data-v="rise"><span class="fxi fxi-rise"><i></i><i></i><i></i></span><small>رفع الوسط</small></button><button type="button" data-v="flat"><span class="fxi fxi-flat"><i></i><i></i><i></i></span><small>بدون مؤثّر</small></button></div></div>
+        </div>
+        <div class="field" data-fade-opts><label>مؤثّر تغيّر الشريحة</label><div class="fx-tiles" data-seg="design.sliderFx"><button type="button" data-v="fade"><span class="hfi hfi-fade"><i></i><i></i></span><small>سينمائي جانبي</small></button><button type="button" data-v="zoom"><span class="hfi hfi-zoom"><i></i><i></i></span><small>تكبير</small></button><button type="button" data-v="blur"><span class="hfi hfi-blur"><i></i><i></i></span><small>ضبابي</small></button><button type="button" data-v="wipe"><span class="hfi hfi-wipe"><i></i><i></i></span><small>ستارة</small></button><button type="button" data-v="dip"><span class="hfi hfi-dip"><i></i><i></i></span><small>غمق سينمائي</small></button><button type="button" data-v="slide"><span class="hfi hfi-slide"><i></i><i></i></span><small>سحب جانبي</small></button><button type="button" data-v="flip"><span class="hfi hfi-flip"><i></i><i></i></span><small>قلب ثلاثي الأبعاد</small></button><button type="button" data-v="rise"><span class="hfi hfi-rise"><i></i><i></i></span><small>صعود</small></button><button type="button" data-v="circle"><span class="hfi hfi-circle"><i></i><i></i></span><small>دائرة</small></button><button type="button" data-v="spin"><span class="hfi hfi-spin"><i></i><i></i></span><small>دوران</small></button><button type="button" data-v="split"><span class="hfi hfi-split"><i></i><i></i></span><small>فتح من الوسط</small></button><button type="button" data-v="xfade"><span class="hfi hfi-xfade"><i></i><i></i></span><small>تلاشي هادئ (بدون حركة)</small></button></div>
+          <small class="hint">الاتجاه (يمين→يسار أو العكس) بتحدده من «المؤثرات والحركة». والشريحة بتلحق الإصبع لما تسحبها.</small></div>
+        <div class="field" data-xf-opts><h3 style="margin:6px 0">إعدادات التلاشي الهادئ</h3>
+          <label>مدة التلاشي <b class="w-val">1.6s</b></label><input type="range" min="0.4" max="4" step="0.1" data-k="design.sliderXf" data-num class="w-range" data-suf="s" value="1.6">
+          <label>نعومة التلاشي</label><div class="seg" data-seg="design.sliderXe"><button type="button" data-v="ease-in-out">ناعم</button><button type="button" data-v="linear">منتظم</button><button type="button" data-v="ease-out">يبدأ سريع</button><button type="button" data-v="ease-in">يبدأ بطيء</button></div>
+          <label>حركة الصورة</label><div class="seg" data-seg="design.sliderXk"><button type="button" data-v="off">ثابتة بدون زوم</button><button type="button" data-v="soft">تكبير خفيف جداً</button></div>
+          <label>ظهور النص</label><div class="seg" data-seg="design.sliderXt"><button type="button" data-v="fade">يتلاشى مع الصورة</button><button type="button" data-v="static">ثابت دايماً</button></div></div>
+        <div class="w-two"><div class="field"><label>مدة كل شريحة (ثانية)</label><div class="w-step"><button type="button" data-stp="1">+</button><input type="number" data-k="design.sliderSpeed" data-numopt min="2" max="15" dir="ltr" placeholder="5"><button type="button" data-stp="-1">−</button></div></div>
+          <div class="field"><label>المسافة تحت الشريحة (بكسل)</label><div class="w-step"><button type="button" data-stp="4">+</button><input type="number" data-k="design.afterSlider" data-numopt min="0" max="160" dir="ltr" placeholder="24"><button type="button" data-stp="-4">−</button></div><small class="hint">المسافة بين الشريحة وعنوان القسم يلي تحتها.</small></div></div>
+        <div class="field"><label>اتجاه السلايد (كل شرائح الموقع)</label><div class="seg" data-seg="design.slideDir"><button type="button" data-v="rtl">من اليمين لليسار</button><button type="button" data-v="ltr">من اليسار لليمين</button></div></div><div class="field"><label>مؤشّر الوقت (بيفرجي الزائر إيمتى رح تتغيّر الشريحة)</label><div class="seg" data-seg="design.sliderProg"><button type="button" data-v="dot">النقطة بتتعبّى</button><button type="button" data-v="bar">شريط تحت الشريحة</button><button type="button" data-v="off">بدون</button></div>
+          <small class="hint">«النقطة بتتعبّى»: النقطة الطويلة جنب النقاط بتتعبّى مع الوقت، ولما تكمل بتنتقل الصورة يلي بعدها.</small></div>
+        <small class="hint">اتجاه السلايد هنا، وطريقة فتح الصفحة والمؤثرات بقسم «مؤثرات وحركة».</small>
+      </div>
+      <div class="ap-panel" data-ap="price" hidden>
+        <div class="ap-head"><h2>السعر والخصم</h2><p>شكل السعر وقت يكون في خصم: بالبطاقات، صفحة المنتج، السلة وكل مكان. (بالمعاينة بيطلع خصم تجريبي إذا ما عندك خصم شغّال.)</p></div>
+        <div class="field"><label>⭐ السعر الأساسي ثابت بالنص</label><div class="seg" data-seg="design.pz.lock"><button type="button" data-v="">لا</button><button type="button" data-v="on">اي — بالنص تماماً والباقي عالجوانب</button></div><small class="hint">السعر الجديد بيضل بنص البطاقة وصفحة المنتج بالزبط، والسعر القديم والخصم بيطلعو عالجوانب بدون ما يزيحوه. «السعر القديم» و«كلمة الخصم» تحت بيحددو أي جانب.</small></div>
+        <div class="field"><label>الترتيب</label><div class="seg" data-seg="design.pz.lay"><button type="button" data-v="stack">الخصم فوق والسعر تحته</button><button type="button" data-v="inline">كلن بسطر واحد</button></div></div>
+        <div class="field"><label>مكان السعر</label><div class="seg" data-seg="design.pz.al"><button type="button" data-v="center">بالمنتصف</button><button type="button" data-v="start">يمين</button><button type="button" data-v="end">يسار</button></div></div>
+        <div class="field"><label>السعر القديم (عليه خط)</label><div class="seg" data-seg="design.pz.old"><button type="button" data-v="left">على يسار السعر</button><button type="button" data-v="right">على يمين السعر</button><button type="button" data-v="above">فوق السعر</button><button type="button" data-v="below">تحت السعر</button></div></div>
+        <div class="field"><label>كلمة الخصم</label><div class="seg" data-seg="design.pz.off"><button type="button" data-v="above">فوق السعر</button><button type="button" data-v="beside">جنب السعر</button><button type="button" data-v="below">تحت السعر</button><button type="button" data-v="hide">مخفية</button></div></div>
+        <div class="field"><label>نص الخصم</label><div class="seg" data-seg="design.pz.txt"><button type="button" data-v="pct">خصم 15%</button><button type="button" data-v="minus">-15%</button><button type="button" data-v="save">وفّر $3</button></div></div>
+        <h3>الكلام بعد السعر (بالليرة)</h3>
+        <div class="field"><label>النص</label><div class="seg" data-seg="design.cu.txt"><button type="button" data-v="full">ل.س جديدة</button><button type="button" data-v="short">ل.س</button><button type="button" data-v="custom">نص من عندي</button></div></div>
+        <div class="field"><label>النص من عندك (إذا اخترت «نص من عندي»)</label><input data-k="design.cu.custom" maxlength="14" placeholder="مثلاً: ليرة"></div>
+        <div class="field"><label>مكانه</label><div class="seg" data-seg="design.cu.pos"><button type="button" data-v="beside">جنب الرقم وصغير</button><button type="button" data-v="below">تحت الرقم</button><button type="button" data-v="same">جنب الرقم بنفس الحجم</button></div></div>
+        <div class="field"><label>حجمه <b class="w-val">55%</b></label><input type="range" min="30" max="100" step="5" data-k="design.cu.size" data-num class="w-range" data-suf="%" value="55"></div>
+        <label class="switch"><input type="checkbox" data-k="design.cu.oldUnit"><span></span> إظهاره كمان مع السعر القديم المشطوب</label>
+        <h3>الحجم والألوان</h3>
+        <div class="w-two"><div class="field"><label>حجم السعر الجديد <b class="w-val">100%</b></label><input type="range" min="70" max="180" step="5" data-k="design.pz.ns" data-num class="w-range" data-suf="%" value="100"></div>
+        <div class="field"><label>حجم السعر القديم <b class="w-val">58%</b></label><input type="range" min="35" max="100" step="1" data-k="design.pz.os" data-num class="w-range" data-suf="%" value="58"></div></div>
+        <div class="w-two"><div class="field"><label>لون السعر الجديد</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.pz.nc"><button type="button" class="btn btn-ghost sm" data-clear="design.pz.nc">تلقائي</button></div></div>
+        <div class="field"><label>لون السعر القديم</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.pz.oc"><button type="button" class="btn btn-ghost sm" data-clear="design.pz.oc">تلقائي</button></div></div></div>
+        <div class="w-two"><div class="field"><label>خلفية كلمة الخصم</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.pz.ob"><button type="button" class="btn btn-ghost sm" data-clear="design.pz.ob">تلقائي</button></div></div>
+        <div class="field"><label>لون كلمة الخصم</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.pz.of"><button type="button" class="btn btn-ghost sm" data-clear="design.pz.of">تلقائي</button></div></div></div>
+      </div>
+      <div class="ap-panel" data-ap="card" hidden>
+        <div class="ap-head"><h2>شكل بطاقة المنتج والحركة</h2><p>شكل فخم للبطاقات، حركة لما الزبون يمرّق عليها أو يلمسها، واسم المنتج وبعدو عن السعر.</p></div>
+        <h3>الشكل</h3>
+        <div class="field"><label>شكل البطاقة</label><div class="seg" data-seg="design.cd.look"><button type="button" data-v="">عادي</button><button type="button" data-v="luxe">فخم ذهبي</button><button type="button" data-v="noir">أسود فاخر</button><button type="button" data-v="glass">زجاج</button><button type="button" data-v="soft">ناعم وطري</button><button type="button" data-v="frame">إطار راقي</button><button type="button" data-v="pure">نظيف بلا إطار</button></div></div>
+        <div class="field"><label>الحركة على البطاقة</label><div class="seg" data-seg="design.cd.hover"><button type="button" data-v="">بدون</button><button type="button" data-v="lift">ترتفع لفوق</button><button type="button" data-v="shine">لمعة ضوء</button><button type="button" data-v="zoom">تكبير الصورة</button><button type="button" data-v="glow">توهّج</button><button type="button" data-v="tilt">ميلان ثلاثي الأبعاد</button><button type="button" data-v="reveal">الزر بيطلع</button></div><small class="hint">«لمعة ضوء» على الموبايل بتمرّ لحالها كل كم ثانية.</small></div>
+        <div class="w-two"><div class="field"><label>لون اللمسة الفخمة (ذهبي افتراضياً)</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.cd.accent"><button type="button" class="btn btn-ghost sm" data-clear="design.cd.accent">تلقائي</button></div></div><div class="field"><label>دوران الزوايا <b class="w-val">12px</b></label><input type="range" min="0" max="32" step="1" data-k="design.cd.radius" data-num class="w-range" data-suf="px" value="12"></div></div>
+        <h3>اسم المنتج والسعر</h3>
+        <div class="field"><label>حجم اسم المنتج <b class="w-val">14px</b></label><input type="range" min="11" max="26" step="1" data-k="design.cd.nameSize" data-num class="w-range" data-suf="px" value="14"><small class="hint">اسحب لتكبّر الاسم.</small></div>
+        <div class="w-two"><div class="field"><label>سماكة الاسم</label><div class="seg" data-seg="design.cd.nameWeight"><button type="button" data-v="400">عادي</button><button type="button" data-v="600">عريض</button><button type="button" data-v="800">عريض كتير</button></div></div>
+        <div class="field"><label>عدد أسطر الاسم</label><div class="seg" data-seg="design.cd.nameLines"><button type="button" data-v="1">سطر</button><button type="button" data-v="2">سطرين</button><button type="button" data-v="3">3 أسطر</button></div></div></div>
+        <div class="w-two"><div class="field"><label>محاذاة الاسم</label><div class="seg" data-seg="design.cd.nameAlign"><button type="button" data-v="start">يمين</button><button type="button" data-v="center">بالنص</button></div></div><div class="field"><label>لون الاسم</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.cd.nameColor"><button type="button" class="btn btn-ghost sm" data-clear="design.cd.nameColor">تلقائي</button></div></div></div>
+        <label class="switch"><input type="checkbox" data-k="design.cd.near" data-default-true><span></span> السعر قريب من الاسم (مو بأسفل البطاقة)</label>
+        <div class="field"><label>المسافة بين الاسم والسعر <b class="w-val">4px</b></label><input type="range" min="0" max="30" step="1" data-k="design.cd.gap" data-num class="w-range" data-suf="px" value="4"></div>
+      </div>
+      <div class="ap-panel" data-ap="product" hidden>
+        <div class="ap-head"><h2>طريقة عرض المنتج</h2><p>إعدادات بطاقة المنتج وصفحة المنتج.</p></div>
+        <label class="switch"><input type="checkbox" data-k="design.buyNow"><span></span> زر «اشتري الآن» (بالبطاقات وصفحة المنتج)</label>
+        <div class="field"><label>تكبير صورة المنتج</label>
+          <div class="seg" data-seg="design.zoomMode"><button type="button" data-v="none">بدون تكبير</button><button type="button" data-v="hover">أثناء التمرير</button></div>
+          <small class="hint">بالحالتين، لما الزبون يكبس على الصورة بتنفتح على كامل الشاشة وبيقدر يكبّرها.</small>
+        </div>
+        <h3>صور صفحة المنتج</h3>
+        <div class="field"><label>مكان الصورة الرئيسية (كمبيوتر)</label><div class="seg" data-seg="design.pg.side"><button type="button" data-v="left">يسار</button><button type="button" data-v="right">يمين</button></div><small class="hint">عالموبايل الصورة دايماً فوق.</small></div>
+        <div class="field"><label>الصور الصغيرة تحت نقاط الكاروسيل</label><div class="seg" data-seg="design.pg.thumbs"><button type="button" data-v="wrap">مرتبة بأسطر</button><button type="button" data-v="row">سطر واحد بيتمرر</button><button type="button" data-v="grid">شبكة بعرض الصورة</button><button type="button" data-v="hide">مخفية</button></div></div>
+        <div class="field"><label>حجم الصور الصغيرة</label><div class="seg" data-seg="design.pg.tsize"><button type="button" data-v="s">صغير</button><button type="button" data-v="m">متوسط</button><button type="button" data-v="l">كبير</button></div></div>
+        <div class="field"><label>محاذاة الصور الصغيرة</label><div class="seg" data-seg="design.pg.talign"><button type="button" data-v="start">يمين</button><button type="button" data-v="center">بالنص</button><button type="button" data-v="end">يسار</button></div></div>
+        <div class="field"><label>ترتيب الصور الصغيرة (الصورة الأساسية أول وحدة)</label><div class="seg" data-seg="design.pg.tdir"><button type="button" data-v="rtl">من اليمين</button><button type="button" data-v="ltr">من اليسار</button></div></div>
+        <div class="field"><label>حركة تبديل الصور</label><div class="seg" data-seg="design.pg.fx"><button type="button" data-v="slide">سلايد بالسحب</button><button type="button" data-v="fade">تلاشي</button><button type="button" data-v="zoom">زوم</button><button type="button" data-v="blur">ضبابي</button><button type="button" data-v="flip">قلب</button><button type="button" data-v="cube">مكعب 3D</button><button type="button" data-v="push">دفع</button></div></div>
+        <div class="field"><label>سرعة الحركة</label><div class="seg" data-seg="design.pg.dur"><button type="button" data-v="fast">سريعة</button><button type="button" data-v="normal">عادية</button><button type="button" data-v="slow">هادئة</button></div></div>
+        <label class="switch"><input type="checkbox" data-k="design.pg.auto"><span></span> تقليب الصور تلقائياً</label>
+        <div class="field"><label>كل كم ثانية <b class="w-val">4</b></label><input type="range" min="2" max="12" step="1" data-k="design.pg.speed" data-num class="w-range" value="4"></div>
+        <label class="switch"><input type="checkbox" data-k="design.pg.arrows" data-default-true><span></span> أسهم التقليب على الصورة</label>
+        <div class="field"><label>شارة على صورة كل منتج (اختياري)</label><input data-k="design.cardBadge" maxlength="40" placeholder="مثلاً: خصم 5%"><small class="hint">إذا كتبت نسبة (مثلاً «خصم 5%») بتصير خصم حقيقي على كل المنتجات: السعر القديم بينشطب وبيطلع الجديد، وبينحسب بالسلة والطلب. بتطلع بزاوية صورة كل منتج متوفر. فاضي = بدون شارة.</small></div>
+        <label class="switch"><input type="checkbox" data-k="design.reviews" data-default-true><span></span> تقييمات المنتجات (نجوم و«اكتب رأيك»)</label>
+        <label class="switch"><input type="checkbox" data-k="design.reviewsAuto"><span></span> انشر التقييمات فوراً بدون موافقتي</label>
+        <label class="switch"><input type="checkbox" data-k="design.hideOutOfStock"><span></span> إخفاء المنتجات الخالصة عن الزبائن</label>
+      </div>
+      <div class="ap-panel" data-ap="menu" hidden>
+        <div class="ap-head"><h2>القائمة الرئيسية للمتجر</h2><p>كل مجموعة بتطلع بالقائمة، وتحتها أقسامها. فيك تغيّر الأسماء والترتيب، وتنقل الأقسام بين المجموعات.</p></div>
+        <div data-groups-editor></div>
+        <button class="btn btn-ghost sm" data-add-group>+ مجموعة جديدة</button>
+        <div data-unassigned></div>
+      </div>
+      <div class="ap-panel" data-ap="home" hidden>
+        <div class="ap-head"><h2>ميّز الصفحة الرئيسية لمتجرك</h2><p>ميّز صفحة متجرك الرئيسية بالأقسام المختلفة.</p></div>
+        <div class="field"><label>اتجاه حركة سلايدات المجموعات والمنتجات</label><div class="seg" data-seg="design.rowDir"><button type="button" data-v="rtl">من اليمين لليسار ←</button><button type="button" data-v="ltr">→ من اليسار لليمين</button></div><small class="hint">للصفوف والكاروسيلات يلي بتتحرك لحالها بالرئيسية. اتجاه الشريحة الرئيسية من قسم «الشريحة الرئيسية».</small></div>
+        <div class="ws-space"><b>المسافات</b>
+          <div class="field"><label>تحت الشريحة الرئيسية (بكسل)</label><div class="w-step"><button type="button" data-stp="4">+</button><input type="number" data-k="design.afterSlider" data-numopt min="0" max="160" dir="ltr" placeholder="24"><button type="button" data-stp="-4">−</button></div></div>
+          <div class="field"><label>بين الأقسام (بكسل)</label><div class="w-step"><button type="button" data-stp="4">+</button><input type="number" data-k="design.secGap" data-numopt min="0" max="160" dir="ltr" placeholder="28"><button type="button" data-stp="-4">−</button></div></div>
+          <small class="hint">فاضي = حسب القالب. وفيك تغيّر مسافة كل قسم لحاله من «تعديل».</small></div>
+        <div class="ws-list" data-sections></div>
+        <div class="ws-add"><div class="ws-add-line"><span>+ أضف قسم</span></div>
+          <div class="ws-add-grid">
+            <button type="button" data-add-sec="categories"><i>▦</i>قسم للمجموعات</button>
+            <button type="button" data-add-sec="new"><i>🏷</i>قسم للمنتجات</button>
+            <button type="button" data-add-sec="banner"><i>🖼</i>قسم للافتات</button>
+            <button type="button" data-add-sec="video"><i>▶</i>قسم الفيديوهات</button>
+            <button type="button" data-add-sec="features"><i>☰</i>قسم لخصائص المنتجات</button>
+            <button type="button" data-add-sec="ticker"><i>📣</i>شريط ترويجي متحرك</button>
+            <button type="button" data-add-sec="text"><i>T</i>قسم النص</button>
+            <button type="button" data-add-sec="code"><i>&lt;/&gt;</i>قسم بالأكواد البرمجية</button>
+            <button type="button" data-add-sec="groups"><i>≡</i>صفوف المجموعات</button>
+          </div></div>
+      </div>
+      <div class="ap-panel" data-ap="footer" hidden>
+        <div class="ap-head"><h2>إضافة فوتر (تذييل)</h2><p>النصوص يلي بتطلع بآخر كل صفحة.</p></div>
+        <div class="field"><label>الجملة التعريفية</label><input data-k="store.tagline" maxlength="120"></div>
+        <div class="field"><label>ملاحظة الفوتر</label><textarea data-k="store.footerNote" rows="3" maxlength="300"></textarea></div>
+        <div class="field"><label>شكل الفوتر</label><div class="seg" data-seg="design.layout.ftr"><button type="button" data-v="classic">أعمدة</button><button type="button" data-v="center">بالنص</button><button type="button" data-v="line">سطر واحد</button></div></div>
+      </div>
+      <div class="ap-panel" data-ap="layout" hidden>
+        <div class="ap-head"><h2>تخطيط القالب</h2><p>غيّر شكل كل جزء بالموقع لحاله، وشوف النتيجة بالمعاينة.</p></div>
+        <div class="layout-ed" data-layout-ed></div>
+      </div>
+      <div class="ap-panel" data-ap="fx" hidden>
+        <div class="ap-head"><h2>المؤثرات والحركة</h2><p>حركات وتأثيرات على كل الموقع. كل شي اختياري، وبيتوقف تلقائياً عند الزوار يلي مفعّلين «تقليل الحركة» بجهازهم.</p></div>
+        <h3>طريقة فتح الصفحة</h3>
+        <p class="hint" style="margin:0 0 8px">أول ما الزبون يفتح الموقع: كيف بيظهر؟ بيتركّب الموقع قدام عينه.</p>
+        <div class="field"><label>نوع الظهور</label><div class="seg" data-seg="design.open.style"><button type="button" data-v="none">بدون</button><button type="button" data-v="up">من تحت لفوق</button><button type="button" data-v="pieces">قطع من كل الجهات وبتتركّب</button><button type="button" data-v="cascade">تتابع واحد ورا واحد</button><button type="button" data-v="zoom">تكبير</button><button type="button" data-v="fade">تلاشي</button><button type="button" data-v="flip">قلب</button><button type="button" data-v="curtain">ستارة من فوق</button><button type="button" data-v="blur">من ضبابي لواضح</button></div></div>
+        <div class="field"><label>السرعة</label><div class="seg" data-seg="design.open.speed"><button type="button" data-v="fast">سريع</button><button type="button" data-v="normal">عادي</button><button type="button" data-v="slow">بطيء</button></div></div>
+        <div class="field"><label>عدد المرات</label><div class="seg" data-seg="design.open.freq"><button type="button" data-v="session">مرة بكل زيارة</button><button type="button" data-v="always">كل مرة بيفتح فيها الصفحة</button></div></div>
+        <div class="buy-row"><button type="button" class="w-btn sm" data-open-prev>▶ جرّب عالمعاينة</button></div>
+        <h3>ظهور العناصر عند التمرير</h3>
+        <div class="field"><label>طريقة الظهور</label><div class="seg" data-seg="design.fx.reveal"><button type="button" data-v="up">صعود</button><button type="button" data-v="fade">تلاشي</button><button type="button" data-v="zoom">تكبير</button><button type="button" data-v="left">من اليسار</button><button type="button" data-v="right">من اليمين</button><button type="button" data-v="flip">قلب</button><button type="button" data-v="blur">ضبابي</button><button type="button" data-v="none">بدون</button></div></div>
+        <div class="field"><label>السرعة</label><div class="seg" data-seg="design.fx.speed"><button type="button" data-v="fast">سريع</button><button type="button" data-v="normal">عادي</button><button type="button" data-v="slow">بطيء</button></div></div>
+        <h3>الانتقال بين الصفحات</h3>
+        <div class="field"><label>مؤثر فتح الصفحة</label><div class="seg" data-seg="design.fx.page"><button type="button" data-v="">افتراضي</button><button type="button" data-v="fade">تلاشي</button><button type="button" data-v="slide">انزلاق</button><button type="button" data-v="zoom">تكبير</button><button type="button" data-v="none">بدون</button></div></div>
+        <h3>البطاقات والأزرار والصور</h3>
+        <div class="field"><label>مؤثر مرور الماوس على بطاقة المنتج (الكمبيوتر)</label><div class="seg" data-seg="design.fx.card"><button type="button" data-v="">افتراضي</button><button type="button" data-v="lift">ارتفاع</button><button type="button" data-v="zoom">تكبير الصورة</button><button type="button" data-v="glow">توهّج</button><button type="button" data-v="tilt">ميلان ثلاثي الأبعاد</button><button type="button" data-v="none">بدون</button></div></div>
+        <div class="field"><label>مؤثر أزرار الشراء</label><div class="seg" data-seg="design.fx.btn"><button type="button" data-v="">بدون</button><button type="button" data-v="shine">لمعة</button><button type="button" data-v="pulse">نبض</button><button type="button" data-v="ripple">موجة عند الضغط</button></div></div>
+        <div class="field"><label>ظهور الصور عند التحميل</label><div class="seg" data-seg="design.fx.img"><button type="button" data-v="">عادي</button><button type="button" data-v="fade">تلاشي</button><button type="button" data-v="blur">من ضبابي لواضح</button></div></div>
+        <h3>إضافات</h3>
+        <label class="switch"><input type="checkbox" data-k="design.fx.progress"><span></span> شريط تقدّم التمرير أعلى الصفحة</label>
+        <label class="switch"><input type="checkbox" data-k="design.fx.toTop"><span></span> زر «للأعلى» عائم</label>
+        <label class="switch"><input type="checkbox" data-k="design.fx.hideHeader"><span></span> إخفاء الهيدر عند النزول وإظهاره عند الصعود</label>
+        <label class="switch"><input type="checkbox" data-k="design.fx.glow"><span></span> توهّج يتبع مؤشر الماوس (الكمبيوتر)</label>
+        <label class="switch"><input type="checkbox" data-k="design.fx.smooth"><span></span> تمرير ناعم عند الضغط على الروابط</label>
+        <label class="switch"><input type="checkbox" data-k="design.fx.confetti"><span></span> قصاصات احتفال بعد إتمام الطلب 🎉</label>
+      </div>
+      <div class="ap-panel" data-ap="dark" hidden>
+        <div class="ap-head"><h2>الوضع الداكن</h2><p>زر شمس/قمر بيخلّي كامل الموقع داكن بضغطة، والزائر بيتذكّر اختياره.</p></div>
+        <label class="switch"><input type="checkbox" data-k="design.darkBtn"><span></span> إظهار زر الوضع الداكن بالموقع</label>
+        <div class="field"><label>مكان الزر</label><div class="seg" data-seg="design.darkPos"><button type="button" data-v="hdr-end">بالشريط العلوي — جنب السلة</button><button type="button" data-v="hdr-start">بالشريط العلوي — جنب القائمة</button><button type="button" data-v="right">عائم يمين تحت</button><button type="button" data-v="left">عائم يسار تحت</button><button type="button" data-v="bnav">بالشريط السفلي (موبايل)</button></div></div>
+        <div class="field"><label>حجم الزر <b class="w-val">28px</b></label><input type="range" min="28" max="64" step="2" data-k="design.darkSize" data-num class="w-range" data-suf="px" value="28"></div>
+        <div class="field"><label>الوضع الافتراضي لأول زيارة</label><div class="seg" data-seg="design.darkDefault"><button type="button" data-v="light">فاتح</button><button type="button" data-v="dark">داكن</button><button type="button" data-v="system">حسب جهاز الزائر</button></div><small class="hint">لو اخترت «داكن» أو «حسب الجهاز» بيشتغل الوضع الداكن حتى لو الزر مخفي.</small></div>
+        <h3>ألوان الوضع الداكن</h3>
+        <div class="w-two"><div class="field"><label>خلفية الصفحة</label><input type="color" data-k="design.darkPal.bg"></div><div class="field"><label>خلفية البطاقات</label><input type="color" data-k="design.darkPal.card"></div></div>
+        <div class="w-two"><div class="field"><label>الهيدر</label><input type="color" data-k="design.darkPal.hdr"></div><div class="field"><label>الفوتر</label><input type="color" data-k="design.darkPal.ftr"></div></div>
+      </div>
+      <div class="ap-panel" data-ap="conv" hidden>
+        <div class="ap-head"><h2>ميزات تزيد المبيعات</h2><p>أدوات حقيقية بتشجّع الزبون يكمّل الشراء. القوالب المتكاملة بتفعّلها لحالها وبتقدر تعدّلها هون.</p></div>
+        <h3>⏳ عدّاد العرض (أعلى الموقع)</h3>
+        <label class="switch"><input type="checkbox" data-k="design.conv.timer.on"><span></span> إظهار عدّاد تنازلي لعرض محدد</label>
+        <div class="field"><label>النص</label><input data-k="design.conv.timer.text" maxlength="60" placeholder="عرض لوقت محدود — ينتهي بعد"></div>
+        <div class="field"><label>ينتهي العرض بتاريخ</label><input type="datetime-local" data-conv-end dir="ltr"><small class="hint">بعد هالوقت العدّاد بيختفي لحاله. ما بيظهر عدّاد منتهي أبداً.</small></div>
+        <div class="w-two"><div class="field"><label>نص الزر (اختياري)</label><input data-k="design.conv.timer.btn" maxlength="30" placeholder="تسوّق الآن"></div><div class="field"><label>رابط الزر</label><input data-k="design.conv.timer.link" dir="ltr" maxlength="200" placeholder="#/all"></div></div>
+        <h3>🚚 شريط التوصيل المجاني</h3>
+        <label class="switch"><input type="checkbox" data-k="design.conv.shipBar"><span></span> شريط يتعبّى بالسلة وصفحة المنتج: «ضيف بـ X كمان وبيصير التوصيل مجاني»</label>
+        <small class="hint">بيشتغل لما تحدد حد التوصيل المجاني بإعدادات الشحن (الحد الأدنى للتوصيل المجاني).</small>
+        <h3>🛡 شارات الثقة</h3>
+        <label class="switch"><input type="checkbox" data-k="design.conv.trust"><span></span> إظهار شارات الثقة تحت زر الشراء وبالسلة وإتمام الطلب</label>
+        <div data-trust-items></div>
+        <button type="button" class="btn btn-ghost sm" data-trust-add>+ أضف شارة</button>
+        <h3>👌 اقتراحات بالسلة</h3>
+        <label class="switch"><input type="checkbox" data-k="design.conv.upsell"><span></span> اقتراح منتجات من نفس أقسام السلة بصفحة السلة (إضافة بضغطة)</label>
+        <small class="hint">قسم «شاهدتها مؤخراً» بتضيفه من «الصفحة الرئيسية لمتجرك» أو بيجي مع القوالب المتكاملة.</small>
+      </div>
+      <div class="ap-panel" data-ap="bnav" hidden>
+        <div class="ap-head"><h2>شريط التنقل السفلي (موبايل)</h2><p>خصّص الأزرار والحجم والشكل والألوان بالكامل.</p></div>
+        <div class="field"><label>إظهار الشريط</label><div class="seg" data-seg="design.layout.nav"><button type="button" data-v="on">ظاهر</button><button type="button" data-v="off">مخفي</button></div></div>
+        <h3>حركة الأزرار 🔥</h3>
+        <div class="field"><label>نوع الحركة</label><div class="seg" data-seg="design.bnav.fx"><button type="button" data-v="fire">🔥 نار متحركة</button><button type="button" data-v="glow">✨ توهّج</button><button type="button" data-v="pulse">💓 نبض</button><button type="button" data-v="bounce">⤴ قفز</button><button type="button" data-v="shine">⚡ لمعة</button><button type="button" data-v="none">بدون</button></div></div>
+        <div class="field"><label>على أي زر</label><div class="seg" data-seg="design.bnav.fxOn"><button type="button" data-v="main">زر المتجر / القائمة</button><button type="button" data-v="cart">زر السلة</button><button type="button" data-v="all">كل الأزرار</button></div></div>
+        <label class="switch"><input type="checkbox" data-k="design.bnav.jump" data-default-true><span></span> زر المتجر بينط (بالصفحة الرئيسية)</label>
+        <label class="switch"><input type="checkbox" data-k="design.bnav.fxHome" data-default-true><span></span> المؤثرات بس بالصفحة الرئيسية</label>
+        <div class="field"><label class="switch"><input type="checkbox" data-k="design.bnav.curBtn" data-default-true><span></span> زر تبديل العملة ($ / ل.س) بالشريط السفلي</label></div>
+        <div class="field"><label class="switch"><input type="checkbox" data-k="design.bnav.darkBtn" data-default-true><span></span> 🌙 زر الوضع الداكن (ليلي) بالشريط السفلي</label><small class="hint">ألوان الوضع الداكن والوضع الافتراضي من قسم «الوضع الداكن».</small></div>
+        <div class="field"><label>الزر يلي فوق على اليمين</label><div class="seg" data-seg="design.hdrStart"><button type="button" data-v="cart">🛒 السلة</button><button type="button" data-v="menu">☰ القائمة</button></div></div>
+        <div class="field"><label>زر «القائمة» و«متجر» بيفتحوا</label><div class="seg" data-seg="design.bnav.menuTo"><button type="button" data-v="browse">صفحة المتجر (الأقسام والمجموعات)</button><button type="button" data-v="kx">نافذة البلور</button><button type="button" data-v="drawer">القائمة الجانبية</button></div></div>
+        <h3>الأزرار (من 2 إلى 6)</h3>
+        <div data-bn-items></div>
+        <button type="button" class="btn btn-ghost sm" data-bn-add>+ أضف زر</button>
+        <h3>الحجم والشكل</h3>
+        <div class="w-two"><div class="field"><label>ارتفاع الشريط <b class="w-val">44px</b></label><input type="range" min="44" max="120" step="2" data-k="design.bnav.height" data-num class="w-range" data-suf="px" value="44"></div><div class="field"><label>عرض الشريط <b class="w-val">50%</b></label><input type="range" min="50" max="100" step="1" data-k="design.bnav.width" data-num class="w-range" data-suf="%" value="50"></div></div>
+        <div class="w-two"><div class="field"><label>البعد عن أسفل الشاشة <b class="w-val">0px</b></label><input type="range" min="0" max="40" step="1" data-k="design.bnav.bottom" data-num class="w-range" data-suf="px" value="0"></div><div class="field"><label>دوران الزوايا <b class="w-val">0px</b></label><input type="range" min="0" max="40" step="1" data-k="design.bnav.radius" data-num class="w-range" data-suf="px" value="0"></div></div>
+        <div class="w-two"><div class="field"><label>حجم الأيقونة <b class="w-val">14px</b></label><input type="range" min="14" max="40" step="1" data-k="design.bnav.iconSize" data-num class="w-range" data-suf="px" value="14"></div><div class="field"><label>حجم الكتابة <b class="w-val">8px</b></label><input type="range" min="8" max="18" step="1" data-k="design.bnav.labelSize" data-num class="w-range" data-suf="px" value="8"></div></div>
+        <small class="hint">عرض أقل من 100% مع بُعد عن الأسفل = شريط عائم بشكل كبسولة.</small>
+        <div class="field"><label>شكل الزر الفعّال</label><div class="seg" data-seg="design.bnav.activeStyle"><button type="button" data-v="color">لون</button><button type="button" data-v="pill">كبسولة خلفه</button><button type="button" data-v="dot">نقطة تحته</button><button type="button" data-v="none">بدون</button></div></div>
+        <h3>الألوان</h3>
+        <div class="w-two"><div class="field"><label>خلفية الشريط</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.bnav.bg"><button type="button" class="btn btn-ghost sm" data-clear="design.bnav.bg">تلقائي</button></div></div><div class="field"><label>لون الأيقونات والكتابة</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.bnav.fg"><button type="button" class="btn btn-ghost sm" data-clear="design.bnav.fg">تلقائي</button></div></div></div>
+        <div class="field"><label>لون الزر الفعّال</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.bnav.active"><button type="button" class="btn btn-ghost sm" data-clear="design.bnav.active">تلقائي</button></div></div>
+        <div class="w-two"><div class="field"><label>خلفية لكل زر (اختياري)</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.bnav.btnBg"><button type="button" class="btn btn-ghost sm" data-clear="design.bnav.btnBg">تلقائي</button></div></div><div class="field"><label>&nbsp;</label><label class="switch"><input type="checkbox" data-k="design.bnav.exact"><span></span> استعمل الألوان متل ما اخترتها بالزبط</label></div></div>
+        <small class="hint">فيك كمان تختار لون لكل زر لحالو من قائمة الأزرار فوق (المربع الملوّن جنب كل زر).</small>
+        <label class="switch"><input type="checkbox" data-k="design.bnav.showLabels" data-default-true><span></span> إظهار أسماء الأزرار</label>
+        <label class="switch"><input type="checkbox" data-k="design.bnav.hideScroll"><span></span> إخفاء الشريط عند النزول وإظهاره عند الصعود (سلايد)</label>
+      </div>
+      <div class="ap-panel" data-ap="games" hidden>
+        <div class="ap-head"><h2>قسم الألعاب</h2><p>صفحة ألعاب تفاعلية للزائر: ذاكرة، صيد الكرات، وعجلة الحظ بجوائز تحددها أنت.</p></div>
+        <label class="switch"><input type="checkbox" data-k="design.games.on"><span></span> تفعيل قسم الألعاب (بيظهر برابط بالقائمة العلوية وبتقدر تحطه بالشريط السفلي)</label>
+        <div class="field"><label>عنوان القسم</label><input data-k="design.games.title" maxlength="40" placeholder="ألعاب"></div>
+        <label class="switch"><input type="checkbox" data-k="design.games.memory" data-default-true><span></span> لعبة الذاكرة</label>
+        <label class="switch"><input type="checkbox" data-k="design.games.tap" data-default-true><span></span> لعبة صيد الكرات</label>
+        <label class="switch"><input type="checkbox" data-k="design.games.wheel" data-default-true><span></span> عجلة الحظ</label>
+        <h3>جوائز عجلة الحظ</h3>
+        <p class="hint" style="margin:0 0 8px">كل جائزة إلها اسم وكود خصم (حطّ كود موجود بقسم الخصومات) ونسبة احتمال. فاضي الكود = جائزة معنوية. الزائر بيلف مرة باليوم.</p>
+        <div data-gm-prizes></div>
+        <button type="button" class="btn btn-ghost sm" data-gm-add>+ أضف جائزة</button>
+        <small class="hint">ملاحظة: العجلة بتشتغل عند الزائر، فالأكواد مو سرية؛ استعمل أكواد بخصم صغير ومحدودة العدد من قسم الخصومات.</small>
+      </div>
+      <div class="ap-panel" data-ap="cur" hidden>
+        <div class="ap-head"><h2>العملة: دولار أو ليرة سورية</h2><p>أسعار منتجاتك محفوظة بالدولار. بالليرة بيتحسب كل سعر = السعر بالدولار × (سعر مبيع الدولار من موقع الليرة اليوم + الزيادة). السعر بيتحدّث لحاله كل نص ساعة.</p></div>
+        <div class="field"><label>عملة الموقع</label><div class="seg" data-seg="fx.mode"><button type="button" data-v="usd">دولار $</button><button type="button" data-v="syp">ليرة سورية (ل.س جديدة)</button></div></div>
+        <label class="switch"><input type="checkbox" data-k="fx.visitor" data-default-true><span></span> زر بالشريط العلوي يخلّي الزائر يبدّل بين $ و ل.س</label>
+        <div class="w-two"><div class="field"><label>الزيادة على سعر المبيع</label><input type="number" data-k="fx.margin" data-numopt step="0.25" dir="ltr" placeholder="2"><small class="hint">مثال: المبيع 140 والزيادة 2 ← بيحسب على 142.</small></div>
+          <div class="field"><label>سعر ثابت يدوي (اختياري)</label><input type="number" data-k="fx.manual" data-numopt step="0.25" dir="ltr" placeholder="فاضي = تلقائي"><small class="hint">إذا كتبت رقم هون، بيستعمله بدل السعر التلقائي.</small></div></div>
+        <div class="fx-status" data-fx-status>…</div>
+        <button type="button" class="btn btn-ghost sm" data-fx-refresh>⟳ حدّث السعر الآن</button>
+      </div>
+      <div class="ap-panel" data-ap="kx" hidden>
+        <div class="ap-head"><h2>نافذة الأقسام (البلور)</h2><p>لما الزبون يكبس «القائمة» أو زر «المنتجات»: الصفحة بتصير بلور، بتنبثق الأقسام الرئيسية، وبعد ما يختار وحدة بتطلع أقسامها. زر «المتجر» بيضل يفتح صفحة المنتجات العادية.</p></div>
+        <label class="switch"><input type="checkbox" data-k="design.kx.on" data-default-true><span></span> زر القائمة (☰ فوق و«القائمة» تحت) بيفتح نافذة الأقسام بدل القائمة الجانبية</label>
+        <div class="buy-row"><button type="button" class="w-btn sm" data-kx-prev>▶ جرّب عالمعاينة</button></div>
+        <small class="hint">بدك زر خاص؟ من «شريط التنقل السفلي» اختار للزر رابط «نافذة الأقسام (بلور)» وسمّيه «المنتجات».</small>
+        <h3>الخلفية</h3>
+        <div class="w-two"><div class="field"><label>قوة البلور <b class="w-val">16px</b></label><input type="range" min="0" max="40" step="1" data-k="design.kx.blur" data-num class="w-range" data-suf="px" value="16"></div><div class="field"><label>التعتيم <b class="w-val">45%</b></label><input type="range" min="0" max="90" step="5" data-k="design.kx.dim" data-num class="w-range" data-suf="%" value="45"></div></div>
+        <div class="field"><label>لون التعتيم</label><div class="buy-row" style="margin:0"><input type="color" data-k="design.kx.tint"><button type="button" class="btn btn-ghost sm" data-clear="design.kx.tint">أسود (افتراضي)</button></div></div>
+        <h3>الأقسام الرئيسية</h3>
+        <div class="field"><label>الشكل</label><div class="seg" data-seg="design.kx.gStyle"><button type="button" data-v="cards">بطاقات</button><button type="button" data-v="words">كلمات كبيرة</button><button type="button" data-v="grid">مربعات</button><button type="button" data-v="circles">فقاعات</button></div></div>
+        <div class="field"><label>حركة الظهور</label><div class="seg" data-seg="design.kx.anim"><button type="button" data-v="pop">انبثاق</button><button type="button" data-v="slide">انزلاق</button><button type="button" data-v="zoom">تكبير</button><button type="button" data-v="fade">تلاشي</button><button type="button" data-v="flip">قلب</button><button type="button" data-v="drop">سقوط</button></div></div>
+        <div class="field"><label>السرعة</label><div class="seg" data-seg="design.kx.speed"><button type="button" data-v="fast">سريعة</button><button type="button" data-v="normal">عادية</button><button type="button" data-v="slow">بطيئة</button></div></div>
+        <label class="switch"><input type="checkbox" data-k="design.kx.icons" data-default-true><span></span> إظهار الأيقونات</label>
+        <label class="switch"><input type="checkbox" data-k="design.kx.counts" data-default-true><span></span> إظهار عدد المنتجات</label>
+        <div class="field"><label>أيقونة كل قسم رئيسي</label><div data-kx-icons></div></div>
+        <div class="field"><label>مكان الأقسام الرئيسية بالشاشة</label><div class="seg" data-seg="design.kx.gPos"><button type="button" data-v="top">فوق</button><button type="button" data-v="center">بالنص</button><button type="button" data-v="bottom">تحت (قريب للإبهام)</button></div></div>
+        <h3>الأقسام الفرعية</h3>
+        <div class="field"><label>من وين بتبلش الأقسام الفرعية <b class="w-val">45%</b></label><input type="range" min="0" max="75" step="5" data-k="design.kx.cStart" data-num class="w-range" data-suf="%" value="45"><small class="hint">0% = من فوق الشاشة · 45% = من النص لتحت (قريبة للإبهام) · 75% = من تحت. إذا كانوا كتار بينزلوا وبتمرّرهم.</small></div>
+        <div class="field"><label>الشكل</label><div class="seg" data-seg="design.kx.cStyle"><button type="button" data-v="tiles">بطاقات بصور</button><button type="button" data-v="circles">صور دائرية</button><button type="button" data-v="list">قائمة</button></div></div>
+        <div class="field"><label>عدد الأعمدة</label><div class="seg" data-seg="design.kx.cCols"><button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button><button type="button" data-v="4">4</button></div></div>
+      </div>
+      <div class="ap-panel" data-ap="sound" hidden>
+        <div class="ap-head"><h2>الصوت والموسيقى</h2><p>موسيقى خلفية للموقع ومؤثرات صوتية خفيفة.</p></div>
+        <h3>موسيقى الموقع</h3>
+        <label class="switch"><input type="checkbox" data-k="audio.music.on"><span></span> شغّل موسيقى خلفية بالموقع</label>
+        <div class="field"><label>الأغنية</label>
+          <div class="snd-src"><input data-k="audio.music.src" dir="ltr" maxlength="1000" placeholder="رابط يوتيوب أو رابط ملف mp3" class="snd-in"><label class="btn btn-ghost sm snd-up">⬆ ارفع ملف صوت<input type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" data-media-up="audio.music.src" hidden></label></div>
+          <small class="hint" data-snd-kind></small>
+          <small class="hint">بتقدر تحط رابط يوتيوب (أي أغنية)، أو رابط مباشر لملف صوت، أو ترفع ملف من جهازك (لحد 24 ميغا).</small></div>
+        <div class="field"><label>مستوى الصوت <b class="w-val">40%</b></label><input type="range" min="5" max="100" step="5" data-k="audio.music.volume" data-num class="w-range" value="40"></div>
+        <label class="switch"><input type="checkbox" data-k="audio.music.loop" data-default-true><span></span> كرّر الأغنية بلا توقف</label>
+        <label class="switch"><input type="checkbox" data-k="audio.music.button"><span></span> بيّن زر الصوت للزائر (افتراضياً مخفي: الموسيقى بتشتغل لحالها)</label>
+        <div class="snd-test"><button type="button" class="btn btn-ghost sm" data-snd-test>▶ جرّب الأغنية</button><span class="hint" data-snd-state></span></div>
+        <small class="hint">المتصفحات بتمنع أي صوت لحتى الزائر يلمس الصفحة مرة وحدة. لهيك أول ما يفوت بيبيّن زر «اضغط لتشغيل الموسيقى»، وأول لمسة بأي مكان بتشغّلها. الموسيقى بتوقف لحالها لما فيديو بالموقع يشتغل بصوت.</small>
+        <hr class="w-hr">
+        <h3>مؤثرات صوتية</h3>
+        <label class="switch"><input type="checkbox" data-k="audio.sfx.on"><span></span> شغّل المؤثرات (كبسة، إضافة للسلة، تأكيد الطلب)</label>
+        <div class="field"><label>نوع المؤثرات</label><div class="seg" data-seg="audio.sfx.style"><button type="button" data-v="soft">ناعمة</button><button type="button" data-v="arcade">ألعاب</button><button type="button" data-v="boxing">ملاكمة 🥊</button></div></div>
+        <div class="field"><label>مستوى المؤثرات <b class="w-val">60%</b></label><input type="range" min="5" max="100" step="5" data-k="audio.sfx.volume" data-num class="w-range" value="60"></div>
+        <div class="snd-test"><button type="button" class="btn btn-ghost sm" data-sfx-test="tap">كبسة</button><button type="button" class="btn btn-ghost sm" data-sfx-test="pop">إضافة للسلة</button><button type="button" class="btn btn-ghost sm" data-sfx-test="success">تم الطلب</button></div>
+        <small class="hint">المؤثرات بتنعمل بالمتصفح نفسه، فما بتأخّر الموقع ولا بتحمّل ملفات.</small>
+      </div>
+      <div class="ap-panel" data-ap="contact" hidden>
+        <div class="ap-head"><h2>معلومات التواصل</h2><p>بتطلع للزبائن بالفوتر وصفحة المنتج.</p></div>
+        <div class="field"><label>اسم المتجر</label><input data-k="store.name" maxlength="40"></div>
+        <div class="field"><label>رقم الواتساب (مع رمز الدولة، بدون + أو أصفار بالبداية)</label><input data-k="store.whatsapp" dir="ltr" placeholder="963998676991"></div>
+        <div class="field"><label>العنوان</label><input data-k="store.address"></div>
+        <div class="field"><label>العملة</label><input data-k="currency" maxlength="6" style="max-width:120px"></div>
+      </div>
+      <div class="ap-panel" data-ap="social" hidden>
+        <div class="ap-head"><h2>الشبكات الاجتماعية</h2><p>روابط حساباتك، بتطلع بالقائمة والفوتر.</p></div>
+        <div class="field"><label>فيسبوك</label><input data-k="store.facebook" dir="ltr" placeholder="https://facebook.com/..."></div>
+        <div class="field"><label>إنستغرام</label><input data-k="store.instagram" dir="ltr" placeholder="https://instagram.com/..."></div>
+      </div>
+      <div class="ap-panel" data-ap="checkout" hidden>
+        <div class="ap-head"><h2>تحديد بيانات إتمام الطلب</h2><p>شو الخانات يلي بيعبيها الزبون وقت الطلب.</p></div>
+        <div class="co-fixed"><b>الخانات ثابتة وبسيطة (بدون تسجيل حساب):</b>
+          <ol><li>الاسم الأول، اسم الأب، الكنية</li><li>رقم الموبايل (إجباري)</li><li>المحافظة ← الفرع ← شركة الشحن، أو «توصيل سريع يلا غو» لباب البيت بدمشق</li><li>ملاحظة (اختياري)</li></ol>
+          <small class="hint">ما في إيميل ولا رقم تاني ولا رمز بريدي. طريقة الدفع بتتأكد مع الزبون على واتساب.</small></div>
+        <h3>ملاحظة بصفحة الدفع</h3>
+        <div class="field"><label>مكان الملاحظة</label>
+          <div class="seg" data-seg="checkout.notePos"><button type="button" data-v="above">فوق وسيلة الدفع</button><button type="button" data-v="below">تحت وسيلة الدفع</button></div></div>
+        <div class="field"><label>ملاحظتك</label><textarea data-k="checkout.note" rows="3" maxlength="400" placeholder="مثلاً: الطلبات بتنشحن خلال 24 ساعة"></textarea></div>
+        <h3>رسالة تأكيد الطلب</h3>
+        <div class="field"><label>بتطلع للزبون بعد ما يأكد الطلب</label><textarea data-k="checkout.thanks" rows="4" maxlength="600"></textarea></div>
+      </div>
+      <div class="ap-panel" data-ap="seo" hidden>
+        <div class="ap-head"><h2>محركات البحث والمشاركة</h2><p>كيف بيطلع متجرك بغوغل ولما حدا يشارك الرابط.</p></div>
+        <div class="field"><label>صورة المشاركة</label>
+          <div class="hero-prev" data-share-preview style="height:140px"></div>
+          <div class="buy-row" style="margin:6px 0 0">
+            <label class="btn btn-ghost sm">رفع صورة<input type="file" accept="image/*" data-upload="store.shareImage" hidden></label>
+            <button class="btn btn-ghost sm" data-copy-share hidden>انقل صورة Wuilt لمتجري</button>
+          </div>
+          <small class="hint">الأفضل تكون عرضية (1200×630).</small>
+        </div>
+        <div class="field"><label>عنوان الموقع بغوغل</label><input data-k="store.seoTitle" maxlength="70"></div>
+        <div class="field"><label>وصف الموقع بغوغل</label><textarea data-k="store.seoDescription" rows="3" maxlength="300"></textarea></div>
+      </div>
+      </div>
+    </div>
+  </section>
+  <section data-view="push" hidden>
+    <div class="w-page-head"><h1>الإشعارات</h1><p>أرسل عروضك ومنتجاتك الجديدة مباشرة لجوالات زبائنك، حتى لو الموقع مسكّر عندهم.</p></div>
+    <div class="pu-stats" data-pu-stats></div>
+    <div class="pu-grid">
+      <div class="form pu-compose">
+        <h3>إشعار جديد</h3>
+        <div class="pu-chips" data-pu-tpl></div>
+        <div class="field"><label>العنوان <small class="hint" data-pu-c1>0/60</small></label><input data-pu-title maxlength="60" placeholder="مثال: 🔥 تخفيضات على القفازات"></div>
+        <div class="field"><label>النص <small class="hint" data-pu-c2>0/160</small></label><textarea data-pu-body maxlength="160" rows="3" placeholder="جملة قصيرة تشجّع على الضغط"></textarea></div>
+        <div class="field"><label>عند الضغط يفتح</label>
+          <div class="pu-link"><select data-pu-lt><option value="home">الصفحة الرئيسية</option><option value="product">منتج محدد</option><option value="cat">مجموعة</option><option value="custom">رابط آخر</option></select>
+          <select data-pu-lp hidden></select><input data-pu-lc dir="ltr" placeholder="/#/cart أو https://..." hidden></div></div>
+        <div class="field"><label>صورة كبيرة (اختيارية)</label>
+          <div class="pu-img"><label class="btn btn-ghost sm">⬆ ارفع صورة<input type="file" accept="image/*" data-pu-img hidden></label><button type="button" class="btn btn-ghost sm" data-pu-imgprod hidden>استخدم صورة المنتج</button><button type="button" class="btn btn-ghost sm" data-pu-imgx hidden>إزالة</button></div></div>
+        <div class="pu-acts"><button type="button" class="btn btn-ghost" data-pu-test>جرّب على جهازي</button><button type="button" class="btn btn-red" data-pu-send>إرسال للجميع</button></div>
+        <div class="pu-prog" data-pu-prog hidden><i></i><span></span></div>
+      </div>
+      <div class="pu-side">
+        <div class="form"><h3>شكل الإشعار عند الزبون</h3>
+          <div class="pu-phone"><div class="pu-note"><div class="pu-n-h"><img src="/assets/icons/icon-192.png" alt="" width="16" height="16"><span>KO SPORT</span><em>الآن</em></div><div class="pu-n-b"><div><b data-pv-t>عنوان الإشعار</b><p data-pv-b>نص الإشعار يظهر هنا</p></div><img data-pv-i alt="" hidden></div></div></div>
+        </div>
+        <div class="form"><h3>هالجهاز (تنبيه الطلبات)</h3>
+          <small class="hint">فعّلها على جوالك لتوصلك رسالة فور وصول كل طلب جديد، حتى والتطبيق مسكّر.</small>
+          <div class="pu-dev" data-pu-dev></div>
+        </div>
+      </div>
+    </div>
+    <div class="form pu-bar">
+      <h3>شريط التثبيت وتفعيل الإشعارات</h3>
+      <small class="hint">الشريط يلي بيطلع للزائر ليثبّت التطبيق ويفعّل الإشعارات بكبسة وحدة. غيّر شكله ونصوصه ووقت ظهوره، والمعاينة تحت بتتغير فوراً.</small>
+      <div class="pu-bar-grid">
+        <div class="pu-bar-set">
+          <label class="switch"><input type="checkbox" data-pu-cfg="prompt"><span></span> أظهر الشريط للزوار</label>
+          <label class="switch"><input type="checkbox" data-pu-cfg="bar.install"><span></span> فيه زر تثبيت التطبيق</label>
+          <label class="switch"><input type="checkbox" data-pu-cfg="bar.notif"><span></span> فيه تفعيل الإشعارات (مع التثبيت بنفس الكبسة)</label>
+          <label class="switch"><input type="checkbox" data-pu-cfg="orderAlerts"><span></span> نبّهني بإشعار عند كل طلب جديد</label>
+          <div class="field"><label>الشكل</label><div class="seg" data-pu-seg="bar.style"><button type="button" data-v="bar">شريط سفلي</button><button type="button" data-v="sheet">بطاقة كبيرة</button><button type="button" data-v="top">شريط علوي</button></div></div>
+          <div class="field"><label>اللون</label><div class="seg" data-pu-seg="bar.theme"><button type="button" data-v="dark">داكن</button><button type="button" data-v="light">فاتح</button><button type="button" data-v="brand">لون المتجر</button><button type="button" data-v="gradient">متدرّج</button></div></div>
+          <div class="field"><label>الأيقونة</label><div class="seg" data-pu-seg="bar.icon"><button type="button" data-v="logo">شعار التطبيق</button><button type="button" data-v="bell">🔔 جرس</button><button type="button" data-v="image">صورتي</button></div>
+            <div class="pu-img" data-pu-iconrow hidden><label class="btn btn-ghost sm">⬆ ارفع أيقونة<input type="file" accept="image/*" data-pu-icon hidden></label></div></div>
+          <div class="row2"><div class="field"><label>يظهر بعد (ثانية من فتح الموقع)</label><input type="number" min="0" max="300" data-pu-cfg="delay" dir="ltr" class="w-num"></div>
+            <div class="field"><label>يختفي لحاله بعد (ثانية، 0 = لا)</label><input type="number" min="0" max="120" data-pu-cfg="bar.hideAfter" dir="ltr" class="w-num"></div></div>
+          <div class="row2"><div class="field"><label>إذا سكّره الزائر، يرجع بعد (أيام، 0 = بكل زيارة)</label><input type="number" min="0" max="90" data-pu-cfg="bar.again" dir="ltr" class="w-num"></div>
+            <div class="field"><label>الأجهزة</label><div class="seg" data-pu-seg="bar.devices"><button type="button" data-v="all">الكل</button><button type="button" data-v="mobile">الجوال بس</button></div></div></div>
+          <div class="field"><label>الصفحات</label><div class="seg" data-pu-seg="bar.pages"><button type="button" data-v="all">كل الصفحات</button><button type="button" data-v="home">الرئيسية بس</button></div></div>
+        </div>
+        <div class="pu-bar-set">
+          <h4>نصوص تثبيت التطبيق</h4>
+          <div class="field"><label>العنوان</label><input data-pu-cfg="bar.title" maxlength="60" placeholder="ثبّت التطبيق وفعّل الإشعارات"></div>
+          <div class="field"><label>النص</label><input data-pu-cfg="bar.text" maxlength="160" placeholder="أسرع من شاشتك الرئيسية، وتوصلك العروض..."></div>
+          <div class="field"><label>نص الزر</label><input data-pu-cfg="bar.btn" maxlength="24" placeholder="تثبيت + تفعيل"></div>
+          <h4>نصوص تفعيل الإشعارات فقط <small class="hint">(لما التطبيق مثبّت أو المتصفح ما بيدعم التثبيت)</small></h4>
+          <div class="field"><label>العنوان</label><input data-pu-cfg="bar.nTitle" maxlength="60" placeholder="فعّل إشعارات العروض"></div>
+          <div class="field"><label>النص</label><input data-pu-cfg="bar.nText" maxlength="160" placeholder="اعرف أول بأول بالمنتجات الجديدة والتخفيضات"></div>
+          <div class="field"><label>نص الزر</label><input data-pu-cfg="bar.nBtn" maxlength="24" placeholder="تفعيل"></div>
+          <small class="hint">اترك الحقل فاضي لاستخدام النص الجاهز.</small>
+        </div>
+      </div>
+      <div class="pu-bar-prev"><div class="seg" data-pu-pvmode><button type="button" data-v="combined" class="on">تثبيت + إشعارات</button><button type="button" data-v="notif">إشعارات فقط</button></div>
+        <div class="pu-prevbox" data-pu-bar-prev></div></div>
+      <button type="button" class="btn btn-red" data-pu-cfgsave>حفظ ونشر الشريط</button>
+    </div>
+    <div class="form"><h3>آخر الإشعارات المرسلة</h3><div data-pu-log></div></div>
+  </section>
+
+  <section data-view="promos" hidden>
+    <div class="w-page-head"><h1>الإعلانات الترويجية</h1><p>نوافذ وبطاقات وأشرطة عصرية تعرض فيها عروضك على الموقع، مع عدّاد تنازلي وكود خصم قابل للنسخ.</p></div>
+    <div class="adm-bar"><button type="button" class="btn btn-red sm" data-promo-new>+ إعلان جديد</button></div>
+    <div class="w-card" data-promo-list></div>
+    <small class="hint">الإعلان بيظهر للزائر حسب شروطك (الوقت، التمرير، أو لما يهمّ بالخروج)، وما بيزعجه: بتحدد كل قديش بينعرض له من جديد.</small>
+  </section>
+
+  <section data-view="carts" hidden>
+    <div class="w-page-head"><h1>السلّات المتروكة</h1><p>زبائن كتبوا رقمهم بصفحة إتمام الطلب وما كمّلوا. راسلهم لتساعدهم يكمّلوا طلبهم. السلّة بتنمسح لحالها بعد 30 يوم، أو أول ما يكمّل الزبون طلبه.</p></div>
+    <div class="adm-bar"><button type="button" class="btn btn-ghost sm" data-carts-refresh>تحديث</button></div>
+    <div data-carts-list></div>
+  </section>
+
+  <section data-view="discounts" hidden>
+    <div class="w-page-head"><h1>الخصومات</h1><p>خصومات تلقائية بتنطبق لحالها بصفحة الطلب، وأكواد خصم بيكتبها الزبون. إذا انطبق أكتر من خصم، بياخد الزبون الأفضل.</p></div>
+    <div class="adm-bar"><button type="button" class="btn btn-red sm" data-disc-new="auto">+ خصم تلقائي</button><button type="button" class="btn btn-ghost sm" data-disc-new="code">+ كود خصم</button></div>
+    <div class="w-card" data-disc-list></div>
+  </section>
+
+  <section data-view="pages" hidden>
+    <div class="w-page-head"><h1>الصفحات</h1><p>صفحات متل «من نحن» وسياسة الاسترجاع والشحن. بتطلع روابطها بالفوتر والقائمة الجانبية.</p></div>
+    <div class="adm-bar"><button type="button" class="btn btn-red sm" data-page-new>+ صفحة جديدة</button><button type="button" class="btn btn-ghost sm" data-page-tpl>أضف الصفحات الجاهزة (مسودات)</button></div>
+    <div class="w-card" data-pages-list></div>
+  </section>
+
+  <section data-view="general" hidden>
+    <div class="w-page-head"><h1>الإعدادات العامة</h1></div>
+    <div class="w-card gs-card">
+      <div class="gs-head"><h3>معلومات التواصل</h3><p>أضف معلومات الاتصال حتى يتمكن الأشخاص من التواصل معك. سيستخدم هذا البريد الإلكتروني لإعلامك أيضًا بالأنشطة على متجرك.</p></div>
+      <div class="w-two"><div class="field"><label>البريد الإلكتروني</label><input data-k="store.email" type="email" dir="ltr" placeholder="ko.sport@gmail.com"></div><div class="field"><label>رقم الهاتف</label><input data-k="store.phone" dir="ltr" placeholder="+963998676991"></div></div>
+      <div class="gs-sub"><h3>تنبيهات الطلبات الجديدة</h3><p>أرسل تنبيهات الطلبات الجديدة إلى</p></div>
+      <div data-notify-list></div>
+      <button type="button" class="w-link" data-notify-add>+ أضف بريد إلكتروني</button>
+      <div data-mail-status></div>
+    </div>
+    <div class="w-card gs-card">
+      <div class="gs-head"><h3>المعلومات الأساسية</h3><p>اسمح لزوار المتجر بالتعرف عليك، هذه المعلومات تستخدم في الفواتير وغيره.</p></div>
+      <div class="gs-cols">
+        <div class="gs-col">
+          <div class="field"><label>اسم العمل التجاري</label><input data-k="store.name" maxlength="40"></div>
+          <div class="field"><label>وصف قصير (الحد الأقصى 150 حرف)</label><textarea data-k="store.tagline" rows="3" maxlength="150"></textarea></div>
+          <div class="field"><label>تخصص المتجر</label><select data-k="store.specialty"><option>الرياضة</option><option>الأزياء والملابس</option><option>الإلكترونيات</option><option>الصحة والجمال</option><option>المنزل والمطبخ</option><option>الأطفال والألعاب</option><option>الطعام والمشروبات</option><option>الكتب والقرطاسية</option><option>أخرى</option></select></div>
+          <div class="field"><label>المنطقة الزمنية</label><select data-k="store.tz"><option value="Asia/Damascus">Asia/Damascus</option><option value="Asia/Beirut">Asia/Beirut</option><option value="Asia/Amman">Asia/Amman</option><option value="Asia/Baghdad">Asia/Baghdad</option><option value="Asia/Riyadh">Asia/Riyadh</option><option value="Asia/Dubai">Asia/Dubai</option><option value="Asia/Kuwait">Asia/Kuwait</option><option value="Asia/Qatar">Asia/Qatar</option><option value="Europe/Istanbul">Europe/Istanbul</option><option value="Africa/Cairo">Africa/Cairo</option><option value="Europe/Berlin">Europe/Berlin</option><option value="Europe/London">Europe/London</option><option value="America/New_York">America/New_York</option></select><small class="hint">بتستعمل لرقم الطلب وتاريخه.</small></div>
+          <div class="w-two"><div class="field"><label>العملة</label><input data-k="currency" maxlength="6"></div><div class="field"><label>رقم الواتساب (مع رمز الدولة)</label><input data-k="store.whatsapp" dir="ltr"></div></div>
+          <div class="field"><label>العنوان</label><input data-k="store.address"></div>
+        </div>
+        <div class="gs-col">
+          <div class="field"><label>شعار المتجر</label><div class="gs-logo"><span class="gs-logo-pv" data-gs-logo></span><label class="w-btn ghost sm">تغيير<input type="file" accept="image/*" data-upload="design.logoImage" hidden></label><button type="button" class="w-btn ghost sm danger" data-clear="design.logoImage">إزالة</button></div></div>
+          <div class="field"><label>حجم الشعار</label><div class="seg" data-seg="design.logoSize"><button type="button" data-v="l">كبيرة</button><button type="button" data-v="m">متوسطة</button><button type="button" data-v="s">صغيرة</button></div><small class="hint" data-logo-hint></small></div>
+        </div>
+      </div>
+    </div>
+    <div class="w-card gs-card">
+      <div class="gs-head"><h3>إعدادات تهيئة المتجر لمحركات البحث (SEO)</h3></div>
+      <div class="field"><label>عنوان المتجر في محركات البحث</label><input data-k="store.seoTitle" maxlength="70"><small class="hint" data-cnt="store.seoTitle" data-cnt-max="70"></small></div>
+      <div class="field"><label>وصف المتجر</label><textarea data-k="store.seoDescription" rows="3" maxlength="300"></textarea><small class="hint" data-cnt="store.seoDescription" data-cnt-max="300">طول هذا النص يجب أن يتراوح بين ~155 إلى 300 حرف</small></div>
+      <div class="gs-serp" data-serp></div>
+      <div class="field"><label>خريطة أرشفة الموقع XML</label><div class="gs-copy"><input readonly dir="ltr" data-sitemap><button type="button" class="w-link" data-copy-sitemap>⧉ نسخ</button></div></div>
+    </div>
+    <div class="w-card gs-card">
+      <div class="gs-head"><h3>أيقونة المتجر (Favicon)</h3><p>هي أيقونة صغيرة بجانب عنوان متجرك في المتصفح، وغالبًا تكون نسخة مصغرة من اللوجو. تساعد الزائرين في الوصول لموقعك/متجرك بسرعة من بين التبويبات المفتوحة.</p></div>
+      <div class="gs-fav"><div class="gs-tab"><i></i><span class="gs-tab-ic" data-gs-fav></span><b data-gs-tabname>KO SPORT</b><em>✕</em></div>
+        <label class="w-btn ghost sm">رفع أيقونة<input type="file" accept="image/png,image/jpeg,image/webp" data-upload="design.favicon" hidden></label><button type="button" class="w-btn ghost sm danger" data-clear="design.favicon">إزالة</button></div>
+      <small class="hint">مقاسات: 32×32 بكسل، الصيغ: PNG, JPEG، وحجمها لا يزيد عن 1 ميغا.</small>
+    </div>
+  </section>
+
+  <section data-view="tax" hidden>
+    <div class="w-page-head"><h1>الضريبة</h1><p>إذا متجرك بيحسب ضريبة على الطلبات.</p></div>
+    <div class="w-card set-card">
+      <label class="switch"><input type="checkbox" data-k="tax.on"><span></span> احسب ضريبة على الطلبات</label>
+      <div class="row2"><div class="field"><label>نسبة الضريبة (%)</label><input type="number" min="0" max="50" step="0.5" data-k="tax.rate" data-num dir="ltr" class="w-num"></div><div class="field"><label>اسمها عند الزبون</label><input data-k="tax.label" placeholder="الضريبة" maxlength="30"></div></div>
+      <div class="field"><label>الأسعار</label><div class="seg" data-seg="tax.mode"><button type="button" data-v="added">الضريبة بتنضاف فوق السعر</button><button type="button" data-v="included">الأسعار شاملة الضريبة</button></div>
+        <small class="hint">«شاملة» يعني الزبون ما بيدفع زيادة، بس بيطلعله كم منها ضريبة.</small></div>
+    </div>
+  </section>
+
+  <section data-view="staff" hidden>
+    <div class="w-page-head w-head-row"><div><h1>الموظفون وربط المتجر</h1><p>اعطي موظفينك دخول للوحة التحكم بكلمة سر خاصة لكل واحد.</p></div><div class="w-head-acts"><button type="button" class="w-btn sm" data-staff-add>+ إضافة موظف</button></div></div>
+    <div class="w-card"><div data-staff-list></div>
+      <p class="hint" style="margin-top:12px"><b>مدير:</b> كل شي ما عدا الموظفين وأدوات المطورين. · <b>طلبات:</b> الطلبات والسلّات المتروكة والعملاء بس.<br>كلمة سرك إنت (المالك) هي يلي بـ Cloudflare باسم ADMIN_PASSWORD، وما بتتغير من هون.</p></div>
+    <div class="w-card" style="margin-top:14px"><h3>ربط المتجر</h3><div class="st-grid" data-status></div></div>
+  </section>
+
+  <section data-view="dev" hidden>
+    <div class="w-page-head"><h1>أدوات المطورين</h1><p>كود إضافي بينضاف لكل صفحات متجرك (لصاحب المتجر بس).</p></div>
+    <div class="w-card set-card">
+      <div class="co-warn">⚠️ الكود هون بيشتغل عند كل زوارك. حط بس كود من مصدر بتثق فيه (متل Google Tag Manager أو Hotjar).</div>
+      <div class="field"><label>كود داخل &lt;head&gt;</label><textarea data-k="dev.head" rows="8" dir="ltr" class="mono" maxlength="20000" placeholder="<script>...</script>"></textarea></div>
+      <div class="field"><label>CSS مخصص</label><textarea data-k="dev.css" rows="8" dir="ltr" class="mono" maxlength="20000" placeholder=".card{...}"></textarea></div>
+      <div class="field"><label>روابط مفيدة</label><div class="dev-links"><a href="/api/products" target="_blank" dir="ltr">/api/products</a><a href="/api/settings" target="_blank" dir="ltr">/api/settings</a><a href="/sitemap.xml" target="_blank" dir="ltr">/sitemap.xml</a><a href="/robots.txt" target="_blank" dir="ltr">/robots.txt</a><a href="/llms.txt" target="_blank" dir="ltr">/llms.txt</a></div></div>
+    </div>
+  </section>
+
+  <section data-view="domain" hidden>
+    <div class="w-page-head"><h1>النطاق</h1><p>احصل على اسم نطاق لمتجرك الإلكتروني</p></div>
+    <div class="w-card"><div class="dom-card" data-dom-card></div></div>
+    <details class="w-card dom-help"><summary>كيف بربط ko-sport.online؟</summary>
+      <ol class="steps">
+        <li>فوت على <b>dash.cloudflare.com</b> ← <b>Add a domain</b> ← اكتب <span dir="ltr">ko-sport.online</span> ← الخطة المجانية.</li>
+        <li>Cloudflare بيعطيك <b>2 Nameservers</b>. حطّهن عند شركة الدومين يلي اشتريت منها.</li>
+        <li>بعد ما يصير <b>Active</b>: <b>Workers & Pages</b> ← <b>ko-sport</b> ← <b>Custom domains</b> ← <span dir="ltr">ko-sport.online</span> و <span dir="ltr">www.ko-sport.online</span>.</li>
+        <li>بعدها بتقدر تلغي Wuilt. روابط Wuilt القديمة (/ar/…) بتتحوّل لحالها.</li>
+      </ol><div class="buy-row"><a class="w-btn sm" href="https://dash.cloudflare.com" target="_blank" rel="noopener">افتح Cloudflare</a></div></details>
+    <div class="w-card"><div class="w-rowhead"><div><h3>إعادة التوجيه 301</h3><p class="hint">استخدمها لتوجيه عملائك ومحركات البحث إلى روابط جديدة بدل الروابط القديمة لمنتجاتك.</p></div><button type="button" class="w-btn sm" data-rd-add>+ رابط إعادة توجيه جديد</button></div>
+      <div data-rd-list></div></div>
+    <div class="w-card"><h3>محرر ملفات Robots.txt</h3><p class="hint">يمكنك تعديل ملف robots.txt لإعطاء إشارات لمحركات البحث للزحف إلى صفحات متجرك التي يجب أو لا يجب فهرستها.</p>
+      <div class="rb-grid"><textarea data-k="robots" rows="8" dir="ltr" class="mono" maxlength="5000" placeholder="ابدأ في تعديل ملفات robots.txt"></textarea>
+        <div class="rb-info"><b>ⓘ اعرف أكثر عن ملفات robots.txt</b><p>ستجد هنا <a href="https://www.robotstxt.org" target="_blank" rel="noopener">www.robotstxt.org</a> معلومات أكثر عن هذه الملفات وكيفية إضافتها لصفحاتك. إذا تركته فاضي بنستعمل ملف جاهز بيمنع /admin و /api.</p><a href="/robots.txt" target="_blank" class="w-link">شوف الملف الحالي ←</a></div></div></div>
+  </section>
+
+  <section data-view="legal" hidden>
+    <div class="w-page-head"><h1>الصفحات القانونية</h1><p>سياسات متجرك. بتطلع روابطها بالفوتر. راجع النص وعدّله قبل ما تنشر.</p></div>
+    <div class="w-card" data-legal-list></div>
+  </section>
+
+  <section data-view="apps" hidden>
+    <div class="w-page-head"><h1>التطبيقات</h1><p>اربط متجرك بأدوات التسويق والإشعارات.</p></div>
+    <div class="w-card bot-card"><div class="app-h"><span class="app-ic" style="background:#e7f8ee">🤖</span><div><b>ربط مجيب الواتساب (K FAST AI)</b><small>روابط بيقرأ منها المجيب كل منتجاتك: الاسم، السعر بالدولار والليرة، الصور، والرابط الصح.</small></div></div>
+      <div class="bot-links" data-bot-links></div>
+      <small class="hint">بتتحدّث لحالها كل دقيقة. ما فيها أي معلومات خاصة (بس يلي ظاهر بالمتجر). رابط المنتج <b>/p/…</b> بيطلع بالواتساب مع صورة المنتج واسمه وسعره.</small></div>
+    <div class="apps-grid">
+      <div class="w-card app-card"><div class="app-h"><span class="app-ic" style="background:#fff3e0">📊</span><div><b>Google Analytics</b><small>عدد الزوار ومن وين جايين</small></div></div><div class="field"><label>Measurement ID</label><input data-k="apps.ga" dir="ltr" placeholder="G-XXXXXXXXXX" maxlength="16"></div></div>
+      <div class="w-card app-card"><div class="app-h"><span class="app-ic" style="background:#e8f0fe">📘</span><div><b>Facebook / Instagram Pixel</b><small>لإعلانات فيسبوك وإنستغرام: الزيارات، الإضافة للسلة، الشراء</small></div></div><div class="field"><label>Pixel ID</label><input data-k="apps.fbPixel" dir="ltr" placeholder="123456789012345" maxlength="20"></div></div>
+      <div class="w-card app-card"><div class="app-h"><span class="app-ic" style="background:#f1f1f1">🎵</span><div><b>TikTok Pixel</b><small>لإعلانات تيك توك</small></div></div><div class="field"><label>Pixel ID</label><input data-k="apps.tiktok" dir="ltr" placeholder="CXXXXXXXXXXXXXXXX" maxlength="30"></div></div>
+      
+      <div class="w-card app-card"><div class="app-h"><span class="app-ic" style="background:#e3f2fd">✈️</span><div><b>إشعارات تلغرام</b><small>رسالة على تلغرام مع كل طلب أو تقييم جديد</small></div></div><div data-app-tg></div></div>
+      <div class="w-card app-card"><div class="app-h"><span class="app-ic" style="background:#f3e8ff">✨</span><div><b>الذكاء الاصطناعي</b><small>كتابة وصف ومواصفات المنتجات</small></div></div><div data-app-ai></div></div>
+    </div>
+  </section>
+
+  <section data-view="bot" hidden>
+    <div class="w-page-head"><h1>المجيب K FAST</h1><p>لوحة مجيب الواتساب جوّا لوحة متجرك. بتتحكم فيه من هون متل ما بتتحكم فيه من موقعه.</p></div>
+    <div class="w-card kbot-bar">
+      <label class="switch"><input type="checkbox" data-k="apps.botLink" data-default-true><span></span> المجيب بياخد المنتجات والأسعار والصور من موقعي</label>
+      <div class="kbot-tools"><input data-k="apps.botUrl" dir="ltr" placeholder="https://k-fast-ai.pages.dev" maxlength="200" aria-label="رابط المجيب">
+        <button type="button" class="btn btn-ghost sm" data-kbot-reload>🔄 تحديث</button>
+        <a class="btn btn-ghost sm" data-kbot-open href="https://k-fast-ai.pages.dev" target="_blank" rel="noopener">↗ فتح بصفحة لحالها</a></div>
+      <small class="hint">إذا طفّيت الربط، المجيب بيرجع يشتغل على منتجاتو المحلية متل ما كان، وإذا رجّعت شغّلتو بيرجع يقرا من موقعك (خلال دقيقة). بعد أي تغيير اكبس «حفظ ونشر». أول مرة بتفتح اللوحة هون سجّل دخول للمجيب جوّاها.</small>
+    </div>
+    <div class="kbot-wrap"><iframe data-kbot-frame title="لوحة المجيب K FAST" allow="clipboard-read; clipboard-write; microphone; camera; fullscreen" referrerpolicy="no-referrer"></iframe>
+      <div class="kbot-off" data-kbot-off hidden><b>ما قدرنا نفتح لوحة المجيب هون</b><span>غالباً كمبيوتر المجيب طافي، أو لسا ما انعمل تحديث للمجيب. افتحها بصفحة لحالها من الزر فوق.</span></div></div>
+  </section>
+  <section data-view="reports" hidden>
+    <div class="w-page-head"><h1>التقارير</h1><p>مبيعاتك وأكتر المنتجات طلباً (الطلبات الملغية مو محسوبة).</p></div>
+    <div class="adm-bar"><div class="seg" data-rep-range><button type="button" data-rr="7">آخر 7 أيام</button><button type="button" data-rr="30" class="on">آخر 30 يوم</button><button type="button" data-rr="90">آخر 3 أشهر</button></div><button type="button" class="btn btn-ghost sm" data-load-all-orders>حمّل كل الطلبات</button></div>
+    <div data-reports></div>
+  </section>
+  <div class="savebar" data-set-savebar hidden>
+    <span>في تعديلات ما انحفظت</span>
+    <a class="btn btn-ghost sm" href="/" target="_blank">شوف الموقع</a>
+    <button class="btn btn-ghost sm" data-set-discard>تراجع</button>
+    <button class="btn btn-red sm" data-set-save>حفظ ونشر</button>
+  </div>
+
+  <section data-view="images" hidden>
+    <div class="w-page-head"><h1>الصور</h1><p>نقل وضغط صور المنتجات.</p></div>
+    <label class="check paid-box"><input type="checkbox" data-paid> أنا على خطة Cloudflare المجانية: خلّي الأدوات توقف عند 350 عملية باليوم (علّم عليها إذا لغيت الاشتراك المدفوع)</label>
+    <div class="form" style="max-width:640px">
+      <h3>نقل الصور من Wuilt</h3>
+      <p>صور المنتجات حالياً محفوظة على سيرفرات Wuilt. قبل ما تلغي اشتراكك هناك، اضغط الزر تحت مشان ننسخ كل الصور لمتجرك الجديد. العملية بتاخد كم دقيقة، خلّي الصفحة مفتوحة لحتى تخلص.</p>
+      <div class="progress"><div data-mig-bar></div></div>
+      <div data-mig-msg class="note"></div>
+      <button class="btn btn-red" data-migrate>ابدأ نسخ الصور</button>
+    </div>
+    <div class="form" style="max-width:640px;margin-top:14px">
+      <h3>الصور الإضافية لكل منتج (عن طريق Wuilt)</h3>
+      <p>Wuilt ما بيحط كل الصور بصفحات المنتجات، فمنجيبها من الـ API الرسمي تبعهم. بدنا شغلتين من حسابك على Wuilt:</p>
+      <ol class="steps">
+        <li><b>Store ID:</b> افتح لوحة تحكم Wuilt، وانسخ الكلمة اللي بعد <code>/store/</code> بالرابط فوق. بتبلّش بـ <code>Store_</code>.</li>
+        <li><b>API Key:</b> من Wuilt ← <b>Settings</b> ← <b>Dev Tools</b> ← <b>API Key Generator</b> ← <b>Generate API Key</b>. اختار صلاحية <b>Products</b> بس، وانسخ المفتاح.</li>
+      </ol>
+      <div class="field"><label>Store ID</label><input data-w-store dir="ltr" placeholder="Store_xxxxxxxxxxxxxxxx" autocomplete="off"></div>
+      <div class="field"><label>API Key</label><input data-w-key type="password" dir="ltr" autocomplete="off"></div>
+      <small class="hint">المفتاح ما بينحفظ بأي مكان، بينستعمل بس وقت النسخ. وبعد ما تخلص فيك تحذفه من Wuilt.</small>
+      <div class="progress"><div data-gal-bar></div></div>
+      <div data-gal-msg class="note"></div>
+      <button class="btn btn-red" data-gallery>جيب كل الصور</button>
+    </div>
+    <div class="form" style="max-width:640px;margin-top:14px;border:2px solid var(--ink)">
+      <h3>رجّع الصور الأصلية (بدون قص أو زوم)</h3>
+      <p>إذا الصور طلعت مقصوصة أو مكبّرة أو مو واضحة: هالزر بيرجّع كل صور المنتجات الأصلية من Wuilt (الرئيسية والإضافية)، وبعدين بيضغطها من جديد بجودة أعلى، وبيعرض <b>الصورة كاملة</b> بدون ما يقص منها شي.</p>
+      <small class="hint">بدها الـ Store ID والـ API Key يكونوا محطوطين بقسم «الصور الإضافية» فوق، واشتراك Wuilt لسا شغال. بتاخد كم دقيقة، خلّي الصفحة مفتوحة.</small>
+      <div data-restore-msg class="note"></div>
+      <button class="btn btn-red" data-restore>رجّع الصور الأصلية واضغطها من جديد</button>
+    </div>
+    <div class="form" style="max-width:640px;margin-top:14px">
+      <h3>ضغط الصور (لموقع أسرع)</h3>
+      <p>بيحوّل كل صور المنتجات لمربع بنفس المقاس، <b>والصورة بتضل كاملة بدون قص أو زوم</b>. إذا الصورة طولية أو عرضية، الأطراف بتتعبّى بلون خلفيتها. الصورة الكبيرة بحدود 60–95KB، والصغيرة للقوائم بحدود 20–26KB، بجودة عالية.</p>
+      <small class="hint">كل صورة جديدة بترفعها بتتربّع وبتنضغط لحالها. هالزر للصور الموجودة. إذا وقف بنص الطريق، اكبس الزر كمان مرة وبيكمّل من مكان ما وقف.</small>
+      <div class="progress"><div data-opt-bar></div></div>
+      <div data-opt-msg class="note"></div>
+      <button class="btn btn-red" data-optimize>اضغط الصور</button>
+    </div>
+  </section>
+</main>
+
+<aside class="phone-dock" data-dock aria-label="معاينة مباشرة">
+  <div class="dock-bar"><b>معاينة مباشرة</b>
+    <div class="seg"><button type="button" data-dock-dev="mob" class="on">📱</button><button type="button" data-dock-dev="desk">💻</button></div>
+    <button type="button" class="btn btn-ghost sm" data-th-prev="__cur">تكبير</button></div>
+  <div class="dock-phone"><div class="dock-screen" data-dock-screen><iframe data-dock-frame title="معاينة الموقع"></iframe></div></div>
+  <small class="hint">بتتحدّث مع كل تعديل. الزوار ما بيشوفوا شي قبل «حفظ».</small>
+</aside>
+<button type="button" class="dock-fab" data-th-prev="__cur">📱 معاينة</button>
+
+<dialog class="w-modal" data-sec-dlg>
+  <div class="wm-head"><span class="wm-ic" data-sec-dlg-ic>▦</span><b data-sec-dlg-title>تعديل القسم</b><button type="button" class="wm-x" data-sec-cancel aria-label="إغلاق">✕</button></div>
+  <div class="wm-body" data-sec-body></div>
+  <div class="wm-foot"><button type="button" class="w-btn" data-sec-save>احفظ</button><button type="button" class="w-btn ghost" data-sec-cancel>إلغاء</button></div>
+</dialog>
+
+<dialog class="w-modal" data-x-dlg>
+  <div class="wm-head"><b data-x-title></b><button type="button" class="wm-x" data-x-cancel aria-label="إغلاق">✕</button></div>
+  <div class="wm-body" data-x-body></div>
+  <div class="wm-foot"><button type="button" class="w-btn" data-x-save>احفظ</button><button type="button" class="w-btn ghost" data-x-cancel>إلغاء</button></div>
+</dialog>
+<nav class="w-tabbar" data-tabbar>
+  <button type="button" data-tab="dash"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>الرئيسية</span></button>
+  <button type="button" data-tab="orders"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span>الطلبات</span><i class="w-tb-badge" data-tb-new hidden></i></button>
+  <button type="button" data-tab="products"><svg viewBox="0 0 24 24"><path d="M20 12 12 20 3 11V3h8zM7.5 7.5h.01"/></svg><span>المنتجات</span></button>
+  <button type="button" data-tab="appearance"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h16M9 9v11"/></svg><span>المظهر</span></button>
+  <button type="button" data-side-open><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>المزيد</span></button>
+</nav>
+<div class="w-menu" data-menu hidden></div>
+<dialog class="modal sp-dlg" data-sp-dlg>
+  <div class="sp-in">
+    <h3>🔤 تصحيح الإملاء</h3>
+    <p class="hint" data-sp-msg></p>
+    <div class="sp-list" data-sp-list></div>
+    <div class="sp-act">
+      <button class="btn btn-dark sm" data-sp-go>طبّق واحفظ</button>
+      <button class="btn btn-ghost sm" data-sp-ai>✨ فحص أعمق بالذكاء الاصطناعي</button>
+      <button class="btn btn-ghost sm" data-sp-x>إلغاء</button>
+    </div>
+  </div>
+</dialog>
+<dialog class="modal" data-modal>
+  <form method="dialog" class="form" data-edit>
+    <h3 data-edit-title>تعديل منتج</h3>
+    <div class="edit-grid">
+      <div>
+        <div class="img-drop"><img data-edit-img alt=""></div>
+        <div class="thumbs" data-edit-thumbs></div>
+        <label class="btn btn-ghost sm" style="margin-top:8px;width:100%">+ رفع صور<input type="file" accept="image/*" multiple data-edit-file hidden></label>
+        <label class="check" style="margin-top:6px"><input type="checkbox" data-studio-on onchange="try{localStorage.setItem('ko_studio_on',this.checked?'1':'')}catch(e){}"> 🪄 افتح استوديو الصور قبل الرفع (شيل الخلفية، هوية المتجر، Nano Banana)</label>
+        <small class="hint">أول صورة هي الرئيسية. اكبس على أي صورة لتصير هي الرئيسية، وعلى 🪄 لتعدّلها بالاستوديو.</small>
+      </div>
+      <div class="edit-fields">
+        <div class="field"><label>اسم المنتج</label><input name="name" required></div>
+        <div class="field"><label>السعر ($)</label><input name="price" type="number" step="0.01" min="0" required dir="ltr"></div>
+        <div class="field"><label>القسم</label><input name="category" list="cat-list" required></div>
+        <div class="field"><label>كمان موجود بأقسام (افصل بفاصلة)</label><input name="also"></div>
+        <div class="field"><label>الخيارات: ألوان أو مقاسات (افصل بفاصلة)</label><input name="options" placeholder="اسود، احمر، ازرق"></div>
+        <div class="field"><label>الرياضة (افصل بفاصلة)</label><input name="sports"></div>
+        <div class="field"><label>الوصف <button type="button" class="ai-btn" data-ai-one>✨ اكتب بالذكاء الاصطناعي</button></label><textarea name="description" rows="3" placeholder="وصف قصير للمنتج"></textarea></div>
+        <div class="field"><label>شرح وتفاصيل المنتج (بيطلع بتبويب «التفاصيل»)</label><textarea name="details" rows="6" placeholder="## المميزات&#10;- ميزة&#10;## طريقة الاستخدام&#10;- خطوة"></textarea><small class="hint">كل عنوان بسطر يبلش بـ ## وكل نقطة بسطر يبلش بـ - . زر «✨ اكتب بالذكاء الاصطناعي» بيعبّيه لحاله.</small></div>
+        <div class="field"><label>المواصفات (كل سطر: البند: القيمة)</label><textarea name="specs" rows="4" placeholder="الماركة: Venum&#10;الوزن: 12oz"></textarea></div>
+        <label class="check"><input type="checkbox" name="inStock"> متوفر</label>
+        <label class="check"><input type="checkbox" name="hidden"> مخفي عن الزبائن</label>
+      </div>
+    </div>
+    <div class="buy-row">
+      <button class="btn btn-red" value="ok" data-edit-ok>تمام</button>
+      <button class="btn btn-ghost" value="cancel" formnovalidate>إلغاء</button>
+      <button class="btn btn-ghost" value="delete" data-edit-del style="margin-inline-start:auto;color:var(--red)" formnovalidate>حذف المنتج</button>
+    </div>
+  </form>
+</dialog>
+<datalist id="cat-list"></datalist>
+
+<div class="toast" data-toast role="status" aria-live="polite"></div>
+<script src="/assets/media.js?v=85"></script>
+<script src="/assets/pwa.js?v=85"></script>
+<script src="/assets/promo.js?v=85"></script>
+<script src="/assets/imgstudio.js?v=85"></script>
+<script src="/assets/themes.js?v=85"></script>
+<script src="/assets/packs.js?v=85"></script>
+<script src="/assets/admin.js?v=85"></script>
+</body>
+</html>
