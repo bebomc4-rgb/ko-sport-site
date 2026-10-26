@@ -11,7 +11,7 @@
     if (e && now > e) return false;
     return !!(p.title || p.text || p.image);
   }
-  function onHome() { var h = location.hash.replace(/^#/, ""); return h === "" || h === "/" || h === "/home"; }
+  function onHome() { var h = window.KORoute ? window.KORoute() : location.hash.replace(/^#/, ""); return h === "" || h === "/" || h === "/home"; }
   function freqOk(p) {
     var f = p.freq || "session", k = "ko_pm_" + p.id;
     if (f === "always") return true;

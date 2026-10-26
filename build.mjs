@@ -19,6 +19,9 @@ const emb = "const __EMB = " + JSON.stringify(files) + ";\n" + fs.readFileSync(p
 const a = "    const env = Object.assign({}, rawEnv);\n";
 if (!w.includes(a)) throw new Error("worker entry not found");
 w = w.replace(a, a + "    env.ASSETS = __embAssets(rawEnv.ASSETS);\n");
+// stamp the build time so /api/diag can say which copy is actually live
+if (!w.includes("__BUILD_AT__")) throw new Error("build stamp placeholder not found");
+w = w.replace("__BUILD_AT__", new Date().toISOString().slice(0, 16).replace("T", " ") + "Z");
 fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(path.join(out, "_worker.js"), emb + w);
 execSync(`node --check "${path.join(out, "_worker.js")}"`, { stdio: "inherit" });
 fs.rmSync(tmp, { recursive: true, force: true });

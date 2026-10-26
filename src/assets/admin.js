@@ -2415,7 +2415,14 @@
       else blob = await compress(file, hero ? 1600 : isLogo ? 240 : 500, hero ? 130 : isLogo ? 12 : 30);
       const url = await uploadBlob(blob);
       if (isLogo) { try { await makeAppIcons(await decode(file)); } catch {} }
-      setK(path, url); renderPreviews(); if (/slides|sections/.test(path)) { renderSlides(); renderSections(); renderSecDlg(); bindInputs(); renderSegs(); } if (/^payments/.test(path)) renderPays(); updateSetBar(); toast("انرفعت. لا تنسى تكبس حفظ ونشر");
+      setK(path, url);
+      // A slide/banner with a phone image shows THAT one on phones and ignores the computer image.
+      // So when the computer image is replaced, drop the old phone image — otherwise the new image
+      // never shows up on a phone and the owner thinks nothing was saved.
+      let droppedMob = false;
+      if (wide) { const mp = path.replace(/\.img$/, ".imgMobile"); if (getK(mp)) { setK(mp, ""); droppedMob = true; } }
+      renderPreviews(); if (/slides|sections/.test(path)) { renderSlides(); renderSections(); renderSecDlg(); bindInputs(); renderSegs(); } if (/^payments/.test(path)) renderPays(); updateSetBar();
+      toast(droppedMob ? "انرفعت ✓ ومسحنا صورة الهاتف القديمة مشان تبين الصورة الجديدة عالموبايل كمان. لا تنسى تكبس حفظ ونشر" : "انرفعت. لا تنسى تكبس حفظ ونشر");
     } catch (err) { toast(err.message); }
     inp.value = "";
   });
@@ -2437,7 +2444,7 @@
   // ----- slider editor -----
   const imgPick = (path, val, mobile) => `<div class="img-pick"><span class="pv${mobile ? " m" : ""}" style="background-image:url('${esc(val || "")}')"></span>
     <label class="btn btn-ghost sm">${val ? "تغيير" : "أضف صورة"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-upload="${path}" hidden></label>
-    ${val ? `<button class="btn btn-ghost sm" data-clear="${path}">إزالة</button>` : ""}</div>`;
+    ${val ? `<button class="btn btn-ghost sm" data-clear="${path}">إزالة</button>` : ""}</div>${mobile && val ? `<div class="hint" style="color:#b45309">📱 الموبايل رح يعرض <b>هي الصورة</b>، مو صورة الكمبيوتر. إذا بدك نفس صورة الكمبيوتر تبين عالموبايل، كبس «إزالة».</div>` : ""}`;
   const moveBtns = (i, n, kind) => `<button type="button" class="mini" data-${kind}-move="-1" data-i="${i}" ${i ? "" : "disabled"}>↑</button><button type="button" class="mini" data-${kind}-move="1" data-i="${i}" ${i < n - 1 ? "" : "disabled"}>↓</button><button type="button" class="mini del" data-${kind}-del data-i="${i}">✕</button>`;
   function renderSlides() {
     const L = ST.design.slides, box = $("[data-slides]"); if (!box) return;
@@ -2581,6 +2588,10 @@
       if (t !== "banner") h += bgRow(p, sec);
       if ((sec.layout === "row" && (isProd || t === "groups")) || sec.layout === "car") h += `<div class="w-two"><div class="field"><label>الحركة الجانبية</label><div class="seg" data-seg="${p}.auto">${segBtns([["on", "▶ بيتحرك لحاله"], ["off", "⏸ ثابت"]])}</div></div>
         ${sec.auto === "off" ? "" : `<div class="field"><label>بيتحرك كل</label><div class="seg" data-seg="${p}.speed">${segBtns([["3", "3 ث"], ["4", "4 ث"], ["6", "6 ث"], ["8", "8 ث"]])}</div></div>`}</div>`;
+    }
+    if (t === "groups") {
+      h += `<div class="field"><label>عدد المنتجات المعروضة من كل مجموعة</label>${stepper(p + ".count", 1, 60)}
+        <small class="hint">الصفحة الرئيسية تعرض هالعدد بس من كل مجموعة (الأحدث أولاً، والمتوفر بس). صفحة المجموعة نفسها تعرض كل المنتجات.</small></div>`;
     }
     if (isProd) {
       const src = t === "products" ? "c:" + (sec.cat || "") : t;

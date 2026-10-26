@@ -254,6 +254,53 @@
   // live preview from the dashboard (same-origin iframe with ?preview=1): design, home sections and store info, before saving
   const PREVIEW = /[?&]preview=1/.test(location.search) && window.parent !== window;
   let PV = null, RAW = null;
+  // ---------- clean addresses: /ar/cart instead of #/cart ----------
+  // The dashboard preview keeps using #/… — it lives in an iframe and must not touch real history.
+  const BASE = "/ar", CLEAN = !PREVIEW;
+  function routeHref(r) {
+    let p = String(r == null ? "/" : r);
+    if (p[0] === "#") p = p.slice(1);
+    if (p[0] !== "/") p = "/" + p;
+    return CLEAN ? BASE + p : "#" + p;
+  }
+  function curRoute() {
+    if (location.hash.indexOf("#/") === 0) return decodeURIComponent(location.hash.slice(1));
+    let p = location.pathname;
+    if (p === BASE) p = "/";
+    else if (p.indexOf(BASE + "/") === 0) p = p.slice(BASE.length);
+    try { p = decodeURIComponent(p); } catch (e) {}
+    return p || "/";
+  }
+  // fires the same «hashchange» the shop already listens for, so every existing handler keeps working
+  window.KORoute = curRoute; // promo.js / pwa.js / fx.js ask the shop which page is open
+  const fireNav = () => window.dispatchEvent(new Event("hashchange"));
+  function navTo(r, replace) {
+    const u = routeHref(r);
+    if (!CLEAN) { if (location.hash !== u) location.replace(u); return; }
+    if (location.pathname === u) { fireNav(); return; }
+    try { history[replace ? "replaceState" : "pushState"]({}, "", u); } catch (e) { location.assign(u); return; }
+    fireNav();
+  }
+  function fixLinks(root) {
+    if (!CLEAN || !root || root.nodeType !== 1) return;
+    if (root.matches && root.matches('a[href^="#/"]')) root.setAttribute("href", routeHref(root.getAttribute("href")));
+    if (root.querySelectorAll) root.querySelectorAll('a[href^="#/"]').forEach((a) => a.setAttribute("href", routeHref(a.getAttribute("href"))));
+  }
+  if (CLEAN) {
+    // rewrite every link the shop renders, the moment it lands in the page
+    new MutationObserver((ms) => { for (const mu of ms) for (const n of mu.addedNodes) fixLinks(n); }).observe(document.documentElement, { childList: true, subtree: true });
+    fixLinks(document.body);
+    document.addEventListener("click", (e) => {
+      if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = e.target.closest && e.target.closest("a[href]"); if (!a || a.target || a.hasAttribute("download")) return;
+      const href = a.getAttribute("href") || "";
+      if (href.indexOf("#/") === 0) { e.preventDefault(); navTo(href); return; }
+      if (a.origin === location.origin && (a.pathname === BASE || a.pathname.indexOf(BASE + "/") === 0)) { e.preventDefault(); navTo(a.pathname.slice(BASE.length) || "/"); }
+    });
+    window.addEventListener("popstate", fireNav);
+    // an old #/… address (or the installed app) turns into a clean one without reloading
+    if (location.hash.indexOf("#/") === 0) { try { history.replaceState({}, "", routeHref(decodeURIComponent(location.hash.slice(1)))); } catch (e) {} }
+  }
   // inside the dashboard preview, clicking around doesn't add history entries (they'd belong to the dashboard's back button)
   if (PREVIEW) document.addEventListener("click", (e) => {
     const a = e.target.closest && e.target.closest('a[href^="#"]'); if (!a || e.defaultPrevented || a.target) return;
@@ -407,10 +454,11 @@
 
 
   // ---------- data ----------
-  const getJSON = (u) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const getJSON = (u) => fetch(u, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   // Settings + products load in parallel; the last copy is kept on the device so repeat visits render instantly.
   async function fetchFresh() {
-    let [st, data] = await Promise.all([getJSON("/api/settings"), getJSON("/api/products")]);
+    const _t = "&_t=" + Date.now();
+    let [st, data] = await Promise.all([getJSON("/api/settings?r=1" + _t), getJSON("/api/products?r=1" + _t)]);
     if (!st || !st.store) st = await getJSON("/settings.default.json");
     if (!Array.isArray(data)) data = await getJSON("/products.json");
     if (!st || !Array.isArray(data)) throw new Error("load");
@@ -462,6 +510,14 @@
   const sortStock = (a, b) => (b.inStock - a.inStock);
 
   function groupOf(c) { return C.groups.find((g) => g.cats.includes(c)); }
+  // the order the owner drags into place in the collection editor (design.catMeta[cat].order).
+  // Sorting happens BEFORE any slice, so hand-picked items actually make it into a short row.
+  function orderBy(items, cats) {
+    const ix = new Map();
+    for (const c of cats || []) for (const id of catMeta(c).order || []) if (!ix.has(id)) ix.set(id, ix.size);
+    if (!ix.size) return items;
+    return items.slice().sort((a, b) => (ix.has(a.id) ? ix.get(a.id) : 1e6) - (ix.has(b.id) ? ix.get(b.id) : 1e6));
+  }
 
   // ---------- home page: sections chosen in the dashboard ----------
   function slideHtml(sl, first) {
@@ -563,7 +619,7 @@
     groups(sec) {
       sec = sec || {};
       return C.groups.map((g) => {
-        const items = products.filter((p) => p.inStock && g.cats.some((c) => inCat(p, c))).slice(0, 12);
+        const items = orderBy(products.filter((p) => p.inStock && g.cats.some((c) => inCat(p, c))), g.cats).slice(0, +sec.count || 12);
         return items.length ? secHead(g.name, `#/g/${encodeURIComponent(g.name)}`) + listOf(items, { layout: "row", ...sec }) : "";
       }).join("");
     },
@@ -576,7 +632,9 @@
       return items.length ? secHead(sec.showTitle === false ? "" : sec.title, "") + listOf(items, sec) : "";
     },
     products(sec) {
-      const items = products.filter((p) => p.inStock && (!sec.cat || inCat(p, sec.cat))).slice(0, +sec.count || 12);
+      let list = products.filter((p) => p.inStock && (!sec.cat || inCat(p, sec.cat)));
+      if (sec.cat) list = orderBy(list, [sec.cat]);
+      const items = list.slice(0, +sec.count || 12);
       return items.length ? secHead(sec.showTitle === false ? "" : sec.title, sec.cat ? `${cHref(sec.cat)}` : "#/all") + listOf(items, sec) : "";
     },
     banner(sec) {
@@ -1288,7 +1346,7 @@
       const qi = $("[data-qty]");
       qty = Math.max(1, Math.min(99, parseInt(qi && qi.value) || 1));
       addToCart(p.id, opt, qty, !!now);
-      if (now) location.hash = "#/checkout"; else flyToCart(app.querySelector("[data-buyline] button, [data-buy]"));
+      if (now) navTo("#/checkout"); else flyToCart(app.querySelector("[data-buyline] button, [data-buy]"));
     };
     // reviews: summary, bars and list
     if (revOn) fetch("/api/reviews?id=" + encodeURIComponent(p.id)).then((r) => (r.ok ? r.json() : [])).then((list) => {
@@ -1464,7 +1522,7 @@ ${trustH()}
   }
   function checkout() {
     const lines = cartLines().filter((l) => l.p.inStock);
-    if (!lines.length) { location.hash = "#/cart"; return; }
+    if (!lines.length) { navTo("#/cart"); return; }
     const saved = store.get("ko_customer", {});
     const sub = lines.reduce((s, l) => s + l.p.price * l.qty, 0);
     const freeOver = Number(S.delivery.freeOver) || 0;
@@ -1665,7 +1723,7 @@ ${trustH()}
         store.set("ko_last_order", j.order);
         pixel("Purchase", { value: j.order.total, currency: "USD" });
         store.set("ko_orders", [{ id: j.order.id, phone: body.customer.phone, at: j.order.createdAt, total: j.order.total, n: j.order.items.reduce((a, i) => a + i.qty, 0) }, ...store.get("ko_orders", [])].slice(0, 20));
-        location.hash = "#/done/" + encodeURIComponent(j.order.id);
+        navTo("#/done/" + encodeURIComponent(j.order.id));
       } catch (err) {
         btn.disabled = false; sync();
         toast("ما قدرنا نرسل الطلب: " + esc(err.message) + ` — <a target="_blank" href="https://wa.me/${C.whatsapp}">اطلب على واتساب</a>`);
@@ -1730,7 +1788,7 @@ ${trustH()}
     let hs = history.state; const revisit = !keepScroll && hs && hs.koK != null && scrollMem[hs.koK] != null;
     if (!hs || hs.koK == null) { hs = { ...(hs || {}), koK: ++navK }; try { history.replaceState(hs, ""); } catch {} }
     curK = null; // don't record while the page is swapped
-    const h = decodeURIComponent(location.hash.slice(1) || "/");
+    const h = curRoute();
     let [, a, b] = h.split("/");
     const sticky = $("[data-sticky]"); if (sticky) sticky.hidden = true;
     // jump to the top BEFORE the new page is drawn (instantly, even if smooth scrolling is on), so it opens in place
@@ -1742,7 +1800,9 @@ ${trustH()}
     document.querySelectorAll("[data-nav]").forEach((x) => x.classList.toggle("on", x.dataset.nav === navKey));
     $(".top").classList.remove("so");
     document.title = C.seoTitle || C.name;
-    document.querySelectorAll("[data-groups] a").forEach((x) => x.classList.toggle("on", x.getAttribute("href") === location.hash));
+    const hereHref = routeHref(curRoute()); // curRoute() is decoded, the rendered href is encoded — compare decoded
+    const sameHref = (v) => { try { return decodeURIComponent(v || "") === hereHref; } catch (e) { return v === hereHref; } };
+    document.querySelectorAll("[data-groups] a").forEach((x) => x.classList.toggle("on", sameHref(x.getAttribute("href"))));
     if (!a) home();
     else if (a === "browse") browse();
     else if (a === "all") listing({ title: "كل المنتجات", crumbs: `<a href="#/">الرئيسية</a>`, items: products, key: "all" });
@@ -1750,7 +1810,7 @@ ${trustH()}
       let items = products.filter((p) => inCat(p, b));
       if (ord.length) { const ix = new Map(ord.map((id, i) => [id, i])); items = items.slice().sort((x, y) => (ix.has(x.id) ? ix.get(x.id) : 1e6) - (ix.has(y.id) ? ix.get(y.id) : 1e6)); }
       listing({ title: catLabel(b), desc: mt.desc || "", seoTitle: mt.seoTitle, seoDesc: mt.seoDesc, items, key: "c:" + b, crumbs: `<a href="#/">الرئيسية</a>${g ? ` / <a href="#/g/${encodeURIComponent(g.name)}">${esc(g.name)}</a>` : ""}` }); }
-    else if (a === "g") { const g = C.groups.find((x) => x.name === b); listing({ title: b, crumbs: `<a href="#/">الرئيسية</a>`, items: products.filter((p) => g && g.cats.some((c) => inCat(p, c))), key: "g:" + b }); }
+    else if (a === "g") { const g = C.groups.find((x) => x.name === b); listing({ title: b, crumbs: `<a href="#/">الرئيسية</a>`, items: orderBy(products.filter((p) => g && g.cats.some((c) => inCat(p, c))), g && g.cats), key: "g:" + b }); }
     else if (a === "p") product(b);
     else if (a === "cart") cartView();
     else if (a === "checkout") checkout();
@@ -1773,7 +1833,7 @@ ${trustH()}
   function gamesPage() {
     document.title = ((S.design.games || {}).title || "ألعاب") + " | " + (C.name || "");
     app.innerHTML = '<div class="loading">جاري التحميل…</div>';
-    const go = () => { if (location.hash.indexOf("#/games") === 0 && window.KOGames) KOGames.mount(app, S.design.games || {}, { name: C.name }); };
+    const go = () => { if (curRoute().indexOf("/games") === 0 && window.KOGames) KOGames.mount(app, S.design.games || {}, { name: C.name }); };
     if (window.KOGames) return go();
     if (!document.querySelector("link[data-games]")) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/assets/games.css?v=42"; l.dataset.games = ""; document.head.appendChild(l); }
     const sc = document.createElement("script"); sc.src = "/assets/games.js?v=42"; sc.onload = go; sc.onerror = () => { app.innerHTML = '<div class="empty"><b>تعذّر تحميل الألعاب</b></div>'; }; document.head.appendChild(sc);
@@ -1803,7 +1863,7 @@ ${trustH()}
     { const hd = document.querySelector("header"), ch = app.querySelector(".br-chips"); if (hd && ch) { const ps = getComputedStyle(hd).position; ch.style.top = (ps === "sticky" || ps === "fixed" ? hd.offsetHeight : 0) + "px"; } }
     const q = app.querySelector("[data-br-q]");
     q.oninput = () => { const t = q.value.trim().toLowerCase(); app.querySelectorAll(".br-card").forEach((a) => (a.hidden = !!t && !a.textContent.toLowerCase().includes(t))); app.querySelectorAll(".br-grp").forEach((g) => (g.hidden = !!t && !g.querySelector(".br-card:not([hidden])"))); };
-    app.querySelector("[data-br-search]").onsubmit = (e) => { e.preventDefault(); const t = q.value.trim(); if (t) location.hash = "#/search/" + encodeURIComponent(t); };
+    app.querySelector("[data-br-search]").onsubmit = (e) => { e.preventDefault(); const t = q.value.trim(); if (t) navTo("#/search/" + encodeURIComponent(t)); };
     app.querySelectorAll("[data-br-go]").forEach((b) => (b.onclick = () => { const el = document.getElementById("brg-" + b.dataset.brGo); if (el) { const hd = document.querySelector("header"); window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - ((hd && hd.offsetHeight) || 0) - 56, behavior: "smooth" }); } }));
   }
   const BIC = { home: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z", shop: "M4 9h16l-1-5H5zM5 9v11h14V9M9 20v-6h6v6M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0", cart: "M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2M10 20.5h.01M17 20.5h.01", user: "M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21a8 8 0 0 1 16 0", menu: "M4 6h16M4 12h16M4 18h16", search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5", heart: "M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z", phone: "M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z", whatsapp: "M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3zM8.5 8.5c.5 3 2.5 5 5.5 5.5l1.5-1.5-2-1-1 .7a4 4 0 0 1-2-2l.7-1-1-2z", game: "M6 8h12a4 4 0 0 1 4 4v2a3 3 0 0 1-5.4 1.8L15.5 14h-7l-1.1 1.8A3 3 0 0 1 2 14v-2a4 4 0 0 1 4-4zM8 10v3M6.5 11.5h3M16 11h.01M18 13h.01", tag: "M3 12V4h8l10 10-8 8zM7.5 8h.01", star: "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z", bell: "M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4", gift: "M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7S9 3 7 5s2 2 5 2zM12 7s3-4 5-2-2 2-5 2z", grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z", truck: "M2 6h12v10H2zM14 9h4l3 3v4h-7zM6 19.5h.01M17 19.5h.01", info: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5M12 8h.01", mail: "M3 5h18v14H3zM3 6l9 7 9-7", fire: "M12 3s5 4 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-8z", flash: "M13 2 4 14h7l-1 8 9-12h-7z" };
@@ -1986,7 +2046,7 @@ ${trustH()}
   document.addEventListener("click", (e) => {
     if (e.target.closest("[data-action=dark]")) { if (window.KOFx) KOFx.toggle(); return; }
     if (e.target.closest("[data-action=cur]")) { toggleCur(); return; }
-    if (e.target.closest(".bnav [data-action=menu]") && bnMenuTo() === "browse") { e.preventDefault(); if (kx) closeExplorer(true); closeMenu(); location.hash = "#/browse"; return; }
+    if (e.target.closest(".bnav [data-action=menu]") && bnMenuTo() === "browse") { e.preventDefault(); if (kx) closeExplorer(true); closeMenu(); navTo("#/browse"); return; }
     if (e.target.closest(".bnav [data-action=menu]") && bnMenuTo() === "drawer") { e.preventDefault(); if (kx) closeExplorer(true); $("[data-drawer]").hidden = false; return; }
     if (e.target.closest("[data-action=explore]") || (e.target.closest("[data-action=menu]") && (S.design.kx || {}).on !== false)) { e.preventDefault(); openExplorer(); return; }
     if (kx && e.target.closest(".bnav")) closeExplorer();
@@ -1994,7 +2054,7 @@ ${trustH()}
     if (e.target.closest("[data-action=search]")) { const t = $(".top"); t.classList.toggle("so"); if (t.classList.contains("so")) $("[data-search] input").focus(); }
     if (e.target.closest("[data-action=close-menu]") || e.target.matches("[data-drawer]")) closeMenu();
     const now = e.target.closest("[data-buynow]");
-    if (now) { addToCart(now.dataset.buynow, "", 1, true); location.hash = "#/checkout"; return; }
+    if (now) { addToCart(now.dataset.buynow, "", 1, true); navTo("#/checkout"); return; }
     if (e.target.closest("[data-ann-close]")) { try { localStorage.setItem("ko_ann_closed", C.announcement || ""); } catch {} $("[data-announce]").hidden = true; return; }
     const add = e.target.closest("[data-add]");
     if (add) { addToCart(add.dataset.add, "", 1); flyToCart(add); }
@@ -2002,7 +2062,7 @@ ${trustH()}
   $("[data-search]").addEventListener("submit", (e) => {
     e.preventDefault();
     const q = e.target.q.value.trim();
-    if (q) location.hash = "#/search/" + encodeURIComponent(q);
+    if (q) navTo("#/search/" + encodeURIComponent(q));
   });
   window.addEventListener("hashchange", route);
 
@@ -2134,7 +2194,7 @@ ${trustH()}
     if (!booted) { setData(st, data); chrome(); renderCount(); route(); return; }
     if (changed) {
       setData(st, data); chrome(); renderCount();
-      if (!/^#\/(checkout|done)/.test(location.hash)) route(null, true);
+      if (!/^\/(checkout|done)/.test(curRoute())) route(null, true);
     }
   }).catch((err) => {
     try { console.error("KO boot", err && err.stack || err); } catch {}

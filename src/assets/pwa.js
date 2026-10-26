@@ -78,7 +78,7 @@
   var cfg = { prompt: true, delay: 1, bar: BDEF }, B = BDEF, dp = null, cur = null, shown = false, busy = false, gone = false, t0 = Date.now();
   var recent = function (k) { return B.again > 0 && Date.now() - (+get(k) || 0) < B.again * 864e5; };
   var canAsk = function () { return pushOk && KOPush.permission() === "default"; };
-  var onHome = function () { var h = location.hash.replace(/^#/, ""); return h === "" || h === "/" || h === "/home"; };
+  var onHome = function () { var h = window.KORoute ? window.KORoute() : location.hash.replace(/^#/, ""); return h === "" || h === "/" || h === "/home"; };
 
   function hide(key) {
     if (cur) { var c = cur; cur = null; c.el.classList.remove("on"); setTimeout(function () { c.el.remove(); }, 450); clearTimeout(c.timer); }

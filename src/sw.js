@@ -1,13 +1,12 @@
 /* KO SPORT service worker — fast repeat visits + offline fallback.
    Products/prices are always fetched fresh from the network first. */
-const V = "ko-v85";
+const V = "ko-v90";
 const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
 const KEEP = [SHELL, ASSET, IMG, DATA];
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(SHELL).then((c) => c.add(new Request("/", { cache: "reload" }))).catch(() => {}));
-  self.skipWaiting();
-});
+// No pre-caching of the home page: a stored copy of "/" is what used to keep showing an old
+// shop after the owner saved. The home page is only kept as an offline fallback, after a real visit.
+self.addEventListener("install", (e) => { self.skipWaiting(); });
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
     for (const k of await caches.keys()) if (!KEEP.includes(k)) await caches.delete(k);
@@ -53,13 +52,15 @@ self.addEventListener("fetch", (e) => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== location.origin) return;
   const p = url.pathname;
-  if (p.startsWith("/admin") || p.startsWith("/media/") || p === "/sw.js" || req.headers.has("range")) return;
+  if (p.startsWith("/admin") || p.startsWith("/media/") || p === "/sw.js" || p === "/reset" || p.startsWith("/api/diag") || req.headers.has("range")) return;
 
   // pages: network first, fall back to the last cached home page
   if (req.mode === "navigate") {
     e.respondWith((async () => {
       try {
-        const r = await networkFirst(req, SHELL, 5000);
+        // Long timeout on purpose: on a slow connection waiting is right, serving a stale shop is not.
+        const r = await networkFirst(req, SHELL, 20000);
+        trim(SHELL, 25); // every /ar/… address is its own entry now
         return r;
       } catch {
         const c = await caches.open(SHELL);
@@ -72,7 +73,7 @@ self.addEventListener("fetch", (e) => {
   }
   if (p.startsWith("/api/")) {
     // only catalogue/settings reads are cached; everything else goes straight to the network
-    if (p === "/api/products" || p === "/api/settings") e.respondWith(networkFirst(req, DATA, 4000));
+    if (p === "/api/products" || p === "/api/settings") e.respondWith(networkFirst(new Request(url.origin + p, req), DATA, 20000));
     return;
   }
   if (p.startsWith("/assets/")) { e.respondWith(url.searchParams.has("v") ? cacheFirst(req, ASSET, 80) : swr(req, ASSET, 80)); return; }

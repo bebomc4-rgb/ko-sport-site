@@ -107,7 +107,7 @@
         i.className = "fx-rip"; i.style.cssText = "width:" + s + "px;height:" + s + "px;left:" + (e.clientX - r.left - s / 2) + "px;top:" + (e.clientY - r.top - s / 2) + "px";
         b.appendChild(i); setTimeout(function () { i.remove(); }, 650);
       }, { passive: true });
-      addEventListener("hashchange", function () { if (FX.confetti && /^#\/done\//.test(location.hash)) setTimeout(confetti, 350); });
+      addEventListener("hashchange", function () { if (FX.confetti && /^\/done\//.test(window.KORoute ? window.KORoute() : location.hash.replace(/^#/, ""))) setTimeout(confetti, 350); });
     }
   }
   // images: mark as loaded so the fade/blur-in can play (never leaves an image hidden: a timer reveals everything after 3s)

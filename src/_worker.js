@@ -5,6 +5,9 @@
 //   Secret        ADMIN_PASSWORD  (dashboard password)
 //   Optional      TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (instant order alerts)
 
+// Replaced by build.mjs with the moment this copy was built — so we can tell which deploy is live.
+const BUILD_AT = "__BUILD_AT__";
+
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
     status,
@@ -79,6 +82,71 @@ async function edgeCached(name, ctx, produce) {
 }
 async function purgeEdge(name) {
   if (typeof caches !== "undefined") await caches.default.delete(edgeKey(name));
+}
+
+// /reset — wipes everything this browser kept for the shop (service worker, caches, saved copy)
+// and reloads. The one page that always shows the live site, whatever a device cached before.
+function resetPage() {
+  const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>تصفير النسخة المحفوظة</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#121212;color:#fff;font-family:system-ui,Tahoma,sans-serif;text-align:center;padding:24px}
+.b{max-width:380px}h2{margin:0 0 10px;font-size:20px}p{margin:0 0 18px;color:#bbb;line-height:1.7;font-size:15px}
+#s{font-size:15px;min-height:26px}a{display:inline-block;margin-top:16px;background:#e11d2e;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:700}</style>
+</head><body><div class="b"><h2>عم نصفّر النسخة المحفوظة</h2>
+<p>رح نمسح كل شي خزّنو هالمتصفح عن المتجر، وبعدها يفتح الموقع بآخر نسخة.</p>
+<div id="s">… لحظة</div><a id="go" href="/" hidden>افتح المتجر</a></div>
+<script>(async function(){var s=document.getElementById("s"),d=[];
+try{if("serviceWorker" in navigator){var rs=await navigator.serviceWorker.getRegistrations();for(var i=0;i<rs.length;i++)await rs[i].unregister();d.push("ألغينا "+rs.length+" service worker")}}catch(e){}
+try{if(window.caches){var ks=await caches.keys();for(var j=0;j<ks.length;j++)await caches.delete(ks[j]);d.push("مسحنا "+ks.length+" كاش")}}catch(e){}
+try{localStorage.clear();sessionStorage.clear();d.push("مسحنا النسخة المحفوظة")}catch(e){}
+s.innerHTML="✅ "+(d.join("<br>")||"ما كان في شي محفوظ")+"<br><br>عم نفتح الموقع…";
+document.getElementById("go").hidden=false;
+setTimeout(function(){location.replace("/?fresh="+Date.now())},1600);})()<\/script></body></html>`;
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+}
+
+// Public health check: compares what the dashboard wrote to KV against what visitors actually receive.
+// No secrets — only counts — so it is safe to open from a phone.
+async function diagApi(request, env) {
+  const out = { build: BUILD_AT, host: new URL(request.url).host, kvBound: !!env.STORE };
+  if (!env.STORE) return json(out);
+  try {
+    const kvS = (await env.STORE.get("settings", "json")) || null;
+    const kvP = await env.STORE.get("products", "json");
+    out.kv = {
+      settingsSaved: !!kvS,
+      slides: ((kvS && kvS.design && kvS.design.slides) || []).length,
+      sections: ((kvS && kvS.home && kvS.home.sections) || []).length,
+      sectionsOn: ((kvS && kvS.home && kvS.home.sections) || []).filter((x) => x.on !== false).length,
+      groups: ((kvS && kvS.design && kvS.design.groups) || []).length,
+      productsSaved: Array.isArray(kvP),
+      products: Array.isArray(kvP) ? kvP.length : 0,
+    };
+    const pub = await getSettings(env, request);
+    out.public = {
+      slides: ((pub.design || {}).slides || []).length,
+      sections: ((pub.home || {}).sections || []).length,
+      groups: ((pub.design || {}).groups || []).length,
+      usingKvHome: !!(kvS && kvS.home && Array.isArray(kvS.home.sections)),
+    };
+    const list = await getProducts(env, request);
+    out.public.products = list.length;
+    out.public.visible = list.filter((p) => !p.hidden).length;
+    out.public.inStock = list.filter((p) => !p.hidden && p.inStock).length;
+    const cache = typeof caches !== "undefined" ? caches.default : null;
+    out.edgeCache = cache ? { settings: !!(await cache.match(edgeKey("settings"))), products: !!(await cache.match(edgeKey("products"))) } : "unavailable";
+    // ?full=1 — exactly what the home page will build, so a mismatch with what the owner sees is visible at a glance
+    if (new URL(request.url).searchParams.has("full")) {
+      const D = pub.design || {}, vis = list.filter((p) => !p.hidden);
+      out.slides = (D.slides || []).map((s, i) => ({ n: i + 1, title: s.title || "", img: s.img ? "yes" : "NO", imgMobile: s.imgMobile ? "yes" : "no" }));
+      out.sections = ((pub.home || {}).sections || []).map((s, i) => ({ n: i + 1, type: s.type, on: s.on !== false, title: s.title || "", count: s.count || "" }));
+      out.groupRows = (D.groups || []).map((g) => {
+        const match = vis.filter((p) => p.inStock && (g.cats || []).some((c) => p.category === c || (p.also || []).includes(c)));
+        return { name: g.name, cats: g.cats || [], totalInStock: match.length, showsOnHome: match.slice(0, 12).length, firstShown: match.slice(0, 12).map((p) => p.name) };
+      });
+    }
+  } catch (e) { out.error = String((e && e.message) || e).slice(0, 200); }
+  return json(out);
 }
 
 // Site settings: defaults from settings.default.json, overridden by what was saved in the dashboard.
@@ -1164,9 +1232,9 @@ async function oldWuiltLink(request, env, url) {
     const slug = strip(m[1]);
     const list = await getProducts(env, request);
     const p = list.find((x) => x.oldUrl && strip(x.oldUrl.split("/").pop()) === slug);
-    if (p) return go("/#/p/" + encodeURIComponent(p.id));
+    if (p) return go("/ar/p/" + encodeURIComponent(p.id));
   }
-  if (/\/(page|shop|store|category|categories|collections?|products?)(\/|$)/.test(url.pathname)) return go("/#/all");
+  if (/\/(page|shop|store|category|categories|collections?|products?)(\/|$)/.test(url.pathname)) return go("/ar/all");
   return go("/");
 }
 
@@ -1620,7 +1688,7 @@ function orderText(o, origin) {
     `👤 ${c.name}`,
     `📞 ${c.phone}`,
     where,
-    `🛒 الطلب ${o.id}: ${origin}/#/o/${encodeURIComponent(o.id)}`,
+    `🛒 الطلب ${o.id}: ${origin}/ar/o/${encodeURIComponent(o.id)}`,
     ...lines,
     ...tot,
     c.notes ? `📝 ملاحظة: ${c.notes}` : "",
@@ -1758,7 +1826,7 @@ async function catalogApi(request, env, ctx, kind) {
 async function productShare(request, env, ctx, id) {
   const data = await catalogData(request, env, ctx).catch(() => null);
   const p = data && data.products.find((x) => x.id === id);
-  const go = "/#/p/" + encodeURIComponent(id), e = (t) => String(t || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const go = "/ar/p/" + encodeURIComponent(id), e = (t) => String(t || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const title = p ? `${p.name} — $${p.price_usd}${p.price_syp ? ` (${p.price_syp.toLocaleString("en-US")} ل.س)` : ""}` : (data && data.store.name) || "";
   const desc = p ? (p.description || `${p.category} · ${p.in_stock ? "متوفر" : "خالص"}`).slice(0, 200) : "";
   const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${e(title)}</title><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1781,6 +1849,7 @@ export default {
     const path = url.pathname;
     const m = request.method;
     try {
+      if (path === "/api/diag" && m === "GET") return diagApi(request, env);
       if (path.startsWith("/api/") && !env.STORE) return json({ error: "مخزن KV مو مربوط بإعدادات المشروع (الموجود: " + (Object.keys(rawEnv).filter((k) => k !== "ASSETS").join("، ") || "ولا شي") + ")" }, 500);
       if (path.startsWith("/api/") && request.headers.has("authorization")) {
         await resolveRole(request, env);
@@ -1797,6 +1866,7 @@ export default {
             if (man.shortcuts) man.shortcuts.forEach((x) => { x.icons = [{ src: D.appIcon192, sizes: "192x192" }]; });
           }
           if (st.store && st.store.name) { man.short_name = String(st.store.name).slice(0, 20); }
+          man.start_url = "/ar/";
           return new Response(JSON.stringify(man), { headers: { "content-type": "application/manifest+json; charset=utf-8", "cache-control": "public, max-age=300" } });
         } catch {}
       }
@@ -1805,6 +1875,21 @@ export default {
       if ((path === "/api/catalog.txt" || path === "/catalog.txt") && m === "GET" && env.STORE) return catalogApi(request, env, ctx, "txt");
       if (path.startsWith("/p/") && m === "GET" && env.STORE) return productShare(request, env, ctx, decodeURIComponent(path.slice(3)));
       if (path.startsWith("/s/") && m === "GET" && env.STORE) { const c = path.slice(3).toLowerCase(), d = await catalogData(request, env, ctx).catch(() => null), hit = d && d.products.find((x) => shortCode(x.id) === c); return hit ? productShare(request, env, ctx, hit.id) : Response.redirect(new URL("/", request.url).href, 302); }
+      if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
+      if (path === "/reset" && m === "GET") return resetPage();
+      // The shop lives under /ar/… : /ar/, /ar/cart, /ar/p/<id> … every address is a real page now.
+      if (m === "GET" && (path === "/ar" || path.startsWith("/ar/"))) {
+        const r = await env.ASSETS.fetch(new URL("/index.html", request.url));
+        const out = new Response(r.body, r);
+        out.headers.set("content-type", "text/html; charset=utf-8");
+        out.headers.set("cache-control", "public, max-age=0, must-revalidate");
+        // only the shop front gets the server-rendered hero; deeper pages are drawn by the app
+        return path === "/ar" || path === "/ar/" ? homePage(request, env, out) : out;
+      }
+      // someone typing an old-style address lands on the right page instead of a 404
+      if (m === "GET" && /^\/(all|cart|checkout|account|browse|games|search|done|c|g)(\/|$)/.test(path)) {
+        return Response.redirect(new URL("/ar" + path + url.search, request.url).href, 302);
+      }
       if (path === "/api/rate" && (m === "GET" || m === "POST")) return fxApi(request, env, ctx);
       if (path === "/api/order-items" && m === "GET") return orderItemsGet(request, env);
       if (path === "/api/settings") {
