@@ -939,21 +939,16 @@ body.has-sticky .wa-float{display:none}
 .car-track::-webkit-scrollbar{display:none}
 .car-i{flex:0 0 var(--cw);min-width:0;display:flex;position:relative;scroll-snap-align:center;scroll-snap-stop:normal;contain:layout style}
 .car-i *{scroll-snap-align:none!important}
-.car .car-i>*{flex:1 1 auto;width:100%;min-width:0;margin:0;transform-origin:center;transition:box-shadow .3s,border-color .3s;backface-visibility:hidden}
-.car .car-i.on>*{will-change:transform}
+.car .car-i>*{flex:1 1 auto;width:100%;min-width:0;margin:0;position:relative;transform-origin:center;transition:box-shadow .3s,border-color .3s;backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform}
+.car-dim{position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;background:var(--c-page-bg,var(--paper,#fff));opacity:0;will-change:opacity}
+.car-hero .car-dim{background:#000}
+.car{isolation:isolate}
 .car[style*="--cimg"] .card .pic,.car[style*="--cimg"] .cat-tile img,.car[style*="--cimg"] .video,.car[style*="--cimg"] .feature{background:var(--cimg)}
 .car.no-names .cat-tile b,.car.no-names .cat-tile span{display:none}
 .car-cats .cat-tile{display:block}
 /* effects — driven by --d (distance from the middle, in items) that the script updates while it moves */
 /* side items shrink towards the middle, so the bit that peeks in from the edge stays visible */
-.car.car-fx-scale .car-i>*,.car.car-fx-cover .car-i>*,.car.car-fx-rise .car-i>*,.car.car-fx-fade .car-i>*{transform-origin:calc(50% - var(--dc,0) * 50%) center}
-.car.car-fx-scale .car-i>*{transform:scale(calc(1 - (1 - var(--side,.86)) * min(var(--ad,0),1)));opacity:calc(1 - min(var(--ad,0),1) * .12)}
-.car.car-fx-fade .car-i>*{transform:scale(calc(1 - min(var(--ad,0),1) * .04));opacity:calc(1 - min(var(--ad,0),1) * .62)}
-.car.car-fx-cover .car-i>*{transform:perspective(900px) rotateY(calc(var(--dc,0) * -36deg)) scale(calc(1 - (1 - var(--side,.86)) * min(var(--ad,0),1)));opacity:calc(1 - min(var(--ad,0),1) * .14)}
-.car.car-fx-stack .car-i>*{transform:translateX(calc(var(--d,0) * -40%)) scale(max(.35,calc(1 - (1 - var(--side,.86)) * 1.6 * min(var(--ad,0),1.6))));opacity:calc(1 - min(var(--ad,0),1) * .16)}
-.car.car-fx-rise .car-i>*{transform:translateY(calc(min(var(--ad,0),1) * 22px)) scale(calc(1 - (1 - var(--side,.86)) * min(var(--ad,0),1)))}
 .car.car-fx-rise .car-i.on>*{box-shadow:0 22px 40px -18px rgba(0,0,0,.38)}
-.car.car-fx-flat .car-i>*{transform:none}
 /* shapes */
 .car.car-sh-round .car-i>*{border-radius:26px;overflow:hidden}
 .car.car-sh-round .card .pic img{border-radius:0}
@@ -987,9 +982,11 @@ body.has-sticky .wa-float{display:none}
 .slider.fx-zoom .slide.on{transform:none}
 .slider.fx-zoom .slide.out{transform:scale(.9)}
 /* blur: comes into focus */
-.slider.fx-blur .slide{transform:scale(1.05);filter:blur(18px);transition:opacity 1.1s cubic-bezier(.4,0,.2,1),transform 1.35s cubic-bezier(.2,.8,.2,1),filter 1.1s ease,visibility 0s linear 1.1s}
+.slider.fx-blur .slide{transform:scale(1.05)}
+.slider.fx-blur .slide picture{filter:blur(8px);transition:filter .9s ease}
+.slider.fx-blur .slide.on picture{filter:none}
 .slider.fx-blur .slide.on{transform:none;filter:none;transition:opacity 1.1s cubic-bezier(.4,0,.2,1),transform 1.35s cubic-bezier(.2,.8,.2,1),filter 1.1s ease,visibility 0s}
-.slider.fx-blur .slide.out{filter:blur(12px);transform:scale(1.02)}
+.slider.fx-blur .slide.out{transform:scale(1.02)}
 /* wipe: a curtain opens from the right to the left */
 .slider.fx-wipe .slide{transform:none;opacity:0;clip-path:inset(0 var(--wr,0%) 0 var(--wl,100%));transition:clip-path 1.15s cubic-bezier(.7,0,.2,1),opacity 0s linear 1.15s,visibility 0s linear 1.15s}
 .slider.fx-wipe .slide.on{z-index:2;opacity:1;clip-path:inset(0);transition:clip-path 1.15s cubic-bezier(.7,0,.2,1),opacity 0s,visibility 0s}
@@ -1836,3 +1833,6 @@ html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx svg{animation:no
 html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx::before,html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx::after{display:none!important}
 html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx[style*="--bi"] svg{color:var(--bi)!important}
 @media (prefers-reduced-motion:reduce){html[data-bn-jump=on] body[data-page=home] .bnav .bn-fx{animation:none}}
+
+/* v91: moving carousels never use live blur (glass) — it forced a full repaint every frame */
+.car .car-i>*,.car .car-i .card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}

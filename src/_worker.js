@@ -1848,6 +1848,14 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     const m = request.method;
+    // the main address ko-sport.online opens the shop at /ar (the app opens that same address)
+    if (url.hostname === "ko-sport.online" && path === "/" && m === "GET") {
+      return Response.redirect("https://ko-sport.online/ar" + url.search, 301);
+    }
+    // ko-sport.pages.dev → ko-sport.online (pages only; /api and /media stay reachable for the bot and the app)
+    if (url.hostname === "ko-sport.pages.dev" && m === "GET" && !path.startsWith("/api/") && !path.startsWith("/media/")) {
+      return Response.redirect("https://ko-sport.online" + path + url.search, 301);
+    }
     try {
       if (path === "/api/diag" && m === "GET") return diagApi(request, env);
       if (path.startsWith("/api/") && !env.STORE) return json({ error: "مخزن KV مو مربوط بإعدادات المشروع (الموجود: " + (Object.keys(rawEnv).filter((k) => k !== "ASSETS").join("، ") || "ولا شي") + ")" }, 500);

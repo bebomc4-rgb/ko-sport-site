@@ -927,6 +927,23 @@
       let step = 0, pos = loop ? n : 0, cur = -1, anim = null, drag = null, dragged = 0, dead = false, loopRaf = 0, frame = 0;
       let seen = !("IntersectionObserver" in window), hold = 0, t0 = performance.now(), last = t0;
       const dv = new Array(its.length);
+      // the look of every item is computed here and written straight to its transform/opacity (GPU only).
+      // No CSS variables per item → the browser never has to re-style the cards while they move.
+      const fx = (car.className.match(/car-fx-(\w+)/) || [])[1] || "scale", side = parseFloat(getComputedStyle(car).getPropertyValue("--side")) || 0.86;
+      const kids = its.map((el) => el.firstElementChild || el);
+      const dims = new Array(its.length);
+      const dimOf = (k) => { let x = dims[k]; if (!x) { x = document.createElement("i"); x.className = "car-dim"; kids[k].appendChild(x); dims[k] = x; } return x; };
+      const look = (vd, ad) => {
+        const c1 = Math.min(ad, 1), dc = Math.max(-1, Math.min(1, vd));
+        let tf = "", op = 1, dm = 0, s;
+        if (fx === "scale") { s = 1 - (1 - side) * c1; tf = `translate3d(${(-dc * (1 - s) * 50).toFixed(2)}%,0,0) scale(${s.toFixed(4)})`; dm = c1 * 0.2; }
+        else if (fx === "fade") { s = 1 - c1 * 0.04; tf = `scale(${s.toFixed(4)})`; op = 1 - c1 * 0.62; }
+        else if (fx === "cover") { s = 1 - (1 - side) * c1; tf = `translate3d(${(-dc * (1 - s) * 50).toFixed(2)}%,0,0) perspective(1000px) rotateY(${(-dc * 38).toFixed(2)}deg) scale(${s.toFixed(4)})`; dm = c1 * 0.28; }
+        else if (fx === "stack") { const k = Math.min(ad, 1.6); s = Math.max(0.35, 1 - (1 - side) * 1.6 * k); tf = `translate3d(${(-vd * 40).toFixed(2)}%,${(k * 5).toFixed(1)}px,0) scale(${s.toFixed(4)})`; dm = Math.min(0.5, k * 0.22); op = ad > 2 ? Math.max(0, 1 - (ad - 2)) : 1; }
+        else if (fx === "rise") { s = 1 - (1 - side) * c1; tf = `translate3d(${(-dc * (1 - s) * 50).toFixed(2)}%,${(c1 * 22).toFixed(1)}px,0) scale(${s.toFixed(4)})`; dm = c1 * 0.1; }
+        else tf = "none";
+        return { tf, op, dm };
+      };
       const measure = () => { step = its.length > 1 ? Math.abs(its[1].getBoundingClientRect().left - its[0].getBoundingClientRect().left) : its[0].getBoundingClientRect().width; if (!step) step = its[0].offsetWidth || 1; };
       const wrap = () => { // stay inside the middle copy; the copies are identical, so the jump is invisible
         if (!loop) return 0;
@@ -942,9 +959,10 @@
         for (let k = 0; k < its.length; k++) {
           const d = k < from || k > to ? (k < c ? -3 : 3) : Math.max(-3, Math.min(3, k - pos));
           const q = Math.round(d * 500); if (dv[k] === q) continue; dv[k] = q;
-          const st = its[k].style, vd = d * vs, ad = Math.abs(d);
-          st.setProperty("--d", vd.toFixed(3)); st.setProperty("--ad", ad.toFixed(3)); st.setProperty("--dc", Math.max(-1, Math.min(1, vd)).toFixed(3));
-          st.zIndex = String(20 - Math.round(ad * 2));
+          const vd = d * vs, ad = Math.abs(d), L = look(vd, ad), ks = kids[k].style;
+          ks.transform = L.tf; ks.opacity = L.op === 1 ? "" : L.op.toFixed(3);
+          if (L.dm > 0.005 || dims[k]) dimOf(k).style.opacity = L.dm.toFixed(3);
+          its[k].style.zIndex = String(20 - Math.round(ad * 2));
         }
         const best = Math.max(0, Math.min(its.length - 1, c));
         if (best !== cur) {
@@ -1061,12 +1079,11 @@
         dots.forEach((d, k) => d.classList.toggle("on", k === i));
         const nb = sp.querySelector("[data-sp-n]"); if (nb) nb.textContent = i + 1;
       };
-      sp.querySelectorAll("[data-sp-step]").forEach((b) => (b.onclick = () => { go(cur + +b.dataset.spStep); hold = Date.now() + 6000; }));
-      dots.forEach((d, k) => (d.onclick = () => { go(k); hold = Date.now() + 6000; }));
+      sp.querySelectorAll("[data-sp-step]").forEach((b) => (b.onclick = () => { go(cur + +b.dataset.spStep); hold = Date.now() + 1500; }));
+      dots.forEach((d, k) => (d.onclick = () => { go(k); hold = Date.now() + 1500; }));
       let sx = null;
-      sp.addEventListener("pointerdown", (e) => { sx = e.clientX; hold = Date.now() + 6000; }, { passive: true });
+      sp.addEventListener("pointerdown", (e) => { sx = e.clientX; hold = Date.now() + 2500; }, { passive: true });
       sp.addEventListener("pointerup", (e) => { if (sx == null) return; const dx = e.clientX - sx; sx = null; if (Math.abs(dx) > 40) go(dx < 0 ? cur + 1 : cur - 1); }, { passive: true });
-      sp.addEventListener("mouseenter", () => (hold = Date.now() + 3000));
       const secs = +sp.dataset.spot; if (!secs) return;
       const t = setInterval(() => { if (!document.contains(sp)) { clearInterval(t); return; } if (!document.hidden && Date.now() > hold) go(cur + dirSign()); }, secs * 1000);
       spotTimers.push(t);
