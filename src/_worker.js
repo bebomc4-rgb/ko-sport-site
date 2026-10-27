@@ -1218,6 +1218,8 @@ async function galleryCopy(request, env) {
   return json({ done, writes, stopped });
 }
 
+// Same helper as the shop: resized copy of one of our own photos (Cloudflare Image Transformations), original if anything else.
+const imgW = (u, w) => /^\/img\/[a-z0-9]+$/.test(u || "") ? `/cdn-cgi/image/width=${w},quality=75,format=auto,onerror=redirect${u}` : (u || "");
 async function imageGet(request, env, ctx, key) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const hit = cache && (await cache.match(request));
@@ -1430,7 +1432,7 @@ function slideShell(sl, h, shape) {
   const size = Math.min(30, Math.max(14, Number(sl.size) || 18));
   const btn = (b, cls) => (b && b.text ? `<a class="btn ${cls}" href="${h(b.link || "#/all")}">${h(b.text)}</a>` : "");
   return `<section class="slider${shape ? " sh-" + shape : ""}"><div class="sl-track" dir="ltr"><div class="slide" data-align="${al}" style="--tc:${h(sl.color || "#ffffff")};--ts:${size}px">` +
-    (sl.img ? `<picture>${sl.imgMobile ? `<source media="(max-width:640px)" srcset="${h(sl.imgMobile)}">` : ""}<img src="${h(sl.img)}" alt="${h(sl.title || "")}" width="1600" height="500" fetchpriority="high"></picture>` : "") +
+    (sl.img ? `<picture><source media="(max-width:640px)" srcset="${h(imgW(sl.imgMobile || sl.img, 828))}"><img src="${h(imgW(sl.img, 1280))}" alt="${h(sl.title || "")}" width="1600" height="500" fetchpriority="high"></picture>` : "") +
     `<div class="sl-text">${sl.title ? `<h2>${h(sl.title)}</h2>` : ""}${sl.subtitle ? `<p>${h(sl.subtitle)}</p>` : ""}<div class="sl-btns">${btn(sl.btn1, "btn-red")}${btn(sl.btn2, "btn-light")}</div></div></div></div></section>`;
 }
 

@@ -12,6 +12,11 @@
   // ---------- helpers ----------
   const NOIMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect width='10' height='10' fill='%23ebe7df'/%3E%3C/svg%3E";
   const img = (u) => u || NOIMG;
+  // Resized copies made by Cloudflare (Image Transformations): the same photo, sized for the screen, a fraction of the KB.
+  // onerror=redirect → if the free monthly quota ever runs out, the original photo is served instead (nothing breaks).
+  const LOCAL_IMG = /^\/img\/[a-z0-9]+$/;
+  const imgW = (u, w) => LOCAL_IMG.test(u || "") ? `/cdn-cgi/image/width=${w},quality=75,format=auto,onerror=redirect${u}` : (u || NOIMG);
+  const imgSet = (u, ws, sizes) => LOCAL_IMG.test(u || "") ? ` srcset="${ws.map((w) => imgW(u, w) + " " + w + "w").join(", ")}" sizes="${sizes}"` : "";
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   let LAY = {}; // current layout (from the design template)
   let arFmt = null;
@@ -491,7 +496,7 @@
     const promo = p.inStock && cb && !isDiscText ? `<span class="promo">${ICON.ticket}${esc(cb)}</span>` : "";
     return `<article class="card${p.inStock ? "" : " out"}">
       ${promo}
-      <a class="pic" href="#/p/${encodeURIComponent(p.id)}"><img loading="lazy" decoding="async" width="360" height="360" src="${esc(img(p.thumb || p.image))}" alt="${esc(p.name)}">${p.inStock ? "" : '<span class="out-stamp">خالص</span>'}</a>
+      <a class="pic" href="#/p/${encodeURIComponent(p.id)}"><img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(p.thumb || p.image, 540))}"${imgSet(p.thumb || p.image, [360, 540, 800], "(max-width:640px) 86vw, 340px")} alt="${esc(p.name)}">${p.inStock ? "" : '<span class="out-stamp">خالص</span>'}</a>
       <div class="body">
         <a class="name" href="#/p/${encodeURIComponent(p.id)}">${esc(p.name)}</a>
         ${stars(p.rt)}
@@ -525,7 +530,7 @@
     const size = Math.min(30, Math.max(14, +sl.size || 18));
     const btn = (b, cls) => (b && b.text ? `<a class="btn ${cls}" href="${esc(b.link || "#/all")}">${esc(b.text)}</a>` : "");
     return `<div class="slide" data-align="${al}" style="--tc:${esc(sl.color || "#ffffff")};--ts:${size}px">` +
-      (sl.img ? `<picture>${sl.imgMobile ? `<source media="(max-width:640px)" srcset="${esc(sl.imgMobile)}">` : ""}<img src="${esc(sl.img)}" alt="${esc(sl.title || "")}" width="1600" height="500" ${first ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'}></picture>` : "") +
+      (sl.img ? `<picture><source media="(max-width:640px)" srcset="${esc(imgW(sl.imgMobile || sl.img, 828))}"><img src="${esc(imgW(sl.img, 1280))}" alt="${esc(sl.title || "")}" width="1600" height="500" ${first ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'}></picture>` : "") +
       `<div class="sl-text">${sl.title ? `<h2>${esc(sl.title)}</h2>` : ""}${sl.subtitle ? `<p>${esc(sl.subtitle)}</p>` : ""}<div class="sl-btns">${btn(sl.btn1, "btn-red")}${btn(sl.btn2, "btn-light")}</div></div></div>`;
   }
   const HERO_FX = ["fade", "zoom", "blur", "wipe", "dip", "slide", "flip", "rise", "circle", "spin", "split", "xfade"], HERO_SH = ["theme", "full", "round", "curve", "peek"];
@@ -607,7 +612,7 @@
       // look of each collection (sec.tStyle), its texts (count word, button) and name size
       const tst = ["classic", "circle", "overlay", "chip", "btn", "card", "luxe"].includes(sec.tStyle) ? sec.tStyle : "classic";
       const cntW = sec.countText == null || sec.countText === "" ? "منتج" : String(sec.countText).slice(0, 20), btnT = String(sec.btnText || "").slice(0, 24).trim();
-      const tileH = (c) => `<a class="cat-tile" href="${cHref(c.name)}">${tst === "btn" ? "" : `<img loading="lazy" decoding="async" width="360" height="360" src="${esc(img(c.image))}" alt="${esc(catLabel(c.name))}">`}<b>${esc(catLabel(c.name))}</b>${sec.showCount === false ? "" : `<span>${c.count} ${esc(cntW)}</span>`}${btnT ? `<i class="ct-btn">${esc(btnT)}</i>` : ""}</a>`;
+      const tileH = (c) => `<a class="cat-tile" href="${cHref(c.name)}">${tst === "btn" ? "" : `<img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(c.image, 360))}" alt="${esc(catLabel(c.name))}">`}<b>${esc(catLabel(c.name))}</b>${sec.showCount === false ? "" : `<span>${c.count} ${esc(cntW)}</span>`}${btnT ? `<i class="ct-btn">${esc(btnT)}</i>` : ""}</a>`;
       const look = ["cst-" + tst, ["s", "l"].includes(sec.nameSize) ? "cns-" + sec.nameSize : ""].filter(Boolean).join(" ");
       if (sec.layout === "spot") return secHead(sec.showTitle === false ? "" : sec.title, "#/all") + `<div class="${look}">${spot(sec, sorted.map(tileH), "spot-cats")}</div>`;
       if (sec.layout === "car") return secHead(sec.showTitle === false ? "" : sec.title, "#/all") + `<div class="${look}">${carousel(sec, sorted.map(tileH), "car-cats")}</div>`;
@@ -1502,7 +1507,7 @@
     if (!lines.length) { app.innerHTML = `<div class="empty"><b>السلة فاضية</b><a class="btn btn-dark" href="#/" style="margin-top:12px">ابدأ التسوق</a></div>`; return; }
     app.innerHTML = `<div class="cart-head"><h1 class="page-title">السلة</h1><button type="button" class="clear-cart" data-clear-cart>🗑 حذف كامل السلة</button></div><div class="cart-wrap">
       <div class="lines">${lines.map((l, i) => `<div class="line">
-        <img src="${esc(img(l.p.thumb || l.p.image))}" alt="" decoding="async">
+        <img src="${esc(imgW(l.p.thumb || l.p.image, 200))}" alt="" decoding="async">
         <div><a class="nm" href="#/p/${encodeURIComponent(l.p.id)}">${esc(l.p.name)}</a>${l.opt ? `<div class="op">${esc(l.opt)}</div>` : ""}
           ${l.p.inStock ? "" : `<div class="op" style="color:var(--red)">صار خالص — شيله من السلة</div>`}
           <div class="ctrl"><div class="qty"><button data-lq="${i}" data-d="1">+</button><input value="${l.qty}" readonly aria-label="الكمية"><button data-lq="${i}" data-d="-1">−</button></div><button class="rm" data-rm="${i}" aria-label="حذف المنتج">🗑 حذف</button></div></div>
@@ -1579,7 +1584,7 @@ ${trustH()}
         ${S.delivery.note ? `<div class="note">${esc(S.delivery.note)}</div>` : ""}
       </form>
       <div class="summary co-sum"><h3>🧾 طلبك (${lines.reduce((a, l) => a + l.qty, 0)} قطعة)</h3>
-        <div class="co-items">${lines.map((l) => `<div class="co-i"><img src="${esc(img(l.p.thumb || l.p.image))}" alt="" loading="lazy"><span class="co-n">${esc(l.p.name)}${l.opt ? `<small>${esc(l.opt)}</small>` : ""}<small>الكمية: ${l.qty}${prodPct(l.p) ? ` · <b class="co-pct">حسم ${prodPct(l.p)}%</b>` : ""}</small></span><span class="co-p">${priceH(l.p, l.qty)}</span></div>`).join("")}</div>
+        <div class="co-items">${lines.map((l) => `<div class="co-i"><img src="${esc(imgW(l.p.thumb || l.p.image, 200))}" alt="" loading="lazy"><span class="co-n">${esc(l.p.name)}${l.opt ? `<small>${esc(l.opt)}</small>` : ""}<small>الكمية: ${l.qty}${prodPct(l.p) ? ` · <b class="co-pct">حسم ${prodPct(l.p)}%</b>` : ""}</small></span><span class="co-p">${priceH(l.p, l.qty)}</span></div>`).join("")}</div>
         <div class="sum-row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px"><span>المجموع قبل الحسم</span><b>${money(sub)}</b></div>
         <div class="sum-row disc" data-disc-row hidden><span data-disc-name></span><b data-disc-amt></b></div>
         <div class="sum-row"><span>التوصيل</span><span data-fee>اختار المحافظة</span></div>
@@ -1862,7 +1867,7 @@ ${trustH()}
   function browse() {
     document.title = "المتجر | " + (C.name || "");
     const inStock = products.filter((p) => p.inStock).length;
-    const cimg = (c) => { if (c.image) return img(c.image); const p = products.find((x) => x.inStock && inCat(x, c.name)) || products.find((x) => inCat(x, c.name)); return p ? img(p.thumb || p.image) : ""; };
+    const cimg = (c) => { if (c.image) return imgW(c.image, 420); const p = products.find((x) => x.inStock && inCat(x, c.name)) || products.find((x) => inCat(x, c.name)); return p ? imgW(p.thumb || p.image, 420) : ""; };
     const seen = new Set();
     const card = (c, k) => { seen.add(c.name); const u = cimg(c); return `<a class="br-card" href="${cHref(c.name)}" style="--i:${k}">${u ? `<img loading="lazy" decoding="async" src="${esc(u)}" alt="">` : ""}<span class="br-n"><b>${esc(catLabel(c.name))}</b><small>${c.count} منتج</small></span></a>`; };
     const groups = C.groups.map((g, i) => {
