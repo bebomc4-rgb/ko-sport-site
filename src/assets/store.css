@@ -1844,10 +1844,12 @@ html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx[style*="--bi"] s
 /* sections lower down the home page are drawn only when they come near the screen (faster first load) */
 .hsec.hs-categories:nth-child(n+3){content-visibility:auto;contain-intrinsic-size:auto 420px}
 
-/* ----- bottom bar «موجة»: الشريط بلونو (بيتبدل مع الوضع الليلي)، والزر الحالي فتحة بشكل موجة باللون المعكوس ----- */
+/* ----- bottom bar «موجة»: الشريط بلونو (بيتبدل مع الوضع الليلي)، وأيقونة الزر الحالي طالعة لفوق بدائرة باللون المعكوس،
+   وحواليها حلقة بلون الصفحة فبيبين الشريط كأنو فيه فتحة منحنية ----- */
 @media (max-width:900px){
   [data-l-nav=on] .bnav[data-bnav]{background:var(--bn-bg,var(--c-hdr-bg));color:var(--bn-fg,var(--c-hdr-fg));overflow:visible}
-  [data-l-nav=on] .bnav a.on,[data-l-nav=on] .bnav button.on{align-self:stretch;margin:-6px 3px calc(-6px - env(safe-area-inset-bottom));padding-top:8px;padding-bottom:6px;background:var(--bn-fg,#121212);color:var(--bn-bg,#fff);border-radius:0 0 999px 999px/0 0 26px 26px;box-shadow:inset 0 8px 12px -6px rgba(0,0,0,.35);font-weight:700;opacity:1}
+  [data-l-nav=on] .bnav a.on,[data-l-nav=on] .bnav button.on{background:none!important;color:var(--bn-fg,inherit)!important;font-weight:800;opacity:1}
   [data-l-nav=on] .bnav a.on::after,[data-l-nav=on] .bnav button.on::after{content:none!important;display:none!important}
-  [data-l-nav=on] .bnav a.on svg,[data-l-nav=on] .bnav button.on svg,[data-l-nav=on] .bnav a.on span,[data-l-nav=on] .bnav button.on span{color:var(--bn-bg,#fff)!important}
+  [data-l-nav=on] .bnav a.on span:not(.cart-count),[data-l-nav=on] .bnav button.on span:not(.cart-count){color:var(--bn-fg,inherit)!important}
+  [data-l-nav=on] .bnav a.on svg,[data-l-nav=on] .bnav button.on svg{box-sizing:content-box;padding:9px;margin-top:-30px;background:var(--bn-fg,#121212);color:var(--bn-bg,#fff)!important;border-radius:50%;border:6px solid var(--paper,#fff);box-shadow:0 6px 14px rgba(0,0,0,.22);transition:margin .3s,transform .3s}
 }
