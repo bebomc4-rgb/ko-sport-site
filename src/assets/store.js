@@ -949,8 +949,10 @@
     const bg = sec.noBg ? "transparent" : /^#[0-9a-f]{6}$/i.test(sec.bg || "") ? sec.bg : "";
     const it = (h, i, clone) => `<div class="car-i" data-ci="${i}"${clone ? ' data-clone aria-hidden="true"' : ""}>${clone ? h.replace(/ fetchpriority="high"/, ' loading="lazy"').replace(/<(a|button)\b/g, '<$1 tabindex="-1"') : h}</div>`;
     const real = items.map((h, i) => it(h, i));
-    const all = loop ? [...items.map((h, i) => it(h, i, 1)), ...real, ...items.map((h, i) => it(h, i, 1))] : real;
-    return `<div class="car ${cls || ""} car-fx-${fx} car-sh-${shape}${sec.showNames === false ? " no-names" : ""}" data-car="${auto}"${loop ? " data-loop" : ""} style="--cs:${size};--cg:${gap}px;--side:${side / 100}${bg ? `;--cimg:${bg}` : ""}">` +
+    // endless loop: a few copies at each end are enough to fill both sides (full copies of every item tripled the page)
+    const K = loop ? Math.min(n, 5) : 0;
+    const all = loop ? [...items.slice(n - K).map((h, j) => it(h, n - K + j, 1)), ...real, ...items.slice(0, K).map((h, i) => it(h, i, 1))] : real;
+    return `<div class="car ${cls || ""} car-fx-${fx} car-sh-${shape}${sec.showNames === false ? " no-names" : ""}" data-car="${auto}"${loop ? ` data-loop="${K}"` : ""} style="--cs:${size};--cg:${gap}px;--side:${side / 100}${bg ? `;--cimg:${bg}` : ""}">` +
       `<div class="car-track"><div class="car-rail">${all.join("")}</div></div>` +
       (n > 1 ? `<button type="button" class="car-nav car-prev" aria-label="السابق">›</button><button type="button" class="car-nav car-next" aria-label="التالي">‹</button>` : "") +
       (dots ? `<div class="car-dots${o.fill ? " fill" : ""}">${items.map((_, i) => `<span data-cd="${i}"><i></i></span>`).join("")}</div>` : "") + `</div>`;
@@ -963,12 +965,13 @@
     const reduce = document.documentElement.classList.contains("reduce");
     app.querySelectorAll(".car").forEach((car) => {
       const tr = car.querySelector(".car-track"), rail = car.querySelector(".car-rail"); if (!tr || !rail) return;
-      const its = [...rail.children], loop = car.hasAttribute("data-loop"), n = loop ? its.length / 3 : its.length;
+      car.querySelectorAll(".car-dim").forEach((x) => x.remove());
+      const its = [...rail.children], loop = car.hasAttribute("data-loop"), K = loop ? +car.dataset.loop || its.length / 3 : 0, n = its.length - 2 * K;
       if (!n) return;
       const dots = [...car.querySelectorAll(".car-dots span")], fill = !!car.querySelector(".car-dots.fill"), autoMs = (+car.dataset.car || 0) * 1000;
       const always = car.classList.contains("car-hero");
       const rtl = getComputedStyle(rail).direction === "rtl", vs = rtl ? -1 : 1; // visual sign of "next"
-      let step = 0, pos = loop ? n : 0, cur = -1, anim = null, drag = null, dragged = 0, dead = false, loopRaf = 0, frame = 0;
+      let step = 0, pos = loop ? K : 0, cur = -1, anim = null, drag = null, dragged = 0, dead = false, loopRaf = 0, frame = 0;
       let seen = !("IntersectionObserver" in window), hold = 0, t0 = performance.now(), last = t0;
       const dv = new Array(its.length);
       // the look of every item is computed here and written straight to its transform/opacity (GPU only).
@@ -991,7 +994,7 @@
       const measure = () => { step = its.length > 1 ? Math.abs(its[1].getBoundingClientRect().left - its[0].getBoundingClientRect().left) : its[0].getBoundingClientRect().width; if (!step) step = its[0].offsetWidth || 1; };
       const wrap = () => { // stay inside the middle copy; the copies are identical, so the jump is invisible
         if (!loop) return 0;
-        let k = 0; if (pos < n - 0.5) k = n; else if (pos >= 2 * n - 0.5) k = -n;
+        let k = 0; if (pos < K - 0.5) k = n; else if (pos >= K + n - 0.5) k = -n;
         if (k) { pos += k; if (anim) { anim.from += k; anim.to += k; } if (drag) drag.p0 += k; }
         return k;
       };
@@ -1041,7 +1044,7 @@
         if (!drag || e.pointerId !== drag.id) return;
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (!drag.axis) {
-          if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+          const th = e.pointerType === "touch" ? 14 : 6; if (Math.abs(dx) < th && Math.abs(dy) < th) return;
           drag.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
           if (drag.axis === "y") { drag = null; return; }
           drag.x = e.clientX; drag.p0 = pos; car.classList.add("dragging"); try { tr.setPointerCapture(e.pointerId); } catch {}
@@ -1081,7 +1084,7 @@
       const prev = car.querySelector(".car-prev"), next = car.querySelector(".car-next");
       if (prev) prev.onclick = () => { go(-1); hold = performance.now() + 2500; };
       if (next) next.onclick = () => { go(1); hold = performance.now() + 2500; };
-      dots.forEach((d, k) => (d.onclick = () => { go(0, loop ? n + k : k); hold = performance.now() + 2500; }));
+      dots.forEach((d, k) => (d.onclick = () => { go(0, loop ? K + k : k); hold = performance.now() + 2500; }));
       measure(); paint();
       const io = "IntersectionObserver" in window && new IntersectionObserver(([en]) => { seen = en.isIntersecting; }, { threshold: 0.35 });
       if (io) io.observe(car);
