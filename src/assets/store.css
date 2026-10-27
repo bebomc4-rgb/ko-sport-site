@@ -1840,3 +1840,6 @@ html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx[style*="--bi"] s
 /* v93: touch targets — the add button and the product name never touch each other */
 .card .name{display:block;padding-block:4px}
 .card .add{margin-top:6px;min-height:36px}
+
+/* sections lower down the home page are drawn only when they come near the screen (faster first load) */
+.hsec.hs-categories:nth-child(n+3){content-visibility:auto;contain-intrinsic-size:auto 420px}

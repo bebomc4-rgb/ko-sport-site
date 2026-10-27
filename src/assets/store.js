@@ -704,6 +704,15 @@
       } catch { return ""; }
     }).join("") || classicHero();
     startSlider(); startRows(); startSpots(); startCars(); startTickers();
+    // the product photos already on screen are what Google times as "page loaded": fetch them now, first, with no fade
+    let boost = 0;
+    for (const im of app.querySelectorAll('.hsec img[loading="lazy"]')) {
+      if (boost >= 3) break;
+      if (im.closest("[data-clone]")) continue;
+      const r = im.getBoundingClientRect();
+      if (!r.width || r.top > innerHeight || r.bottom < 0 || r.right < 0 || r.left > innerWidth) continue;
+      im.setAttribute("fetchpriority", "high"); im.setAttribute("data-nofx", ""); im.loading = "eager"; boost++;
+    }
     if (window.KOMedia) KOMedia.scan(app);
   }
   addEventListener("message", (e) => {
