@@ -114,7 +114,8 @@ async function htmlCached(name, request, ctx, produce) {
     const res = await produce();
     const text = await res.text();
     const dig = new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text)));
-    etag = '"h' + [...dig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("") + '"';
+    // weak tag: Cloudflare drops strong ETags when it compresses HTML, but keeps weak ones
+    etag = 'W/"h' + [...dig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("") + '"';
     if (cache && res.status === 200) {
       ctx.waitUntil(cache.put(edgeKey(name), new Response(text, {
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=60", etag },
@@ -124,7 +125,8 @@ async function htmlCached(name, request, ctx, produce) {
   }
   const headers = { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=0, must-revalidate", etag };
   const inm = request.headers.get("if-none-match");
-  if (etag && inm && inm.split(",").some((t) => t.trim().replace(/^W\//, "") === etag)) {
+  const bare = etag && etag.replace(/^W\//, "");
+  if (bare && inm && inm.split(",").some((t) => t.trim().replace(/^W\//, "") === bare)) {
     if (hit && hit.body) hit.body.cancel?.();
     return new Response(null, { status: 304, headers });
   }
