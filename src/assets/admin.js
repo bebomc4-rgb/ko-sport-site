@@ -361,14 +361,15 @@
       + (cats.length ? "" : `<div class="dc-empty"><b>ما في مجموعات</b></div>`);
   }
   let CE = null;
-  async function openColl(c) {
+  async function openColl(c, opt) {
     if (!ST) await openSettings("colledit"); if (!products.length) await loadProducts();
     const m = c ? catMeta(c) : {}, ord = m.order || [];
     let pids = c ? products.filter((p) => inCatA(p, c)).map((p) => p.id) : [];
     if (ord.length) { const ix = new Map(ord.map((id, i) => [id, i])); pids.sort((a, b) => (ix.has(a) ? ix.get(a) : 1e6) - (ix.has(b) ? ix.get(b) : 1e6)); }
     const grp = c ? (ST.design.groups || []).findIndex((g) => g.cats.includes(c)) : -1;
-    CE = { orig: c, name: c ? ST.design.catLabels?.[c] || c : "", desc: m.desc || "", image: m.image || "", slug: m.slug || "", seoTitle: m.seoTitle || "", seoDesc: m.seoDesc || "", pids, q: "", sort: false, group: grp };
+    CE = { orig: c, name: c ? ST.design.catLabels?.[c] || c : "", desc: m.desc || "", image: m.image || "", slug: m.slug || "", seoTitle: m.seoTitle || "", seoDesc: m.seoDesc || "", pids, q: "", group: grp, back: (opt && opt.back) || null };
     show("colledit"); renderCE();
+    if (opt && opt.arrange) setTimeout(() => { const l = $("[data-ce-list]"); if (l) l.closest(".w-card").scrollIntoView({ behavior: "smooth", block: "start" }); }, 150);
   }
   function renderCE() {
     if (!CE) return;
@@ -386,14 +387,39 @@
     renderCEList();
   }
   function renderCEList() {
-    const q = normA(CE.q), L = CE.pids.map((id) => products.find((p) => p.id === id)).filter(Boolean);
-    $("[data-ce-count]").textContent = `(${nf(L.length)})`;
-    $("[data-ce-sort]").textContent = CE.sort ? "✓ خلص الترتيب" : "ترتيب المنتجات";
-    $("[data-ce-list]").innerHTML = L.map((p, j) => (q && !normA(p.name).includes(q) ? "" : `<div class="ce-item${CE.sort ? " sorting" : ""}" ${CE.sort ? `draggable="true" data-pj="${j}"` : ""}>
-        ${CE.sort ? `<span class="ws-drag">⋮⋮</span>` : ""}<img src="${esc(p.thumb || p.image || NOIMG)}" alt=""><b>${esc(p.name)}</b>
-        <em class="cu-st ${p.hidden ? "bl" : ""}">● ${p.hidden ? "مخفي" : "نشط"}</em><em class="cu-st ${p.inStock ? "" : "bl"}">${p.inStock ? "في المخزون" : "خالص"}</em>
-        ${CE.sort ? `<span class="ws-arrows" style="display:flex"><button type="button" data-pmv="${j}" data-d="-1" ${j ? "" : "disabled"}>↑</button><button type="button" data-pmv="${j}" data-d="1" ${j < L.length - 1 ? "" : "disabled"}>↓</button></span>` : `<button type="button" class="ce-x" data-prm="${esc(p.id)}" aria-label="شيل">✕</button>`}</div>`)).join("")
-      || `<div class="dc-empty"><b>ما في منتجات</b><p class="hint">اكبس «أضف منتجات».</p></div>`;
+    const q = normA(CE.q), byP = new Map(products.map((p) => [p.id, p]));
+    CE.pids = CE.pids.filter((id) => byP.has(id));
+    const L = CE.pids.map((id) => byP.get(id)), n = L.length;
+    $("[data-ce-count]").textContent = `(${nf(n)})`;
+    $("[data-ce-sort]").textContent = "ترتيب سريع ▾";
+    const tip = n > 1 ? `<div class="ce-tip">${q ? "🔎 عم تشوف نتايج البحث: فيك تكتب رقم المكان أو تكبس ⤒. للسحب امسح البحث." : "✋ <b>اسحب من ⠿</b> لتغيّر مكان المنتج، أو <b>اكتب رقم المكان</b> بالمربع، أو اكبس <b>⤒</b> ليصير أول واحد. وبعدين اكبس «حفظ»."}</div>` : "";
+    $("[data-ce-list]").innerHTML = tip + (L.map((p, j) => (q && !normA(p.name).includes(q) ? "" : `<div class="ce-item" data-pid="${esc(p.id)}">
+        ${q ? "" : `<span class="ce-h" title="اسحب لترتّب" aria-label="اسحب لترتّب">⠿</span>`}<input class="ce-pos" type="number" inputmode="numeric" min="1" max="${n}" value="${j + 1}" data-ppos="${esc(p.id)}" aria-label="رقم المكان" title="اكتب رقم المكان">
+        <img src="${esc(p.thumb || p.image || NOIMG)}" alt="" loading="lazy"><span class="ce-nm"><b>${esc(p.name)}</b>${p.hidden || !p.inStock ? `<span>${p.hidden ? `<em class="cu-st bl">مخفي</em>` : ""}${p.inStock ? "" : `<em class="cu-st bl">خالص</em>`}</span>` : ""}</span>
+        <button type="button" class="ce-top" data-ptop="${esc(p.id)}" title="خليه أول واحد" aria-label="خليه أول واحد" ${j ? "" : "disabled"}>⤒</button><button type="button" class="ce-x" data-prm="${esc(p.id)}" aria-label="شيل من المجموعة">✕</button></div>`)).join("")
+      || `<div class="dc-empty"><b>ما في منتجات</b><p class="hint">اكبس «أضف منتجات».</p></div>`);
+    if (!q && n > 1) makeSortable($("[data-ce-list]"), { handle: ".ce-h", draggable: ".ce-item", onMove: (from, to) => { CE.pids.splice(to, 0, CE.pids.splice(from, 1)[0]); ceChanged(); } });
+  }
+  // moving a product: by position number (1 = first)
+  function ceMoveTo(id, pos) {
+    const i = CE.pids.indexOf(id); if (i < 0) return;
+    const to = Math.max(0, Math.min(CE.pids.length - 1, Math.round(pos) - 1)); if (to === i) { renderCEList(); return; }
+    CE.pids.splice(to, 0, CE.pids.splice(i, 1)[0]); ceChanged();
+    setTimeout(() => { const el = $(`[data-ce-list] [data-pid="${CSS.escape(id)}"]`); if (el) { el.scrollIntoView({ block: "center", behavior: "smooth" }); el.classList.add("ce-flash"); setTimeout(() => el.classList.remove("ce-flash"), 1200); } }, 30);
+  }
+  function ceChanged() { renderCEList(); const m = $("[data-ce-msg]"); if (m) m.textContent = "في تغييرات بالترتيب، اكبس «حفظ» لتطلع بالمتجر."; }
+  // ready-made orders, then fine-tune by hand
+  function ceQuickSort(btn) {
+    const byP = new Map(products.map((p) => [p.id, p])), idx = new Map(products.map((p, i) => [p.id, i]));
+    const by = (f) => () => { CE.pids = CE.pids.map((id, k) => [id, k]).sort((a, b) => f(byP.get(a[0]), byP.get(b[0])) || a[1] - b[1]).map((x) => x[0]); ceChanged(); toast("ترتّبت ✓ — راجعها واكبس «حفظ»"); };
+    openMenu(btn, [
+      ["المتوفر أول، والخالص بالآخر", "✓", by((a, b) => (b.inStock ? 1 : 0) - (a.inStock ? 1 : 0))],
+      ["الأكثر مبيعاً أول", "🔥", by((a, b) => (+b.sold || 0) - (+a.sold || 0))],
+      ["الأحدث أول", "🆕", by((a, b) => idx.get(a.id) - idx.get(b.id))],
+      ["الأرخص أول", "↓", by((a, b) => (+a.price || 0) - (+b.price || 0))],
+      ["الأغلى أول", "↑", by((a, b) => (+b.price || 0) - (+a.price || 0))],
+      ["اقلب الترتيب", "⇅", () => { CE.pids.reverse(); ceChanged(); }],
+    ]);
   }
   function addProductsPicker() {
     const D = { q: "", pick: new Set() };
@@ -447,7 +473,9 @@
     try {
       if (dirty.size) { await api("/api/products", { method: "PUT", body: JSON.stringify(products) }); saved = JSON.stringify(products); dirty.clear(); }
       await api("/api/settings", { method: "PUT", body: JSON.stringify(ST) }); stSaved = JSON.stringify(ST);
-      toast("انحفظت المجموعة ✓"); CE = null; show("collections"); renderCollections(); renderGroups();
+      toast("انحفظت المجموعة ✓"); const back = CE.back; CE = null; $("[data-ce-msg]").textContent = "";
+      if (back) { show(back.tab); setTimeout(() => { const nb = back.ap && $(`[data-apnav="${back.ap}"]`); if (nb) nb.click(); const el = back.el && $(back.el); if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 120); }, 300); } else show("collections");
+      renderCollections(); renderGroups();
     } catch (e2) { toast(e2.message); $("[data-ce-msg]").textContent = "ما انحفظ، جرّب كمان مرة"; }
     b.disabled = false;
   }
@@ -469,9 +497,9 @@
     const row = e.target.closest("[data-co]"); if (row && !e.target.closest("button")) { openColl(row.dataset.co); return; }
     if (!CE) return;
     if (e.target.closest("[data-ce-add]")) { addProductsPicker(); return; }
-    if (e.target.closest("[data-ce-sort]")) { CE.sort = !CE.sort; renderCEList(); return; }
-    const rm = e.target.closest("[data-prm]"); if (rm) { CE.pids = CE.pids.filter((x) => x !== rm.dataset.prm); renderCEList(); return; }
-    const mv = e.target.closest("[data-pmv]"); if (mv) { const i = +mv.dataset.pmv, j = i + +mv.dataset.d; [CE.pids[i], CE.pids[j]] = [CE.pids[j], CE.pids[i]]; renderCEList(); return; }
+    const qs = e.target.closest("[data-ce-sort]"); if (qs) { ceQuickSort(qs); return; }
+    const rm = e.target.closest("[data-prm]"); if (rm) { CE.pids = CE.pids.filter((x) => x !== rm.dataset.prm); ceChanged(); return; }
+    const tp = e.target.closest("[data-ptop]"); if (tp) { ceMoveTo(tp.dataset.ptop, 1); return; }
     if (e.target.closest("[data-ce-noimg]")) { CE.image = ""; renderCE(); return; }
     if (e.target.closest("[data-ce-save]")) saveColl();
   });
@@ -482,18 +510,13 @@
   });
   document.addEventListener("change", async (e) => {
     if (!CE) return;
+    if (e.target.matches("[data-ppos]")) { const v = +e.target.value; if (v >= 1) ceMoveTo(e.target.dataset.ppos, v); else renderCEList(); return; }
     if (e.target.matches("[data-ce-group]")) CE.group = +e.target.value;
     if (e.target.matches("[data-ce-file]") && e.target.files[0]) {
       try { toast("جاري رفع الصورة…"); CE.image = await uploadBlob(await compress(e.target.files[0], 900, 90)); renderCE(); toast("انرفعت الصورة"); } catch (err) { toast(err.message); }
       e.target.value = "";
     }
   });
-  // drag to reorder products inside a collection
-  let pdrag = null;
-  document.addEventListener("dragstart", (e) => { const it = e.target.closest && e.target.closest("[data-pj]"); if (it) { pdrag = +it.dataset.pj; e.dataTransfer.effectAllowed = "move"; } });
-  document.addEventListener("dragover", (e) => { if (pdrag != null && e.target.closest && e.target.closest("[data-pj]")) e.preventDefault(); });
-  document.addEventListener("drop", (e) => { const it = pdrag != null && e.target.closest && e.target.closest("[data-pj]"); if (!it) return; e.preventDefault(); const to = +it.dataset.pj; CE.pids.splice(to, 0, CE.pids.splice(pdrag, 1)[0]); pdrag = null; renderCEList(); });
-  document.addEventListener("dragend", () => { pdrag = null; });
 
   // ---------- generic edit window (discounts, pages) ----------
   let X = null; // {render(), save()}
@@ -2522,14 +2545,21 @@
   }
   function renderSections() {
     const L = ST.home.sections, box = $("[data-sections]"); if (!box) return;
-    box.innerHTML = L.map((sec, i) => `<div class="ws-item${sec.on === false ? " off" : ""}" draggable="true" data-si="${i}">
+    box.innerHTML = (L.length > 1 ? `<p class="hint ws-tip">✋ اسحب أي قسم من <b>⋮⋮</b> لتغيّر ترتيبو بالصفحة الرئيسية.</p>` : "") + L.map((sec, i) => `<div class="ws-item${sec.on === false ? " off" : ""}" data-si="${i}">
         <span class="ws-drag" title="اسحب لترتيب الأقسام">⋮⋮</span><span class="ws-ic">${SEC_IC[sec.type] || SEC_IC.text}</span>
-        <div class="ws-txt"><b>${esc(sec.title || SEC_NAMES[sec.type] || sec.type)}</b><small>${secSummary(sec)}</small></div>
+        <div class="ws-txt"><b>${esc(sec.title || SEC_NAMES[sec.type] || sec.type)}</b><small>${secSummary(sec)}</small>${sec.type === "products" && sec.cat ? `<button type="button" class="w-link ws-arrange" data-sec-arrange="${i}">↕ رتّب منتجات هالقسم</button>` : sec.type === "categories" ? `<button type="button" class="w-link ws-arrange" data-sec-edit="${i}">↕ رتّب المجموعات</button>` : ""}</div>
         <span class="ws-arrows"><button type="button" data-sec-move="-1" data-i="${i}" ${i ? "" : "disabled"} aria-label="لفوق">↑</button><button type="button" data-sec-move="1" data-i="${i}" ${i < L.length - 1 ? "" : "disabled"} aria-label="لتحت">↓</button></span>
         <label class="switch" title="إظهار / إخفاء"><input type="checkbox" data-k="home.sections.${i}.on" data-default-true><span></span></label>
         <span class="ws-btns"><button type="button" class="ws-del" data-sec-del data-i="${i}" aria-label="حذف">${TRASH}</button><button type="button" class="ws-edit" data-sec-edit="${i}">تعديل</button></span></div>`).join("")
       || `<p class="hint">ما في أقسام. ضيف قسم من تحت.</p>`;
+    if (L.length > 1) makeSortable(box, { handle: ".ws-drag", draggable: ".ws-item", onMove: (from, to) => { L.splice(to, 0, L.splice(from, 1)[0]); renderSections(); bindInputs(); renderSegs(); updateSetBar(); } });
   }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-sec-arrange]"); if (!b || !ST) return;
+    const sec = ST.home.sections[+b.dataset.secArrange]; if (!sec || !sec.cat) return;
+    if (!allCats().includes(sec.cat)) { toast("المجموعة «" + sec.cat + "» مو موجودة"); return; }
+    openColl(sec.cat, { arrange: true, back: { tab: "appearance", ap: "home", el: `[data-sections] [data-si="${b.dataset.secArrange}"]` } });
+  });
   // edit window
   let secIdx = null, secSnap = null, secIsNew = false;
   const sw = (k, label, hint, defTrue) => `<div class="w-sw"><label class="switch"><input type="checkbox" data-k="${k}"${defTrue ? " data-default-true" : ""}><span></span> ${label}</label>${hint ? `<small class="hint">${hint}</small>` : ""}</div>`;
@@ -2602,7 +2632,7 @@
     }
     if (t === "categories") {
       const ch = chosenCats(sec), lab = (c) => ST.design.catLabels?.[c] || c;
-      h += `<hr class="w-hr"><h3 class="w-h3">المجموعات التي سيتم عرضها</h3>` + (ch.length ? `<div class="wc-list">${ch.map((c, j) => `<div class="wc-item" draggable="true" data-cj="${j}"><span class="ws-drag">⋮⋮</span><img src="${esc(catThumb(c))}" alt="" loading="lazy"><b>${esc(lab(c))}</b><button type="button" class="ws-del" data-cat-rm="${j}" aria-label="شيل">${TRASH}</button></div>`).join("")}</div>`
+      h += `<hr class="w-hr"><h3 class="w-h3">المجموعات التي سيتم عرضها</h3>` + (ch.length ? `<div class="wc-list">${ch.map((c, j) => `<div class="wc-item" data-cj="${j}"><span class="ws-drag" title="اسحب لترتّب">⋮⋮</span><img src="${esc(catThumb(c))}" alt="" loading="lazy"><b>${esc(lab(c))}</b><button type="button" class="ws-del" data-cat-rm="${j}" aria-label="شيل">${TRASH}</button></div>`).join("")}</div>`
         : `<div class="w-empty"><b>ⓘ لم تختر أي مجموعة بعد!</b><span>أضف مجموعات للقسم بالضغط على زر <b>أضف مجموعة</b> بالأسفل</span></div>`) +
         `<div class="wc-add"><button type="button" class="w-link" data-cat-pick>+ أضف مجموعة</button>${sec.pick || (sec.cats && sec.cats.length) ? `<button type="button" class="w-link muted" data-cat-all>إظهار كل المجموعات</button>` : ""}</div>`;
     }
@@ -2653,6 +2683,8 @@
     const body = $("[data-sec-body]"), y = body.scrollTop;
     body.innerHTML = secEditor(secIdx);
     bindInputs(); renderSegs(); body.scrollTop = y;
+    const cl = body.querySelector(".wc-list [data-cj]");
+    if (cl) makeSortable(cl.parentElement, { handle: ".ws-drag", draggable: ".wc-item", onMove: (from, to) => { const all = allCats(); const cur = sec.cats && sec.cats.length ? sec.cats.filter((c) => all.includes(c)) : all.slice(); cur.splice(to, 0, cur.splice(from, 1)[0]); sec.cats = cur; sec.pick = true; renderSecDlg(); updateSetBar(); } });
   }
   function openSec(i, isNew) {
     const s0 = ST.home.sections[i];
@@ -2973,6 +3005,16 @@
   // السحب والإفلات (بيشتغل بالماوس وباللمس عالموبايل) — SortableJS
   let sortableP = null;
   const loadSortable = () => sortableP ||= (window.Sortable ? Promise.resolve() : new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"; sc.onload = ok; sc.onerror = () => { sortableP = null; no(); }; document.head.appendChild(sc); }));
+  function makeSortable(list, o) {
+    if (!list) return;
+    loadSortable().then(() => {
+      if (!document.contains(list)) return;
+      if (list._ks) { try { list._ks.destroy(); } catch {} }
+      list._ks = Sortable.create(list, { handle: o.handle, draggable: o.draggable, animation: 170, ghostClass: "dnd-ghost", chosenClass: "dnd-chosen", forceFallback: true, fallbackTolerance: 3,
+        scroll: true, scrollSensitivity: 90, scrollSpeed: 16, bubbleScroll: true,
+        onEnd: (e) => { const a = e.oldDraggableIndex ?? e.oldIndex, b = e.newDraggableIndex ?? e.newIndex; if (a !== b && a != null && b != null) o.onMove(a, b); } });
+    }).catch(() => {});
+  }
   function groupsFromDom() {
     const old = ST.design.groups;
     ST.design.groups = [...$("[data-groups-editor]").querySelectorAll(".group-card")].map((card) => ({ ...old[+card.dataset.gi], cats: [...card.querySelectorAll("[data-catlist] .catchip")].map((x) => x.dataset.cat) }));
