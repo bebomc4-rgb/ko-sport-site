@@ -693,9 +693,31 @@
       return sec.title || sec.body ? `<div class="text-sec" style="text-align:${al}${bg ? `;background:${bg};color:${readable(bg, "")}` : ""}">${sec.title && sec.showTitle !== false ? `<h2>${esc(sec.title)}</h2>` : ""}${sec.body ? `<p>${esc(sec.body)}</p>` : ""}</div>` : "";
     },
   };
+  // The server already drew the first slide. On the first draw we keep that very element (and its photo) and only
+  // add the rest around it: the picture never blinks and the browser doesn't count a "new" big image.
+  function keepServerSlider(html) {
+    const old = app.querySelector(":scope > .hs-slider > section.slider:not([data-slider])");
+    if (!old) return false;
+    const tpl = document.createElement("template"); tpl.innerHTML = html;
+    const wrap = tpl.content.firstElementChild, neu = wrap && wrap.matches(".hs-slider") && wrap.querySelector(":scope > section.slider");
+    const oTrack = old.querySelector(".sl-track"), nTrack = neu && neu.querySelector(":scope > .sl-track");
+    const oFirst = oTrack && oTrack.firstElementChild, nFirst = nTrack && nTrack.firstElementChild;
+    const oImg = oFirst && oFirst.querySelector("picture img"), nImg = nFirst && nFirst.querySelector("picture img");
+    if (!oImg || !nImg || oImg.getAttribute("src") !== nImg.getAttribute("src")) return false;
+    const same = (from, to) => { for (const a of [...to.attributes]) to.removeAttribute(a.name); for (const a of [...from.attributes]) to.setAttribute(a.name, a.value); };
+    same(wrap, old.parentElement); same(neu, old); same(nTrack, oTrack); same(nFirst, oFirst);
+    for (const c of [...oFirst.children]) if (c.tagName !== "PICTURE") c.remove();
+    for (const c of [...nFirst.children]) if (c.tagName !== "PICTURE") oFirst.appendChild(c);
+    for (const c of [...nTrack.children].slice(1)) oTrack.appendChild(c);
+    for (const c of [...neu.children]) if (c !== nTrack) old.appendChild(c);
+    for (const c of [...app.children]) if (c !== old.parentElement) c.remove();
+    wrap.remove();
+    app.appendChild(tpl.content);
+    return true;
+  }
   function home() {
     const secs = ((S.home && S.home.sections) || []).filter((x) => x.on !== false);
-    app.innerHTML = secs.map((sec) => {
+    const html = secs.map((sec) => {
       try {
         let h = (SECTIONS[sec.type] || (() => ""))(sec); if (!h) return "";
         if (sec.full && sec.type !== "slider") h = `<div class="sec-full">${h}</div>`;
@@ -703,6 +725,10 @@
         return `<div class="hsec hs-${sec.type}" data-si="${S.home.sections.indexOf(sec)}"${gt}>${h}</div>`;
       } catch { return ""; }
     }).join("") || classicHero();
+    let kept = false;
+    if (!home.ran) { try { kept = keepServerSlider(html); } catch { kept = false; } }
+    home.ran = true;
+    if (!kept) app.innerHTML = html;
     startSlider(); startRows(); startSpots(); startCars(); startTickers();
     // the product photos already on screen are what Google times as "page loaded": fetch them now, first, with no fade
     let boost = 0;
