@@ -4,6 +4,13 @@ import fs from "node:fs"; import path from "node:path"; import crypto from "node
 const root = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 const src = path.join(root, "src"), tmp = path.join(root, ".build"), out = path.join(root, "dist");
 fs.rmSync(tmp, { recursive: true, force: true }); fs.cpSync(src, tmp, { recursive: true });
+// 0) critical CSS: just the rules the server-drawn part of the page needs (inlined; the full file loads after)
+try {
+  const { criticalCss } = await import("./critical.mjs");
+  const css = fs.readFileSync(path.join(tmp, "assets", "store.css"), "utf8");
+  const crit = criticalCss(css, [fs.readFileSync(path.join(tmp, "index.html"), "utf8"), fs.readFileSync(path.join(tmp, "_worker.js"), "utf8")]);
+  if (crit.length > 2000) fs.writeFileSync(path.join(tmp, "assets", "store.critical.css"), crit);
+} catch (e) { console.log("⚠️ critical CSS skipped:", e.message); }
 // 1) minify js/css
 const min = [...fs.readdirSync(path.join(tmp, "assets")).filter((f) => /\.(js|css)$/.test(f)).map((f) => path.join(tmp, "assets", f)), path.join(tmp, "sw.js")];
 const ESB = process.env.ESBUILD || "npx --yes esbuild@0.24.0";

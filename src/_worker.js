@@ -1437,8 +1437,13 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
   const slides = (D.slides || []).filter((x) => x.img || x.title);
   const heroHtml = () => `<section class="hero${D.heroImage ? " has-img" : ""}"${D.heroImage ? ` style="background-image:url('${h(D.heroImage)}')"` : ""}><h1>${h(D.heroTitle)}</h1><p>${h(D.heroText)}</p>${stats}</section>`;
   const hero = !firstSec || firstSec.type !== "slider" ? "" : `<div class="hsec hs-slider">${slides.length ? slideShell(slides[0], h, ["full", "round", "curve"].includes(D.sliderShape) ? D.sliderShape : D.sliderShape === "peek" && slides.length > 1 ? "round" : "") : heroHtml()}</div>`;
-  let css = "";
-  try { const r = await env.ASSETS.fetch(new URL("/assets/store.css", request.url)); if (r.ok) css = await r.text(); } catch {}
+  // Inline only the critical CSS (header, slider, footer, colours) so the page paints from the first few KB;
+  // the full stylesheet goes just before the scripts: the page above it paints right away, and the scripts
+  // (which draw products, menus…) wait for it, so nothing ever shows unstyled.
+  let css = "", crit = "";
+  const critOn = new URL(request.url).searchParams.get("crit") === "1";
+  if (critOn) { try { const r = await env.ASSETS.fetch(new URL("/assets/store.critical.css", request.url)); if (r.ok) crit = await r.text(); } catch {} }
+  if (!crit) { try { const r = await env.ASSETS.fetch(new URL("/assets/store.css", request.url)); if (r.ok) css = await r.text(); } catch {} }
   rules.push(
     ["[data-logo]", { element(e) { e.setInnerContent(logo, { html: true }); } }],
     ["[data-announce]", { element(e) { if (S.announcement && (D.announceOn ?? true)) { e.removeAttribute("hidden"); e.setInnerContent(`<span>${h(S.announcement)}</span>${D.announceClosable ? '<button class="ann-x" data-ann-close aria-label="إغلاق">✕</button>' : ""}`, { html: true }); } } }],
@@ -1455,7 +1460,11 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
     ["[data-headfont]", { element(e) { const u = fontUrl(D); if (u) e.setAttribute("href", u); else e.remove(); } }],
     ['link[rel="icon"]', { element(e) { if (D.favicon) { e.setAttribute("href", D.favicon); e.setAttribute("type", "image/png"); } } }],
   );
-  if (css) rules.push(['link[href^="/assets/store.css"]', { element(e) { e.replace(`<style>${css}</style>`, { html: true }); } }]);
+  if (crit) {
+    let full = "", moved = false;
+    rules.push(['link[href^="/assets/store.css"]', { element(e) { full = e.getAttribute("href") || "/assets/store.css"; e.replace(`<style>${crit}</style>`, { html: true }); } }]);
+    rules.push(['script[src^="/assets/"][defer]', { element(e) { if (!moved && full) { moved = true; e.before(`<link rel="stylesheet" href="${full}">`, { html: true }); } } }]);
+  } else if (css) rules.push(['link[href^="/assets/store.css"]', { element(e) { e.replace(`<style>${css}</style>`, { html: true }); } }]);
   let rw = new HTMLRewriter();
   for (const [sel, h] of rules) rw = rw.on(sel, h);
   return rw.transform(res);
@@ -2177,7 +2186,8 @@ export default {
       if (m === "GET" && /^\/ar\/product(\/|$)/.test(path)) return oldWuiltLink(request, env, url);
       if (m === "GET" && (path === "/ar" || path.startsWith("/ar/"))) {
         const isHome = path === "/ar" || path === "/ar/";
-        return htmlCached(isHome ? "html:home:" + url.hostname : "html:deep:" + url.hostname + path, request, ctx, async () => {
+        const ck = (url.searchParams.get("crit") === "1" ? "c1:" : "") + (isHome ? "html:home:" + url.hostname : "html:deep:" + url.hostname + path);
+        return htmlCached(ck, request, ctx, async () => {
         const r = await env.ASSETS.fetch(new URL("/index.html", request.url));
         const out = new Response(r.body, r);
         out.headers.set("content-type", "text/html; charset=utf-8");
