@@ -16,6 +16,8 @@
   // onerror=redirect → if the free monthly quota ever runs out, the original photo is served instead (nothing breaks).
   const LOCAL_IMG = /^\/img\/[a-z0-9]+$/;
   const imgW = (u, w) => LOCAL_IMG.test(u || "") ? `/cdn-cgi/image/width=${w},quality=75,format=auto,onerror=redirect${u}` : (u || NOIMG);
+  // product page photo: same sizes as the <link rel=preload> the server puts in the page head
+  const PDP_W = [640, 828, 1080], PDP_SIZES = "(max-width:900px) 100vw, 560px";
   const imgSet = (u, ws, sizes) => LOCAL_IMG.test(u || "") ? ` srcset="${ws.map((w) => imgW(u, w) + " " + w + "w").join(", ")}" sizes="${sizes}"` : "";
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   let LAY = {}; // current layout (from the design template)
@@ -1258,13 +1260,13 @@
           if (!pics.length) return `<div class="gal-wrap"><div class="pdp-img"><img src="${esc(img(""))}" alt=""></div>${stamp}</div>`;
           const many = pics.length > 1;
           return `<div class="gal-wrap">
-              ${PGX ? `<div class="pdp-img gallery pg-fx pg-${PG.fx}" data-gallery dir="ltr">${pics.map((u, i) => `<img data-zoom="${i}" src="${esc(u)}" alt="${esc(p.name)} ${i + 1}" ${i ? 'loading="lazy" decoding="async"' : 'fetchpriority="high" data-nofx class="cur"'} draggable="false">`).join("")}</div>`
-              : `<div class="pdp-img gallery" data-gallery dir="ltr">${(many ? [0, ...[...pics.keys()].reverse(), pics.length - 1] : [0]).map((i, k) => `<img data-zoom="${i}" src="${esc(pics[i])}" alt="${esc(p.name)} ${i + 1}" ${k === (many ? pics.length : 0) ? 'fetchpriority="high" data-nofx' : 'loading="lazy" decoding="async"'} draggable="false">`).join("")}</div>`}
+              ${PGX ? `<div class="pdp-img gallery pg-fx pg-${PG.fx}" data-gallery dir="ltr">${pics.map((u, i) => `<img data-zoom="${i}" src="${esc(imgW(u, 1080))}"${imgSet(u, PDP_W, PDP_SIZES)} alt="${esc(p.name)} ${i + 1}" ${i ? 'loading="lazy" decoding="async" fetchpriority="low"' : 'fetchpriority="high" data-nofx class="cur"'} draggable="false">`).join("")}</div>`
+              : `<div class="pdp-img gallery" data-gallery dir="ltr">${(many ? [0, ...[...pics.keys()].reverse(), pics.length - 1] : [0]).map((i, k) => `<img data-zoom="${i}" src="${esc(imgW(pics[i], 1080))}"${imgSet(pics[i], PDP_W, PDP_SIZES)} alt="${esc(p.name)} ${i + 1}" ${k === (many ? pics.length : 0) ? 'fetchpriority="high" data-nofx' : 'loading="lazy" decoding="async" fetchpriority="low"'} draggable="false">`).join("")}</div>`}
               ${many ? `<span class="gal-count" data-gcount>1/${pics.length}</span><div class="dots" data-dots>${pics.map((_, i) => `<span class="${i ? "" : "on"}"></span>`).join("")}</div>` : ""}
               <span class="zoom-hint" aria-hidden="true">🔍</span>${stamp}
               ${many && PG.arrows ? `<button type="button" class="gal-arrow next" data-gnav="1" aria-label="الصورة التالية">${ICON.chev}</button><button type="button" class="gal-arrow prev" data-gnav="-1" aria-label="الصورة السابقة">${ICON.chev}</button>` : ""}
             </div>
-            ${many ? `<div class="pdp-thumbs" dir="ltr">${pics.map((u, i) => `<button class="${i ? "" : "on"}" data-pic="${i}" aria-label="صورة ${i + 1}"><img src="${esc((p.thumbs && p.thumbs[i]) || (i ? u : img(p.thumb || u)))}" alt="" loading="lazy" decoding="async"></button>`).join("")}</div>` : ""}`;
+            ${many ? `<div class="pdp-thumbs" dir="ltr">${pics.map((u, i) => `<button class="${i ? "" : "on"}" data-pic="${i}" aria-label="صورة ${i + 1}"><img src="${esc(imgW((p.thumbs && p.thumbs[i]) || (i ? u : img(p.thumb || u)), 160))}" alt="" loading="lazy" decoding="async" fetchpriority="low"></button>`).join("")}</div>` : ""}`;
         })()}</div>
         <div class="pdp-info">${ST2 ? infoStore : `
           <h1>${esc(p.name)}</h1>

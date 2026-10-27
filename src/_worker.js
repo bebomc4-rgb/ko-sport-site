@@ -1411,6 +1411,7 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
       set('link[rel="canonical"]', "href", seo.canon),
       ["head", { element(e) { e.append(headExtras(st), { html: true }); } }],
     );
+    if (seo.preload) rules.push(["head", { element(e) { e.prepend(seo.preload, { html: true }); } }]);
     if (seo.ld) rules.push(["head", { element(e) { for (const x of seo.ld) e.append(`<script type="application/ld+json">${JSON.stringify(x).replace(/</g, "\\u003c")}</script>`, { html: true }); } }]);
     // the readable copy is for search engines and AI readers; visitors (with JavaScript) see the normal page
     if (seo.body) rules.push(["#app", { element(e) { e.setInnerContent(`<style>html.js .ssr{display:none}html:not(.js) .ssr-l{display:none}.ssr{max-width:900px;margin:0 auto;padding:16px;line-height:1.9}.ssr ul{padding-inline-start:20px}.ssr img{border-radius:12px}</style><div class="loading ssr-l" style="padding:40px 0">جاري التحميل…</div>` + seo.body, { html: true }); } }]);
@@ -1932,7 +1933,7 @@ async function catalogData(request, env, ctx) {
     if (k) { o.old_price_usd = p.price; o.discount_percent = k; }
     if (rate > 0) { o.price_syp = Math.round(net * rate); if (k) o.old_price_syp = Math.round(p.price * rate); }
     if ((p.options || []).length) o.options = p.options;
-    o.image = abs(p.image); o.images = [...new Set([p.image, ...(p.images || [])].filter(Boolean))].map(abs);
+    o.image = abs(p.image); o.main = (p.images && p.images[0]) || p.image || ""; o.images = [...new Set([p.image, ...(p.images || [])].filter(Boolean))].map(abs);
     o.url = origin + "/p/" + encodeURIComponent(p.id); o.short = origin + "/s/" + shortCode(p.id);
     if (p.description) o.description = p.description;
     if ((p.specs || []).length) o.specs = p.specs;
@@ -2059,7 +2060,10 @@ async function pageSeo(request, env, ctx, st) {
 <p><b>${seoEsc(price)}</b> · ${x.in_stock ? "متوفر" : "خالص"}</p>${x.options ? `<p>الخيارات: ${seoEsc(x.options.join("، "))}</p>` : ""}
 ${about ? `<p>${seoEsc(about)}</p>` : ""}<p>توصيل لكل المحافظات السورية والدفع عند الاستلام.</p>
 ${same.length ? `<h2>منتجات مشابهة</h2><ul>${same.map(cardHtml).join("")}</ul>` : ""}</div>`;
-    return { title, desc, canon, image: x.image, type: "product", ld, body };
+    // the big product photo starts downloading with the page itself (same sizes the shop asks for)
+    const m = x.main || "", PDP_W = [640, 828, 1080];
+    const preload = /^\/img\/[a-z0-9]+$/.test(m) ? `<link rel="preload" as="image" fetchpriority="high" href="${imgW(m, 1080)}" imagesrcset="${PDP_W.map((w) => imgW(m, w) + " " + w + "w").join(", ")}" imagesizes="(max-width:900px) 100vw, 560px">` : "";
+    return { title, desc, canon, image: x.image, type: "product", ld, body, preload };
   }
   if ((a === "c" || a === "g") && b) {
     let items, t, cu, mt = {};
