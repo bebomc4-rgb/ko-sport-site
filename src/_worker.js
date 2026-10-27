@@ -1235,16 +1235,28 @@ async function imageGet(request, env, ctx, key) {
 // /ar/product/all/<slug> → that product, anything else under /ar → home page.
 async function oldWuiltLink(request, env, url) {
   const go = (to) => Response.redirect(new URL(to, url.origin).toString(), 301);
-  const strip = (s) => { try { s = decodeURIComponent(s); } catch {} return s.replace(/[‎‏‪-‮⁦-⁩]/g, "").toLowerCase(); };
-  const m = url.pathname.match(/^\/(?:ar|en)\/product\/[^/]+\/([^/]+)/);
-  if (m && env.STORE) {
-    const slug = strip(m[1]);
-    const list = await getProducts(env, request);
+  const strip = (s) => { try { s = decodeURIComponent(s); } catch {} return s.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "").toLowerCase(); };
+  // same word whatever the spelling: dashes = spaces, alef/ya/ta-marbuta variants, no diacritics
+  const norm = (s) => strip(s).replace(/[\u064b-\u0652\u0640]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/[-_+\s]+/g, " ").trim();
+  const parts = url.pathname.split("/").filter(Boolean); // ["ar","product","<a>","<b>"]
+  const list = env.STORE && parts[1] === "product" && parts[2] ? await getProducts(env, request) : null;
+  // /ar/product/all/<slug> → that product
+  if (list && parts[3]) {
+    const slug = strip(parts[3]);
     const p = list.find((x) => x.oldUrl && strip(x.oldUrl.split("/").pop()) === slug);
     if (p) return go("/ar/p/" + encodeURIComponent(p.id));
   }
+  // /ar/product/<category-name> → that category (ملابس-تمرين → ملابس تمرين); /ar/product/all → the shop
+  if (list && parts[2] && !parts[3] && norm(parts[2]) !== "all") {
+    const want = norm(parts[2]);
+    const cats = new Set(); list.filter((x) => !x.hidden).forEach((x) => [x.category, ...(x.also || [])].forEach((c) => c && cats.add(c)));
+    const cat = [...cats].find((c) => norm(c) === want);
+    if (cat) return go("/ar/c/" + encodeURIComponent(cat));
+    const p = list.find((x) => x.oldUrl && strip(x.oldUrl.split("/").pop()) === strip(parts[2]));
+    if (p) return go("/ar/p/" + encodeURIComponent(p.id));
+  }
   if (/\/(page|shop|store|category|categories|collections?|products?)(\/|$)/.test(url.pathname)) return go("/ar/all");
-  return go("/");
+  return go("/ar");
 }
 
 // POST /api/images/fetch {url} → copy one outside image (e.g. the old Wuilt share image) into KV.
@@ -1895,6 +1907,7 @@ export default {
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
       // The shop lives under /ar/… : /ar/, /ar/cart, /ar/p/<id> … every address is a real page now.
+      if (m === "GET" && /^\/ar\/product(\/|$)/.test(path)) return oldWuiltLink(request, env, url);
       if (m === "GET" && (path === "/ar" || path.startsWith("/ar/"))) {
         const r = await env.ASSETS.fetch(new URL("/index.html", request.url));
         const out = new Response(r.body, r);
