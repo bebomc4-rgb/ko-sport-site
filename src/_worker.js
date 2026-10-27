@@ -1277,6 +1277,14 @@ async function imageFetch(request, env) {
 
 // The home page HTML gets the real title, description, share image and store info filled in on the server,
 // so Google, WhatsApp and Facebook see them without running any JavaScript.
+// Deeper /ar/… pages: same theme variables the home page gets, set on <html> before the app runs.
+async function themeOnly(env, request, res) {
+  try {
+    if (typeof HTMLRewriter === "undefined" || !env.STORE) return res;
+    const st = await getSettings(env, request);
+    return new HTMLRewriter().on("html", { element(e) { e.setAttribute("style", cssVars(st.design || {})); } }).transform(res);
+  } catch { return res; }
+}
 async function homePage(request, env, res) {
   try { return await homePageInner(request, env, res); } catch { return res; }
 }
@@ -1916,7 +1924,10 @@ export default {
         out.headers.set("content-type", "text/html; charset=utf-8");
         out.headers.set("cache-control", "public, max-age=0, must-revalidate");
         // only the shop front gets the server-rendered hero; deeper pages are drawn by the app
-        return path === "/ar" || path === "/ar/" ? homePage(request, env, out) : out;
+        if (path === "/ar" || path === "/ar/") return homePage(request, env, out);
+        // deeper pages: put the saved colours/fonts on <html> straight away, so the first paint is already
+        // the owner's theme (otherwise the stylesheet's built-in black/white/red shows for a moment)
+        return themeOnly(env, request, out);
       }
       // someone typing an old-style address lands on the right page instead of a 404
       if (m === "GET" && /^\/(all|cart|checkout|account|browse|games|search|done|c|g)(\/|$)/.test(path)) {
