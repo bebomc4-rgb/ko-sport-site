@@ -1011,3 +1011,39 @@ body:not(.in) .w-tabbar{display:none!important}
 /* قائمة المجموعات/الفيديوهات بنافذة تعديل القسم: كانت تنضغط لشريط رفيع عالموبايل (وما ينشاف غير أول عنصر). هلق بطولها، والنافذة نفسها بتنزل */
 .wm-body{grid-auto-rows:max-content}
 .wm-body .wc-list:has(> .wc-item){max-height:none;overflow:visible;min-height:auto}
+
+/* ===== القائمة الرئيسية للمتجر: صفوف كبيرة، سحب بالإصبع، «نقل لـ…»، وحفظ تلقائي ===== */
+.mn-tip{font-size:13.5px;color:#475467;background:#f9fafb;border:1px dashed #d0d5dd;border-radius:12px;padding:10px 12px;margin:0 0 12px;line-height:1.8}
+.mn-state{display:inline-block;font-weight:700;margin-inline-start:4px}
+.mn-state.saving,.mn-state.wait{color:#b54708}.mn-state.ok{color:#067647}.mn-state.err{color:#b42318}
+.mn-groups{display:grid;gap:12px}
+.mn-g{background:#fff;border:1.5px solid var(--w-line,#eaecf0);border-radius:14px;padding:10px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.mn-gh{display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--w-line,#eaecf0);margin-bottom:8px}
+.mn-name{flex:1;min-width:0;border:1.5px solid #d0d5dd;border-radius:10px;padding:9px 12px;font:inherit;font-weight:700;font-size:15px}
+.mn-name:focus{outline:0;border-color:var(--w,#7f56d9)}
+.mn-cnt{color:#667085;white-space:nowrap;font-size:12px}
+.mn-arrows{display:flex;gap:4px}.mn-arrows button,.mn-del{border:1px solid var(--w-line,#eaecf0);background:#fff;border-radius:9px;width:34px;height:34px;cursor:pointer;color:#344054}
+.mn-arrows button:disabled{opacity:.3;cursor:default}.mn-del:hover{background:#fef3f2}
+.mn-h{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;display:inline-grid;place-items:center;min-width:34px;min-height:40px;border-radius:10px;font-size:20px;color:#98a2b3;font-style:normal}
+.mn-h:hover{background:#f2f4f7;color:#475467}
+.mn-list{display:grid;gap:6px;min-height:46px;border-radius:10px}
+.mn-list:empty{border:1.5px dashed #d0d5dd}
+.mn-list:empty::before{content:"اسحب أقسام لهون";color:#98a2b3;font-size:13px;display:grid;place-items:center;min-height:42px}
+.mn-c{display:flex;align-items:center;gap:8px;background:#fcfcfd;border:1px solid var(--w-line,#eaecf0);border-radius:11px;padding:4px 8px 4px 6px}
+.mn-c img{width:38px;height:38px;object-fit:contain;border-radius:8px;border:1px solid var(--w-line,#eaecf0);background:#fff;flex:0 0 auto}
+.mn-c b{flex:1;min-width:0;font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mn-mv{border:1px solid #d0d5dd;border-radius:9px;padding:6px 6px;font:inherit;font-size:13px;background:#fff;max-width:118px;color:#344054}
+.mn-empty{margin:6px 2px;color:#b54708;font-size:13px}
+.mn-add{margin-top:8px;width:100%;border:1.5px dashed #d0d5dd;background:#fff;border-radius:11px;padding:10px;font:inherit;font-weight:600;color:var(--w,#7f56d9);cursor:pointer}
+.mn-add:hover{background:#f9fafb}
+.mn-free{background:#fffaeb;border:1px solid #fedf89;border-radius:14px;padding:10px;margin-top:12px}
+.mn-free>b{font-size:14px}.mn-free small{color:#667085}.mn-free .mn-list{margin-top:8px}
+@media (max-width:760px){
+  .mn-g{padding:8px}
+  .mn-gh{flex-wrap:wrap}.mn-name{flex-basis:calc(100% - 50px)}
+  .mn-cnt{flex:1}
+  .mn-c b{font-size:14px}
+  .mn-mv{max-width:96px;font-size:12.5px}
+}
+.ap-panel>[data-groups-editor],.ap-panel>[data-unassigned]{min-width:0;max-width:100%}
+.mn-g,.mn-gh,.mn-c{min-width:0}

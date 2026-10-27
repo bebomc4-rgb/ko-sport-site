@@ -1185,7 +1185,9 @@
 
   // ---------- products ----------
   async function loadProducts() {
-    const r = await fetch("/api/products?full=1", { cache: "no-store" });
+    // the dashboard's own address: always the complete list straight from the server (never the shop's cached short list)
+    let r = await fetch("/api/admin/products", { cache: "no-store", headers: { authorization: "Bearer " + pass } });
+    if (!r.ok) r = await fetch("/api/products?full=1&_t=" + Date.now(), { cache: "no-store", headers: { authorization: "Bearer " + pass } });
     products = await r.json();
     saved = JSON.stringify(products); dirty.clear();
     const cats = [...new Set(products.map((p) => p.category))].sort();
@@ -2231,7 +2233,7 @@
   }
   async function openSettings(tab) {
     if (!ST) {
-      try { ST = await api("/api/settings"); ST.discounts = (ST.discounts || []).filter((d) => !d.virtual); ST.pages = ST.pages || []; ST.promos = ST.promos || [];
+      try { ST = await api("/api/admin/settings"); ST.discounts = (ST.discounts || []).filter((d) => !d.virtual); ST.pages = ST.pages || []; ST.promos = ST.promos || [];
         ST.tax = { on: false, rate: 0, mode: "added", label: "", ...(ST.tax || {}) }; ST.apps = { ga: "", fbPixel: "", tiktok: "", ...(ST.apps || {}), waFloat: false }; ST.dev = { head: "", css: "", ...(ST.dev || {}) };
         ST.design.catMeta = ST.design.catMeta || {};
         ST.notify = { emails: [], ...(ST.notify || {}) }; ST.redirects = ST.redirects || []; ST.robots = ST.robots || "";
@@ -2545,14 +2547,15 @@
   }
   function renderSections() {
     const L = ST.home.sections, box = $("[data-sections]"); if (!box) return;
-    box.innerHTML = (L.length > 1 ? `<p class="hint ws-tip">✋ اسحب أي قسم من <b>⋮⋮</b> لتغيّر ترتيبو بالصفحة الرئيسية.</p>` : "") + L.map((sec, i) => `<div class="ws-item${sec.on === false ? " off" : ""}" data-si="${i}">
+    box.innerHTML = (L.length > 1 ? `<p class="hint ws-tip">✋ اسحب أي قسم من <b>⋮⋮</b> لتغيّر ترتيبو بالصفحة الرئيسية. الترتيب بينحفظ لحالو. <span class="mn-state" data-mn-state></span></p>` : "") + L.map((sec, i) => `<div class="ws-item${sec.on === false ? " off" : ""}" data-si="${i}">
         <span class="ws-drag" title="اسحب لترتيب الأقسام">⋮⋮</span><span class="ws-ic">${SEC_IC[sec.type] || SEC_IC.text}</span>
         <div class="ws-txt"><b>${esc(sec.title || SEC_NAMES[sec.type] || sec.type)}</b><small>${secSummary(sec)}</small>${sec.type === "products" && sec.cat ? `<button type="button" class="w-link ws-arrange" data-sec-arrange="${i}">↕ رتّب منتجات هالقسم</button>` : sec.type === "categories" ? `<button type="button" class="w-link ws-arrange" data-sec-edit="${i}">↕ رتّب المجموعات</button>` : ""}</div>
         <span class="ws-arrows"><button type="button" data-sec-move="-1" data-i="${i}" ${i ? "" : "disabled"} aria-label="لفوق">↑</button><button type="button" data-sec-move="1" data-i="${i}" ${i < L.length - 1 ? "" : "disabled"} aria-label="لتحت">↓</button></span>
         <label class="switch" title="إظهار / إخفاء"><input type="checkbox" data-k="home.sections.${i}.on" data-default-true><span></span></label>
         <span class="ws-btns"><button type="button" class="ws-del" data-sec-del data-i="${i}" aria-label="حذف">${TRASH}</button><button type="button" class="ws-edit" data-sec-edit="${i}">تعديل</button></span></div>`).join("")
       || `<p class="hint">ما في أقسام. ضيف قسم من تحت.</p>`;
-    if (L.length > 1) makeSortable(box, { handle: ".ws-drag", draggable: ".ws-item", onMove: (from, to) => { L.splice(to, 0, L.splice(from, 1)[0]); renderSections(); bindInputs(); renderSegs(); updateSetBar(); } });
+    if (L.length > 1) makeSortable(box, { handle: ".ws-drag", draggable: ".ws-item", onMove: (from, to) => { L.splice(to, 0, L.splice(from, 1)[0]); renderSections(); bindInputs(); renderSegs(); updateSetBar(); autoSave(["home.sections"]); } });
+    menuState();
   }
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-sec-arrange]"); if (!b || !ST) return;
@@ -2819,7 +2822,7 @@
     const swap = (L, a, b) => { [L[a], L[b]] = [L[b], L[a]]; };
     if (t.matches("[data-sl-move]")) swap(ST.design.slides, i, i + +t.dataset.slMove);
     else if (t.matches("[data-sl-del]")) { if (!confirm("حذف الشريحة؟")) return; ST.design.slides.splice(i, 1); }
-    else if (t.matches("[data-sec-move]")) swap(ST.home.sections, i, i + +t.dataset.secMove);
+    else if (t.matches("[data-sec-move]")) { swap(ST.home.sections, i, i + +t.dataset.secMove); setTimeout(() => autoSave(["home.sections"]), 0); }
     else if (t.matches("[data-sec-del]")) { if (!confirm("حذف القسم من الصفحة الرئيسية؟")) return; ST.home.sections.splice(i, 1); }
     else if (t.matches("[data-feat-add]")) { const sec = ST.home.sections[+t.dataset.featAdd]; (sec.items = sec.items || []).push({ icon: "⭐", title: "", text: "" }); }
     else if (t.matches("[data-feat-del]")) { const [a, b] = t.dataset.featDel.split(":").map(Number); ST.home.sections[a].items.splice(b, 1); }
@@ -2988,19 +2991,26 @@
   }
   document.addEventListener("click", (e) => { const c = e.target.closest("[data-copy]"); if (!c) return; navigator.clipboard.writeText(c.dataset.copy).then(() => toast("انتسخ ✓")).catch(() => {}); });
   function allCats() { return [...new Set(products.flatMap((p) => [p.category, ...(p.also || [])]))].sort(); }
+  // ---------- the shop's main menu: groups, and the collections under each one ----------
+  // Big rows you can drag with a finger, «move to» on every row, and every change saves by itself.
   function renderGroups() {
+    const ed = $("[data-groups-editor]"); if (!ed || !ST) return;
+    if (!products.length && !renderGroups.busy) { renderGroups.busy = true; loadProducts().then(() => { renderGroups.busy = false; renderGroups(); }).catch(() => { renderGroups.busy = false; }); }
     const g = ST.design.groups, used = new Set(g.flatMap((x) => x.cats)), cats = allCats();
     const free = cats.filter((c) => !used.has(c));
     const label = (c) => ST.design.catLabels?.[c] || c;
-    const chip = (c, j, n) => `<span class="catchip" data-cat="${esc(c)}"><i class="cc-h" title="اسحب">⠿</i>${esc(label(c))}${n > 1 ? `<button data-cmove="-1" data-cj="${j}" title="لقدام" ${j ? "" : "disabled"}>‹</button><button data-cmove="1" data-cj="${j}" title="لورا" ${j < n - 1 ? "" : "disabled"}>›</button>` : ""}<button data-cdel="${j}" title="شيل">✕</button></span>`;
-    $("[data-groups-editor]").innerHTML = `<p class="hint" style="margin:0 0 8px">✋ اسحب المجموعة من ⠿ لترتّبها، واسحب أي قسم لتغيّر مكانو أو تنقلو لمجموعة تانية. أو استعمل الأسهم.</p>` + g.map((grp, i) => `<div class="group-card" data-gi="${i}">
-      <div class="group-head"><span class="g-handle" title="اسحب لترتّب">⠿</span><b class="g-num">${i + 1}</b><input value="${esc(grp.name)}" data-gname aria-label="اسم المجموعة">
-        <button class="mini" data-gmove="top" title="لأول القائمة" ${i ? "" : "disabled"}>⤒</button><button class="mini" data-gmove="-1" title="لفوق" ${i ? "" : "disabled"}>↑</button><button class="mini" data-gmove="1" title="لتحت" ${i < g.length - 1 ? "" : "disabled"}>↓</button><button class="mini" data-gmove="end" title="لآخر القائمة" ${i < g.length - 1 ? "" : "disabled"}>⤓</button><button class="mini del" data-gdel title="حذف المجموعة">✕</button></div>
-      <div class="catchips" data-catlist>${grp.cats.map((c, j) => chip(c, j, grp.cats.length)).join("")}</div>
-      <select data-cadd class="cadd"><option value="">+ ضيف قسم</option>${cats.filter((c) => !grp.cats.includes(c)).map((c) => `<option value="${esc(c)}">${esc(label(c))}${used.has(c) ? " (بمجموعة تانية)" : ""}</option>`).join("")}</select></div>`).join("");
-    $("[data-unassigned]").innerHTML = free.length ? `<div class="unassigned"><b>أقسام مو بأي مجموعة</b> (بتطلع بس بـ «كل المنتجات») — اسحبها لمجموعة:<div class="catchips" data-catlist data-free>${free.map((c) => `<span class="catchip" data-cat="${esc(c)}"><i class="cc-h">⠿</i>${esc(label(c))}</span>`).join("")}</div></div>` : "";
+    const moveSel = (gi) => `<select class="mn-mv" data-cmv aria-label="نقل لمجموعة تانية"><option value="">${gi < 0 ? "ضيف لـ…" : "نقل لـ…"}</option>${g.map((x, k) => (k === gi ? "" : `<option value="${k}">${esc(x.name || "مجموعة " + (k + 1))}</option>`)).join("")}${gi < 0 ? "" : `<option value="-1">شيلو من القائمة</option>`}</select>`;
+    const row = (c, gi) => `<div class="mn-c" data-cat="${esc(c)}"><span class="mn-h cc-h" title="اسحب لترتّب أو لتنقل لمجموعة تانية" aria-label="اسحب">⠿</span><img src="${esc(catImg(c))}" alt="" loading="lazy"><b>${esc(label(c))}</b>${moveSel(gi)}</div>`;
+    ed.innerHTML = `<div class="mn-tip">✋ <b>اسحب من ⠿</b> لترتّب المجموعات والأقسام، أو لتنقل قسم لمجموعة تانية. أو استعمل «نقل لـ…». <b>كل تعديل بينحفظ لحالو.</b> <span class="mn-state" data-mn-state></span></div>
+      <div class="mn-groups" data-mn-groups>${g.map((grp, i) => `<div class="mn-g" data-gi="${i}">
+        <div class="mn-gh"><span class="mn-h g-handle" title="اسحب لترتّب المجموعات" aria-label="اسحب">⠿</span><input class="mn-name" value="${esc(grp.name)}" data-gname placeholder="اسم المجموعة" aria-label="اسم المجموعة"><small class="mn-cnt">${grp.cats.length ? grp.cats.length + " قسم" : "فاضية"}</small>
+          <span class="mn-arrows"><button type="button" data-gmove="-1" title="لفوق" ${i ? "" : "disabled"}>↑</button><button type="button" data-gmove="1" title="لتحت" ${i < g.length - 1 ? "" : "disabled"}>↓</button></span><button type="button" class="mn-del" data-gdel title="حذف المجموعة" aria-label="حذف المجموعة">🗑</button></div>
+        <div class="mn-list" data-catlist>${grp.cats.map((c) => row(c, i)).join("")}</div>
+        ${grp.cats.length ? "" : `<p class="mn-empty">هالمجموعة فاضية فما رح تطلع بالقائمة. اسحب أقسام لهون، أو احذفها من 🗑.</p>`}
+        <button type="button" class="mn-add" data-cadd-open>+ ضيف أقسام لهالمجموعة</button></div>`).join("")}</div>`;
+    $("[data-unassigned]").innerHTML = free.length ? `<div class="mn-free"><b>أقسام مو بأي مجموعة</b> <small>(ما بتطلع بالقائمة، بس بـ «كل المنتجات»)</small><div class="mn-list" data-catlist data-free>${free.map((c) => row(c, -1)).join("")}</div></div>` : "";
     $("[data-labels]").innerHTML = cats.map((c) => `<div class="label-row"><span>${esc(c)}</span><input data-label="${esc(c)}" value="${esc(ST.design.catLabels?.[c] || "")}" placeholder="نفس الاسم"></div>`).join("");
-    groupsDnD();
+    menuDnD(); menuState();
   }
   // السحب والإفلات (بيشتغل بالماوس وباللمس عالموبايل) — SortableJS
   let sortableP = null;
@@ -3017,46 +3027,93 @@
   }
   function groupsFromDom() {
     const old = ST.design.groups;
-    ST.design.groups = [...$("[data-groups-editor]").querySelectorAll(".group-card")].map((card) => ({ ...old[+card.dataset.gi], cats: [...card.querySelectorAll("[data-catlist] .catchip")].map((x) => x.dataset.cat) }));
-    renderGroups(); updateSetBar();
+    ST.design.groups = [...$("[data-groups-editor]").querySelectorAll(".mn-g")].map((card) => ({ ...old[+card.dataset.gi], cats: [...card.querySelectorAll("[data-catlist] .mn-c")].map((x) => x.dataset.cat) }));
+    menuChanged();
   }
-  function groupsDnD() {
+  function menuDnD() {
     loadSortable().then(() => {
-      const ed = $("[data-groups-editor]"); if (!ed) return;
-      Sortable.create(ed, { handle: ".g-handle", draggable: ".group-card", animation: 160, ghostClass: "dnd-ghost", onEnd: (e) => { if (e.oldIndex !== e.newIndex) groupsFromDom(); } });
-      document.querySelectorAll("[data-groups-editor] [data-catlist], [data-unassigned] [data-catlist]").forEach((list) => Sortable.create(list, { group: "kocats", draggable: ".catchip", animation: 160, ghostClass: "dnd-ghost", filter: "button", preventOnFilter: false, delay: 120, delayOnTouchOnly: true, onEnd: () => groupsFromDom() }));
+      const box = $("[data-mn-groups]"); if (!box) return;
+      const base = { animation: 170, ghostClass: "dnd-ghost", chosenClass: "dnd-chosen", forceFallback: true, fallbackTolerance: 3, scroll: true, scrollSensitivity: 90, scrollSpeed: 16, bubbleScroll: true };
+      Sortable.create(box, { ...base, handle: ".g-handle", draggable: ".mn-g", onEnd: (e) => { if (e.oldIndex !== e.newIndex) groupsFromDom(); } });
+      document.querySelectorAll("[data-groups-editor] [data-catlist], [data-unassigned] [data-catlist]").forEach((list) => Sortable.create(list, { ...base, group: "kocats", handle: ".cc-h", draggable: ".mn-c", onEnd: (e) => { if (e.from !== e.to || e.oldIndex !== e.newIndex) groupsFromDom(); } }));
     }).catch(() => {});
   }
+  // ---- saving by itself: only the part that changed is written (the menu), on top of what is saved on the server,
+  // so half-finished edits elsewhere in the dashboard are never published by accident
+  const partQ = new Set(); let partT = 0, partBusy = false, partSt = { k: "", msg: "" };
+  const setIn = (o, path, v) => { const ks = path.split("."), last = ks.pop(); ks.reduce((x, k) => (x[k] ??= {}), o)[last] = v; };
+  function menuState(k, msg) {
+    if (k != null) partSt = { k, msg: msg || "" };
+    const html = { wait: "…", saving: "جاري الحفظ…", ok: "✓ انحفظ وصار بالمتجر", err: `⚠️ ما انحفظ: ${esc(partSt.msg)} <button type="button" class="w-link" data-mn-retry>جرّب كمان مرة</button>` }[partSt.k] || "";
+    $$("[data-mn-state]").forEach((el) => { el.className = "mn-state " + partSt.k; el.innerHTML = html; });
+  }
+  function autoSave(paths) { paths.forEach((p) => partQ.add(p)); clearTimeout(partT); menuState("wait"); partT = setTimeout(flushParts, 700); }
+  async function flushParts() {
+    if (partBusy) { partT = setTimeout(flushParts, 400); return; }
+    const paths = [...partQ]; partQ.clear(); if (!paths.length) return;
+    partBusy = true; menuState("saving");
+    try {
+      if (ST.design.groups.some((x) => !String(x.name || "").trim())) throw new Error("في مجموعة بدون اسم، اكتبلها اسم");
+      const cur = await api("/api/admin/settings"), base = JSON.parse(stSaved);
+      for (const p of paths) {
+        const raw = getK(p);
+        if (raw === undefined) { for (const o of [cur, base]) { const ks = p.split("."), last = ks.pop(), par = ks.reduce((x, k) => (x == null ? x : x[k]), o); if (par) delete par[last]; } continue; }
+        const v = JSON.parse(JSON.stringify(raw)); setIn(cur, p, v); setIn(base, p, v);
+      }
+      cur.discounts = (cur.discounts || []).filter((d) => !d.virtual);
+      await api("/api/settings", { method: "PUT", body: JSON.stringify(cur) });
+      stSaved = JSON.stringify(base); updateSetBar(); menuState("ok");
+    } catch (err) { paths.forEach((p) => partQ.add(p)); menuState("err", err.message); }
+    partBusy = false;
+  }
+  function menuChanged() { renderGroups(); renderPreviews && renderPreviews(); autoSave(["design.groups", "design.catLabels"]); }
+  // pick several collections for one group
+  function menuAddPicker(gi) {
+    const g = ST.design.groups, label = (c) => ST.design.catLabels?.[c] || c, where = (c) => g.findIndex((x) => x.cats.includes(c));
+    const D = { pick: new Set(), q: "" };
+    openX(`ضيف أقسام لـ «${g[gi].name}»`, {
+      draft: D, noPublish: true,
+      render() {
+        const q = normA(D.q), list = allCats().filter((c) => !g[gi].cats.includes(c) && (!q || normA(c + " " + label(c)).includes(q)));
+        return `<input data-pk-q placeholder="دوّر على قسم" value="${esc(D.q)}" class="dc-search"><small class="hint">${D.pick.size} محدد. القسم يلي بمجموعة تانية بينتقل لهون.</small>
+          <div class="dc-found pk-list">${list.map((c) => { const w = where(c); return `<button type="button" data-pk="${esc(c)}" class="${D.pick.has(c) ? "on" : ""}"><img loading="lazy" src="${esc(catImg(c))}" alt=""><span>${esc(label(c))}<small>${w >= 0 ? "هلق بـ «" + esc(g[w].name) + "»" : "مو بأي مجموعة"}</small></span>${D.pick.has(c) ? "✓" : ""}</button>`; }).join("") || `<p class="hint">كل الأقسام موجودة بهالمجموعة.</p>`}</div>`;
+      },
+      onInput(e) { if (e.target.matches("[data-pk-q]")) { D.q = e.target.value; renderX(); const i = $("[data-pk-q]"); i.focus(); i.setSelectionRange(D.q.length, D.q.length); } },
+      click(e) { const b = e.target.closest("[data-pk]"); if (b) { const c = b.dataset.pk; D.pick.has(c) ? D.pick.delete(c) : D.pick.add(c); renderX(); } },
+      save() { if (!D.pick.size) return; g.forEach((x) => (x.cats = x.cats.filter((c) => !D.pick.has(c)))); g[gi].cats.push(...D.pick); menuChanged(); },
+    });
+  }
+  document.addEventListener("click", (e) => { if (e.target.closest("[data-mn-retry]")) { clearTimeout(partT); flushParts(); } });
   $("[data-groups-editor]").addEventListener("input", (e) => {
     if (!e.target.matches("[data-gname]")) return;
-    ST.design.groups[e.target.closest("[data-gi]").dataset.gi].name = e.target.value; updateSetBar();
+    ST.design.groups[e.target.closest("[data-gi]").dataset.gi].name = e.target.value; updateSetBar(); autoSave(["design.groups"]);
   });
   $("[data-groups-editor]").addEventListener("click", (e) => {
     const card = e.target.closest("[data-gi]"); if (!card) return;
     const g = ST.design.groups, i = +card.dataset.gi;
     const mv = e.target.closest("[data-gmove]");
-    const cm = e.target.closest("[data-cmove]");
-    if (mv) { const d = mv.dataset.gmove; if (d === "top") g.unshift(g.splice(i, 1)[0]); else if (d === "end") g.push(g.splice(i, 1)[0]); else { const j = i + +d; [g[i], g[j]] = [g[j], g[i]]; } }
-    else if (cm) { const a = g[i].cats, j = +cm.dataset.cj, k = j + +cm.dataset.cmove; [a[j], a[k]] = [a[k], a[j]]; }
-    else if (e.target.closest("[data-gdel]")) { if (!confirm(`حذف مجموعة «${g[i].name}»؟ (الأقسام نفسها ما بتنحذف)`)) return; g.splice(i, 1); }
-    else if (e.target.closest("[data-cdel]")) g[i].cats.splice(+e.target.closest("[data-cdel]").dataset.cdel, 1);
+    if (mv) { const j = i + +mv.dataset.gmove; if (!g[j]) return; [g[i], g[j]] = [g[j], g[i]]; }
+    else if (e.target.closest("[data-gdel]")) { if (!confirm(`حذف مجموعة «${g[i].name}»؟\nالأقسام نفسها ما بتنحذف، بس بتطلع من القائمة.`)) return; g.splice(i, 1); }
+    else if (e.target.closest("[data-cadd-open]")) { menuAddPicker(i); return; }
     else return;
-    renderGroups(); updateSetBar();
+    menuChanged();
   });
-  $("[data-groups-editor]").addEventListener("change", (e) => {
-    if (!e.target.matches("[data-cadd]") || !e.target.value) return;
-    const c = e.target.value;
-    ST.design.groups.forEach((g) => (g.cats = g.cats.filter((x) => x !== c)));
-    ST.design.groups[e.target.closest("[data-gi]").dataset.gi].cats.push(c);
-    renderGroups(); updateSetBar();
+  // «move to…» / «add to…» on a row
+  document.addEventListener("change", (e) => {
+    const sel = e.target.closest("[data-cmv]"); if (!sel || !ST || sel.value === "") return;
+    const c = sel.closest("[data-cat]").dataset.cat, to = +sel.value, g = ST.design.groups;
+    g.forEach((x) => (x.cats = x.cats.filter((y) => y !== c)));
+    if (to >= 0 && g[to]) g[to].cats.push(c);
+    menuChanged();
+    if (to >= 0 && g[to]) toast(`انتقل «${ST.design.catLabels?.[c] || c}» لـ «${g[to].name}»`);
   });
-  $("[data-add-group]").onclick = () => { ST.design.groups.push({ name: "مجموعة جديدة", cats: [] }); renderGroups(); updateSetBar(); };
+  $("[data-add-group]").onclick = () => { ST.design.groups.push({ name: "مجموعة جديدة", cats: [] }); menuChanged(); setTimeout(() => { const L = $$("[data-groups-editor] [data-gname]"); const last = L[L.length - 1]; if (last) { last.focus(); last.select(); last.scrollIntoView({ block: "center", behavior: "smooth" }); } }, 60); };
   $("[data-labels]").addEventListener("input", (e) => {
     if (!e.target.matches("[data-label]")) return;
     ST.design.catLabels ??= {};
     const v = e.target.value.trim();
     if (v) ST.design.catLabels[e.target.dataset.label] = v; else delete ST.design.catLabels[e.target.dataset.label];
-    updateSetBar();
+    updateSetBar(); autoSave(["design.catLabels"]);
   });
 
   // delivery zones

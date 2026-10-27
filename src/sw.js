@@ -1,6 +1,6 @@
 /* KO SPORT service worker — fast repeat visits + offline fallback.
    Products/prices are always fetched fresh from the network first. */
-const V = "ko-v121";
+const V = "ko-v122";
 const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
 const KEEP = [SHELL, ASSET, IMG, DATA];
 
@@ -24,11 +24,12 @@ async function trim(name, max) {
   const c = await caches.open(name), ks = await c.keys();
   for (let i = 0; i < ks.length - max; i++) await c.delete(ks[i]);
 }
-async function networkFirst(req, name, timeout) {
+async function networkFirst(req, name, timeout, clientId) {
   // Ask the network first. If it is slow, show the last saved copy (when there is one) and let the
-  // fresh copy land in the cache for the next open; with no saved copy, just keep waiting for the network.
+  // fresh copy land in the cache; with no saved copy, just keep waiting for the network.
   const c = await caches.open(name);
-  const net = fetch(req).then((r) => { if (r && r.ok) c.put(req, r.clone()); return r; });
+  let putP = null;
+  const net = fetch(req).then((r) => { if (r && r.ok) putP = c.put(req, r.clone()); return r; });
   net.catch(() => {});
   let timer;
   const slow = new Promise((res) => { timer = setTimeout(() => res("slow"), timeout || 3000); });
@@ -36,6 +37,18 @@ async function networkFirst(req, name, timeout) {
     const first = await Promise.race([net, slow]);
     if (first !== "slow") { clearTimeout(timer); return first; }
     const hit = await c.match(req);
+    // the page got the saved copy: as soon as the real one arrives and is different, tell the page so it
+    // shows the new prices/design right away (before, it waited for the next visit)
+    if (hit && clientId) {
+      const oldTxt = hit.clone().text();
+      net.then(async (r) => {
+        if (!r || !r.ok) return;
+        const [a, b] = await Promise.all([oldTxt, r.clone().text()]);
+        if (a === b) return;
+        if (putP) await putP.catch(() => {});
+        const cl = await self.clients.get(clientId); if (cl) cl.postMessage({ koFresh: 1 });
+      }).catch(() => {});
+    }
     return hit || (await net);
   } catch (err) {
     clearTimeout(timer);
@@ -84,8 +97,11 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (p.startsWith("/api/")) {
-    // only catalogue/settings reads are cached; everything else goes straight to the network
-    if (p === "/api/products" || p === "/api/settings") e.respondWith(networkFirst(new Request(url.origin + p, req), DATA, 4000));
+    // only the shop's own public catalogue/settings reads are cached; everything else goes straight to the network.
+    // Never the dashboard's reads (signed in, or the full list): a cached shop copy there hid what was just saved,
+    // and a short shop list saved back from the dashboard would wipe descriptions.
+    if ((p === "/api/products" || p === "/api/settings") && !req.headers.has("authorization") && !url.searchParams.has("full"))
+      e.respondWith(networkFirst(new Request(url.origin + p, { credentials: "same-origin" }), DATA, 4000, e.clientId));
     return;
   }
   if (p.startsWith("/assets/")) { e.respondWith(url.searchParams.has("v") ? cacheFirst(req, ASSET, 80) : swr(req, ASSET, 80)); return; }

@@ -259,6 +259,7 @@ async function settingsPut(request, env) {
   try { s = JSON.parse(text); } catch { return json({ error: "بيانات غلط" }, 400); }
   if (!s || typeof s !== "object" || !s.store || !s.design || !s.delivery || !Array.isArray(s.payments)) return json({ error: "بيانات ناقصة" }, 400);
   if (Array.isArray(s.discounts)) s.discounts = s.discounts.filter((d) => !(d && d.virtual)); // the badge discount is computed, never stored
+  if (s.dev === undefined) { const cur = (await env.STORE.get("settings", "json")) || {}; if (cur.dev) s.dev = cur.dev; }
   if (env.__role !== "owner") { // only the owner may change code that runs on the shop
     const cur = (await env.STORE.get("settings", "json")) || {};
     s.dev = cur.dev || {}; s.apps = { ...(s.apps || {}), ga: (cur.apps || {}).ga || "", fbPixel: (cur.apps || {}).fbPixel || "", tiktok: (cur.apps || {}).tiktok || "", botUrl: (cur.apps || {}).botUrl || "" };
@@ -472,6 +473,15 @@ async function productsPut(request, env) {
   if (!isAdmin(request, env)) return denied();
   const list = await request.json().catch(() => null);
   if (!Array.isArray(list)) return json({ error: "بيانات غلط" }, 400);
+  // Safety net: a dashboard that loaded the shop's short list (no descriptions, no hidden products) must never
+  // save it over the full catalogue. A list like that is refused; a field merely left out keeps its saved value.
+  {
+    const old = await getProducts(env, request).catch(() => []), byId = new Map((Array.isArray(old) ? old : []).map((p) => [p && p.id, p]));
+    const KEEP = ["description", "specs", "details", "options", "also", "sports", "images", "originalImage", "oldUrl"];
+    let cut = 0;
+    for (const p of list) { const o = p && byId.get(p.id); if (!o) continue; if (o.description && p.description === undefined) cut++; for (const k of KEEP) if (p[k] === undefined && o[k] !== undefined) p[k] = o[k]; }
+    if (cut > Math.max(5, byId.size * 0.2)) return json({ error: "لوحة التحكم فاتحة نسخة ناقصة من المنتجات، فما حفظنا شي حتى ما ينمحى شي. حدّث الصفحة وجرّب كمان مرة." }, 409);
+  }
   for (const p of list) {
     if (!p || !p.id || !String(p.name || "").trim()) return json({ error: `في منتج بلا اسم${p && p.id ? " (" + p.id + ")" : ""}. اكتبلو اسم وجرّب مرة تانية` }, 400);
     // منتجات قديمة أو جديدة بلا قسم أو سعرها مكتوب كنص: منصلّحها بدل ما نوقف حفظ كل المنتجات
@@ -2208,6 +2218,10 @@ export default {
       }
       if (path === "/api/rate" && (m === "GET" || m === "POST")) return fxApi(request, env, ctx);
       if (path === "/api/order-items" && m === "GET") return orderItemsGet(request, env);
+      // the dashboard reads through its own addresses: the shop's service worker never touches them,
+      // so the owner always edits the real, complete data (never a cached shop copy)
+      if (path === "/api/admin/settings" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getSettings(env, request)); r.headers.set("cache-control", "no-store"); return r; }
+      if (path === "/api/admin/products" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getProducts(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/settings") {
         if (m === "GET") return settingsGet(request, env, ctx);
         if (m === "PUT") return settingsPut(request, env);

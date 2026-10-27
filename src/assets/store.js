@@ -2281,4 +2281,22 @@ ${trustH()}
     if (!booted) app.innerHTML = `<div class="empty"><b>ما قدرنا نحمّل المنتجات</b>حدّث الصفحة أو راسلنا على واتساب.</div>`;
   });
   });
+  // slow connection: the service worker answered from the copy saved on this device, then the real one arrived
+  // and it is different (the owner just saved something). Show it now instead of on the next visit.
+  let freshT = 0;
+  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", (e) => {
+    if (!e.data || !e.data.koFresh) return;
+    clearTimeout(freshT);
+    freshT = setTimeout(async () => {
+      // the service worker has just stored the real copy: read it straight from there (no second wait on a slow line)
+      const fromSw = async (u) => { try { for (const k of await caches.keys()) if (/^ko-data-/.test(k)) { const r = await (await caches.open(k)).match(location.origin + u); if (r) return await r.json(); } } catch {} return null; };
+      const t = "&_t=" + Date.now(), [st, data] = await Promise.all([fromSw("/api/settings").then((x) => x || getJSON("/api/settings?r=1" + t)), fromSw("/api/products").then((x) => x || getJSON("/api/products?r=1" + t))]);
+      if (!st || !st.store || !Array.isArray(data)) return;
+      const stStr = JSON.stringify(st), dataStr = JSON.stringify(data);
+      if (stStr === snapStore.get("ko_snap_settings") && dataStr === snapStore.get("ko_snap_products")) return;
+      snapStore.set("ko_snap_settings", stStr); snapStore.set("ko_snap_products", dataStr);
+      setData(st, data); chrome(); renderCount(); booted = true;
+      if (!/^\/(checkout|done)/.test(curRoute())) route(null, true);
+    }, 250);
+  });
 })();
