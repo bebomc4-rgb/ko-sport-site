@@ -137,6 +137,8 @@
   FX.open = function (force) {
     var o = (FX.d && FX.d.open) || {}, style = pick(o.style, OPEN, "none");
     if (style === "none" && !force) return;
+    // the server already drew the page (window.__koD): hiding it to "assemble" it again would only delay it
+    if (!force && window.__koD) return;
     if (style === "none") style = "pieces";
     if (!force) {
       if (reduce() || /[?&]preview=1/.test(location.search) || !document.documentElement.animate) return;

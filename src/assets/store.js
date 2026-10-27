@@ -708,7 +708,7 @@
     let boost = 0;
     for (const im of app.querySelectorAll('.hsec img[loading="lazy"]')) {
       if (boost >= 3) break;
-      if (im.closest("[data-clone]")) continue;
+      if (im.closest("[data-clone],.slider,.car-hero")) continue; // hidden copies / stacked slides
       const r = im.getBoundingClientRect();
       if (!r.width || r.top > innerHeight || r.bottom < 0 || r.right < 0 || r.left > innerWidth) continue;
       im.setAttribute("fetchpriority", "high"); im.setAttribute("data-nofx", ""); im.loading = "eager"; boost++;
