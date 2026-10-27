@@ -1461,9 +1461,12 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
     ['link[rel="icon"]', { element(e) { if (D.favicon) { e.setAttribute("href", D.favicon); e.setAttribute("type", "image/png"); } } }],
   );
   if (crit) {
-    let full = "", moved = false;
-    rules.push(['link[href^="/assets/store.css"]', { element(e) { full = e.getAttribute("href") || "/assets/store.css"; e.replace(`<style>${crit}</style>`, { html: true }); } }]);
-    rules.push(['script[src^="/assets/"][defer]', { element(e) { if (!moved && full) { moved = true; e.before(`<link rel="stylesheet" href="${full}">`, { html: true }); } } }]);
+    // full stylesheet: downloaded at high priority without blocking the first paint; the shop script waits for it
+    // (window.__koCss / "ko:css") before drawing anything, so nothing ever shows unstyled
+    rules.push(['link[href^="/assets/store.css"]', { element(e) {
+      const full = e.getAttribute("href") || "/assets/store.css";
+      e.replace(`<style>${crit}</style><link rel="preload" as="style" href="${full}"><link rel="stylesheet" href="${full}" media="print" data-kocss onload="this.media='all';window.__koCss=1;document.dispatchEvent(new Event('ko:css'))"><noscript><link rel="stylesheet" href="${full}"></noscript>`, { html: true });
+    } }]);
   } else if (css) rules.push(['link[href^="/assets/store.css"]', { element(e) { e.replace(`<style>${css}</style>`, { html: true }); } }]);
   let rw = new HTMLRewriter();
   for (const [sel, h] of rules) rw = rw.on(sel, h);

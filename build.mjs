@@ -8,7 +8,8 @@ fs.rmSync(tmp, { recursive: true, force: true }); fs.cpSync(src, tmp, { recursiv
 try {
   const { criticalCss } = await import("./critical.mjs");
   const css = fs.readFileSync(path.join(tmp, "assets", "store.css"), "utf8");
-  const crit = criticalCss(css, [fs.readFileSync(path.join(tmp, "index.html"), "utf8"), fs.readFileSync(path.join(tmp, "_worker.js"), "utf8")]);
+  const rd = (f) => fs.readFileSync(path.join(tmp, f), "utf8");
+  const crit = criticalCss(css, [rd("index.html"), rd("_worker.js")], [], ["assets/fx.js", "assets/media.js", "assets/pwa.js"].map(rd));
   if (crit.length > 2000) fs.writeFileSync(path.join(tmp, "assets", "store.critical.css"), crit);
 } catch (e) { console.log("⚠️ critical CSS skipped:", e.message); }
 // 1) minify js/css

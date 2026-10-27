@@ -2222,10 +2222,19 @@ ${trustH()}
   // if the design saved on this device is older than the one the server just sent, don't paint the old one first
   const srvD = window.__koD;
   const snapStale = !!(srvD && snapSettings && Object.keys(srvD).some((k) => JSON.stringify(srvD[k]) !== JSON.stringify((snapSettings.design || {})[k])));
+  // the page head may carry only the critical CSS while the full stylesheet is still arriving: draw nothing before it is in
+  const cssReady = new Promise((res) => {
+    const l = document.querySelector("link[data-kocss]");
+    if (!l || window.__koCss || l.media === "all") return res();
+    document.addEventListener("ko:css", res, { once: true });
+    setTimeout(res, 5000);
+  });
+  const fresh = fetchFresh(); fresh.catch(() => {}); // the data keeps loading meanwhile
+  cssReady.then(() => {
   if (snapSettings && snapSettings.store && snapStr && !snapStale) {
     try { setData(snapSettings, JSON.parse(snapStr)); chrome(); renderCount(); route(); booted = true; } catch {}
   }
-  fetchFresh().then(([st, data]) => {
+  fresh.then(([st, data]) => {
     const dataStr = JSON.stringify(data), stStr = JSON.stringify(st);
     const changed = dataStr !== snapStr || stStr !== JSON.stringify(snapSettings);
     snapStore.set("ko_snap_settings", stStr);
@@ -2238,5 +2247,6 @@ ${trustH()}
   }).catch((err) => {
     try { console.error("KO boot", err && err.stack || err); } catch {}
     if (!booted) app.innerHTML = `<div class="empty"><b>ما قدرنا نحمّل المنتجات</b>حدّث الصفحة أو راسلنا على واتساب.</div>`;
+  });
   });
 })();

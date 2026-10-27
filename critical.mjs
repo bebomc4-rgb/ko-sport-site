@@ -9,8 +9,11 @@ const EXTRA = ["sh-full", "sh-round", "sh-curve", "sh-peek", "has-img", "hero-st
   // شريط التنقل تحت: بينرسم من نسخة محفوظة قبل أول رسمة
   "bn-fx", "bn-cur-ic", "bn-dark", "bn-cur", "bn-hide", "sun", "moon"];
 
-export function criticalCss(css, htmlSources, extra = []) {
+// wordSources: scripts that may add elements before the full stylesheet arrives (fx.js, media.js, pwa.js):
+// every word in them counts as a possible class name, to be safe.
+export function criticalCss(css, htmlSources, extra = [], wordSources = []) {
   const tokens = new Set([...EXTRA, ...extra]);
+  for (const src of wordSources) for (const m of src.matchAll(/[A-Za-z_][\w-]*/g)) tokens.add(m[0]);
   for (const src of htmlSources) {
     // class="…" / class=\"…\" بقوالب السيرفر و index.html
     for (const m of src.matchAll(/class=\\?"([^"\\]*)/g)) for (const w of m[1].replace(/\$\{[^}]*\}?/g, " ").split(/\s+/)) if (w) tokens.add(w);
