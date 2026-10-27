@@ -94,7 +94,7 @@ async function purgeEdge(name) {
   await caches.default.delete(edgeKey(name));
   // the shop pages carry the settings/products inside them, so they go too
   if (name === "settings" || name === "products") {
-    for (const v of HTML_VARIANTS) await caches.default.delete(edgeKey(v));
+    for (const v of HTML_VARIANTS) await caches.default.delete(edgeKey(v + "@" + BUILD_AT));
   }
 }
 
@@ -105,6 +105,7 @@ async function purgeEdge(name) {
 const HTML_VARIANTS = ["html:home:ko-sport.online", "html:deep:ko-sport.online", "html:home:ko-sport.pages.dev", "html:deep:ko-sport.pages.dev"];
 async function htmlCached(name, request, ctx, produce) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
+  name += "@" + BUILD_AT; // a new upload never serves the page saved by the previous one
   let hit = cache ? await cache.match(edgeKey(name)) : null;
   let body, etag;
   if (hit) {
