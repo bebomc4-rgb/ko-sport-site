@@ -903,7 +903,7 @@
     const loop = n >= 3 && sec.cLoop !== false, auto = sec.auto === "off" ? 0 : num(sec.speed, o.speedDef || 4, 2, o.speedMax || 10);
     const dots = n > 1 && n <= (o.maxDots || 12) && sec.cDots !== false;
     const bg = sec.noBg ? "transparent" : /^#[0-9a-f]{6}$/i.test(sec.bg || "") ? sec.bg : "";
-    const it = (h, i, clone) => `<div class="car-i" data-ci="${i}"${clone ? ' data-clone aria-hidden="true"' : ""}>${clone ? h.replace(/ fetchpriority="high"/, ' loading="lazy"') : h}</div>`;
+    const it = (h, i, clone) => `<div class="car-i" data-ci="${i}"${clone ? ' data-clone aria-hidden="true"' : ""}>${clone ? h.replace(/ fetchpriority="high"/, ' loading="lazy"').replace(/<(a|button)\b/g, '<$1 tabindex="-1"') : h}</div>`;
     const real = items.map((h, i) => it(h, i));
     const all = loop ? [...items.map((h, i) => it(h, i, 1)), ...real, ...items.map((h, i) => it(h, i, 1))] : real;
     return `<div class="car ${cls || ""} car-fx-${fx} car-sh-${shape}${sec.showNames === false ? " no-names" : ""}" data-car="${auto}"${loop ? " data-loop" : ""} style="--cs:${size};--cg:${gap}px;--side:${side / 100}${bg ? `;--cimg:${bg}` : ""}">` +

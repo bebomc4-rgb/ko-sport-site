@@ -1365,7 +1365,7 @@ dialog.ko-confirm .btn{min-width:120px}
 .ob-r.disc b{color:#16a34a}.ob-r.tot{font-size:15px;font-weight:700}
 
 /* discounted price: old one crossed out, new one stands out */
-.old-price{opacity:.55;font-weight:500;font-size:.6em;line-height:1;text-decoration:line-through;text-decoration-thickness:1px;margin-inline-end:3px;vertical-align:middle;white-space:nowrap}
+.old-price{opacity:.66;font-weight:500;font-size:.6em;line-height:1;text-decoration:line-through;text-decoration-thickness:1px;margin-inline-end:3px;vertical-align:middle;white-space:nowrap}
 .new-price{color:#d92d20;font-weight:800}
 html[data-theme=dark] .new-price,html[data-skin=flash] .new-price,html[data-skin=street] .new-price,html[data-skin=tech] .new-price{color:#ff6b6b}
 .card .price .old-price{display:inline-block}
@@ -1447,7 +1447,7 @@ html.kx-open body{overflow:hidden}
 .kc-list .kx-cimg{width:52px;height:52px}
 /* price row: the discount label sits by the price; sold-out says «خالصة» */
 .price-box{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
-.off-pill{display:inline-block;background:#fde8e8;color:#d92d20;font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;line-height:1.4;white-space:nowrap}
+.off-pill{display:inline-block;background:#fde8e8;color:#b42318;font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;line-height:1.4;white-space:nowrap}
 .sold-out{color:#d92d20;font-style:italic;font-weight:800;font-size:14px}
 .pdp .pprice,.pdp-info>div:has(>.price){display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .pdp .sold-out{font-size:18px}
@@ -1616,8 +1616,8 @@ html[data-pg-th=hide] .pdp-media .pdp-thumbs{display:none}
 .pz{display:inline-flex;flex-direction:column;align-items:center;gap:3px;vertical-align:middle;direction:rtl;line-height:1.1}
 .pz-row{display:inline-flex;align-items:center;gap:6px;direction:ltr;white-space:nowrap}
 .pz .new-price{order:1;font-size:calc(var(--pz-ns,1) * 1em);color:var(--pz-nc,#d92d20);font-weight:800}
-.pz .old-price{order:0;font-size:calc(var(--pz-os,.58) * 1em);color:var(--pz-oc,currentColor);opacity:.6;font-weight:500;margin:0;text-decoration:line-through;text-decoration-thickness:1px;vertical-align:baseline}
-.pz .pz-off{order:0;font-size:max(10px,.5em);background:var(--pz-ob,#fde8e8);color:var(--pz-of,#d92d20)}
+.pz .old-price{order:0;font-size:calc(var(--pz-os,.58) * 1em);color:var(--pz-oc,currentColor);opacity:.66;font-weight:500;margin:0;text-decoration:line-through;text-decoration-thickness:1px;vertical-align:baseline}
+.pz .pz-off{order:0;font-size:max(10px,.5em);background:var(--pz-ob,#fde8e8);color:var(--pz-of,#b42318)}
 html[data-theme=dark] .pz .new-price{color:var(--pz-nc,#ff6b6b)}html[data-theme=dark] .pz .pz-off{background:var(--pz-ob,#4a1515);color:var(--pz-of,#ff8a8a)}
 /* where the old price sits */
 [data-pz-old=right] .pz .old-price{order:2}
@@ -1836,3 +1836,7 @@ html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx[style*="--bi"] s
 
 /* v91: moving carousels never use live blur (glass) — it forced a full repaint every frame */
 .car .car-i>*,.car .car-i .card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+
+/* v93: touch targets — the add button and the product name never touch each other */
+.card .name{display:block;padding-block:4px}
+.card .add{margin-top:6px;min-height:36px}

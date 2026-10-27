@@ -1277,7 +1277,7 @@ async function homePageInner(request, env, res) {
   const S = st.store, title = S.seoTitle || S.name, desc = S.seoDescription || S.tagline || "";
   const img = abs(S.shareImage || st.design.heroImage || st.design.logoImage);
   const ld = {
-    "@context": "https://schema.org", "@type": "SportingGoodsStore", name: S.name, url: origin + "/", description: desc,
+    "@context": "https://schema.org", "@type": "SportingGoodsStore", name: S.name, url: origin + "/ar", description: desc,
     ...(img ? { image: img } : {}), ...(S.whatsapp ? { telephone: "+" + S.whatsapp } : {}),
     address: { "@type": "PostalAddress", streetAddress: S.address, addressCountry: "SY" },
     sameAs: [S.facebook, S.instagram].filter(Boolean),
@@ -1290,8 +1290,8 @@ async function homePageInner(request, env, res) {
     set('meta[property="og:description"]', "content", desc),
     set('meta[property="og:site_name"]', "content", S.name),
     set('meta[property="og:image"]', "content", img),
-    set('meta[property="og:url"]', "content", origin + "/"),
-    set('link[rel="canonical"]', "href", origin + "/"),
+    set('meta[property="og:url"]', "content", origin + "/ar"),
+    set('link[rel="canonical"]', "href", origin + "/ar"),
     ["head", { element(e) { e.append(headExtras(st), { html: true }); } }],
     ["head", { element(e) { e.append(`<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`, { html: true }); } }],
   ];
