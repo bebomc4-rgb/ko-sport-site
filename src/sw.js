@@ -1,6 +1,6 @@
 /* KO SPORT service worker — fast repeat visits + offline fallback.
    Products/prices are always fetched fresh from the network first. */
-const V = "ko-v97";
+const V = "ko-v98";
 const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
 const KEEP = [SHELL, ASSET, IMG, DATA];
 
@@ -9,8 +9,14 @@ const KEEP = [SHELL, ASSET, IMG, DATA];
 self.addEventListener("install", (e) => { self.skipWaiting(); });
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (!KEEP.includes(k)) await caches.delete(k);
+    let upgraded = false;
+    for (const k of await caches.keys()) if (!KEEP.includes(k)) { await caches.delete(k); upgraded = true; }
     await self.clients.claim();
+    // An open page (also inside the Android app) may still be an old copy: reload it once with the new version.
+    // Never in the middle of checkout, so nobody loses what they typed.
+    if (upgraded) for (const w of await self.clients.matchAll({ type: "window" })) {
+      try { if (!/\/(checkout|done)/.test(new URL(w.url).pathname)) w.navigate(w.url); } catch (e) {}
+    }
   })());
 });
 
