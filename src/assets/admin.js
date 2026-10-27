@@ -859,7 +859,7 @@
   const PM_PRESETS = {
     sale: { badge: "عرض محدود", title: "خصم 20% على كل المعدات", text: "استخدم الكود عند إتمام الطلب. العرض لفترة محدودة!", btn: "تسوّق الآن", code: "KO20", countdown: true },
     fresh: { badge: "جديد", title: "وصلت منتجات جديدة", text: "اكتشف أحدث الأدوات الرياضية قبل الكل.", btn: "شوف الجديد", code: "", countdown: false },
-    ship: { badge: "توصيل", title: "توصيل لكل المحافظات", text: "اطلب اليوم وادفع عند الاستلام.", btn: "اطلب الآن", code: "", countdown: false },
+    ship: { badge: "توصيل", title: "توصيل لكل المحافظات", text: "اطلب اليوم ومنوصلك لعند بابك.", btn: "اطلب الآن", code: "", countdown: false },
   };
   const pmState = (p) => {
     const n = Date.now(), s = p.startAt && Date.parse(p.startAt), e = p.endAt && Date.parse(p.endAt);
@@ -940,7 +940,7 @@
 
   // ---------- push notifications ----------
   let PU = null, puImg = "", puMid = "", puBusy = false;
-  const PU_TPL = [["🔥 عرض جديد", "🔥 تخفيضات لفترة محدودة", "وفّر على معدات الملاكمة والكمال. اطلب قبل ما تخلص!"], ["📦 وصل حديثاً", "📦 وصلت منتجات جديدة", "شوف أحدث الأدوات الرياضية الآن في KO SPORT."], ["🚚 توصيل", "🚚 توصيل لكل المحافظات", "اطلب اليوم وادفع عند الاستلام."]];
+  const PU_TPL = [["🔥 عرض جديد", "🔥 تخفيضات لفترة محدودة", "وفّر على معدات الملاكمة والكمال. اطلب قبل ما تخلص!"], ["📦 وصل حديثاً", "📦 وصلت منتجات جديدة", "شوف أحدث الأدوات الرياضية الآن في KO SPORT."], ["🚚 توصيل", "🚚 توصيل لكل المحافظات", "اطلب اليوم ومنوصلك لعند بابك."]];
   const puLink = () => {
     const t = $("[data-pu-lt]").value;
     if (t === "product") { const v = $("[data-pu-lp]").value; return v ? "/#/p/" + encodeURIComponent(v) : "/"; }
@@ -2246,7 +2246,7 @@
           D.open = { style: "none", speed: "normal", freq: "session", ...(D.open || {}) };
           D.bnav = { items: BN_DEFAULT.map(([label, icon, link]) => ({ label, icon, link })), height: 64, width: 100, bottom: 0, radius: 0, iconSize: 26, labelSize: 12, bg: "", fg: "", active: "", activeStyle: "color", showLabels: true, hideScroll: false, fx: "fire", fxOn: "main", menuTo: "browse", darkBtn: true, curBtn: true, ...(D.bnav || {}) }; if (!D.rowDir) D.rowDir = D.slideDir === "ltr" ? "ltr" : "rtl"; D.cu = { txt: "full", custom: "", pos: "beside", size: 55, oldUnit: false, ...(D.cu || {}) }; D.pz = { lay: "stack", al: "center", old: "left", off: "above", txt: "pct", ns: 100, os: 58, nc: "", oc: "", ob: "", of: "", ...(D.pz || {}) }; D.cd = { look: "", hover: "", accent: "", radius: "", nameSize: "", nameWeight: "", nameLines: "", nameAlign: "", nameColor: "", near: true, gap: 4, ...(D.cd || {}) }; D.pg = { tdir: "rtl", side: "left", thumbs: "wrap", tsize: "m", talign: "center", fx: "slide", dur: "normal", auto: false, speed: 4, arrows: true, ...(D.pg || {}) };
           if (!Array.isArray(D.bnav.items) || !D.bnav.items.length) D.bnav.items = BN_DEFAULT.map(([label, icon, link]) => ({ label, icon, link }));
-          D.conv = { timer: { on: false, text: "", endsAt: "", btn: "", link: "" }, shipBar: false, trust: false, trustItems: [{ i: "💵", t: "الدفع عند الاستلام" }, { i: "🚚", t: "توصيل لكل المحافظات" }, { i: "💬", t: "دعم مباشر عبر واتساب" }], upsell: false, ...(D.conv || {}) }; D.conv.timer = { on: false, text: "", endsAt: "", btn: "", link: "", ...(D.conv.timer || {}) };
+          D.conv = { timer: { on: false, text: "", endsAt: "", btn: "", link: "" }, shipBar: false, trust: false, trustItems: [{ i: "🚚", t: "توصيل لكل المحافظات" }, { i: "💬", t: "دعم مباشر عبر واتساب" }], upsell: false, ...(D.conv || {}) }; D.conv.timer = { on: false, text: "", endsAt: "", btn: "", link: "", ...(D.conv.timer || {}) };
           D.games = { on: false, title: "ألعاب", memory: true, tap: true, wheel: true, prizes: [{ label: "خصم 10%", code: "", w: 15 }, { label: "حظ أوفر", code: "", w: 40 }, { label: "شحن مجاني", code: "", w: 10 }, { label: "جرّب مرة ثانية", code: "", w: 35 }], ...(D.games || {}) };
           D.darkPal = { bg: "#0f0f13", card: "#1a1a20", hdr: "#16161c", ftr: "#0b0b0e", ...(D.darkPal || {}) }; }
         ST.fx = { mode: "usd", visitor: true, margin: 2, manual: "", ...(ST.fx || {}) };
@@ -2724,8 +2724,8 @@
       if (t === "categories") { sec.pick = true; sec.cats = []; sec.showNames = true; }
       if (t === "video") sec.videos = [];
       if (t === "banner") sec.items = [];
-      if (t === "ticker") Object.assign(sec, { showTitle: false, lines: "🔥 خصومات لفترة محدودة | #/all\n🚚 توصيل لكل المحافظات\n💵 الدفع عند الاستلام", mode: "marquee", dir: "rtl", speed: "normal", tfx: "shine", bfx: "gradient", size: "m", sep: "✦", hover: true, full: true, every: "4" });
-      if (t === "features") sec.items = [{ icon: "🚚", title: "توصيل لكل المحافظات", text: "" }, { icon: "💵", title: "الدفع عند الاستلام", text: "" }, { icon: "✅", title: "منتجات أصلية", text: "" }];
+      if (t === "ticker") Object.assign(sec, { showTitle: false, lines: "🔥 خصومات لفترة محدودة | #/all\n🚚 توصيل لكل المحافظات", mode: "marquee", dir: "rtl", speed: "normal", tfx: "shine", bfx: "gradient", size: "m", sep: "✦", hover: true, full: true, every: "4" });
+      if (t === "features") sec.items = [{ icon: "🚚", title: "توصيل لكل المحافظات", text: "" }, { icon: "✅", title: "منتجات أصلية", text: "" }];
       ST.home.sections.push(sec); renderSections(); bindInputs(); renderSegs(); updateSetBar();
       openSec(ST.home.sections.length - 1, true); return;
     }
