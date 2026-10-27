@@ -1334,8 +1334,8 @@ async function themeOnly(env, request, res) {
       .transform(res);
   } catch { return res; }
 }
-async function homePage(request, env, res, home = true) {
-  try { return await homePageInner(request, env, res, home); } catch { return res; }
+async function homePage(request, env, res, home = true, ctx = null) {
+  try { return await homePageInner(request, env, res, home, ctx); } catch { return res; }
 }
 // tracking codes from «التطبيقات» + owner's code from «أدوات المطورين»
 function headExtras(st) {
@@ -1348,7 +1348,7 @@ function headExtras(st) {
   if (d.head) h += String(d.head);
   return h;
 }
-async function homePageInner(request, env, res, home = true) {
+async function homePageInner(request, env, res, home = true, ctx = null) {
   if (typeof HTMLRewriter === "undefined" || !env.STORE) return res;
   let st;
   try { st = await getSettings(env, request); } catch { return res; }
@@ -1356,11 +1356,25 @@ async function homePageInner(request, env, res, home = true) {
   const abs = (u) => (!u ? "" : u.startsWith("/") ? origin + u : u);
   const S = st.store, title = S.seoTitle || S.name, desc = S.seoDescription || S.tagline || "";
   const img = abs(S.shareImage || st.design.heroImage || st.design.logoImage);
+  // who we are, for Google and AI assistants: the store, its website (with search), where it delivers, how to pay
+  const logoUrl = abs(st.design.appIcon512 || st.design.logoImage || "");
   const ld = {
-    "@context": "https://schema.org", "@type": "SportingGoodsStore", name: S.name, url: origin + "/ar", description: desc,
-    ...(img ? { image: img } : {}), ...(S.whatsapp ? { telephone: "+" + S.whatsapp } : {}),
-    address: { "@type": "PostalAddress", streetAddress: S.address, addressCountry: "SY" },
-    sameAs: [S.facebook, S.instagram].filter(Boolean),
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": ["SportingGoodsStore", "OnlineStore"], "@id": origin + "/#store", name: S.name, alternateName: ["كو سبورت", "KO Sport Syria", "ko-sport"],
+        url: origin + "/ar", description: desc, ...(img ? { image: img } : {}), ...(logoUrl ? { logo: logoUrl } : {}),
+        ...(S.whatsapp ? { telephone: "+" + S.whatsapp } : {}),
+        address: { "@type": "PostalAddress", streetAddress: S.address, addressLocality: "دمشق", addressCountry: "SY" },
+        areaServed: { "@type": "Country", name: "Syria" }, currenciesAccepted: "USD, SYP", paymentAccepted: "الدفع عند الاستلام",
+        knowsAbout: ["قفازات ملاكمة", "معدات MMA", "كمال أجسام", "أدوات رياضية", "لياقة بدنية", "كرة قدم", "كرة سلة"],
+        sameAs: [S.facebook, S.instagram].filter(Boolean),
+      },
+      {
+        "@type": "WebSite", "@id": origin + "/#site", url: origin + "/ar", name: S.name, inLanguage: "ar", publisher: { "@id": origin + "/#store" },
+        potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: origin + "/ar/search/{q}" }, "query-input": "required name=q" },
+      },
+    ],
   };
   const set = (sel, attr, val) => [sel, { element(e) { e.setAttribute(attr, val); } }];
   // deeper pages (home=false) get the same header/footer/colours but keep their own title/meta (the app sets those)
@@ -1376,6 +1390,28 @@ async function homePageInner(request, env, res, home = true) {
     ["head", { element(e) { e.append(headExtras(st), { html: true }); } }],
     ["head", { element(e) { e.append(`<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`, { html: true }); } }],
   ];
+  // deeper pages: their own title / description / link / structured data / readable content for search engines
+  let seo = null;
+  if (!home && ctx) { try { seo = await pageSeo(request, env, ctx, st); } catch {} }
+  if (seo && seo.noindex) rules.push(["head", { element(e) { e.append('<meta name="robots" content="noindex,follow">', { html: true }); } }]);
+  else if (seo) {
+    const si = seo.image ? abs(seo.image) : img;
+    rules.push(
+      ["title", { element(e) { e.setInnerContent(seo.title); } }],
+      set('meta[name="description"]', "content", seo.desc || desc),
+      set('meta[property="og:title"]', "content", seo.title),
+      set('meta[property="og:description"]', "content", seo.desc || desc),
+      set('meta[property="og:site_name"]', "content", S.name),
+      set('meta[property="og:image"]', "content", si),
+      set('meta[property="og:url"]', "content", seo.canon),
+      set('meta[property="og:type"]', "content", seo.type === "product" ? "product" : "website"),
+      set('link[rel="canonical"]', "href", seo.canon),
+      ["head", { element(e) { e.append(headExtras(st), { html: true }); } }],
+    );
+    if (seo.ld) rules.push(["head", { element(e) { for (const x of seo.ld) e.append(`<script type="application/ld+json">${JSON.stringify(x).replace(/</g, "\\u003c")}</script>`, { html: true }); } }]);
+    // the readable copy is for search engines and AI readers; visitors (with JavaScript) see the normal page
+    if (seo.body) rules.push(["#app", { element(e) { e.setInnerContent(`<style>html.js .ssr{display:none}html:not(.js) .ssr-l{display:none}.ssr{max-width:900px;margin:0 auto;padding:16px;line-height:1.9}.ssr ul{padding-inline-start:20px}.ssr img{border-radius:12px}</style><div class="loading ssr-l" style="padding:40px 0">جاري التحميل…</div>` + seo.body, { html: true }); } }]);
+  }
   // Server-render what is visible first (logo, announcement, hero, footer) and inline the CSS:
   // the page paints complete on the first byte, with nothing jumping around afterwards.
   const D = st.design, h = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1514,18 +1550,64 @@ async function redirectFor(env, request, path) {
   const p = norm(path), r = env.__rd.find((x) => norm(x.from) === p);
   return r ? r.to : "";
 }
-async function siteFiles(request, env, path) {
+async function siteFiles(request, env, path, ctx) {
   const origin = new URL(request.url).origin;
   const txt = (body, type = "text/plain; charset=utf-8") => new Response(body, { headers: { "content-type": type, "cache-control": "public, max-age=3600" } });
+  const st = await getSettings(env, request).catch(() => ({ store: {}, design: {} }));
+  const S = st.store || {}, D = st.design || {};
   if (path === "/robots.txt") {
-    const st0 = await getSettings(env, request).catch(() => ({}));
-    if (st0.robots && st0.robots.trim()) return txt(st0.robots.trim() + (/sitemap:/i.test(st0.robots) ? "\n" : `\n\nSitemap: ${origin}/sitemap.xml\n`));
+    if (st.robots && st.robots.trim()) return txt(st.robots.trim() + (/sitemap:/i.test(st.robots) ? "\n" : `\n\nSitemap: ${origin}/sitemap.xml\n`));
+    // search engines and AI assistants are welcome everywhere except the dashboard, the API and private pages
+    return txt(`User-agent: *\nAllow: /\nAllow: /api/catalog\nAllow: /catalog.txt\nDisallow: /admin\nDisallow: /admin.html\nDisallow: /api/\nDisallow: /ar/cart\nDisallow: /ar/checkout\nDisallow: /ar/done\nDisallow: /ar/account\nDisallow: /ar/o/\n\nUser-agent: GPTBot\nAllow: /\n\nUser-agent: OAI-SearchBot\nAllow: /\n\nUser-agent: ChatGPT-User\nAllow: /\n\nUser-agent: ClaudeBot\nAllow: /\n\nUser-agent: PerplexityBot\nAllow: /\n\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`);
   }
-  if (path === "/robots.txt") return txt(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /admin.html\nDisallow: /api/\n\nSitemap: ${origin}/sitemap.xml\n`);
-  if (path === "/sitemap.xml") return txt(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url></urlset>\n`, "application/xml; charset=utf-8");
-  const st = await getSettings(env, request), S = st.store;
-  const cats = (st.design.groups || []).map((g) => `- ${g.name}: ${g.cats.map((c) => (st.design.catLabels || {})[c] || c).join("، ")}`).join("\n");
-  return txt(`# ${S.name}\n\n> ${S.seoDescription || S.tagline || ""}\n\n## معلومات المتجر\n\n- الموقع: [${origin}](${origin}/)\n- العنوان: ${S.address || ""}\n- واتساب: [+${S.whatsapp}](https://wa.me/${S.whatsapp})\n${S.facebook ? `- فيسبوك: [${S.name}](${S.facebook})\n` : ""}${S.instagram ? `- إنستغرام: [${S.name}](${S.instagram})\n` : ""}\n## الأقسام\n\n${cats}\n\n## الطلب\n\n${S.footerNote || ""}\n`, "text/markdown; charset=utf-8");
+  const data = await seoData(request, env, ctx).catch(() => ({ products: [], store: {} }));
+  const list = data.products || [], cats = [...new Set(list.flatMap((x) => x.collections))];
+  const label = (c) => (D.catLabels || {})[c] || c;
+  const curl = (c) => origin + "/ar/c/" + encodeURIComponent(catSlugOf(st, c));
+  const groups = (D.groups || []).filter((g) => g.cats.some((c) => cats.includes(c)));
+  if (path === "/sitemap.xml") {
+    const x = (u) => seoEsc(u);
+    const today = new Date().toISOString().slice(0, 10);
+    const urls = [
+      `<url><loc>${origin}/ar</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      `<url><loc>${origin}/ar/browse</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`,
+      `<url><loc>${origin}/ar/all</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`,
+      ...groups.map((g) => `<url><loc>${x(origin + "/ar/g/" + encodeURIComponent(g.name))}</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`),
+      ...cats.map((c) => `<url><loc>${x(curl(c))}</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`),
+      ...list.map((p) => `<url><loc>${x(origin + "/ar/p/" + encodeURIComponent(p.id))}</loc><changefreq>weekly</changefreq><priority>${p.in_stock ? "0.7" : "0.4"}</priority>${p.image ? `<image:image><image:loc>${x(p.image)}</image:loc><image:title>${x(p.name)}</image:title></image:image>` : ""}</url>`),
+      ...(Array.isArray(st.pages) ? st.pages : []).filter((g) => g.slug && g.on !== false).map((g) => `<url><loc>${x(origin + "/ar/page/" + encodeURIComponent(g.slug))}</loc><priority>0.5</priority></url>`),
+    ];
+    return txt(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`, "application/xml; charset=utf-8");
+  }
+  // /llms.txt — a plain summary of the shop for AI assistants (ChatGPT, Claude, Perplexity, Gemini…)
+  const rate = data.store && data.store.syp_rate;
+  const price = (p) => `$${p.price_usd}${p.price_syp ? ` (${SYP(p.price_syp)} ل.س)` : ""}`;
+  const catLines = groups.map((g) => `### ${g.name}\n` + g.cats.filter((c) => cats.includes(c)).map((c) => `- [${label(c)}](${curl(c)}): ${list.filter((p) => p.collections.includes(c)).length} منتج`).join("\n")).join("\n\n");
+  const prodLines = list.filter((p) => p.in_stock).map((p) => `- [${p.name}](${origin}/ar/p/${encodeURIComponent(p.id)}) — ${label(p.category)} — ${price(p)}`).join("\n");
+  return txt(`# ${S.name || "KO SPORT"}
+
+> ${S.seoDescription || S.tagline || ""}
+
+${S.name} متجر أدوات رياضية أونلاين بسوريا (مقرّه ${S.address || "دمشق"}). منبيع معدات الملاكمة والفنون القتالية (قفازات، أكياس ملاكمة، واقيات، MMA)، كمال الأجسام واللياقة (أوزان، دمبلز، أحزمة)، وكرة القدم والسلة والمضرب، مع توصيل لكل المحافظات السورية والدفع عند الاستلام.
+
+## معلومات المتجر
+
+- الموقع: ${origin}/ar
+- العنوان: ${S.address || ""}
+- واتساب للطلب والاستفسار: https://wa.me/${S.whatsapp || ""}
+${S.instagram ? `- إنستغرام: ${S.instagram}\n` : ""}${S.facebook ? `- فيسبوك: ${S.facebook}\n` : ""}- التوصيل: ${S.footerNote || "لكل المحافظات السورية"}
+- الدفع: عند الاستلام
+- الأسعار: بالدولار، ومعها السعر بالليرة السورية الجديدة${rate ? ` (سعر الدولار اليوم ${rate})` : ""}
+- كتالوج كامل للقراءة الآلية: ${origin}/catalog.txt و ${origin}/api/catalog
+
+## الأقسام
+
+${catLines}
+
+## المنتجات المتوفرة (${list.filter((p) => p.in_stock).length})
+
+${prodLines}
+`, "text/markdown; charset=utf-8");
 }
 
 // ---------- Web Push notifications (VAPID + RFC 8291 aes128gcm, WebCrypto only — free, no 3rd-party service) ----------
@@ -1904,6 +1986,107 @@ async function catalogApi(request, env, ctx, kind) {
   }
   return new Response(JSON.stringify(data), { headers: { "content-type": "application/json; charset=utf-8", ...cors } });
 }
+// ---------- SEO: every product / category page gets its own title, description, link and structured data ----------
+// Search engines and AI assistants (most don't run JavaScript) read these straight from the HTML.
+const seoEsc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const seoCut = (t, n) => { t = String(t || "").replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1).replace(/\s+\S*$/, "") + "…" : t; };
+const seoPlain = (t) => String(t || "").replace(/[#*_>`~\[\]]/g, " ").replace(/\s+/g, " ").trim();
+const SYP = (n) => Number(n).toLocaleString("en-US");
+function catSlugOf(st, c) { return ((st.design && st.design.catMeta) || {})[c]?.slug || c; }
+function catOfSlug(st, cats, x) {
+  if (cats.has(x)) return x;
+  const hit = Object.entries((st.design && st.design.catMeta) || {}).find(([, m]) => m && m.slug === x);
+  return hit ? hit[0] : x;
+}
+async function seoData(request, env, ctx) {
+  const cache = typeof caches !== "undefined" ? caches.default : null, ck = new Request(new URL(request.url).origin + "/__catalog_v1");
+  if (cache) { const hit = await cache.match(ck); if (hit) return hit.json(); }
+  const d = await catalogData(request, env, ctx);
+  if (cache) ctx.waitUntil(cache.put(ck, new Response(JSON.stringify(d), { headers: { "content-type": "application/json", "cache-control": "public, max-age=60" } })));
+  return d;
+}
+async function pageSeo(request, env, ctx, st) {
+  const url = new URL(request.url), origin = url.origin;
+  let p = url.pathname.replace(/^\/ar/, "") || "/";
+  try { p = decodeURIComponent(p); } catch {}
+  const [, a, b = ""] = p.split("/");
+  const S = st.store || {}, D = st.design || {}, name = S.name || "KO SPORT";
+  const label = (c) => (D.catLabels || {})[c] || c;
+  // pages that must not show up in Google
+  if (["cart", "checkout", "done", "account", "o", "search"].includes(a)) return { noindex: true };
+  const data = await seoData(request, env, ctx);
+  const list = data.products, cats = new Set(list.flatMap((x) => x.collections));
+  const crumb = (items) => ({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items.map(([n, u], i) => ({ "@type": "ListItem", position: i + 1, name: n, item: u })) });
+  const home = origin + "/ar";
+  const cardHtml = (x) => `<li><a href="/ar/p/${encodeURIComponent(x.id)}">${seoEsc(x.name)}</a> — $${x.price_usd}${x.price_syp ? ` (${SYP(x.price_syp)} ل.س)` : ""}${x.in_stock ? "" : " · خالص"}</li>`;
+
+  if (a === "p" && b) {
+    const x = list.find((y) => y.id === b);
+    if (!x) return { noindex: true };
+    const c = x.category, cu = origin + "/ar/c/" + encodeURIComponent(catSlugOf(st, c));
+    const canon = origin + "/ar/p/" + encodeURIComponent(x.id);
+    const price = `$${x.price_usd}${x.price_syp ? ` (${SYP(x.price_syp)} ل.س)` : ""}`;
+    const title = seoCut(`${x.name} | ${label(c)} بسوريا | ${name}`, 70);
+    const about = seoPlain(x.description || x.details || "");
+    const desc = seoCut(`${x.name} بسعر ${price} من ${name}. ${x.in_stock ? "متوفر" : "خالص حالياً"}، توصيل لكل المحافظات السورية والدفع عند الاستلام. ${about}`, 158);
+    const ld = [{
+      "@context": "https://schema.org", "@type": "Product", name: x.name, sku: x.id, category: label(c), url: canon,
+      image: x.images.length ? x.images : undefined, description: about || desc, brand: { "@type": "Brand", name: (x.name.match(/\b(Venum|Everlast|Adidas|Nike|Fairtex|Twins|Buka|Hotzo|Reebok|RDX|Hayabusa)\b/i) || [])[0] || name },
+      offers: {
+        "@type": "Offer", url: canon, priceCurrency: "USD", price: x.price_usd, itemCondition: "https://schema.org/NewCondition",
+        availability: x.in_stock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        seller: { "@type": "Organization", name }, areaServed: { "@type": "Country", name: "Syria" },
+        shippingDetails: { "@type": "OfferShippingDetails", shippingDestination: { "@type": "DefinedRegion", addressCountry: "SY" } },
+      },
+    }, crumb([["الرئيسية", home], [label(c), cu], [x.name, canon]])];
+    const same = list.filter((y) => y.id !== x.id && y.collections.includes(c)).slice(0, 12);
+    const body = `<div class="ssr"><nav><a href="/ar">الرئيسية</a> / <a href="/ar/c/${encodeURIComponent(catSlugOf(st, c))}">${seoEsc(label(c))}</a></nav>
+<h1>${seoEsc(x.name)}</h1>${x.image ? `<img src="${seoEsc(x.image)}" alt="${seoEsc(x.name)}" width="400" height="400" style="max-width:100%;height:auto">` : ""}
+<p><b>${seoEsc(price)}</b> · ${x.in_stock ? "متوفر" : "خالص"}</p>${x.options ? `<p>الخيارات: ${seoEsc(x.options.join("، "))}</p>` : ""}
+${about ? `<p>${seoEsc(about)}</p>` : ""}<p>توصيل لكل المحافظات السورية والدفع عند الاستلام.</p>
+${same.length ? `<h2>منتجات مشابهة</h2><ul>${same.map(cardHtml).join("")}</ul>` : ""}</div>`;
+    return { title, desc, canon, image: x.image, type: "product", ld, body };
+  }
+  if ((a === "c" || a === "g") && b) {
+    let items, t, cu, mt = {};
+    if (a === "c") {
+      const c = catOfSlug(st, cats, b); mt = ((D.catMeta || {})[c]) || {};
+      items = list.filter((y) => y.collections.includes(c));
+      t = label(c); cu = origin + "/ar/c/" + encodeURIComponent(catSlugOf(st, c));
+    } else {
+      const g = (D.groups || []).find((y) => y.name === b);
+      if (!g) return { noindex: true };
+      items = list.filter((y) => g.cats.some((c) => y.collections.includes(c)));
+      t = g.name; cu = origin + "/ar/g/" + encodeURIComponent(g.name);
+    }
+    if (!items.length) return { noindex: true };
+    items = items.slice().sort((x, y) => (y.in_stock - x.in_stock));
+    const lo = Math.min(...items.map((y) => y.price_usd));
+    const title = seoCut(mt.seoTitle || `${t} بسوريا — أسعار وتوصيل | ${name}`, 70);
+    const desc = seoCut(mt.seoDesc || mt.desc || `تسوّق ${t} من ${name}: ${items.length} منتج، الأسعار بتبلّش من $${lo}، بالدولار والليرة السورية. توصيل لكل المحافظات والدفع عند الاستلام.`, 158);
+    const ld = [{
+      "@context": "https://schema.org", "@type": "CollectionPage", name: t, url: cu, description: desc,
+      mainEntity: { "@type": "ItemList", numberOfItems: items.length, itemListElement: items.slice(0, 30).map((y, i) => ({ "@type": "ListItem", position: i + 1, url: origin + "/ar/p/" + encodeURIComponent(y.id), name: y.name })) },
+    }, crumb([["الرئيسية", home], [t, cu]])];
+    const body = `<div class="ssr"><nav><a href="/ar">الرئيسية</a></nav><h1>${seoEsc(t)}</h1><p>${seoEsc(desc)}</p><ul>${items.slice(0, 60).map(cardHtml).join("")}</ul></div>`;
+    return { title, desc, canon: cu, image: (items.find((y) => y.image) || {}).image, type: "website", ld, body };
+  }
+  if (a === "all" || a === "browse") {
+    const t = a === "all" ? "كل المنتجات" : "أقسام المتجر", cu = origin + "/ar/" + a;
+    const groups = (D.groups || []).map((g) => `<h2><a href="/ar/g/${encodeURIComponent(g.name)}">${seoEsc(g.name)}</a></h2><ul>${g.cats.filter((c) => cats.has(c)).map((c) => `<li><a href="/ar/c/${encodeURIComponent(catSlugOf(st, c))}">${seoEsc(label(c))}</a></li>`).join("")}</ul>`).join("");
+    const title = seoCut(`${t} — أدوات رياضية بسوريا | ${name}`, 70);
+    const desc = seoCut(`${list.length} منتج رياضي من ${name}: ملاكمة، MMA، كمال أجسام، لياقة، كرة قدم وسلة. أسعار بالدولار والليرة، توصيل لكل المحافظات والدفع عند الاستلام.`, 158);
+    return { title, desc, canon: cu, type: "website", ld: [crumb([["الرئيسية", home], [t, cu]])], body: `<div class="ssr"><h1>${seoEsc(t)}</h1>${groups}</div>` };
+  }
+  if (a === "page" && b) {
+    const pg = (Array.isArray(st.pages) ? st.pages : []).find((y) => y.slug === b && y.on !== false);
+    const t = pg ? pg.title : "";
+    if (!t) return null;
+    return { title: seoCut(`${t} | ${name}`, 70), desc: seoCut(seoPlain(pg.body || pg.content || t), 158), canon: origin + "/ar/page/" + encodeURIComponent(b), type: "article" };
+  }
+  return null;
+}
+
 // a product link that shows the photo, name and price when pasted in WhatsApp, then opens the product
 async function productShare(request, env, ctx, id) {
   const data = await catalogData(request, env, ctx).catch(() => null);
@@ -1971,16 +2154,16 @@ export default {
       if (m === "GET" && /^\/ar\/product(\/|$)/.test(path)) return oldWuiltLink(request, env, url);
       if (m === "GET" && (path === "/ar" || path.startsWith("/ar/"))) {
         const isHome = path === "/ar" || path === "/ar/";
-        return htmlCached("html:" + (isHome ? "home" : "deep") + ":" + url.hostname, request, ctx, async () => {
+        return htmlCached(isHome ? "html:home:" + url.hostname : "html:deep:" + url.hostname + path, request, ctx, async () => {
         const r = await env.ASSETS.fetch(new URL("/index.html", request.url));
         const out = new Response(r.body, r);
         out.headers.set("content-type", "text/html; charset=utf-8");
         out.headers.set("cache-control", "public, max-age=0, must-revalidate");
         // only the shop front gets the server-rendered hero; deeper pages are drawn by the app
-        if (path === "/ar" || path === "/ar/") return homePage(request, env, out);
+        if (path === "/ar" || path === "/ar/") return homePage(request, env, out, true, ctx);
         // deeper pages: put the saved colours/fonts on <html> straight away, so the first paint is already
         // the owner's theme (otherwise the stylesheet's built-in black/white/red shows for a moment)
-        return homePage(request, env, out, false);
+        return homePage(request, env, out, false, ctx);
         });
       }
       // someone typing an old-style address lands on the right page instead of a 404
@@ -2009,7 +2192,7 @@ export default {
         if (m === "POST") return imageUpload(request, env);
         if (m === "PATCH") return imageMigrate(request, env);
       } else if ((path === "/robots.txt" || path === "/sitemap.xml" || path === "/llms.txt") && m === "GET") {
-        return siteFiles(request, env, path);
+        return siteFiles(request, env, path, ctx);
       } else if (path === "/api/reviews") {
         if (m === "POST") return reviewsPost(request, env, ctx);
         if (m === "GET") return reviewsGet(request, env, ctx);
