@@ -1294,8 +1294,8 @@ async function themeOnly(env, request, res) {
       .transform(res);
   } catch { return res; }
 }
-async function homePage(request, env, res) {
-  try { return await homePageInner(request, env, res); } catch { return res; }
+async function homePage(request, env, res, home = true) {
+  try { return await homePageInner(request, env, res, home); } catch { return res; }
 }
 // tracking codes from «التطبيقات» + owner's code from «أدوات المطورين»
 function headExtras(st) {
@@ -1308,7 +1308,7 @@ function headExtras(st) {
   if (d.head) h += String(d.head);
   return h;
 }
-async function homePageInner(request, env, res) {
+async function homePageInner(request, env, res, home = true) {
   if (typeof HTMLRewriter === "undefined" || !env.STORE) return res;
   let st;
   try { st = await getSettings(env, request); } catch { return res; }
@@ -1323,7 +1323,8 @@ async function homePageInner(request, env, res) {
     sameAs: [S.facebook, S.instagram].filter(Boolean),
   };
   const set = (sel, attr, val) => [sel, { element(e) { e.setAttribute(attr, val); } }];
-  const rules = [
+  // deeper pages (home=false) get the same header/footer/colours but keep their own title/meta (the app sets those)
+  const rules = !home ? [] : [
     ["title", { element(e) { e.setInnerContent(title); } }],
     set('meta[name="description"]', "content", desc),
     set('meta[property="og:title"]', "content", title),
@@ -1343,7 +1344,7 @@ async function homePageInner(request, env, res) {
   const logo = D.logoImage ? `<img src="${h(D.logoImage)}" alt="${h(S.name)}" width="${Math.round(lh * lr)}" height="${lh}">`
     : `${D.logoText1 ? `<span class="logo-ko">${h(D.logoText1)}</span>` : ""}<span class="logo-sport">${h(D.logoText2)}</span>`;
   let stats = "";
-  if (D.showHeroStats) {
+  if (home && D.showHeroStats) {
     try {
       const list = (await getProducts(env, request)).filter((p) => !p.hidden && !(D.hideOutOfStock && !p.inStock));
       const cats = new Set(); list.forEach((p) => [p.category, ...(p.also || [])].forEach((c) => cats.add(c)));
@@ -1361,7 +1362,7 @@ async function homePageInner(request, env, res) {
   rules.push(
     ["[data-logo]", { element(e) { e.setInnerContent(logo, { html: true }); } }],
     ["[data-announce]", { element(e) { if (S.announcement && (D.announceOn ?? true)) { e.removeAttribute("hidden"); e.setInnerContent(`<span>${h(S.announcement)}</span>${D.announceClosable ? '<button class="ann-x" data-ann-close aria-label="إغلاق">✕</button>' : ""}`, { html: true }); } } }],
-    ["#app", { element(e) { e.setInnerContent(hero + `<div class="loading" style="padding:40px 0">جاري التحميل…</div>`, { html: true }); } }],
+    ["#app", { element(e) { if (home) e.setInnerContent(hero + `<div class="loading" style="padding:40px 0">جاري التحميل…</div>`, { html: true }); } }],
     ["[data-tagline]", { element(e) { e.setInnerContent(S.tagline || ""); } }],
     ["[data-address]", { element(e) { e.setInnerContent(S.address || ""); } }],
     ["[data-footnote]", { element(e) { e.setInnerContent(S.footerNote || ""); } }],
@@ -1937,7 +1938,7 @@ export default {
         if (path === "/ar" || path === "/ar/") return homePage(request, env, out);
         // deeper pages: put the saved colours/fonts on <html> straight away, so the first paint is already
         // the owner's theme (otherwise the stylesheet's built-in black/white/red shows for a moment)
-        return themeOnly(env, request, out);
+        return homePage(request, env, out, false);
       }
       // someone typing an old-style address lands on the right page instead of a 404
       if (m === "GET" && /^\/(all|cart|checkout|account|browse|games|search|done|c|g)(\/|$)/.test(path)) {
