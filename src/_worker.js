@@ -72,12 +72,21 @@ async function saveProducts(env, list) {
 // Short edge cache for the public JSON (products, settings): fast first byte, fewer KV reads.
 // Saving from the dashboard purges it, so changes show up right away.
 const edgeKey = (name) => new Request("https://edge-cache.internal/" + name);
-async function edgeCached(name, ctx, produce) {
+async function edgeCached(name, ctx, produce, request) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
-  if (cache) { const hit = await cache.match(edgeKey(name)); if (hit) return hit; }
-  const body = JSON.stringify(await produce());
-  const res = new Response(body, { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=15" } });
-  if (cache) ctx.waitUntil(cache.put(edgeKey(name), res.clone()));
+  let res = cache ? await cache.match(edgeKey(name)) : null;
+  if (!res) {
+    const body = JSON.stringify(await produce());
+    const dig = new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(body)));
+    const etag = '"' + [...dig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("") + '"';
+    res = new Response(body, { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=15", etag } });
+    if (cache) ctx.waitUntil(cache.put(edgeKey(name), res.clone()));
+  }
+  // A returning visitor only downloads the list again if it really changed (304 = a few bytes, no body).
+  const tag = res.headers.get("etag"), inm = request && request.headers.get("if-none-match");
+  if (tag && inm && inm.split(",").some((t) => t.trim().replace(/^W\//, "") === tag)) {
+    return new Response(null, { status: 304, headers: { etag: tag, "cache-control": res.headers.get("cache-control") || "public, max-age=15" } });
+  }
   return res;
 }
 async function purgeEdge(name) {
@@ -199,7 +208,7 @@ async function settingsGet(request, env, ctx) {
     s.pages = (s.pages || []).filter((p) => p.on !== false);
     delete s.dev;
     return s;
-  });
+  }, request);
 }
 async function settingsPut(request, env) {
   if (!isAdmin(request, env)) return denied();
@@ -408,7 +417,7 @@ async function productsGet(request, env, ctx) {
       }
       return o;
     });
-  });
+  }, request);
 }
 // GET /api/product-info?id=… → description + specs of one product (kept out of the list so the shop loads fast)
 async function productInfo(request, env, ctx) {
