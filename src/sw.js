@@ -1,6 +1,6 @@
 /* KO SPORT service worker — fast repeat visits + offline fallback.
    Products/prices are always fetched fresh from the network first. */
-const V = "ko-v101";
+const V = "ko-v102";
 const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
 const KEEP = [SHELL, ASSET, IMG, DATA];
 
@@ -25,16 +25,21 @@ async function trim(name, max) {
   for (let i = 0; i < ks.length - max; i++) await c.delete(ks[i]);
 }
 async function networkFirst(req, name, timeout) {
+  // Ask the network first. If it is slow, show the last saved copy (when there is one) and let the
+  // fresh copy land in the cache for the next open; with no saved copy, just keep waiting for the network.
   const c = await caches.open(name);
+  const net = fetch(req).then((r) => { if (r && r.ok) c.put(req, r.clone()); return r; });
+  net.catch(() => {});
+  let timer;
+  const slow = new Promise((res) => { timer = setTimeout(() => res("slow"), timeout || 3000); });
   try {
-    const r = await Promise.race([
-      fetch(req),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), timeout || 6000)),
-    ]);
-    if (r && r.ok) c.put(req, r.clone());
-    return r;
+    const first = await Promise.race([net, slow]);
+    if (first !== "slow") { clearTimeout(timer); return first; }
+    const hit = await c.match(req);
+    return hit || (await net);
   } catch (err) {
-    const hit = await c.match(req, { ignoreSearch: false });
+    clearTimeout(timer);
+    const hit = await c.match(req);
     if (hit) return hit;
     throw err;
   }
@@ -64,9 +69,9 @@ self.addEventListener("fetch", (e) => {
   if (req.mode === "navigate") {
     e.respondWith((async () => {
       try {
-        // Long timeout on purpose: on a slow connection waiting is right, serving a stale shop is not.
-        // always ask the server (cache:"no-cache"), never a page the browser stored earlier, so a visitor never sees an old design
-        const r = await networkFirst(new Request(req.url, { cache: "no-cache", credentials: "same-origin", redirect: "manual" }), SHELL, 20000);
+        // On a slow connection (no answer in 3.5 s) the last saved copy of this page opens at once,
+        // and the fresh one is stored for next time. Always ask the server (cache:"no-cache"), never a page the browser stored earlier, so a visitor never sees an old design
+        const r = await networkFirst(new Request(req.url, { cache: "no-cache", credentials: "same-origin", redirect: "manual" }), SHELL, 3500);
         trim(SHELL, 25); // every /ar/… address is its own entry now
         return r;
       } catch {
@@ -80,7 +85,7 @@ self.addEventListener("fetch", (e) => {
   }
   if (p.startsWith("/api/")) {
     // only catalogue/settings reads are cached; everything else goes straight to the network
-    if (p === "/api/products" || p === "/api/settings") e.respondWith(networkFirst(new Request(url.origin + p, req), DATA, 20000));
+    if (p === "/api/products" || p === "/api/settings") e.respondWith(networkFirst(new Request(url.origin + p, req), DATA, 4000));
     return;
   }
   if (p.startsWith("/assets/")) { e.respondWith(url.searchParams.has("v") ? cacheFirst(req, ASSET, 80) : swr(req, ASSET, 80)); return; }

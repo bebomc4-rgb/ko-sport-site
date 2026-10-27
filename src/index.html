@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script>/* inside the Android app (WebView, "; wv)") the page is fixed-size: no +/- zoom buttons. Normal browsers keep zoom (accessibility). */if(/; wv\)/.test(navigator.userAgent)){document.querySelector('meta[name=viewport]').setAttribute("content","width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover")}</script>
+<script>/* start loading the catalogue and settings at once, while the scripts are still downloading */try{var koF=function(u){return fetch(u,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})};window.__koF=[koF("/api/settings?r=1"),koF("/api/products?r=1")]}catch(e){}</script>
 <title>KO SPORT | للمُعدات الرياضية الفاخرة</title>
 <meta name="description" content="KO SPORT — أول موقع داخل سوريا متخصص بالأدوات الرياضية: قفازات ملاكمة، معدات كمال أجسام، كرة قدم وسلة. توصيل لكل المحافظات والدفع عند الاستلام.">
 <meta name="theme-color" content="#121212">
@@ -25,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link data-headfont rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="/assets/store.css?v=101">
-<link rel="stylesheet" href="/assets/promo.css?v=101" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="/assets/store.css?v=102">
+<link rel="stylesheet" href="/assets/promo.css?v=102" media="print" onload="this.media='all'">
 <script>
 /* Runs before first paint: apply last-known design */
 (function () {
@@ -130,10 +131,10 @@
 
 <div class="toast" data-toast role="status" aria-live="polite"></div>
 
-<script src="/assets/fx.js?v=101" defer></script>
-<script src="/assets/media.js?v=101" defer></script>
-<script src="/assets/promo.js?v=101" defer></script>
-<script src="/assets/store.js?v=101" defer></script>
-<script src="/assets/pwa.js?v=101" defer></script>
+<script src="/assets/fx.js?v=102" defer></script>
+<script src="/assets/media.js?v=102" defer></script>
+<script src="/assets/promo.js?v=102" defer></script>
+<script src="/assets/store.js?v=102" defer></script>
+<script src="/assets/pwa.js?v=102" defer></script>
 </body>
 </html>

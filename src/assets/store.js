@@ -463,7 +463,9 @@
   // Settings + products load in parallel; the last copy is kept on the device so repeat visits render instantly.
   async function fetchFresh() {
     const _t = "&_t=" + Date.now();
-    let [st, data] = await Promise.all([getJSON("/api/settings?r=1" + _t), getJSON("/api/products?r=1" + _t)]);
+    // the page head already started both requests (window.__koF): use them instead of asking twice
+    const early = window.__koF; window.__koF = null;
+    let [st, data] = await Promise.all(early && early.length === 2 ? early : [getJSON("/api/settings?r=1" + _t), getJSON("/api/products?r=1" + _t)]);
     if (!st || !st.store) st = await getJSON("/settings.default.json");
     if (!Array.isArray(data)) data = await getJSON("/products.json");
     if (!st || !Array.isArray(data)) throw new Error("load");
