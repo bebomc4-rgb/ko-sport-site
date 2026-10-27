@@ -90,7 +90,45 @@ async function edgeCached(name, ctx, produce, request) {
   return res;
 }
 async function purgeEdge(name) {
-  if (typeof caches !== "undefined") await caches.default.delete(edgeKey(name));
+  if (typeof caches === "undefined") return;
+  await caches.default.delete(edgeKey(name));
+  // the shop pages carry the settings/products inside them, so they go too
+  if (name === "settings" || name === "products") {
+    for (const v of HTML_VARIANTS) await caches.default.delete(edgeKey(v));
+  }
+}
+
+// The shop's HTML pages (/ar and every /ar/… page) are built once and kept ~60 s at the nearest
+// Cloudflare server, then served instantly. Saving from the dashboard throws the copy away, so edits
+// show up on the next open. The browser always revalidates (max-age=0) and gets a 304 when nothing
+// changed, so a returning visitor downloads only what is new.
+const HTML_VARIANTS = ["html:home:ko-sport.online", "html:deep:ko-sport.online", "html:home:ko-sport.pages.dev", "html:deep:ko-sport.pages.dev"];
+async function htmlCached(name, request, ctx, produce) {
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  let hit = cache ? await cache.match(edgeKey(name)) : null;
+  let body, etag;
+  if (hit) {
+    etag = hit.headers.get("etag");
+    body = hit.body;
+  } else {
+    const res = await produce();
+    const text = await res.text();
+    const dig = new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text)));
+    etag = '"h' + [...dig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("") + '"';
+    if (cache && res.status === 200) {
+      ctx.waitUntil(cache.put(edgeKey(name), new Response(text, {
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=60", etag },
+      })));
+    }
+    body = text;
+  }
+  const headers = { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=0, must-revalidate", etag };
+  const inm = request.headers.get("if-none-match");
+  if (etag && inm && inm.split(",").some((t) => t.trim().replace(/^W\//, "") === etag)) {
+    if (hit && hit.body) hit.body.cancel?.();
+    return new Response(null, { status: 304, headers });
+  }
+  return new Response(body, { status: 200, headers });
 }
 
 // /reset — wipes everything this browser kept for the shop (service worker, caches, saved copy)
@@ -1930,6 +1968,8 @@ export default {
       // The shop lives under /ar/… : /ar/, /ar/cart, /ar/p/<id> … every address is a real page now.
       if (m === "GET" && /^\/ar\/product(\/|$)/.test(path)) return oldWuiltLink(request, env, url);
       if (m === "GET" && (path === "/ar" || path.startsWith("/ar/"))) {
+        const isHome = path === "/ar" || path === "/ar/";
+        return htmlCached("html:" + (isHome ? "home" : "deep") + ":" + url.hostname, request, ctx, async () => {
         const r = await env.ASSETS.fetch(new URL("/index.html", request.url));
         const out = new Response(r.body, r);
         out.headers.set("content-type", "text/html; charset=utf-8");
@@ -1939,6 +1979,7 @@ export default {
         // deeper pages: put the saved colours/fonts on <html> straight away, so the first paint is already
         // the owner's theme (otherwise the stylesheet's built-in black/white/red shows for a moment)
         return homePage(request, env, out, false);
+        });
       }
       // someone typing an old-style address lands on the right page instead of a 404
       if (m === "GET" && /^\/(all|cart|checkout|account|browse|games|search|done|c|g)(\/|$)/.test(path)) {
