@@ -498,7 +498,7 @@
     const promo = p.inStock && cb && !isDiscText ? `<span class="promo">${ICON.ticket}${esc(cb)}</span>` : "";
     return `<article class="card${p.inStock ? "" : " out"}">
       ${promo}
-      <a class="pic" href="#/p/${encodeURIComponent(p.id)}"><img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(p.thumb || p.image, 540))}"${imgSet(p.thumb || p.image, [360, 540, 800], "(max-width:640px) 86vw, 340px")} alt="${esc(p.name)}">${p.inStock ? "" : '<span class="out-stamp">خالص</span>'}</a>
+      <a class="pic" href="#/p/${encodeURIComponent(p.id)}"><img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(p.thumb || p.image, 540))}"${imgSet(p.thumb || p.image, [360, 540, 640, 800], "(max-width:640px) 86vw, 340px")} alt="${esc(p.name)}">${p.inStock ? "" : '<span class="out-stamp">خالص</span>'}</a>
       <div class="body">
         <a class="name" href="#/p/${encodeURIComponent(p.id)}">${esc(p.name)}</a>
         ${stars(p.rt)}
@@ -532,7 +532,7 @@
     const size = Math.min(30, Math.max(14, +sl.size || 18));
     const btn = (b, cls) => (b && b.text ? `<a class="btn ${cls}" href="${esc(b.link || "#/all")}">${esc(b.text)}</a>` : "");
     return `<div class="slide" data-align="${al}" style="--tc:${esc(sl.color || "#ffffff")};--ts:${size}px">` +
-      (sl.img ? `<picture><source media="(max-width:640px)" srcset="${esc(imgW(sl.imgMobile || sl.img, 828))}"><img src="${esc(imgW(sl.img, 1280))}" alt="${esc(sl.title || "")}" width="1600" height="500" ${first ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'}></picture>` : "") +
+      (sl.img ? `<picture><source media="(max-width:640px)" srcset="${esc(imgW(sl.imgMobile || sl.img, 828))}"><img src="${esc(imgW(sl.img, 1280))}" alt="${esc(sl.title || "")}" width="1600" height="500" ${first ? 'fetchpriority="high" data-nofx' : 'loading="lazy" decoding="async"'}></picture>` : "") +
       `<div class="sl-text">${sl.title ? `<h2>${esc(sl.title)}</h2>` : ""}${sl.subtitle ? `<p>${esc(sl.subtitle)}</p>` : ""}<div class="sl-btns">${btn(sl.btn1, "btn-red")}${btn(sl.btn2, "btn-light")}</div></div></div>`;
   }
   const HERO_FX = ["fade", "zoom", "blur", "wipe", "dip", "slide", "flip", "rise", "circle", "spin", "split", "xfade"], HERO_SH = ["theme", "full", "round", "curve", "peek"];
@@ -1258,8 +1258,8 @@
           if (!pics.length) return `<div class="gal-wrap"><div class="pdp-img"><img src="${esc(img(""))}" alt=""></div>${stamp}</div>`;
           const many = pics.length > 1;
           return `<div class="gal-wrap">
-              ${PGX ? `<div class="pdp-img gallery pg-fx pg-${PG.fx}" data-gallery dir="ltr">${pics.map((u, i) => `<img data-zoom="${i}" src="${esc(u)}" alt="${esc(p.name)} ${i + 1}" ${i ? 'loading="lazy" decoding="async"' : 'fetchpriority="high" class="cur"'} draggable="false">`).join("")}</div>`
-              : `<div class="pdp-img gallery" data-gallery dir="ltr">${(many ? [0, ...[...pics.keys()].reverse(), pics.length - 1] : [0]).map((i, k) => `<img data-zoom="${i}" src="${esc(pics[i])}" alt="${esc(p.name)} ${i + 1}" ${k === (many ? pics.length : 0) ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'} draggable="false">`).join("")}</div>`}
+              ${PGX ? `<div class="pdp-img gallery pg-fx pg-${PG.fx}" data-gallery dir="ltr">${pics.map((u, i) => `<img data-zoom="${i}" src="${esc(u)}" alt="${esc(p.name)} ${i + 1}" ${i ? 'loading="lazy" decoding="async"' : 'fetchpriority="high" data-nofx class="cur"'} draggable="false">`).join("")}</div>`
+              : `<div class="pdp-img gallery" data-gallery dir="ltr">${(many ? [0, ...[...pics.keys()].reverse(), pics.length - 1] : [0]).map((i, k) => `<img data-zoom="${i}" src="${esc(pics[i])}" alt="${esc(p.name)} ${i + 1}" ${k === (many ? pics.length : 0) ? 'fetchpriority="high" data-nofx' : 'loading="lazy" decoding="async"'} draggable="false">`).join("")}</div>`}
               ${many ? `<span class="gal-count" data-gcount>1/${pics.length}</span><div class="dots" data-dots>${pics.map((_, i) => `<span class="${i ? "" : "on"}"></span>`).join("")}</div>` : ""}
               <span class="zoom-hint" aria-hidden="true">🔍</span>${stamp}
               ${many && PG.arrows ? `<button type="button" class="gal-arrow next" data-gnav="1" aria-label="الصورة التالية">${ICON.chev}</button><button type="button" class="gal-arrow prev" data-gnav="-1" aria-label="الصورة السابقة">${ICON.chev}</button>` : ""}
