@@ -1781,7 +1781,8 @@ ${trustH()}
       <div>رقم الطلب</div><div class="order-no">${esc(id)}</div>
       ${o && o.delivery && o.delivery.carrier ? `<div class="pay-info"><b>الشحن: ${esc(o.delivery.carrier)}</b>${o.delivery.branch ? `\nالفرع: ${esc(o.delivery.branch)}${o.delivery.branchAddress ? " — " + esc(o.delivery.branchAddress) : ""}` : ""}</div>` : ""}
       <div class="pay-info"><b>طريقة الدفع: لم يتم التحديد بعد</b></div>
-      <div class="buy-row" style="justify-content:center"><a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent(msg)}">أرسل الطلب على واتساب</a></div></div>`;
+      <div class="buy-row" style="justify-content:center"><a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent(msg)}">أرسل الطلب على واتساب</a></div>
+      <p class="hint" style="margin-top:16px">بعد ما يوصلك طلبك، رأيك بيفرق معنا كتير: <a href="/review" target="_blank" rel="noopener"><b>قيّمنا على جوجل ⭐</b></a></p></div>`;
     app.onclick = null; app.onchange = null;
   }
   // #/o/ID — what was ordered (the link inside the Telegram message); no personal data

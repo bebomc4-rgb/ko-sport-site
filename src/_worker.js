@@ -1367,6 +1367,8 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
         ...(S.whatsapp ? { telephone: "+" + S.whatsapp } : {}),
         address: { "@type": "PostalAddress", streetAddress: S.address, addressLocality: "دمشق", addressCountry: "SY" },
         areaServed: { "@type": "Country", name: "Syria" }, currenciesAccepted: "USD, SYP", paymentAccepted: "الدفع عند الاستلام",
+        hasMap: mapUrl(S), geo: { "@type": "GeoCoordinates", latitude: BIZ.lat, longitude: BIZ.lng },
+        openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: BIZ.days, opens: BIZ.opens, closes: BIZ.closes }],
         knowsAbout: ["قفازات ملاكمة", "معدات MMA", "كمال أجسام", "أدوات رياضية", "لياقة بدنية", "كرة قدم", "كرة سلة"],
         sameAs: [S.facebook, S.instagram].filter(Boolean),
       },
@@ -1595,6 +1597,8 @@ ${S.name} متجر أدوات رياضية أونلاين بسوريا (مقرّ
 - الموقع: ${origin}/ar
 - العنوان: ${S.address || ""}
 - واتساب للطلب والاستفسار: https://wa.me/${S.whatsapp || ""}
+- المحل على خرائط جوجل: ${mapUrl(S)}
+- أوقات الدوام بالمحل: كل يوم من 11 الصبح لـ 8 المسا، والجمعة عطلة
 ${S.instagram ? `- إنستغرام: ${S.instagram}\n` : ""}${S.facebook ? `- فيسبوك: ${S.facebook}\n` : ""}- التوصيل: ${S.footerNote || "لكل المحافظات السورية"}
 - الدفع: عند الاستلام
 - الأسعار: بالدولار، ومعها السعر بالليرة السورية الجديدة${rate ? ` (سعر الدولار اليوم ${rate})` : ""}
@@ -1986,6 +1990,15 @@ async function catalogApi(request, env, ctx, kind) {
   }
   return new Response(JSON.stringify(data), { headers: { "content-type": "application/json; charset=utf-8", ...cors } });
 }
+// The shop on Google Maps (its Google Business Profile). Keep in sync if the hours change on Google.
+const BIZ = {
+  placeId: "ChIJvTnREgDdGBUREN7vcmrghCU",
+  lat: 33.5468787, lng: 36.212863,
+  days: ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"], opens: "11:00", closes: "20:00",
+};
+const mapUrl = (S) => "https://www.google.com/maps/place/?q=place_id:" + ((S && S.placeId) || BIZ.placeId);
+const reviewUrl = (S) => "https://search.google.com/local/writereview?placeid=" + ((S && S.placeId) || BIZ.placeId);
+
 // ---------- SEO: every product / category page gets its own title, description, link and structured data ----------
 // Search engines and AI assistants (most don't run JavaScript) read these straight from the HTML.
 const seoEsc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -2150,6 +2163,11 @@ export default {
       if (path.startsWith("/s/") && m === "GET" && env.STORE) { const c = path.slice(3).toLowerCase(), d = await catalogData(request, env, ctx).catch(() => null), hit = d && d.products.find((x) => shortCode(x.id) === c); return hit ? productShare(request, env, ctx, hit.id) : Response.redirect(new URL("/", request.url).href, 302); }
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
+      // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
+      if ((path === "/review" || path === "/map") && m === "GET") {
+        let S = {}; try { S = (await getSettings(env, request)).store || {}; } catch {}
+        return Response.redirect(path === "/review" ? reviewUrl(S) : mapUrl(S), 302);
+      }
       // The shop lives under /ar/… : /ar/, /ar/cart, /ar/p/<id> … every address is a real page now.
       if (m === "GET" && /^\/ar\/product(\/|$)/.test(path)) return oldWuiltLink(request, env, url);
       if (m === "GET" && (path === "/ar" || path.startsWith("/ar/"))) {
