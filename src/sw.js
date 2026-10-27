@@ -1,6 +1,6 @@
 /* KO SPORT service worker — fast repeat visits + offline fallback.
    Products/prices are always fetched fresh from the network first. */
-const V = "ko-v96";
+const V = "ko-v97";
 const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
 const KEEP = [SHELL, ASSET, IMG, DATA];
 
@@ -59,7 +59,8 @@ self.addEventListener("fetch", (e) => {
     e.respondWith((async () => {
       try {
         // Long timeout on purpose: on a slow connection waiting is right, serving a stale shop is not.
-        const r = await networkFirst(req, SHELL, 20000);
+        // always ask the server (cache:"no-cache"), never a page the browser stored earlier, so a visitor never sees an old design
+        const r = await networkFirst(new Request(req.url, { cache: "no-cache", credentials: "same-origin", redirect: "manual" }), SHELL, 20000);
         trim(SHELL, 25); // every /ar/… address is its own entry now
         return r;
       } catch {

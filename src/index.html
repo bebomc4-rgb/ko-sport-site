@@ -25,15 +25,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link data-headfont rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="/assets/store.css?v=96">
-<link rel="stylesheet" href="/assets/promo.css?v=96" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="/assets/store.css?v=97">
+<link rel="stylesheet" href="/assets/promo.css?v=97" media="print" onload="this.media='all'">
 <script>
 /* Runs before first paint: apply last-known design */
 (function () {
   var d = document.documentElement, s = null;
   try { s = JSON.parse(localStorage.getItem("ko_snap_settings") || "null"); } catch (e) {}
-  if (s && s.design) {
-    var g = s.design, st = d.style;
+  // the server puts the CURRENT design in window.__koD; the copy saved on this device is only a fallback
+  var g = window.__koD || (s && s.design);
+  if (g) {
+    var st = d.style;
     st.setProperty("--red", g.primary); st.setProperty("--ink", g.dark); st.setProperty("--paper", g.background);
     st.setProperty("--head", '"' + g.headingFont + '",system-ui,sans-serif');
     var m = { headerBg: "--hdr-bg", headerText: "--hdr-fg", textColor: "--text", footerBg: "--ftr-bg", footerText: "--ftr-fg", heroBg: "--hero-bg", homeText: "--home-text", productText: "--prod-text", priceColor: "--price-c" };
@@ -128,10 +130,10 @@
 
 <div class="toast" data-toast role="status" aria-live="polite"></div>
 
-<script src="/assets/fx.js?v=96" defer></script>
-<script src="/assets/media.js?v=96" defer></script>
-<script src="/assets/promo.js?v=96" defer></script>
-<script src="/assets/store.js?v=96" defer></script>
-<script src="/assets/pwa.js?v=96" defer></script>
+<script src="/assets/fx.js?v=97" defer></script>
+<script src="/assets/media.js?v=97" defer></script>
+<script src="/assets/promo.js?v=97" defer></script>
+<script src="/assets/store.js?v=97" defer></script>
+<script src="/assets/pwa.js?v=97" defer></script>
 </body>
 </html>

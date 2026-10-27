@@ -2205,7 +2205,10 @@ ${trustH()}
   const snapStore = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
   let booted = false, snapStr = snapStore.get("ko_snap_products");
   const snapSettings = window.__koSnap;
-  if (snapSettings && snapSettings.store && snapStr) {
+  // if the design saved on this device is older than the one the server just sent, don't paint the old one first
+  const srvD = window.__koD;
+  const snapStale = !!(srvD && snapSettings && Object.keys(srvD).some((k) => JSON.stringify(srvD[k]) !== JSON.stringify((snapSettings.design || {})[k])));
+  if (snapSettings && snapSettings.store && snapStr && !snapStale) {
     try { setData(snapSettings, JSON.parse(snapStr)); chrome(); renderCount(); route(); booted = true; } catch {}
   }
   fetchFresh().then(([st, data]) => {

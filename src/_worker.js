@@ -1277,12 +1277,21 @@ async function imageFetch(request, env) {
 
 // The home page HTML gets the real title, description, share image and store info filled in on the server,
 // so Google, WhatsApp and Facebook see them without running any JavaScript.
+// The current design, small, for the script that paints the page before anything else loads
+const EARLY_KEYS = ["primary", "dark", "background", "headingFont", "headerBg", "headerText", "textColor", "footerBg", "footerText", "heroBg", "homeText", "productText", "priceColor", "skin", "logoRound", "logoPx", "layout"];
+function earlyDesign(D) {
+  const o = {}; for (const k of EARLY_KEYS) if (D && D[k] !== undefined) o[k] = D[k];
+  return `<script>window.__koD=${JSON.stringify(o).replace(/</g, "\\u003c")}</script>`;
+}
 // Deeper /ar/… pages: same theme variables the home page gets, set on <html> before the app runs.
 async function themeOnly(env, request, res) {
   try {
     if (typeof HTMLRewriter === "undefined" || !env.STORE) return res;
     const st = await getSettings(env, request);
-    return new HTMLRewriter().on("html", { element(e) { e.setAttribute("style", cssVars(st.design || {})); } }).transform(res);
+    return new HTMLRewriter()
+      .on("html", { element(e) { e.setAttribute("style", cssVars(st.design || {})); } })
+      .on("head", { element(e) { e.prepend(earlyDesign(st.design || {}), { html: true }); } })
+      .transform(res);
   } catch { return res; }
 }
 async function homePage(request, env, res) {
@@ -1360,6 +1369,7 @@ async function homePageInner(request, env, res) {
     ["[data-fb]", { element(e) { e.setAttribute("href", S.facebook || "#"); } }],
     ["[data-ig]", { element(e) { e.setAttribute("href", S.instagram || "#"); } }],
     ['meta[name="theme-color"]', { element(e) { e.setAttribute("content", D.dark); } }],
+    ["head", { element(e) { e.prepend(earlyDesign(st.design || {}), { html: true }); } }],
     ["html", { element(e) { e.setAttribute("style", cssVars(D)); for (const [k, v] of Object.entries(layoutOf(D))) e.setAttribute("data-l-" + k, v); } }],
     ["[data-headfont]", { element(e) { const u = fontUrl(D); if (u) e.setAttribute("href", u); else e.remove(); } }],
     ['link[rel="icon"]', { element(e) { if (D.favicon) { e.setAttribute("href", D.favicon); e.setAttribute("type", "image/png"); } } }],
