@@ -1171,7 +1171,6 @@
       else app.innerHTML = `<div class="crumbs">${crumbs}</div><h1 class="page-title">${esc(title)}</h1>${desc ? `<p class="list-desc">${esc(desc)}</p>` : ""}${topCats}
         ${subs ? `<div class="chips" style="margin-bottom:10px"><button class="chip${st.sub ? "" : " on"}" data-sub="">الكل</button>${subs.map((c) => `<button class="chip${st.sub === c ? " on" : ""}" data-sub="${esc(c)}">${esc(catLabel(c))}</button>`).join("")}</div>` : ""}
         <div class="toolbar">
-          <span style="color:var(--muted);font-size:14px">${list.length} منتج</span>
           <label class="check"><input type="checkbox" data-hideout ${st.hideOut ? "checked" : ""}> المتوفر بس</label>
           <select data-sort aria-label="ترتيب">
             <option value="default">الترتيب الافتراضي</option>
@@ -1909,7 +1908,7 @@ ${trustH()}
     const inStock = products.filter((p) => p.inStock).length;
     const cimg = (c) => { if (c.image) return imgW(c.image, 420); const p = products.find((x) => x.inStock && inCat(x, c.name)) || products.find((x) => inCat(x, c.name)); return p ? imgW(p.thumb || p.image, 420) : ""; };
     const seen = new Set();
-    const card = (c, k) => { seen.add(c.name); const u = cimg(c); return `<a class="br-card" href="${cHref(c.name)}" style="--i:${k}">${u ? `<img loading="lazy" decoding="async" src="${esc(u)}" alt="">` : ""}<span class="br-n"><b>${esc(catLabel(c.name))}</b><small>${c.count} منتج</small></span></a>`; };
+    const card = (c, k) => { seen.add(c.name); const u = cimg(c); return `<a class="br-card" href="${cHref(c.name)}" style="--i:${k}">${u ? `<img loading="lazy" decoding="async" src="${esc(u)}" alt="">` : ""}<span class="br-n"><b>${esc(catLabel(c.name))}</b></span></a>`; };
     const groups = C.groups.map((g, i) => {
       const cs = g.cats.map((n) => cats.find((x) => x.name === n)).filter(Boolean); if (!cs.length) return "";
       const total = products.filter((p) => g.cats.some((c) => inCat(p, c))).length;
@@ -1919,7 +1918,7 @@ ${trustH()}
     app.innerHTML = `<div class="browse">
       <div class="br-top"><h1>المتجر</h1><form class="br-search" data-br-search><svg viewBox="0 0 24 24" width="18" height="18"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input type="search" placeholder="دوّر على منتج أو قسم…" enterkeyhint="search" data-br-q></form></div>
       ${C.groups.length > 1 ? `<nav class="br-chips">${C.groups.map((g, i) => `<button type="button" data-br-go="${i}">${esc(gIcon(g, i))} ${esc(g.name)}</button>`).join("")}</nav>` : ""}
-      <a class="br-all" href="#/all"><span><b>كل المنتجات</b><small>${inStock} منتج متوفر · ${cats.length} قسم</small></span><i>←</i></a>
+      <a class="br-all" href="#/all"><span><b>كل المنتجات</b><small>${cats.length} قسم</small></span><i>←</i></a>
       <div data-br-list>${groups}${rest.length ? `<section class="br-grp"><div class="br-gh"><span class="br-ic">✨</span><h2>أقسام تانية</h2></div><div class="br-grid">${rest.map(card).join("")}</div></section>` : ""}</div>
     </div>`;
     { const hd = document.querySelector("header"), ch = app.querySelector(".br-chips"); if (hd && ch) { const ps = getComputedStyle(hd).position; ch.style.top = (ps === "sticky" || ps === "fixed" ? hd.offsetHeight : 0) + "px"; } }
