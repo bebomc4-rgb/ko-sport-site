@@ -13,9 +13,9 @@ self.addEventListener("activate", (e) => {
     for (const k of await caches.keys()) if (!KEEP.includes(k)) { await caches.delete(k); upgraded = true; }
     await self.clients.claim();
     // An open page (also inside the Android app) may still be an old copy: reload it once with the new version.
-    // Never in the middle of checkout, so nobody loses what they typed.
+    // Never in the middle of checkout or the dashboard, so nobody loses what they typed.
     if (upgraded) for (const w of await self.clients.matchAll({ type: "window" })) {
-      try { if (!/\/(checkout|done)/.test(new URL(w.url).pathname)) w.navigate(w.url); } catch (e) {}
+      try { if (!/\/(checkout|done)|admin/.test(new URL(w.url).pathname)) w.navigate(w.url); } catch (e) {}
     }
   })());
 });
