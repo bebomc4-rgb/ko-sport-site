@@ -1843,3 +1843,12 @@ html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx[style*="--bi"] s
 
 /* sections lower down the home page are drawn only when they come near the screen (faster first load) */
 .hsec.hs-categories:nth-child(n+3){content-visibility:auto;contain-intrinsic-size:auto 420px}
+
+/* ----- bottom bar «موجة»: الشريط كلو ملون، والزر الحالي بيطلع فتحة (لون الصفحة) بشكل موجة عشان ينلفت النظر ----- */
+@media (max-width:900px){
+  [data-l-nav=on] .bnav[data-bnav]{background:var(--red)!important;color:#fff;border-top:0;box-shadow:0 -6px 20px rgba(0,0,0,.14);padding-top:6px;overflow:visible}
+  [data-l-nav=on] .bnav a,[data-l-nav=on] .bnav button{color:#fff}
+  [data-l-nav=on] .bnav a.on,[data-l-nav=on] .bnav button.on{align-self:stretch;margin:-6px 3px calc(-6px - env(safe-area-inset-bottom));padding-top:8px;padding-bottom:6px;background:var(--paper,#fff);color:var(--red);border-radius:0 0 999px 999px/0 0 26px 26px;box-shadow:inset 0 8px 12px -6px rgba(0,0,0,.28);font-weight:700;opacity:1}
+  [data-l-nav=on] .bnav a.on::after,[data-l-nav=on] .bnav button.on::after{content:none!important;display:none!important}
+  [data-l-nav=on] .bnav a.on svg,[data-l-nav=on] .bnav button.on svg{color:var(--red)}
+}

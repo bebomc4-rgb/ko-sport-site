@@ -365,7 +365,7 @@
   // product page photos: side, small photos under the dots, change effect, autoplay (design.pg)
   const pgOf = (d) => { const g = (d && d.pg) || {}, one = (v, l, f) => (l.includes(v) ? v : f);
     return { side: one(g.side, ["left", "right"], "left"), thumbs: one(g.thumbs, ["wrap", "row", "grid", "hide"], "wrap"), tsize: one(g.tsize, ["s", "m", "l"], "m"), talign: one(g.talign, ["center", "start", "end"], "center"), tdir: one(g.tdir, ["rtl", "ltr"], "rtl"),
-      fx: one(g.fx, ["slide", "fade", "zoom", "flip", "cube", "blur", "push"], "slide"), auto: g.auto === true, speed: +g.speed >= 2 && +g.speed <= 12 ? +g.speed : 4,
+      fx: one(g.fx, ["slide", "fade", "zoom", "flip", "cube", "blur", "push"], "slide"), auto: false, speed: +g.speed >= 2 && +g.speed <= 12 ? +g.speed : 4,
       ms: { fast: 350, normal: 600, slow: 950 }[one(g.dur, ["fast", "normal", "slow"], "normal")], arrows: g.arrows !== false }; };
   let RAW_READY = false; setTimeout(() => (RAW_READY = true), 0);
   // review box on the product page: 5 stars picked already, name + opinion, send
