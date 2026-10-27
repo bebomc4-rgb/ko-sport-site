@@ -13,7 +13,14 @@ const EXTRA = ["sh-full", "sh-round", "sh-curve", "sh-peek", "has-img", "hero-st
 // every word in them counts as a possible class name, to be safe.
 export function criticalCss(css, htmlSources, extra = [], wordSources = []) {
   const tokens = new Set([...EXTRA, ...extra]);
-  for (const src of wordSources) for (const m of src.matchAll(/[A-Za-z_][\w-]*/g)) tokens.add(m[0]);
+  const prefixes = [];
+  for (const src of wordSources) for (const line of src.split("\n")) {
+    if (!/class/i.test(line)) continue; // className = "…" / classList.add("…") / class="…"
+    for (const m of line.matchAll(/["'`]([^"'`]*)["'`]/g)) for (const w of m[1].split(/\s+/)) {
+      if (/^[A-Za-z_][\w-]*-$/.test(w)) prefixes.push(w); else if (/^[A-Za-z_][\w-]*$/.test(w)) tokens.add(w);
+    }
+  }
+  tokens.has = ((has) => (t) => has(t) || prefixes.some((p) => t.startsWith(p)))(tokens.has.bind(tokens));
   for (const src of htmlSources) {
     // class="…" / class=\"…\" بقوالب السيرفر و index.html
     for (const m of src.matchAll(/class=\\?"([^"\\]*)/g)) for (const w of m[1].replace(/\$\{[^}]*\}?/g, " ").split(/\s+/)) if (w) tokens.add(w);
