@@ -7,7 +7,7 @@
 const EXTRA = ["sh-full", "sh-round", "sh-curve", "sh-peek", "has-img", "hero-stats", "logo-ko", "logo-sport", "ann-x", "hsec", "hs-slider",
   "slider", "sl-track", "slide", "sl-text", "sl-btns", "btn", "btn-red", "btn-light", "hero", "loading", "ssr", "ssr-l", "on", "reduce", "anim", "small",
   // شريط التنقل تحت: بينرسم من نسخة محفوظة قبل أول رسمة
-  "bn-fx", "bn-cur-ic", "bn-dark", "bn-cur", "bn-hide", "sun", "moon"];
+  "bn-fx", "bn-cur-ic", "bn-dark", "bn-cur", "bn-hide", "sun", "moon", "lb-day", "lb-night", "hint", "syp"];
 
 // wordSources: scripts that may add elements before the full stylesheet arrives (fx.js, media.js, pwa.js):
 // every word in them counts as a possible class name, to be safe.

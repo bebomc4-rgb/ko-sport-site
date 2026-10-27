@@ -1978,7 +1978,7 @@ ${trustH()}
       const href = link === "wa" ? (C.whatsapp ? "https://wa.me/" + C.whatsapp : "#/") : link === "games" ? "#/games" : link || "#/";
       const ext = /^https?:/.test(href) || /^tel:/.test(href);
       return `<a${fc} href="${esc(href)}" data-nav="${BN_NAV[href] || (href === "#/browse" ? "all" : "")}"${ext ? ' target="_blank" rel="noopener"' : ""} aria-label="${label}">${inner}</a>`;
-    }).join("") + (curIn ? `<button type="button" class="bn-cur" data-action="cur" aria-label="تبديل العملة"><i class="bn-cur-ic"><b>$</b></i>${b.showLabels === false ? "" : "<span>العملة</span>"}</button>` : "") + (darkIn ? `<button type="button" class="bn-dark" data-action="dark" aria-label="الوضع الداكن"><svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>${b.showLabels === false ? "" : "<span>ليلي</span>"}</button>` : "");
+    }).join("") + (curIn ? `<button type="button" class="bn-cur" data-action="cur" aria-label="تبديل العملة"><i class="bn-cur-ic"><b>$</b></i>${b.showLabels === false ? "" : "<span>العملة</span>"}</button>` : "") + (darkIn ? `<button type="button" class="bn-dark" data-action="dark" aria-label="الوضع الداكن"><svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>${b.showLabels === false ? "" : `<span class="lb-night">ليلي</span><span class="lb-day">نهاري</span>`}</button>` : "");
     renderCount(); renderBnCur();
     const cur = document.body.dataset.page, nk = !cur || cur === "home" ? "home" : BN_NAV["#/" + cur] || ""; nav.querySelectorAll("[data-nav]").forEach((x) => x.classList.toggle("on", x.dataset.nav === nk && !!nk));
     saveBnSnap(nav);
@@ -1997,9 +1997,13 @@ ${trustH()}
       renderBnav(S.design);
     }).catch(() => {});
   }
-  function toggleCur() { const m = curMode() === "syp" ? "usd" : "syp"; try { localStorage.setItem("ko_cur", m); } catch {} renderCurSw(); rerenderPrices(); renderCount(); renderBnCur(); }
+  function toggleCur() { const m = curMode() === "syp" ? "usd" : "syp"; try { localStorage.setItem("ko_cur", m); localStorage.setItem("ko_cur_seen", "1"); } catch {} renderCurSw(); rerenderPrices(); renderCount(); renderBnCur();
+    document.querySelectorAll(".bnav .bn-cur").forEach((x) => { x.classList.remove("flip"); void x.offsetWidth; x.classList.add("flip"); });
+    toast(m === "syp" ? "💱 صارت الأسعار بالليرة السورية (ل.س)" : "💱 صارت الأسعار بالدولار ($)"); }
   const bnCurOn = () => { const f = S.fx || {}, b = (S.design || {}).bnav || {}; return b.curBtn !== false && f.visitor !== false && (FXR > 0 || f.mode === "syp"); };
-  function renderBnCur() { const m = curMode(); document.querySelectorAll(".bnav .bn-cur").forEach((x) => { x.querySelector("b").textContent = m === "syp" ? "ل.س" : "$"; x.classList.toggle("syp", m === "syp"); }); }
+  function renderBnCur() { const m = curMode(); let seen = false; try { seen = !!localStorage.getItem("ko_cur_seen"); } catch {}
+    // until the visitor tries it once, the currency button pulses gently so people notice it
+    document.querySelectorAll(".bnav .bn-cur").forEach((x) => { x.querySelector("b").textContent = m === "syp" ? "ل.س" : "$"; x.classList.toggle("syp", m === "syp"); x.classList.toggle("hint", !seen); }); }
   function rerenderPrices() { const keep = window.scrollY; route(null, true); window.scrollTo(0, keep); }
   function renderCurSw() {
     const f = S.fx || {}, want = f.visitor !== false && (FXR > 0 || f.mode === "syp");
