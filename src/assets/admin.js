@@ -3235,6 +3235,39 @@
   $("[data-set-discard]").onclick = () => { ST = JSON.parse(stSaved); renderSettings(); };
   window.addEventListener("beforeunload", (e) => { if (stDirty()) { e.preventDefault(); e.returnValue = ""; } });
 
+  // ---------- backups: list, restore, download everything ----------
+  document.addEventListener("click", async (e) => {
+    if (e.target.closest("[data-bk-load]")) {
+      const box = $("[data-bk-list]"); box.innerHTML = `<p class="hint">جاري التحميل…</p>`;
+      try {
+        const j = await api("/api/admin/backups");
+        const nm = { settings: "الإعدادات والتصميم", products: "المنتجات" };
+        box.innerHTML = (j.backups || []).length ? j.backups.map((b) => `<div class="bk-row"><span><b>${nm[b.kind] || b.kind}${b.why === "pre-fix" ? " — قبل تصليحات 27 تشرين الأول" : ""}</b><small>${new Date(b.ts).toLocaleString("ar-SY")}${b.size ? " · " + Math.round(b.size / 1024) + " كيلوبايت" : ""}</small></span><button type="button" class="btn btn-ghost sm" data-bk-restore="${esc(b.key)}">رجّع هالنسخة</button></div>`).join("")
+          : `<p class="hint">لسا ما في نسخ. بتنعمل لحالها مع أول حفظ.</p>`;
+      } catch (err) { box.innerHTML = `<p class="hint">${esc(err.message)}</p>`; }
+      return;
+    }
+    const r = e.target.closest("[data-bk-restore]");
+    if (r) {
+      if (!confirm("ترجّع هالنسخة؟\nالنسخة الحالية رح تنحفظ كمان، فيك ترجعلها إذا بدك.")) return;
+      r.disabled = true;
+      try { await api("/api/admin/backups/restore", { method: "POST", body: JSON.stringify({ key: r.dataset.bkRestore }) }); toast("رجعت النسخة ✓ حدّث الصفحة لتشوفها"); }
+      catch (err) { toast(err.message); r.disabled = false; }
+      return;
+    }
+    const dl = e.target.closest("[data-bk-dl]");
+    if (dl) {
+      e.preventDefault(); toast("جاري تجهيز النسخة…");
+      try {
+        const res = await fetch("/api/admin/backup-download", { headers: { authorization: "Bearer " + pass } });
+        if (!res.ok) throw new Error("ما قدرنا نجهّز النسخة");
+        const blob = await res.blob(), a = document.createElement("a");
+        a.href = URL.createObjectURL(blob); a.download = "ko-sport-backup-" + new Date().toISOString().slice(0, 10) + ".json"; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      } catch (err) { toast(err.message); }
+    }
+  });
+
   // ---------- sound & music panel, media upload ----------
   const MEDIA_EXT = { mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", wav: "audio/wav", ogg: "audio/ogg", opus: "audio/ogg", flac: "audio/flac", mp4: "video/mp4", m4v: "video/mp4", webm: "video/webm", mov: "video/quicktime" };
   document.addEventListener("change", async (e) => {

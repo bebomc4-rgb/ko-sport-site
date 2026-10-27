@@ -65,6 +65,7 @@ async function getProducts(env, request) {
   return r.json();
 }
 async function saveProducts(env, list) {
+  await snapshot(env, "products");
   await env.STORE.put("products", JSON.stringify(list));
   await purgeEdge("products");
 }
@@ -414,6 +415,7 @@ async function settingsPut(request, env) {
     if (!["door", "qadmous", "off"].includes(z.method)) return json({ error: "طريقة توصيل غلط" }, 400);
     if (z.fee !== null && !(typeof z.fee === "number" && z.fee >= 0)) return json({ error: "سعر توصيل غلط: " + z.gov }, 400);
   }
+  await snapshot(env, "settings");
   await env.STORE.put("settings", JSON.stringify(s));
   await purgeEdge("settings");
   return json({ ok: true });
@@ -438,7 +440,7 @@ async function authGuard(request, env) {
 // ---------- /api/products ----------
 // Visitors get a slim list (only what the shop shows, hidden products removed) → much smaller download.
 // The dashboard asks for ?full=1 and gets everything, uncached.
-const PUBLIC_FIELDS = ["id", "name", "category", "also", "price", "inStock", "image", "thumb", "images", "options", "sports", "zoom", "thumbs"];
+const PUBLIC_FIELDS = ["id", "name", "category", "also", "price", "inStock", "image", "thumb", "images", "options", "sports", "zoom", "thumbs", "aliases"];
 async function productsGet(request, env, ctx) {
   if (new URL(request.url).searchParams.has("full")) return json(await getProducts(env, request));
   return edgeCached("products", ctx, async () => {
@@ -554,7 +556,9 @@ async function ordersPost(request, env, ctx) {
     carrier = carriers.find((c) => c.id === body.carrier);
     const g = carrier && (carrier.govs || []).find((x) => x.name === customer.governorate);
     if (!carrier || !g) return json({ error: "اختار شركة الشحن المتاحة لمحافظتك" }, 400);
-    if (carrier.type === "branch") {
+    if (carrier.type === "branch" && !(g.branches || []).length) {
+      customer.center = ""; // no branch list for this place: the shop confirms where to pick it up
+    } else if (carrier.type === "branch") {
       branch = (g.branches || []).find((b) => b.name === body.branch);
       if (!branch) return json({ error: "اختار الفرع" }, 400);
       customer.center = branch.name; customer.address = "";
@@ -575,6 +579,7 @@ async function ordersPost(request, env, ctx) {
 
   const products = await getProducts(env, request);
   const byId = new Map(products.map((p) => [p.id, p]));
+  for (const p of products) for (const a of p.aliases || []) if (!byId.has(a)) byId.set(a, p);
   const items = [];
   for (const it of body.items) {
     const p = byId.get(it.id);
@@ -1439,8 +1444,11 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
       const list = (await getProducts(env, request)).filter((p) => !p.hidden && !(D.hideOutOfStock && !p.inStock));
       const cats = new Set(); list.forEach((p) => [p.category, ...(p.also || [])].forEach((c) => cats.add(c)));
       const cs = ((st.shipping && st.shipping.carriers) || []).filter((c) => c.on !== false);
-      const zones = cs.length ? new Set(cs.flatMap((c) => (c.govs || []).map((g) => g.name))).size : (st.delivery.zones || []).filter((z) => z.method !== "off").length;
-      stats = `<div class="hero-stats"><div><b>${list.filter((p) => p.inStock).length}</b>منتج متوفر</div><div><b>${cats.size}</b>قسم</div><div><b>${zones}</b>محافظة توصيل</div></div>`;
+      const zn = cs.length ? [...new Set(cs.flatMap((c) => (c.govs || []).map((g) => g.name)))] : (st.delivery.zones || []).filter((z) => z.method !== "off").map((z) => z.gov);
+      // count Syria's governorates only (Manbij, Al-Bab… are places inside them)
+      const SYG = ["دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "إدلب", "درعا", "السويداء", "القنيطرة", "دير الزور", "الرقة", "الحسكة"];
+      const zones = SYG.filter((g) => zn.some((x) => x === g || (g === "دمشق" && /دمشق/.test(x) && !/^ريف/.test(x)) || (g === "ريف دمشق" && /ريف/.test(x)))).length || zn.length;
+      stats = `<div class="hero-stats"><div><b>${cats.size}</b>قسم</div><div><b>${zones}</b>محافظة توصيل</div></div>`;
     } catch {}
   }
   const firstSec = ((st.home && st.home.sections) || []).find((x) => x.on !== false);
@@ -1608,7 +1616,7 @@ async function siteFiles(request, env, path, ctx) {
   // /llms.txt — a plain summary of the shop for AI assistants (ChatGPT, Claude, Perplexity, Gemini…)
   const rate = data.store && data.store.syp_rate;
   const price = (p) => `$${p.price_usd}${p.price_syp ? ` (${SYP(p.price_syp)} ل.س)` : ""}`;
-  const catLines = groups.map((g) => `### ${g.name}\n` + g.cats.filter((c) => cats.includes(c)).map((c) => `- [${label(c)}](${curl(c)}): ${list.filter((p) => p.collections.includes(c)).length} منتج`).join("\n")).join("\n\n");
+  const catLines = groups.map((g) => `### ${g.name}\n` + g.cats.filter((c) => cats.includes(c)).map((c) => `- [${label(c)}](${curl(c)})`).join("\n")).join("\n\n");
   const prodLines = list.filter((p) => p.in_stock).map((p) => `- [${p.name}](${origin}/ar/p/${encodeURIComponent(p.id)}) — ${label(p.category)} — ${price(p)}`).join("\n");
   return txt(`# ${S.name || "KO SPORT"}
 
@@ -2103,7 +2111,7 @@ ${same.length ? `<h2>منتجات مشابهة</h2><ul>${same.map(cardHtml).join
     items = items.slice().sort((x, y) => (y.in_stock - x.in_stock));
     const lo = Math.min(...items.map((y) => y.price_usd));
     const title = seoCut(mt.seoTitle || `${t} بسوريا — أسعار وتوصيل | ${name}`, 70);
-    const desc = seoCut(mt.seoDesc || mt.desc || `تسوّق ${t} من ${name}: ${items.length} منتج، الأسعار بتبلّش من $${lo}، بالدولار والليرة السورية. توصيل لكل المحافظات والدفع عند الاستلام.`, 158);
+    const desc = seoCut(mt.seoDesc || mt.desc || `تسوّق ${t} من ${name}: تشكيلة كاملة، الأسعار بتبلّش من $${lo}، بالدولار والليرة السورية. توصيل لكل المحافظات والدفع عند الاستلام.`, 158);
     const ld = [{
       "@context": "https://schema.org", "@type": "CollectionPage", name: t, url: cu, description: desc,
       mainEntity: { "@type": "ItemList", numberOfItems: items.length, itemListElement: items.slice(0, 30).map((y, i) => ({ "@type": "ListItem", position: i + 1, url: origin + "/ar/p/" + encodeURIComponent(y.id), name: y.name })) },
@@ -2115,7 +2123,7 @@ ${same.length ? `<h2>منتجات مشابهة</h2><ul>${same.map(cardHtml).join
     const t = a === "all" ? "كل المنتجات" : "أقسام المتجر", cu = origin + "/ar/" + a;
     const groups = (D.groups || []).map((g) => `<h2><a href="/ar/g/${encodeURIComponent(g.name)}">${seoEsc(g.name)}</a></h2><ul>${g.cats.filter((c) => cats.has(c)).map((c) => `<li><a href="/ar/c/${encodeURIComponent(catSlugOf(st, c))}">${seoEsc(label(c))}</a></li>`).join("")}</ul>`).join("");
     const title = seoCut(`${t} — أدوات رياضية بسوريا | ${name}`, 70);
-    const desc = seoCut(`${list.length} منتج رياضي من ${name}: ملاكمة، MMA، كمال أجسام، لياقة، كرة قدم وسلة. أسعار بالدولار والليرة، توصيل لكل المحافظات والدفع عند الاستلام.`, 158);
+    const desc = seoCut(`كل المنتجات الرياضية من ${name}: ملاكمة، MMA، كمال أجسام، لياقة، كرة قدم وسلة. أسعار بالدولار والليرة، توصيل لكل المحافظات والدفع عند الاستلام.`, 158);
     return { title, desc, canon: cu, type: "website", ld: [crumb([["الرئيسية", home], [t, cu]])], body: `<div class="ssr"><h1>${seoEsc(t)}</h1>${groups}</div>` };
   }
   if (a === "page" && b) {
@@ -2140,6 +2148,204 @@ async function productShare(request, env, ctx, id) {
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=120" } });
 }
 
+
+// ======================================================================================
+// Backups: before every save of the settings or the products, the version being replaced is kept
+// (the 10 newest, plus one per day for 30 days). The dashboard can list them, restore one, or download everything.
+// ======================================================================================
+async function snapshot(env, kind, why) {
+  try {
+    const pre = `bak:${kind}:`, now = Date.now();
+    let L = (await env.STORE.list({ prefix: pre })).keys.map((k) => k.name).sort().reverse();
+    // many saves in a row (photo jobs, quick edits): one copy every 10 minutes is enough, and keeps within the free daily writes
+    if (!why && L[0] && now - Date.parse(L[0].slice(pre.length)) < 10 * 60e3) return;
+    const cur = await env.STORE.get(kind); if (!cur) return;
+    const ts = new Date(now).toISOString();
+    await env.STORE.put(pre + ts, cur, { metadata: { ts, size: cur.length, why: why || "save" } });
+    L = [pre + ts, ...L];
+    const keep = new Set(L.slice(0, 10)), days = new Set();
+    for (const k of L) { const d = k.slice(pre.length, pre.length + 10); if (!days.has(d) && days.size < 30) { days.add(d); keep.add(k); } }
+    for (const k of L) if (!keep.has(k)) await env.STORE.delete(k);
+  } catch {}
+}
+async function backupsApi(request, env, path) {
+  if (!isAdmin(request, env, "owner")) return denied();
+  const m = request.method;
+  if (path === "/api/admin/backups" && m === "GET") {
+    const out = [];
+    for (const kind of ["settings", "products"]) {
+      const r = await env.STORE.list({ prefix: `bak:${kind}:` });
+      for (const k of r.keys) out.push({ kind, key: k.name, ts: (k.metadata && k.metadata.ts) || k.name.split(":").slice(2).join(":"), size: (k.metadata && k.metadata.size) || 0, why: (k.metadata && k.metadata.why) || "" });
+    }
+    // the full copy taken right before the one-time fixes of 27 Oct 2026
+    for (const k of (await env.STORE.list({ prefix: "bak:pre-" })).keys) { const kind = k.name.split(":").pop(); if (kind === "settings" || kind === "products") out.push({ kind, key: k.name, ts: (k.metadata && k.metadata.ts) || "2026-10-27T00:00:00.000Z", size: 0, why: "pre-fix" }); }
+    out.sort((a, b) => (a.ts < b.ts ? 1 : -1));
+    return json({ backups: out });
+  }
+  if (path === "/api/admin/backups/restore" && m === "POST") {
+    const b = await request.json().catch(() => ({}));
+    const key = String(b.key || ""), kind = /^bak:pre-/.test(key) ? key.split(":").pop() : key.split(":")[1];
+    if (!(/^bak:(settings|products):/.test(key) || /^bak:pre-[^:]+(:[^:]+)*:(settings|products)$/.test(key))) return json({ error: "نسخة غلط" }, 400);
+    const val = await env.STORE.get(key); if (!val) return json({ error: "النسخة مو موجودة" }, 404);
+    try { JSON.parse(val); } catch { return json({ error: "النسخة خربانة" }, 400); }
+    await snapshot(env, kind, "before-restore");
+    await env.STORE.put(kind, val);
+    await purgeEdge(kind);
+    return json({ ok: true });
+  }
+  if (path === "/api/admin/backup-download" && m === "GET") {
+    const get = async (k) => { try { return await env.STORE.get(k, "json"); } catch { return null; } };
+    const orders = [];
+    try {
+      const r = await env.STORE.list({ prefix: "order:", limit: 300 });
+      for (const k of r.keys) { const o = await get(k.name); if (o) orders.push(o); }
+    } catch {}
+    const all = { at: new Date().toISOString(), settings: await get("settings"), products: await get("products"), reviews: await get("reviews"), customers: await get("customers"), sales: await get("sales"), orders };
+    return new Response(JSON.stringify(all), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "content-disposition": `attachment; filename="ko-sport-backup-${all.at.slice(0, 10)}.json"` } });
+  }
+  return json({ error: "Not found" }, 404);
+}
+
+// old product addresses keep working after a product got a cleaner address (product.aliases)
+async function productByAlias(env, request, id) {
+  const list = await getProducts(env, request).catch(() => []);
+  if (!Array.isArray(list) || list.some((p) => p.id === id)) return null;
+  return list.find((p) => Array.isArray(p.aliases) && p.aliases.includes(id)) || null;
+}
+
+// ======================================================================================
+// One-time data fixes (owner's request, 27 Oct 2026). Runs once, after a full backup.
+// Every step is safe to run twice. Damascus shipping is not touched.
+// ======================================================================================
+const MIG_ID = "mig:2026-10-27-a";
+let migDone = false;
+const MIG_WORD = (w) => new RegExp("(^|[\\s\\-–(/])" + w + "(?=$|[\\s\\-–)/])", "gi");
+const MIG_NAME_FIX = [
+  ["بانج", "باندج"], ["ملامكة", "ملاكمة"], ["سيليمون", "سيليكون"], ["مش كاحل", "مشد كاحل"], ["النمر البيض", "النمر الأبيض"], ["قفز ملاكمة", "قفاز ملاكمة"],
+  ["قفاز ملاكم", "قفاز ملاكمة"], ["بورتين", "بروتين"], ["بجلة", "بدلة"], ["وافية", "واقية"],
+  ["FAIRETX", "FAIRTEX"], ["FIRTEX", "FAIRTEX"], ["FAIRTX", "FAIRTEX"], ["TWINES", "TWINS"], ["VENIM", "VENUM"], ["GREEN HAILL", "GREEN HILL"], ["REFELX", "REFLEX"],
+].map(([a, b]) => [MIG_WORD(a), "$1" + b]);
+function migName(n) {
+  let s = String(n || "");
+  for (const [re, to] of MIG_NAME_FIX) s = s.replace(re, to);
+  s = s.replace(/\s*_\s*/g, " - ")
+    .replace(/([؀-ۿ])-([A-Za-z])/g, "$1 - $2")
+    .replace(/\s+-(?=\S)/g, " - ").replace(/(\S)-\s+/g, "$1 - ")
+    .replace(/\s+/g, " ").replace(/^\s*-\s*|\s*-\s*$/g, "").trim();
+  return s || String(n || "");
+}
+function migBadId(id) {
+  return !id.includes("-") || /[A-Z]/.test(id) || /---/.test(id) || /[؀-ۿ]{2,}\d+$/.test(id) || /^\d+[؀-ۿ]{2,}/.test(id) || /^[a-z][؀-ۿ]/i.test(id)
+    || /ملامكة|وافية|بجلة|بورتين|سيليمون|(^|-)قفز-ملاكمة/.test(id);
+}
+const migSlug = (name) => String(name).toLowerCase().replace(/[ً-ْـ]/g, "").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+// collection texts for Google and for the collection page (only where the owner left them empty)
+const MIG_CAT_TEXT = {
+  "قفازات ملاكمة": ["قفازات ملاكمة من ماركات معروفة متل VENUM وHOTZO وFAIRTEX وBUKA، بأوزان مختلفة للتمرين والسبارينغ والنزالات، وفي مقاسات للولاد. توصيل لكل المحافظات والدفع عند الاستلام.", "قفازات ملاكمة بسوريا | VENUM وHOTZO وFAIRTEX | KO SPORT", "قفازات ملاكمة بسوريا من VENUM وHOTZO وFAIRTEX وBUKA، بأوزان مختلفة للتمرين والنزالات ومقاسات للولاد. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "قفاز MMA": ["قفازات MMA للقتال المختلط بنوعين: هواة للتمرين اليومي واحتراف للنزالات، من VENUM وUFC وGREEN HILL. بتحمي الأصابع وبتخلي المسكة حرّة.", "قفازات MMA بسوريا — هواة واحتراف | KO SPORT", "قفازات MMA للقتال المختلط بسوريا: هواة واحتراف من VENUM وUFC وGREEN HILL. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "ادوات مدرب": ["ميتس ودروع لكم وبادات ركل وعصي تدريب للمدربين والنوادي، من HOTZO وBUKA وVENUM وEVERLAST. أدوات قوية بتتحمّل التمرين اليومي.", "أدوات مدرب ملاكمة — ميتس ودروع | KO SPORT", "ميتس ملاكمة، دروع لكم، بادات ركل وأدوات مدرب بسوريا من HOTZO وBUKA وVENUM. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "باندج": ["باندج ملاكمة (لفافات اليد) بأطوال 3 و5 متر وبألوان ورسومات كتير، بتحمي الرسغ والأصابع تحت القفاز. من VENUM وHOTZO وRIVAL وغيرها.", "باندج ملاكمة بسوريا — 3 و5 متر | KO SPORT", "باندج ملاكمة لحماية اليد بأطوال 3 و5 متر وألوان مختلفة من VENUM وHOTZO وRIVAL. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "شورتات": ["شورتات مواي تاي وملاكمة وMMA من VENUM وFAIRTEX وTWINS وYOKKAO، قماش خفيف ومريح بيعطيك حرية بالحركة بالتمرين والنزال.", "شورتات مواي تاي وملاكمة بسوريا | KO SPORT", "شورت مواي تاي وملاكمة وMMA بسوريا من VENUM وFAIRTEX وTWINS، بمقاسات مختلفة. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "واقية مقتل": ["واقية مقتل (حماية للمنطقة السفلية) للملاكمة والكيك بوكسينغ والفنون القتالية، مريحة وبتثبت منيح وقت التمرين.", "واقية مقتل للفنون القتالية | KO SPORT", "واقية مقتل لحماية المنطقة السفلية بالملاكمة والكيك بوكسينغ والفنون القتالية. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "واقية قصبة": ["واقيات قصبة (ساق) للمواي تاي والكيك بوكسينغ وMMA، جلد وقماش، من VENUM وTWINS وUFC، بتحمي الساق والقدم وقت الركل.", "واقية قصبة مواي تاي وكيك بوكسينغ | KO SPORT", "واقيات قصبة للمواي تاي والكيك بوكسينغ وMMA من VENUM وTWINS وUFC. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "واقية راس": ["واقيات راس مفتوحة ومغلقة للملاكمة والتايكواندو والسبارينغ، من EVERLAST وBUKA وVENUM وUFC، وفي مقاسات للولاد.", "واقية راس ملاكمة وتايكواندو | KO SPORT", "واقية راس مفتوحة ومغلقة للملاكمة والتايكواندو من EVERLAST وBUKA وVENUM وUFC. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "واقية اسنان": ["واقيات أسنان للملاكمة والفنون القتالية والرياضات الجماعية، منها القابلة للتشكيل حسب الفم، من EVERLAST وVENUM وTWINS.", "واقية أسنان رياضية | KO SPORT", "واقية أسنان للملاكمة والفنون القتالية، منها القابلة للتشكيل، من EVERLAST وVENUM وTWINS. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "أحزمة": ["أحزمة كاراتيه وتايكواندو وجودو بكل الألوان وبأطوال مختلفة، متينة وبتتحمّل الغسيل والاستعمال اليومي.", "أحزمة كاراتيه وتايكواندو بكل الألوان | KO SPORT", "أحزمة كاراتيه وتايكواندو وجودو بكل الألوان والأطوال بسوريا. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "حبل قفز": ["حبال قفز للياقة والملاكمة: سيليكون، كيبل معدن، خرز ونسخ احترافية بمقابض مريحة، لتمارين الكارديو وحرق الدهون.", "حبل قفز للياقة والملاكمة بسوريا | KO SPORT", "حبال قفز سيليكون وكيبل معدن وخرز لتمارين الكارديو والملاكمة. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "حزام ظهر": ["أحزمة ظهر لرفع الأوزان والسكوات والديدلفت من EVERLAST وBUKA وGNG، بتسند أسفل الظهر وبتخفف الضغط وقت الرفع التقيل.", "حزام ظهر لرفع الأوزان | KO SPORT", "حزام ظهر لرفع الأوزان والسكوات من EVERLAST وBUKA وGNG بسوريا. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "سترابس": ["سترابس وهوك سترابس لتمارين السحب والديدلفت، جلد وقماش وسيليكون، بتقوّي المسكة وبتخليك تركّز عالعضلة بدل ما تتعب إيدك.", "سترابس وهوك سترابس للجيم | KO SPORT", "سترابس وهوك سترابس لتمارين السحب والديدلفت، جلد وقماش وسيليكون. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "شيكرات": ["شيكرات بروتين ومطرات مي رياضية بأحجام مختلفة، وخلاط بروتين أوتوماتيكي، مع عبوات بروتين صغيرة لتجرّب قبل ما تشتري الكبيرة.", "شيكر بروتين ومطرات رياضية | KO SPORT", "شيكر بروتين ومطرات مي رياضية بأحجام مختلفة، وخلاط بروتين أوتوماتيكي. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "كفوف جيم": ["كفوف جيم لرفع الأوزان بتحمي الكف من التشققات وبتحسّن المسكة، جلد وقماش، مع وبدون رباط للمعصم.", "كفوف جيم لرفع الأوزان بسوريا | KO SPORT", "كفوف جيم بتحمي الكف وبتحسّن المسكة، جلد وقماش، مع رباط معصم. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "مشدات": ["مشدات ركبة وكوع ومعصم وكاحل للتمرين التقيل والإصابات، اسطوانية 7mm وبرباط، من SBD وKOBO وEVERLAST وغيرها.", "مشد ركبة ومعصم وكوع للجيم | KO SPORT", "مشدات ركبة 7mm ومعصم وكوع وكاحل للتمرين والإصابات من SBD وKOBO وEVERLAST. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "مطاط مقاومة": ["مطاط مقاومة بأوزان مختلفة، دبل وسكوات ومجموعات كاملة، للتمرين بالبيت والتأهيل والكالستنكس ومساعدة العقلة.", "مطاط مقاومة للتمرين بالبيت | KO SPORT", "مطاط مقاومة بأوزان مختلفة، مطاط سكوات ومجموعات كاملة للتمرين بالبيت والتأهيل. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "ملابس تمرين": ["ملابس تمرين من VENUM وBUKA: كنزات وشيالات وجاكيتات وأطقم ملاكمة وبدلات ساونا، مريحة للجيم والنادي.", "ملابس رياضية وتمرين VENUM | KO SPORT", "ملابس تمرين من VENUM وBUKA: كنزات، شيالات، جاكيتات وأطقم ملاكمة. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "معدات تمرين": ["أكياس ملاكمة، دبل باغ، وسادات لكم وركل وكرات رد فعل، لتمرين الملاكمة والفنون القتالية بالبيت أو بالنادي.", "أكياس ملاكمة ومعدات تمرين | KO SPORT", "كيس ملاكمة، دبل باغ، وسادة لكم وكرات رد فعل للتمرين بالبيت والنادي. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "هاند غريب": ["هاند غريب بمقاومات مختلفة وقوس تمرين المعصم لتقوية القبضة والساعد، مفيدة للملاكمين ولاعبي الجيم.", "هاند غريب لتقوية القبضة والساعد | KO SPORT", "هاند غريب بمقاومات مختلفة وقوس تمرين المعصم لتقوية القبضة والساعد. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "أوزان": ["دامبلات وطارات حديد وبارات مستوية وزكزاك للتمرين بالبيت. الأغراض التقيلة سعر شحنها بيتحدد عند تأكيد الطلب.", "دامبل وطارات حديد بسوريا | KO SPORT", "دامبل، طارات حديد وبارات مستوية وزكزاك للتمرين بالبيت بسوريا. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "ادوات كالستنكس": ["عقلة جدارية وثابتة، حلقات جمباز ومطاط مساعدة وحجر مغنيزوم، لتمارين وزن الجسم والكالستنكس بالبيت.", "أدوات كالستنكس وعقلة بالبيت | KO SPORT", "عقلة جدارية وثابتة، حلقات جمباز ومطاط مقاومة لتمارين الكالستنكس. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "ادوات كرة المضرب": ["مضارب تنس أرضي وبينغ بونغ وريشة طائرة، مع كرات تنس وكرات بينغ بونغ، للمبتدئين والمحترفين.", "مضارب تنس وبينغ بونغ بسوريا | KO SPORT", "مضارب تنس من BABOLAT وDUNLOP، مضارب بينغ بونغ وريشة طائرة وكرات. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "ادوات تزلج": ["باتيناج (أحذية تزلج بعجلات) للولاد والكبار بموديلات مختلفة، مريحة وثابتة.", "باتيناج وأدوات تزلج بسوريا | KO SPORT", "باتيناج وأحذية تزلج بعجلات للولاد والكبار بسوريا. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "ادوات سباحة": ["نظارات سباحة بعدسات واسعة وحماية من الأشعة، وسدادات أنف وأذن، لتسبح براحة بالمسبح أو البحر.", "نظارات سباحة وأدوات سباحة | KO SPORT", "نظارات سباحة بحماية UV وسدادات أنف وأذن بسوريا. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "اكسسوارات متنوعة": ["كل الإضافات يلي بتلزمك بالتمرين: لاصق طبي رياضي، حبل TRX، عصا مساج، مقياس قوة القبضة، أحزمة تمرين الرقبة وغيرها.", "اكسسوارات رياضية متنوعة | KO SPORT", "اكسسوارات رياضية: لاصق طبي، حبل TRX، عصا مساج، أحزمة رقبة ومقياس قوة القبضة. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "كرات قدم": ["طابات كرة قدم وكفوف حراسة من ADIDAS وREUSCH، ولوح خطط ومنفاخ، لكل لاعب وحارس مرمى.", "كرة قدم وكفوف حراسة بسوريا | KO SPORT", "طابات كرة قدم، كفوف حراسة ADIDAS وREUSCH، لوح خطط ومنفاخ. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "كرة سلة": ["طابات كرة سلة للملاعب الداخلية والخارجية، منها الملونة والمضيئة، مع لوح خطط للمدربين.", "طابة كرة سلة بسوريا | KO SPORT", "طابات كرة سلة للملاعب الداخلية والخارجية، ملونة ومضيئة، ولوح خطط. توصيل لكل المحافظات والدفع عند الاستلام."],
+  "الاكثر مبيعا": ["المنتجات يلي أكتر شي عم يطلبها زبائن KO SPORT: قفازات وباندج وأدوات جيم ولياقة.", "الأكثر مبيعاً | KO SPORT", "أكتر الأدوات الرياضية مبيعاً بـ KO SPORT: قفازات ملاكمة، باندج، أدوات جيم ولياقة. توصيل لكل المحافظات والدفع عند الاستلام."],
+};
+const MASARAT = ["إدلب", "منبج", "سرمدا", "الباب", "اعزاز"];
+async function runMigrations(env, request) {
+  if (migDone || !env.STORE) return;
+  if (await env.STORE.get(MIG_ID)) { migDone = true; return; }
+  const sRaw = await env.STORE.get("settings"), pRaw = await env.STORE.get("products");
+  if (!sRaw || !pRaw) { migDone = true; return; } // a fresh shop: nothing to fix
+  // 1) full backup first (kept for good, apart from the rolling ones)
+  if (!(await env.STORE.get("bak:pre-" + MIG_ID + ":settings"))) {
+    const meta = { metadata: { ts: new Date().toISOString(), why: "pre-fix" } };
+    await env.STORE.put("bak:pre-" + MIG_ID + ":settings", sRaw, meta);
+    await env.STORE.put("bak:pre-" + MIG_ID + ":products", pRaw, meta);
+  }
+  const st = JSON.parse(sRaw), list = JSON.parse(pRaw);
+  if (!Array.isArray(list) || !st || !st.design) { migDone = true; return; }
+  // 2) product names: spelling and dashes
+  for (const p of list) { const n = migName(p.name); if (n && n !== p.name) p.name = n; }
+  // 3) clean addresses for products with broken ones; the old address keeps working (aliases)
+  const ids = new Set(list.map((p) => p.id)), map = new Map();
+  for (const p of list) {
+    if (!p.id || !migBadId(p.id)) continue;
+    let base = migSlug(p.name) || "product", id = base, k = 2;
+    while (ids.has(id)) id = base + "-" + k++;
+    ids.add(id); map.set(p.id, id);
+    p.aliases = [...new Set([...(p.aliases || []), p.id])]; p.id = id;
+  }
+  const re = (x) => (map.has(x) ? map.get(x) : x);
+  const D = st.design;
+  for (const m of Object.values(D.catMeta || {})) if (m && Array.isArray(m.order)) m.order = [...new Set(m.order.map(re))];
+  for (const d of st.discounts || []) if (Array.isArray(d.pids)) d.pids = d.pids.map(re);
+  for (const sec of (st.home && st.home.sections) || []) for (const k of ["ids", "pids"]) if (Array.isArray(sec[k])) sec[k] = sec[k].map(re);
+  // 4) collection texts (only empty ones)
+  D.catMeta = D.catMeta || {};
+  const allCats = new Set(list.flatMap((p) => [p.category, ...(p.also || [])]).filter(Boolean));
+  for (const [c, [desc, t, sd]] of Object.entries(MIG_CAT_TEXT)) {
+    if (!allCats.has(c) && !D.catMeta[c]) continue;
+    const m = (D.catMeta[c] = D.catMeta[c] || { desc: "", image: "", slug: "", seoTitle: "", seoDesc: "", order: [] });
+    if (!m.desc) m.desc = desc; if (!m.seoTitle) m.seoTitle = t; if (!m.seoDesc) m.seoDesc = sd;
+  }
+  // 5) readable type: bold headings, normal text
+  if ((+D.headingWeight || 700) < (+D.bodyWeight || 400)) { D.headingWeight = 800; D.bodyWeight = 500; }
+  // 6) the menu: empty groups go
+  if (Array.isArray(D.groups)) D.groups = D.groups.filter((g) => g && Array.isArray(g.cats) && g.cats.length);
+  // 7) shipping: Al-Awda (Raqqa, Hasakah, Deir ez-Zor), Masarat (Idlib, Manbij, Sarmada, Al-Bab, Azaz),
+  //    Al-Qadmous for every other governorate. Damascus and its countryside stay exactly as they are.
+  const sh = st.shipping;
+  if (sh && Array.isArray(sh.carriers)) {
+    const qd = sh.carriers.find((c) => c.id === "qadmous");
+    if (qd) {
+      qd.govs = (qd.govs || []).filter((g) => !MASARAT.includes(g.name) && !["الرقة", "الحسكة", "دير الزور"].includes(g.name));
+      for (const g of ["حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "درعا", "السويداء", "القنيطرة"]) if (!qd.govs.some((x) => x.name === g)) qd.govs.push({ name: g, fee: null, branches: [] });
+    }
+    if (!sh.carriers.some((c) => c.id === "masarat")) {
+      sh.carriers.push({ id: "masarat", name: "شركة مسارات للشحن", type: "branch", on: true, note: "الشحن لمنطقتك عن طريق شركة مسارات — منتواصل معك لنأكد مكان الاستلام", payments: [], govs: MASARAT.map((name) => ({ name, fee: null, branches: [] })) });
+    }
+    for (const c of sh.carriers) if (c.id !== "masarat") c.govs = (c.govs || []).filter((g) => !MASARAT.includes(g.name));
+    if (!sh.carriers.some((c) => c.id === "awda")) sh.carriers.push({ id: "awda", name: "شركة العودة للشحن", type: "branch", on: true, note: "الشحن لمحافظتك عن طريق شركة العودة — منتواصل معك لنأكد مكان الاستلام", payments: [], govs: [] });
+    const aw = sh.carriers.find((c) => c.id === "awda");
+    for (const g of ["الحسكة", "دير الزور", "الرقة"]) if (!(aw.govs || []).some((x) => x.name === g)) (aw.govs = aw.govs || []).push({ name: g, fee: null, branches: [] });
+  }
+  // 8) best-seller counts and reviews follow the products that got a new address
+  if (map.size) {
+    const sales = (await env.STORE.get("sales", "json").catch(() => null)) || null;
+    if (sales) { for (const [a, b] of map) if (sales[a]) { sales[b] = (sales[b] || 0) + sales[a]; delete sales[a]; } await env.STORE.put("sales", JSON.stringify(sales)); }
+    const rv = (await env.STORE.get("reviews", "json").catch(() => null)) || null;
+    if (Array.isArray(rv)) { let ch = false; for (const r of rv) if (map.has(r.pid)) { r.pid = map.get(r.pid); ch = true; } if (ch) await env.STORE.put("reviews", JSON.stringify(rv)); }
+  }
+  // the latest copies may have changed while we worked: don't overwrite a save that happened meanwhile
+  if ((await env.STORE.get("settings")) !== sRaw || (await env.STORE.get("products")) !== pRaw) return;
+  await env.STORE.put("products", JSON.stringify(list));
+  await env.STORE.put("settings", JSON.stringify(st));
+  await env.STORE.put(MIG_ID, JSON.stringify({ at: new Date().toISOString(), renamed: [...map], names: true }));
+  await purgeEdge("products"); await purgeEdge("settings");
+  migDone = true;
+}
+
 export default {
   async fetch(request, rawEnv, ctx) {
     // Accept the KV binding whatever it was named (STORE, store, KV...).
@@ -2153,6 +2359,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     const m = request.method;
+    if (!migDone && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMigrations(env, request).catch(() => {}));
     // the main address ko-sport.online opens the shop at /ar (the app opens that same address)
     if (url.hostname === "ko-sport.online" && path === "/" && m === "GET") {
       return Response.redirect("https://ko-sport.online/ar" + url.search, 301);
@@ -2186,7 +2393,7 @@ export default {
       if (path === "/api/catalog" && m === "GET" && env.STORE) return catalogApi(request, env, ctx, "json");
       if (path === "/api/catalog/search" && m === "GET" && env.STORE) return catalogApi(request, env, ctx, "search");
       if ((path === "/api/catalog.txt" || path === "/catalog.txt") && m === "GET" && env.STORE) return catalogApi(request, env, ctx, "txt");
-      if (path.startsWith("/p/") && m === "GET" && env.STORE) return productShare(request, env, ctx, decodeURIComponent(path.slice(3)));
+      if (path.startsWith("/p/") && m === "GET" && env.STORE) { const id = decodeURIComponent(path.slice(3)), t = await productByAlias(env, request, id); return productShare(request, env, ctx, t ? t.id : id); }
       if (path.startsWith("/s/") && m === "GET" && env.STORE) { const c = path.slice(3).toLowerCase(), d = await catalogData(request, env, ctx).catch(() => null), hit = d && d.products.find((x) => shortCode(x.id) === c); return hit ? productShare(request, env, ctx, hit.id) : Response.redirect(new URL("/", request.url).href, 302); }
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
@@ -2197,6 +2404,11 @@ export default {
       }
       // The shop lives under /ar/… : /ar/, /ar/cart, /ar/p/<id> … every address is a real page now.
       if (m === "GET" && /^\/ar\/product(\/|$)/.test(path)) return oldWuiltLink(request, env, url);
+      if (m === "GET" && path.startsWith("/ar/p/") && env.STORE) {
+        let id = path.slice(6); try { id = decodeURIComponent(id); } catch {}
+        const t = await productByAlias(env, request, id.replace(/\/$/, ""));
+        if (t) return Response.redirect(new URL("/ar/p/" + encodeURIComponent(t.id) + url.search, request.url).href, 301);
+      }
       if (m === "GET" && (path === "/ar" || path.startsWith("/ar/"))) {
         const isHome = path === "/ar" || path === "/ar/";
         const ck = (url.searchParams.get("crit") === "1" ? "c1:" : "") + (isHome ? "html:home:" + url.hostname : "html:deep:" + url.hostname + path);
@@ -2220,6 +2432,7 @@ export default {
       if (path === "/api/order-items" && m === "GET") return orderItemsGet(request, env);
       // the dashboard reads through its own addresses: the shop's service worker never touches them,
       // so the owner always edits the real, complete data (never a cached shop copy)
+      if (path === "/api/admin/backups" || path === "/api/admin/backups/restore" || path === "/api/admin/backup-download") return backupsApi(request, env, path);
       if (path === "/api/admin/settings" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getSettings(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/admin/products" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getProducts(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/settings") {

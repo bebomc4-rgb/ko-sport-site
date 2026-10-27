@@ -1868,3 +1868,33 @@ html[data-theme=dark] .bnav .bn-dark .lb-day{display:inline}
 @media (prefers-reduced-motion:reduce){.bnav .bn-cur .bn-cur-ic{animation:none!important}}
 /* الإشعار: بعد ما يخلص وقتو بيختفي كلياً (كان ينزل لتحت ويضل باين فوق الشريط السفلي) */
 .toast:not(.show){opacity:0;visibility:hidden;pointer-events:none;transition:transform .3s,opacity .25s,visibility 0s linear .3s}
+
+/* ===== البحث الفوري: أقسام + شريط منتجات بينزلق تحت مربع البحث ===== */
+.search.sx-on,.br-search.sx-on{overflow:visible}
+.sx{position:absolute;top:calc(100% + 8px);inset-inline:0;z-index:70;background:var(--card,#fff);color:var(--ink,#121212);border-radius:16px;box-shadow:0 16px 44px rgba(0,0,0,.2);padding:10px;max-height:72vh;overflow:auto;min-width:min(92vw,520px);text-align:start;cursor:auto}
+.sx-cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.sx-cats a{border:1px solid var(--line,#e6e6e6);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;color:inherit;text-decoration:none;background:color-mix(in srgb,var(--ink,#000) 4%,transparent)}
+.sx-row{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;overscroll-behavior-x:contain;scrollbar-width:thin}
+.sx-p{flex:0 0 128px;scroll-snap-align:start;display:flex;flex-direction:column;gap:4px;color:inherit;text-decoration:none}
+.sx-img{aspect-ratio:1;border-radius:12px;background:#f4f4f2;overflow:hidden;display:block}
+.sx-img img{width:100%;height:100%;object-fit:contain;display:block}
+.sx-p b{font-size:12.5px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sx-pr{font-size:13px;font-weight:800}.sx-pr .old,.sx-pr s{display:none}
+.sx-all{display:block;text-align:center;margin-top:8px;font-weight:700;padding:9px;border-radius:11px;color:inherit;text-decoration:none;background:color-mix(in srgb,var(--ink,#000) 6%,transparent)}
+.sx-none{margin:6px 4px;font-size:13.5px;color:var(--muted,#666)}
+html[data-theme=dark] .sx{background:#1a1a20;color:#fff;box-shadow:0 16px 44px rgba(0,0,0,.55)}
+html[data-theme=dark] .sx-img{background:#24242c}
+@media (max-width:640px){.sx{min-width:0;inset-inline:-4px;max-height:64vh}.sx-p{flex-basis:118px}}
+
+/* ===== التصفية بصفحات الأقسام ===== */
+.f-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);color:inherit;border-radius:10px;padding:6px 12px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.f-btn svg{width:18px;height:18px}
+.f-active{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 14px}
+.f-active .chip.on{background:var(--ink);color:var(--paper,#fff);border-color:var(--ink)}
+.f-active .f-clear{background:transparent}
+.f-multi .chip.on,.f-bands .chip.on{background:var(--ink);color:var(--paper,#fff);border-color:var(--ink)}
+.f-bands{margin-bottom:8px}
+html[data-theme=dark] .f-active .chip.on,html[data-theme=dark] .f-multi .chip.on,html[data-theme=dark] .f-bands .chip.on{background:#fff;color:#121212;border-color:#fff}
+/* وصف القسم: سطرين، وبكبسة بينفتح كلو */
+.list-desc[data-desc]{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;color:var(--muted);line-height:1.7;margin:0 0 12px}
+.list-desc[data-desc].open{-webkit-line-clamp:unset;display:block}

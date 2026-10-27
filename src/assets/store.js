@@ -488,6 +488,9 @@
     }
     cats = [...m.values()];
     for (const c of cats) { const mi = catMeta(c.name).image; if (mi) c.image = mi; }
+    // a product that got a cleaner address: carts and «seen lately» made before still find it
+    const alias = new Map(); for (const p of products) for (const a of p.aliases || []) if (!byId.has(a)) alias.set(a, p.id);
+    if (alias.size) { cart = cart.map((l) => (alias.has(l.id) ? { ...l, id: alias.get(l.id) } : l)); try { const r = store.get("ko_recent", []); if (r.some((i) => alias.has(i))) store.set("ko_recent", [...new Set(r.map((i) => alias.get(i) || i))]); } catch {} }
     cart = cart.filter((l) => byId.has(l.id));
     saveCart();
   }
@@ -539,10 +542,10 @@
   }
   const HERO_FX = ["fade", "zoom", "blur", "wipe", "dip", "slide", "flip", "rise", "circle", "spin", "split", "xfade"], HERO_SH = ["theme", "full", "round", "curve", "peek"];
   function classicHero() {
-    const d = S.design, inStock = products.filter((p) => p.inStock).length;
+    const d = S.design;
     return `<section class="hero${d.heroImage ? " has-img" : ""}"${d.heroImage ? ` style="background-image:url('${esc(d.heroImage)}')"` : ""}>
       <h1>${esc(d.heroTitle)}</h1><p>${esc(d.heroText)}</p>
-      ${d.showHeroStats ? `<div class="hero-stats"><div><b>${inStock}</b>منتج متوفر</div><div><b>${cats.length}</b>قسم</div><div><b>${govList().length}</b>محافظة توصيل</div></div>` : ""}
+      ${d.showHeroStats ? `<div class="hero-stats"><div><b>${cats.length}</b>قسم</div><div><b>${govCount(govList())}</b>محافظة توصيل</div></div>` : ""}
     </section>`;
   }
   // ---------- conversion helpers (all real data: the cart, the shipping threshold, the owner's own texts) ----------
@@ -615,8 +618,8 @@
       if (!sorted.length) return "";
       // look of each collection (sec.tStyle), its texts (count word, button) and name size
       const tst = ["classic", "circle", "overlay", "chip", "btn", "card", "luxe"].includes(sec.tStyle) ? sec.tStyle : "classic";
-      const cntW = sec.countText == null || sec.countText === "" ? "منتج" : String(sec.countText).slice(0, 20), btnT = String(sec.btnText || "").slice(0, 24).trim();
-      const tileH = (c) => `<a class="cat-tile" href="${cHref(c.name)}">${tst === "btn" ? "" : `<img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(c.image, 360))}" alt="${esc(catLabel(c.name))}">`}<b>${esc(catLabel(c.name))}</b>${sec.showCount === false ? "" : `<span>${c.count} ${esc(cntW)}</span>`}${btnT ? `<i class="ct-btn">${esc(btnT)}</i>` : ""}</a>`;
+      const btnT = String(sec.btnText || "").slice(0, 24).trim(); // no product counts anywhere in the shop (owner's choice)
+      const tileH = (c) => `<a class="cat-tile" href="${cHref(c.name)}">${tst === "btn" ? "" : `<img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(c.image, 360))}" alt="${esc(catLabel(c.name))}">`}<b>${esc(catLabel(c.name))}</b>${btnT ? `<i class="ct-btn">${esc(btnT)}</i>` : ""}</a>`;
       const look = ["cst-" + tst, ["s", "l"].includes(sec.nameSize) ? "cns-" + sec.nameSize : ""].filter(Boolean).join(" ");
       if (sec.layout === "spot") return secHead(sec.showTitle === false ? "" : sec.title, "#/all") + `<div class="${look}">${spot(sec, sorted.map(tileH), "spot-cats")}</div>`;
       if (sec.layout === "car") return secHead(sec.showTitle === false ? "" : sec.title, "#/all") + `<div class="${look}">${carousel(sec, sorted.map(tileH), "car-cats")}</div>`;
@@ -1150,14 +1153,43 @@
   }
   function closeSheet() { document.querySelectorAll("[data-sheet]").forEach((x) => x.remove()); }
 
+
+  // ---------- filters: brand, size, colour (read from the product names and options) ----------
+  const BRANDS = [["VENUM", "venum|venim|فينوم|فنوم"], ["HOTZO", "hotzo|هوتزو"], ["EVERLAST", "everlast|ايفرلاست"], ["BUKA", "buka|بوكا"], ["FAIRTEX", "fairtex|firtex|fairetx|fairtx|فايرتكس"],
+    ["TWINS", "twins|twines|توينز"], ["ADIDAS", "adidas|اديداس"], ["NIKE", "nike|نايك"], ["UFC", "ufc"], ["RIVAL", "rival"], ["LEONE", "leone"], ["REEBOK", "reebok|ريبوك"], ["GREEN HILL", "green hill|green haill"],
+    ["TAIPAN", "taipan"], ["YOKKAO", "yokkao|يوكاو"], ["HAYABUSA", "hayabusa"], ["KOBO", "kobo"], ["GNG", "gng"], ["SBD", "sbd"], ["RDX", "rdx"], ["REUSCH", "reusch"], ["MET-RX", "met-?rx"],
+    ["TOP KING", "top king"], ["TIGER", "tiger"], ["MUTE", "mute"], ["GORILLA", "gorilla"], ["STARPAK", "starpak"], ["TRX", "trx"], ["BABOLAT", "babolat|babolar"], ["DUNLOP", "dunlop"], ["DIESEL", "diesel"], ["GOLDS GYM", "golds gym"]]
+    .map(([n, a]) => [n, new RegExp("(^|[^a-z])(" + a + ")([^a-z]|$)", "i")]);
+  const SIZE_RE = /^(\d{1,2}\s?oz|x{0,3}s|m|x{0,3}l|\d{1,2})$/i, OZ_RE = /(\d{1,2})\s?oz\b/gi;
+  const COLORS = ["اسود", "ابيض", "احمر", "ازرق", "اخضر", "اصفر", "رمادي", "اورانج", "برتقالي", "ذهبي", "فضي", "بنفسجي", "فسفوري", "فوشي", "زهر", "وردي", "بني", "كحلي", "تركواز", "شفاف"];
+  const facetMemo = new WeakMap();
+  function facetsOf(p) {
+    let f = facetMemo.get(p); if (f) return f;
+    const nm = String(p.name || ""), low = nm.toLowerCase();
+    const brand = (BRANDS.find(([, re]) => re.test(low)) || [""])[0];
+    const sz = new Set();
+    for (const o of p.options || []) { const v = String(o).trim(); if (SIZE_RE.test(v)) sz.add(/oz/i.test(v) ? v.replace(/\s/g, "").toLowerCase() : v.toUpperCase()); }
+    for (const m of nm.matchAll(OZ_RE)) sz.add(m[1] + "oz");
+    const col = new Set();
+    const words = norm(nm + " " + (p.options || []).join(" ")).split(/[\s\-–_]+/);
+    for (const c of COLORS) if (words.includes(norm(c))) col.add(c);
+    f = { brand, sizes: [...sz], colors: [...col] }; facetMemo.set(p, f); return f;
+  }
+  const sizeRank = (v) => { const oz = /^(\d+)oz$/.exec(v); if (oz) return 100 + +oz[1]; const L = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"].indexOf(v); return L >= 0 ? 200 + L : 300 + (+v || 0); };
+  const PRICE_BANDS = [[0, 10, "أقل من $10"], [10, 25, "$10 - $25"], [25, 50, "$25 - $50"], [50, "", "أكتر من $50"]];
+
   function listing({ title, crumbs, items, key, desc, seoTitle, seoDesc }) {
     if (seoTitle) document.title = seoTitle;
     const md = document.querySelector('meta[name="description"]'); if (md) md.content = seoDesc || desc || C.seoDescription || "";
-    const st = listing.state[key] || (listing.state[key] = { sort: "default", hideOut: false, shown: PAGE, sub: "", min: "", max: "" });
+    const st = listing.state[key] || (listing.state[key] = { sort: "default", hideOut: false, shown: PAGE, sub: "", min: "", max: "", brands: [], sizes: [], colors: [] });
     const draw = () => {
       let list = items.slice();
       if (st.sub) list = list.filter((p) => inCat(p, st.sub));
+      const base = list; // what the brand / size / colour choices are offered from
       if (st.hideOut) list = list.filter((p) => p.inStock);
+      if (st.brands.length) list = list.filter((p) => st.brands.includes(facetsOf(p).brand));
+      if (st.sizes.length) list = list.filter((p) => facetsOf(p).sizes.some((x) => st.sizes.includes(x)));
+      if (st.colors.length) list = list.filter((p) => facetsOf(p).colors.some((x) => st.colors.includes(x)));
       if (st.min !== "") list = list.filter((p) => p.price >= +st.min);
       if (st.max !== "") list = list.filter((p) => p.price <= +st.max);
       if (st.sort === "low") list.sort((a, b) => a.price - b.price);
@@ -1165,24 +1197,32 @@
       else if (st.sort === "high") list.sort((a, b) => b.price - a.price);
       list.sort(sortStock);
       const subs = key.startsWith("g:") ? C.groups.find((g) => "g:" + g.name === key)?.cats.filter((c) => cats.some((x) => x.name === c)) : null;
-      const nf = (st.hideOut ? 1 : 0) + (st.sub ? 1 : 0) + (st.min !== "" || st.max !== "" ? 1 : 0);
+      const nf = (st.hideOut ? 1 : 0) + (st.sub ? 1 : 0) + (st.min !== "" || st.max !== "" ? 1 : 0) + st.brands.length + st.sizes.length + st.colors.length;
+      // the choices that exist in this list (shown only when there is something to choose between)
+      const fx = { brands: new Map(), sizes: new Set(), colors: new Map() };
+      for (const p of base) { const f = facetsOf(p); if (f.brand) fx.brands.set(f.brand, (fx.brands.get(f.brand) || 0) + 1); f.sizes.forEach((x) => fx.sizes.add(x)); f.colors.forEach((x) => fx.colors.set(x, (fx.colors.get(x) || 0) + 1)); }
+      const brandL = [...fx.brands].sort((a, b) => b[1] - a[1]).map((x) => x[0]), sizeL = [...fx.sizes].sort((a, b) => sizeRank(a) - sizeRank(b)), colorL = [...fx.colors].sort((a, b) => b[1] - a[1]).map((x) => x[0]);
+      const bands = PRICE_BANDS.filter(([lo, hi]) => base.some((p) => p.price >= lo && (hi === "" || p.price < hi)));
+      const active = [...st.brands.map((v) => ["brands", v, v]), ...st.sizes.map((v) => ["sizes", v, v]), ...st.colors.map((v) => ["colors", v, v]), ...(st.min !== "" || st.max !== "" ? [["price", "", st.min !== "" && st.max !== "" ? `$${st.min} - $${st.max}` : st.min !== "" ? `من $${st.min}` : `لـ $${st.max}`]] : [])];
+      const activeH = active.length ? `<div class="f-active">${active.map(([k, v, t]) => `<button type="button" class="chip on" data-f-rm="${k}" data-v="${esc(v)}">${esc(t)} ✕</button>`).join("")}<button type="button" class="chip f-clear" data-f-rmall>مسح الكل</button></div>` : "";
       const topCats = key === "all" ? `<div class="all-cats">${cats.filter((c) => c.count).map((c) => `<a class="ac" href="${cHref(c.name)}"><span class="ac-img">${c.image ? `<img src="${esc(img(c.image))}" alt="" loading="lazy">` : ""}</span><b>${esc(catLabel(c.name))}</b></a>`).join("")}</div>` : "";
       if (LAY.list === "store") app.innerHTML = `<div class="list-hero"><h1>${esc(title)}</h1>${desc ? `<p>${esc(desc)}</p>` : ""}</div>${topCats}
-        <div class="list-bar"><button type="button" data-open-filter>${ICON.filter}<span>تصفية${nf ? ` (${nf})` : ""}</span></button><i></i><button type="button" data-open-sort>${ICON.sort}<span>ترتيب</span></button></div>
+        <div class="list-bar"><button type="button" data-open-filter>${ICON.filter}<span>تصفية${nf ? ` (${nf})` : ""}</span></button><i></i><button type="button" data-open-sort>${ICON.sort}<span>ترتيب</span></button></div>${activeH}
         ${list.length ? `<div class="grid">${list.slice(0, st.shown).map(card).join("")}</div>` : `<div class="empty"><b>ما في منتجات هون</b>جرّب تغيّر التصفية أو ابحث باسم المنتج.</div>`}
-        ${list.length > st.shown ? `<button class="more" data-more>عرض المزيد (${list.length - st.shown})</button>` : ""}`;
-      else app.innerHTML = `<div class="crumbs">${crumbs}</div><h1 class="page-title">${esc(title)}</h1>${desc ? `<p class="list-desc">${esc(desc)}</p>` : ""}${topCats}
+        ${list.length > st.shown ? `<button class="more" data-more>عرض المزيد</button>` : ""}`;
+      else app.innerHTML = `<div class="crumbs">${crumbs}</div><h1 class="page-title">${esc(title)}</h1>${desc ? `<p class="list-desc" data-desc title="اكبس لتقرا الكل">${esc(desc)}</p>` : ""}${topCats}
         ${subs ? `<div class="chips" style="margin-bottom:10px"><button class="chip${st.sub ? "" : " on"}" data-sub="">الكل</button>${subs.map((c) => `<button class="chip${st.sub === c ? " on" : ""}" data-sub="${esc(c)}">${esc(catLabel(c))}</button>`).join("")}</div>` : ""}
         <div class="toolbar">
+          <button type="button" class="f-btn" data-open-filter>${ICON.filter}<span>تصفية${nf ? ` (${nf})` : ""}</span></button>
           <label class="check"><input type="checkbox" data-hideout ${st.hideOut ? "checked" : ""}> المتوفر بس</label>
           <select data-sort aria-label="ترتيب">
             <option value="default">الترتيب الافتراضي</option>
             <option value="low" ${st.sort === "low" ? "selected" : ""}>السعر: من الأرخص</option>
             <option value="high" ${st.sort === "high" ? "selected" : ""}>السعر: من الأغلى</option>
           </select>
-        </div>
+        </div>${activeH}
         ${list.length ? `<div class="grid">${list.slice(0, st.shown).map(card).join("")}</div>` : `<div class="empty"><b>ما في منتجات هون</b>جرّب قسم تاني أو ابحث باسم المنتج.</div>`}
-        ${list.length > st.shown ? `<button class="more" data-more>عرض المزيد (${list.length - st.shown})</button>` : ""}`;
+        ${list.length > st.shown ? `<button class="more" data-more>عرض المزيد</button>` : ""}`;
       // endless scroll: the next products load by themselves as the customer reaches the end of the list
       const grid = app.querySelector(".grid"), more = app.querySelector("[data-more]");
       const loadMore = () => {
@@ -1190,7 +1230,7 @@
         grid.insertAdjacentHTML("beforeend", list.slice(st.shown, st.shown + PAGE).map(card).join(""));
         st.shown += PAGE;
         const btn = app.querySelector("[data-more]");
-        if (btn) { if (st.shown >= list.length) btn.remove(); else btn.textContent = `عرض المزيد (${list.length - st.shown})`; }
+        if (btn) { if (st.shown >= list.length) btn.remove(); }
       };
       if (more && "IntersectionObserver" in window) {
         more.classList.add("auto");
@@ -1207,16 +1247,24 @@
           const subs2 = subs || [];
           openSheet("تصفية", `<label class="sh-switch"><span>المتوفر بس</span><input type="checkbox" data-f-out ${st.hideOut ? "checked" : ""}></label>
             ${subs2.length ? `<div class="sh-lbl">القسم</div><div class="chips"><button type="button" class="chip${st.sub ? "" : " on"}" data-f-sub="">الكل</button>${subs2.map((c) => `<button type="button" class="chip${st.sub === c ? " on" : ""}" data-f-sub="${esc(c)}">${esc(catLabel(c))}</button>`).join("")}</div>` : ""}
-            <div class="sh-lbl">السعر</div><div class="sh-price"><input type="number" inputmode="decimal" min="0" placeholder="من" data-f-min value="${esc(st.min)}"><span>—</span><input type="number" inputmode="decimal" min="0" placeholder="لـ" data-f-max value="${esc(st.max)}"></div>
+            ${brandL.length > 1 ? `<div class="sh-lbl">الماركة</div><div class="chips f-multi">${brandL.map((v) => `<button type="button" class="chip${st.brands.includes(v) ? " on" : ""}" data-f-pick="brands" data-v="${esc(v)}">${esc(v)}</button>`).join("")}</div>` : ""}
+            ${sizeL.length > 1 ? `<div class="sh-lbl">المقاس / الوزن</div><div class="chips f-multi">${sizeL.map((v) => `<button type="button" class="chip${st.sizes.includes(v) ? " on" : ""}" data-f-pick="sizes" data-v="${esc(v)}" dir="ltr">${esc(v)}</button>`).join("")}</div>` : ""}
+            ${colorL.length > 1 ? `<div class="sh-lbl">اللون</div><div class="chips f-multi">${colorL.map((v) => `<button type="button" class="chip${st.colors.includes(v) ? " on" : ""}" data-f-pick="colors" data-v="${esc(v)}">${esc(v)}</button>`).join("")}</div>` : ""}
+            <div class="sh-lbl">السعر</div>${bands.length > 1 ? `<div class="chips f-bands">${bands.map(([lo, hi, t]) => `<button type="button" class="chip${String(st.min) === String(lo || "") && String(st.max) === String(hi) ? " on" : ""}" data-f-band="${lo}|${hi}">${t}</button>`).join("")}</div>` : ""}
+            <div class="sh-price"><input type="number" inputmode="decimal" min="0" placeholder="من" data-f-min value="${esc(st.min)}"><span>—</span><input type="number" inputmode="decimal" min="0" placeholder="لـ" data-f-max value="${esc(st.max)}"></div>
             <div class="sh-btns"><button type="button" class="btn btn-dark" data-f-apply>عرض النتائج</button><button type="button" class="btn btn-ghost" data-f-clear>مسح الكل</button></div>`,
             (box) => {
-              let sub = st.sub;
+              let sub = st.sub; const pick = { brands: st.brands.slice(), sizes: st.sizes.slice(), colors: st.colors.slice() };
               box.addEventListener("click", (ev) => {
                 const c = ev.target.closest("[data-f-sub]");
                 if (c) { sub = c.dataset.fSub; box.querySelectorAll("[data-f-sub]").forEach((x) => x.classList.toggle("on", x === c)); }
-                if (ev.target.closest("[data-f-clear]")) { Object.assign(st, { hideOut: false, sub: "", min: "", max: "", shown: PAGE }); closeSheet(); draw(); }
+                const pk = ev.target.closest("[data-f-pick]");
+                if (pk) { const L = pick[pk.dataset.fPick], v = pk.dataset.v, i = L.indexOf(v); if (i >= 0) L.splice(i, 1); else L.push(v); pk.classList.toggle("on", i < 0); }
+                const bd = ev.target.closest("[data-f-band]");
+                if (bd) { const [lo, hi] = bd.dataset.fBand.split("|"), on = !bd.classList.contains("on"); box.querySelectorAll("[data-f-band]").forEach((x) => x.classList.remove("on")); if (on) bd.classList.add("on"); box.querySelector("[data-f-min]").value = on && +lo ? lo : ""; box.querySelector("[data-f-max]").value = on ? hi : ""; }
+                if (ev.target.closest("[data-f-clear]")) { Object.assign(st, { hideOut: false, sub: "", min: "", max: "", brands: [], sizes: [], colors: [], shown: PAGE }); closeSheet(); draw(); }
                 if (ev.target.closest("[data-f-apply]")) {
-                  Object.assign(st, { hideOut: box.querySelector("[data-f-out]").checked, sub, min: box.querySelector("[data-f-min]").value.trim(), max: box.querySelector("[data-f-max]").value.trim(), shown: PAGE });
+                  Object.assign(st, { hideOut: box.querySelector("[data-f-out]").checked, sub, min: box.querySelector("[data-f-min]").value.trim(), max: box.querySelector("[data-f-max]").value.trim(), ...pick, shown: PAGE });
                   closeSheet(); draw();
                 }
               });
@@ -1224,6 +1272,10 @@
           return;
         }
         if (e.target.closest("[data-more]")) loadMore();
+        const dsc = e.target.closest("[data-desc]"); if (dsc) { dsc.classList.toggle("open"); return; }
+        const rm = e.target.closest("[data-f-rm]");
+        if (rm) { const k = rm.dataset.fRm; if (k === "price") { st.min = ""; st.max = ""; } else st[k] = st[k].filter((x) => x !== rm.dataset.v); st.shown = PAGE; draw(); return; }
+        if (e.target.closest("[data-f-rmall]")) { Object.assign(st, { hideOut: false, sub: "", min: "", max: "", brands: [], sizes: [], colors: [], shown: PAGE }); draw(); return; }
         const s = e.target.closest("[data-sub]");
         if (s) { st.sub = s.dataset.sub; st.shown = PAGE; draw(); }
       };
@@ -1249,6 +1301,7 @@
   }
   function product(id) {
     const p = byId.get(id);
+    if (!p) { const t = products.find((x) => (x.aliases || []).includes(id)); if (t) { navTo("#/p/" + encodeURIComponent(t.id), true); return; } }
     if (!p) { app.innerHTML = `<div class="empty"><b>المنتج مو موجود</b><a href="#/">رجوع للرئيسية</a></div>`; return; }
     document.title = `${p.name} | ${C.name}`;
     const g = groupOf(p.category);
@@ -1578,6 +1631,9 @@ ${trustH()}
   const normWords = (t) => " " + String(t || "").replace(/[\-–—_,،.()\[\]/|+:]+/g, " ").replace(/\s+/g, " ").trim() + " ";
   const isHeavy = (p) => { const H = (S.shipping && S.shipping.heavy) || HEAVY_DEF; if (!p || H.on === false) return false; if ((H.cats || []).includes(p.category)) return true; const n = normWords(p.name); return (H.words || []).some((w) => w && n.includes(normWords(w))); };
   const flatOf = (c) => (!c || c.flatFee === "" || c.flatFee == null || isNaN(+c.flatFee) ? null : +c.flatFee);
+  // how many of Syria's 14 governorates we deliver to (cities like Manbij or Al-Bab are places, not governorates)
+  const SY_GOVS = ["دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "إدلب", "درعا", "السويداء", "القنيطرة", "دير الزور", "الرقة", "الحسكة"];
+  const govCount = (names) => SY_GOVS.filter((g) => names.some((x) => x === g || (g === "دمشق" && /دمشق/.test(x) && !/^ريف/.test(x)) || (g === "ريف دمشق" && /ريف/.test(x)))).length || names.length;
   // governorates customers can pick (from the shipping companies, or the old simple list)
   function govList() {
     if (C.carriers && C.carriers.length) return [...new Set(C.carriers.flatMap((c) => c.govs.map((g) => g.name)))];
@@ -1703,7 +1759,8 @@ ${trustH()}
         const c = curCarrier(), gv = curGov();
         door = !c || c.type === "door";
         const bf = f.querySelector("[data-branch-field]");
-        bf.hidden = yg || !c || c.type !== "branch";
+        const noBr = !!(c && c.type === "branch" && gv && !(gv.branches || []).length); // e.g. Al-Awda, Masarat: the shop confirms the pick-up place
+        bf.hidden = yg || !c || c.type !== "branch" || noBr;
         { const bl = f.querySelector("[data-branch-label]"); if (bl && c) bl.textContent = /القدموس/.test(c.name) ? "فرع القدموس للشحن" : "فرع " + c.name; }
         if (c && c.type === "branch" && gv) {
           const sel = f.branch, prevB = sel.value || saved.branch;
@@ -1761,7 +1818,7 @@ ${trustH()}
       const em = "";
       if (!v.governorate) errs.governorate = "اختار المحافظة";
       else if (useCarriers && !c) errs.carrier = "اختار طريقة الشحن";
-      else if (useCarriers && c.type === "branch" && !v.branch) errs.branch = "اختار الفرع";
+      else if (useCarriers && c.type === "branch" && !v.branch && ((c.govs || []).find((x) => x.name === v.governorate) || {}).branches?.length) errs.branch = "اختار الفرع";
       if (!useCarriers && v.governorate && !door && (v.center || "").trim().length < 3) errs.center = "اكتب اسم مركز القدموس";
       if (Object.keys(errs).length) {
         for (const [k, m] of Object.entries(errs)) {
@@ -1833,9 +1890,123 @@ ${trustH()}
     }).catch(() => { app.innerHTML = `<div class="empty"><b>تعذّر تحميل الطلب</b></div>`; });
   }
 
+
+  // ---------- search: forgiving (typos, Syrian spellings, Arabic ↔ English brand names) ----------
+  // letters people often swap when typing: folded together only for the «close enough» match
+  const FOLD = { "ث": "س", "ص": "س", "ذ": "ز", "ظ": "ز", "ض": "د", "ط": "ت", "ق": "ك", "ء": "", "ـ": "" };
+  const sxNorm = (x) => norm(x).replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+  const sxFold = (w) => w.replace(/[ثصذظضطقءـ]/g, (c) => FOLD[c]).replace(/(.)\1+/g, "$1");
+  const sxBare = (w) => (w.length > 4 ? w.replace(/^(وال|بال|كال|فال|لل|ال)/, "") : w);
+  // words that mean the same thing (each line is one group)
+  const SX_SYN = [
+    "قفاز قفازات كف كفوف جلوفز جلفز gloves glove", "ملاكمه بوكس boxing box", "طابه كره كرات طابات ball", "نط قفز", "واقي واقيه حامي حمايه protector guard",
+    "دمبل دامبل دنبل دمبلز dumbbell", "بروتين protein", "شيكر shaker", "مطاط استيك band bands", "حزام احزمه belt", "شورت شورتات short shorts",
+    "كنزه تيشيرت تيشرت بلوزه shirt", "مشد مشدات", "اوزان حديد weights", "سترابس straps strap", "قصبه ساق shin", "اسنان سن mouthguard", "راس رأس head", "ركبه knee", "معصم wrist",
+    "فينوم فنوم venum", "هوتزو hotzo", "ايفرلاست ايفر everlast", "بوكا buka", "فايرتكس فيرتكس fairtex", "توينز twins", "اديداس اديدس adidas", "نايك نايكي nike", "يو اف سي ufc", "ام ام اي mma",
+    "ريبوك reebok", "رايفال ريفال rival", "ليوني leone", "تايبان taipan", "يوكاو yokkao", "هايابوسا hayabusa", "كوبو kobo", "بريداتور predator", "رويش reusch", "دنلوب dunlop", "بابولات babolat", "ماتركس ميتركس metrx", "باندج بنداج bandage wraps",
+  ].map((l) => l.split(" ").map(sxNorm));
+  const sxSyn = new Map(); for (const g of SX_SYN) for (const w of g) sxSyn.set(sxFold(w), g);
+  // small «how many letters differ» check (a swap of two letters counts as one)
+  function sxDist(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    let p2 = null, p1 = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const c = [i]; let low = i;
+      for (let j = 1; j <= b.length; j++) {
+        let v = Math.min(p1[j] + 1, c[j - 1] + 1, p1[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        if (p2 && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, p2[j - 2] + 1);
+        c.push(v); if (v < low) low = v;
+      }
+      if (low > max) return max + 1;
+      p2 = p1; p1 = c;
+    }
+    return p1[b.length];
+  }
+  const sxIdx = new WeakMap();
+  function sxWords(p) {
+    let x = sxIdx.get(p); if (x) return x;
+    const m = new Map(), add = (txt, k) => { for (const w of sxNorm(txt).split(" ")) if (w) for (const v of [w, sxBare(w)]) if (!m.has(v) || m.get(v) < k) m.set(v, k); };
+    add([catLabel(p.category), p.category, ...(p.also || []).map((c) => catLabel(c) + " " + c)].join(" "), 0.6); // the collection's words
+    add((p.options || []).join(" "), 0.9); // sizes / colours
+    add(p.name, 1); // the product's own name counts most
+    x = [...m].map(([w, k]) => ({ w, f: sxFold(w), k })); sxIdx.set(p, x); return x;
+  }
+  // how well one typed word matches a product word list (0 = not at all)
+  function sxTok(t, words, partial) {
+    const short = t.length < 3, alts = [t, sxBare(t)];
+    const g = sxSyn.get(sxFold(sxBare(t))) || sxSyn.get(sxFold(t));
+    if (g && (!short || g.includes(t))) alts.push(...g); // a 2-letter start only uses a synonym when it IS that word
+    let best = 0;
+    for (const a of alts) {
+      const fa = sxFold(a), syn = a !== t && a !== sxBare(t);
+      for (const { w, f, k } of words) {
+        let s = 0;
+        if (w === a) s = 10; else if (a.length >= 2 && w.startsWith(a)) s = 8.5;
+        else if (short || syn) s = !short && f === fa ? 9 : 0; // short starts and synonyms: no «close enough» guessing
+        else if (f === fa) s = 9; else if (fa.length >= 2 && f.startsWith(fa)) s = 7.5;
+        else if (a.length >= 3 && w.includes(a)) s = 6;
+        else if (fa.length >= 3) {
+          const max = fa.length >= 7 ? 2 : 1, d = sxDist(fa, f, max);
+          if (d <= max) s = 5.5 - d;
+          else if (partial && f.length > fa.length) { const d2 = sxDist(fa, f.slice(0, fa.length), max); if (d2 <= max) s = 4.5 - d2; }
+        }
+        if (syn) s *= 0.85;
+        s *= k || 1;
+        if (s > best) best = s;
+        if (best >= 10) return best;
+      }
+    }
+    return best;
+  }
+  // products for a typed text, best first. partial = the last word may still be half typed
+  function findProducts(q, partial) {
+    const terms = sxNorm(q).split(" ").filter((t) => t.length >= 1).slice(0, 6); if (!terms.length) return [];
+    const out = [];
+    for (const p of products) {
+      const words = sxWords(p); let sum = 0, miss = 0;
+      for (let i = 0; i < terms.length; i++) {
+        const t = terms[i]; if (t.length < 2 && terms.length > 1) continue;
+        const v = sxTok(t, words, partial && i === terms.length - 1);
+        if (!v) miss++; sum += v;
+      }
+      if (miss > (terms.length >= 3 ? 1 : 0) || !sum) continue;
+      out.push([p, sum - miss * 4 + (p.inStock ? 0.5 : -3)]);
+    }
+    return out.sort((a, b) => b[1] - a[1] || a[0].name.length - b[0].name.length).map((x) => x[0]);
+  }
+  // collections whose name matches what was typed
+  function findCats(q) {
+    const terms = sxNorm(q).split(" ").filter(Boolean); if (!terms.length) return [];
+    return cats.filter((c) => c.count && !c.hidden).map((c) => { const words = sxNorm(catLabel(c.name) + " " + c.name).split(" ").map((w) => ({ w, f: sxFold(w) })); let s = 0; for (const t of terms) { const v = sxTok(t, words, true); if (!v) return null; s += v; } return [c, s]; })
+      .filter(Boolean).sort((a, b) => b[1] - a[1]).slice(0, 6).map((x) => x[0]);
+  }
+  // the little window under a search box: matching collections + a sliding row of products
+  function liveSearch(input, form) {
+    if (!input || input.dataset.sx) return; input.dataset.sx = "1";
+    const box = document.createElement("div"); box.className = "sx"; box.hidden = true; box.setAttribute("role", "listbox");
+    form.style.position = form.style.position || "relative"; form.appendChild(box);
+    let t = 0, last = "";
+    const close = () => { box.hidden = true; form.classList.remove("sx-on"); };
+    const draw = () => {
+      const q = input.value.trim(); if (q === last && !box.hidden) return; last = q;
+      if (q.length < 2) { close(); return; }
+      const list = findProducts(q, true).slice(0, 14), cs = findCats(q);
+      box.innerHTML = (cs.length ? `<div class="sx-cats">${cs.map((c) => `<a href="${cHref(c.name)}">${esc(catLabel(c.name))}</a>`).join("")}</div>` : "")
+        + (list.length ? `<div class="sx-row">${list.map((p) => `<a class="sx-p" href="#/p/${encodeURIComponent(p.id)}"><span class="sx-img"><img src="${esc(imgW(p.thumb || p.image, 240))}" alt="" loading="lazy" decoding="async"></span><b>${esc(p.name)}</b><span class="sx-pr">${p.inStock ? priceH(p) : "خالص"}</span></a>`).join("")}</div>
+          <a class="sx-all" href="#/search/${encodeURIComponent(q)}">شوف كل النتائج ←</a>`
+          : `<p class="sx-none">ما لقينا شي بهالاسم. جرّب كلمة تانية، متل «قفاز» أو «Venum».</p>`);
+      fixLinks(box); box.hidden = false; form.classList.add("sx-on");
+    };
+    input.addEventListener("input", () => { clearTimeout(t); t = setTimeout(draw, 110); });
+    input.addEventListener("focus", () => { if (input.value.trim().length >= 2) { last = ""; draw(); } });
+    input.addEventListener("keydown", (e) => { if (e.key === "Escape") { close(); input.blur(); } });
+    box.addEventListener("click", (e) => { if (e.target.closest("a")) { close(); input.blur(); } });
+    document.addEventListener("click", (e) => { if (!form.contains(e.target)) close(); });
+    addEventListener("hashchange", close); addEventListener("popstate", close);
+  }
+
   function search(q) {
-    const terms = norm(q).split(/\s+/).filter(Boolean);
-    const items = products.filter((p) => { const h = norm(p.name + " " + p.category + " " + (p.also || []).join(" ")); return terms.every((t) => h.includes(t)); });
+    const items = findProducts(q, false);
     $("[data-search] input").value = q;
     listing({ title: `نتائج البحث: ${q}`, crumbs: `<a href="#/">الرئيسية</a>`, items, key: "s:" + q });
   }
@@ -1908,14 +2079,12 @@ ${trustH()}
   // ---------- #/browse: a fast, app-like page with every group and section ----------
   function browse() {
     document.title = "المتجر | " + (C.name || "");
-    const inStock = products.filter((p) => p.inStock).length;
     const cimg = (c) => { if (c.image) return imgW(c.image, 420); const p = products.find((x) => x.inStock && inCat(x, c.name)) || products.find((x) => inCat(x, c.name)); return p ? imgW(p.thumb || p.image, 420) : ""; };
     const seen = new Set();
     const card = (c, k) => { seen.add(c.name); const u = cimg(c); return `<a class="br-card" href="${cHref(c.name)}" style="--i:${k}">${u ? `<img loading="lazy" decoding="async" src="${esc(u)}" alt="">` : ""}<span class="br-n"><b>${esc(catLabel(c.name))}</b></span></a>`; };
     const groups = C.groups.map((g, i) => {
       const cs = g.cats.map((n) => cats.find((x) => x.name === n)).filter(Boolean); if (!cs.length) return "";
-      const total = products.filter((p) => g.cats.some((c) => inCat(p, c))).length;
-      return `<section class="br-grp" id="brg-${i}"><div class="br-gh"><span class="br-ic">${esc(gIcon(g, i))}</span><h2>${esc(g.name)}</h2><a href="#/g/${encodeURIComponent(g.name)}">الكل (${total}) ←</a></div><div class="br-grid">${cs.map(card).join("")}</div></section>`;
+      return `<section class="br-grp" id="brg-${i}"><div class="br-gh"><span class="br-ic">${esc(gIcon(g, i))}</span><h2>${esc(g.name)}</h2><a href="#/g/${encodeURIComponent(g.name)}">الكل ←</a></div><div class="br-grid">${cs.map(card).join("")}</div></section>`;
     }).join("");
     const rest = cats.filter((c) => !seen.has(c.name) && c.count);
     app.innerHTML = `<div class="browse">
@@ -1926,6 +2095,7 @@ ${trustH()}
     </div>`;
     { const hd = document.querySelector("header"), ch = app.querySelector(".br-chips"); if (hd && ch) { const ps = getComputedStyle(hd).position; ch.style.top = (ps === "sticky" || ps === "fixed" ? hd.offsetHeight : 0) + "px"; } }
     const q = app.querySelector("[data-br-q]");
+    liveSearch(q, app.querySelector("[data-br-search]"));
     q.oninput = () => { const t = q.value.trim().toLowerCase(); app.querySelectorAll(".br-card").forEach((a) => (a.hidden = !!t && !a.textContent.toLowerCase().includes(t))); app.querySelectorAll(".br-grp").forEach((g) => (g.hidden = !!t && !g.querySelector(".br-card:not([hidden])"))); };
     app.querySelector("[data-br-search]").onsubmit = (e) => { e.preventDefault(); const t = q.value.trim(); if (t) navTo("#/search/" + encodeURIComponent(t)); };
     app.querySelectorAll("[data-br-go]").forEach((b) => (b.onclick = () => { const el = document.getElementById("brg-" + b.dataset.brGo); if (el) { const hd = document.querySelector("header"); window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - ((hd && hd.offsetHeight) || 0) - 56, behavior: "smooth" }); } }));
@@ -2035,7 +2205,7 @@ ${trustH()}
           ${soc(C.instagram, "إنستغرام", "M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm5-9.5a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zM7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3z")}
           ${soc(C.whatsapp ? "https://wa.me/" + C.whatsapp : "", "واتساب", "M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8 1c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.4-.6 1.6-1.2.2-.6.2-1 .1-1.2z")}
         </div></div>`;
-    } else $("[data-drawer-body]").innerHTML = `<a href="#/all"><b>كل المنتجات</b><span>${products.length}</span></a>` + C.groups.map((g) => `<h4>${esc(g.name)}</h4>` + g.cats.map((c) => cats.find((x) => x.name === c)).filter(Boolean).map((c) => `<a href="${cHref(c.name)}">${esc(catLabel(c.name))}<span>${c.count}</span></a>`).join("")).join("");
+    } else $("[data-drawer-body]").innerHTML = `<a href="#/all"><b>كل المنتجات</b></a>` + C.groups.map((g) => `<h4>${esc(g.name)}</h4>` + g.cats.map((c) => cats.find((x) => x.name === c)).filter(Boolean).map((c) => `<a href="${cHref(c.name)}">${esc(catLabel(c.name))}</a>`).join("")).join("");
     const pgs = (S.pages || []).filter((x) => x.on !== false && x.footer !== false);
     const fp = $("[data-foot-pages]"); if (fp) { fp.innerHTML = pgs.map((x) => `<a href="#/page/${encodeURIComponent(x.slug)}">${esc(x.title)}</a>`).join(""); fp.hidden = !pgs.length; }
     const dwl = document.querySelector(".dw-list"); if (dwl && pgs.length) dwl.insertAdjacentHTML("beforeend", `<div class="dw-pages">${pgs.map((x) => `<a href="#/page/${encodeURIComponent(x.slug)}">${esc(x.title)}</a>`).join("")}</div>`);
@@ -2077,12 +2247,10 @@ ${trustH()}
   function showGroups(first) {
     const st = kx.el.querySelector("[data-kx-stage]"); kx.g = null;
     kx.el.querySelector("[data-kx-back]").hidden = true; kx.el.querySelector("[data-kx-title]").textContent = "";
-    const total = products.length;
     st.className = "kx-stage kx-groups";
     st.innerHTML = C.groups.map((g, i) => {
-      const n = g.cats.reduce((a, c) => a + ((cats.find((x) => x.name === c) || {}).count || 0), 0);
-      return `<button type="button" class="kx-g" data-kx-g="${i}" style="--i:${i}"><span class="kx-ic">${esc(gIcon(g, i))}</span><b>${esc(g.name)}</b><small>${n} منتج</small></button>`;
-    }).join("") + `<a class="kx-g kx-all" href="#/all" style="--i:${C.groups.length}"><span class="kx-ic">🛍️</span><b>كل المنتجات</b><small>${total} منتج</small></a>`;
+      return `<button type="button" class="kx-g" data-kx-g="${i}" style="--i:${i}"><span class="kx-ic">${esc(gIcon(g, i))}</span><b>${esc(g.name)}</b></button>`;
+    }).join("") + `<a class="kx-g kx-all" href="#/all" style="--i:${C.groups.length}"><span class="kx-ic">🛍️</span><b>كل المنتجات</b></a>`;
     if (!first) st.querySelectorAll(".kx-g").forEach((x) => x.classList.add("again"));
   }
   function showCats(i, btn) {
@@ -2100,7 +2268,7 @@ ${trustH()}
       if (!kx || kx.g !== i) return;
       const list = g.cats.map((c) => cats.find((x) => x.name === c)).filter(Boolean);
       st.className = "kx-stage kx-cats";
-      st.innerHTML = list.map((c, k) => `<a class="kx-c" href="${cHref(c.name)}" style="--i:${k}"><span class="kx-cimg">${c.image ? `<img src="${esc(img(c.image))}" alt="" loading="lazy">` : ""}</span><b>${esc(catLabel(c.name))}</b><small>${c.count}</small></a>`).join("") || `<p class="kx-empty">ما في أقسام هون</p>`;
+      st.innerHTML = list.map((c, k) => `<a class="kx-c" href="${cHref(c.name)}" style="--i:${k}"><span class="kx-cimg">${c.image ? `<img src="${esc(img(c.image))}" alt="" loading="lazy">` : ""}</span><b>${esc(catLabel(c.name))}</b></a>`).join("") || `<p class="kx-empty">ما في أقسام هون</p>`;
     }, 260);
   }
   function onKx(e) {
@@ -2127,6 +2295,7 @@ ${trustH()}
     const add = e.target.closest("[data-add]");
     if (add) { addToCart(add.dataset.add, "", 1); flyToCart(add); }
   });
+  liveSearch($("[data-search] input"), $("[data-search]"));
   $("[data-search]").addEventListener("submit", (e) => {
     e.preventDefault();
     const q = e.target.q.value.trim();
