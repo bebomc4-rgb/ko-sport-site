@@ -1,6 +1,6 @@
 /* KO SPORT service worker — fast repeat visits + offline fallback.
    Products/prices are always fetched fresh from the network first. */
-const V = "ko-v123";
+const V = "ko-v124";
 const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
 const KEEP = [SHELL, ASSET, IMG, DATA];
 
@@ -101,7 +101,9 @@ self.addEventListener("fetch", (e) => {
     // Never the dashboard's reads (signed in, or the full list): a cached shop copy there hid what was just saved,
     // and a short shop list saved back from the dashboard would wipe descriptions.
     if ((p === "/api/products" || p === "/api/settings") && !req.headers.has("authorization") && !url.searchParams.has("full"))
-      e.respondWith(networkFirst(new Request(url.origin + p, { credentials: "same-origin" }), DATA, 4000, e.clientId));
+      // cache:"no-store" = straight to the server, never the browser's own cache: phones that visited while the old
+      // Cloudflare «cache everything 31 days» rule was on still keep a month-old copy of these two addresses there
+      e.respondWith(networkFirst(new Request(url.origin + p, { credentials: "same-origin", cache: "no-store" }), DATA, 4000, e.clientId));
     return;
   }
   if (p.startsWith("/assets/")) { e.respondWith(url.searchParams.has("v") ? cacheFirst(req, ASSET, 80) : swr(req, ASSET, 80)); return; }
