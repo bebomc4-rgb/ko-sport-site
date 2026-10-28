@@ -2426,6 +2426,39 @@ async function runMig3(env) {
   mig3Done = true;
 }
 
+// ======================================================================================
+// One-time update (owner, 28 Oct 2026 morning): no shipping to Quneitra; Masarat's places go under their real
+// governorate: Manbij, Azaz and Al-Bab under Aleppo, Idlib city and Sarmada under Idlib (the customer picks the place).
+// ======================================================================================
+const MIG4_ID = "mig:2026-10-28-b";
+let mig4Done = false;
+const MASARAT_GOVS = { "حلب": ["منبج", "اعزاز", "الباب"], "إدلب": ["إدلب المدينة", "سرمدا"] };
+async function runMig4(env) {
+  if (mig4Done || !env.STORE) return;
+  if (await env.STORE.get(MIG4_ID)) { mig4Done = true; return; }
+  const raw = await env.STORE.get("settings"); if (!raw) { mig4Done = true; return; }
+  const st = JSON.parse(raw), L = st.shipping && Array.isArray(st.shipping.carriers) ? st.shipping.carriers : null;
+  if (!L) { mig4Done = true; return; }
+  if (!(await env.STORE.get("bak:pre-" + MIG4_ID + ":settings"))) await env.STORE.put("bak:pre-" + MIG4_ID + ":settings", raw, { metadata: { ts: new Date().toISOString(), why: "pre-fix" } });
+  for (const c of L) c.govs = (c.govs || []).filter((g) => g.name !== "القنيطرة");
+  const ms = L.find((c) => c.id === "masarat");
+  if (ms) {
+    const old = ms.govs || [], places = Object.values(MASARAT_GOVS).flat().concat(["إدلب"]);
+    const feeOf = (names) => { const g = old.find((x) => names.includes(x.name) && x.fee != null); return g ? g.fee : null; };
+    ms.type = "branch";
+    ms.govs = [
+      ...Object.entries(MASARAT_GOVS).map(([name, list]) => ({ name, fee: feeOf(name === "إدلب" ? ["إدلب", ...list] : list), branches: list.map((n) => ({ name: n, address: "منتواصل معك لنأكد مكان الاستلام" })) })),
+      ...old.filter((g) => !places.includes(g.name) && !MASARAT_GOVS[g.name]),
+    ];
+    for (const c of L) if (c !== ms) c.govs = c.govs.filter((g) => !places.includes(g.name));
+  }
+  if ((await env.STORE.get("settings")) !== raw) return; // saved meanwhile: try again on a later visit
+  await env.STORE.put("settings", JSON.stringify(st));
+  await env.STORE.put(MIG4_ID, JSON.stringify({ at: new Date().toISOString() }));
+  await purgeEdge("settings");
+  mig4Done = true;
+}
+
 export default {
   async fetch(request, rawEnv, ctx) {
     // Accept the KV binding whatever it was named (STORE, store, KV...).
@@ -2442,6 +2475,7 @@ export default {
     if (!migDone && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMigrations(env, request).catch(() => {}));
     if (migDone && !mig2Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig2(env).catch(() => {}));
     if (migDone && mig2Done && !mig3Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig3(env).catch(() => {}));
+    if (migDone && mig2Done && mig3Done && !mig4Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig4(env).catch(() => {}));
     // the main address ko-sport.online opens the shop at /ar (the app opens that same address)
     if (url.hostname === "ko-sport.online" && path === "/" && m === "GET") {
       return Response.redirect("https://ko-sport.online/ar" + url.search, 301);

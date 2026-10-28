@@ -1669,8 +1669,8 @@ ${trustH()}
         <h3><span class="step">2</span> التوصيل</h3>
         <div class="field" data-gov-field><label for="f-gov">المحافظة</label><select id="f-gov" name="governorate" required><option value="">اختار المحافظة</option>${govs.map((g) => `<option ${saved.governorate === g ? "selected" : ""}>${esc(g)}</option>`).join("")}</select><div class="msg"></div></div>
         ${heavyCart ? `<div class="note heavy-note" data-heavy-note hidden>🏋️ طلبك فيه أغراض تقيلة (أوزان، دامبل، كيس ملاكمة…)، فسعر الشحن بيتحدد عند التأكيد.</div>` : ""}
-        ${useCarriers ? `<div class="field" data-branch-field hidden><label data-branch-label>فرع القدموس للشحن</label><select id="f-branch" name="branch" hidden tabindex="-1" aria-hidden="true"></select><button type="button" class="qb-pick" data-branch-pick></button><div class="msg"></div></div>
-        <div class="field" data-carrier-field hidden><label>شركة الشحن</label><div class="pay-opts" data-carriers></div><div class="msg"></div></div>` : ""}
+        ${useCarriers ? `<div class="field" data-carrier-field hidden><label>شركة الشحن</label><div class="pay-opts" data-carriers></div><div class="msg"></div></div>
+        <div class="field" data-branch-field hidden><label data-branch-label>فرع القدموس للشحن</label><select id="f-branch" name="branch" hidden tabindex="-1" aria-hidden="true"></select><button type="button" class="qb-pick" data-branch-pick></button><div class="msg"></div></div>` : ""}
         ${YG ? `<label class="yg-opt" data-yg-card hidden><input type="checkbox" name="yalla" ${saved.yalla ? "checked" : ""}><span class="yg-ic">⚡</span><span><small class="yg-or">أو بدل الشحن بالقدموس:</small><b>توصيل سريع لباب البيت عن طريق يلا غو (ضمن دمشق)</b><small>${esc(YG.note || "اختاره إذا كنت بدمشق، والطلب بيوصل لعندك عالبيت")}</small></span></label>` : ""}
         <div class="field" data-door><label for="f-addr">العنوان (اختياري)</label><input id="f-addr" name="address" placeholder="المنطقة، الشارع، البناء، أقرب نقطة دالة" value="${esc(saved.address)}"><small>إذا بتحب اكتب العنوان أو أقرب نقطة دالة، وإلا منتواصل معك</small><div class="msg"></div></div>
         ${useCarriers ? "" : `<div class="field" data-qadmous><label for="f-center">اسم مركز القدموس</label><input id="f-center" name="center" value="${esc(saved.center)}"><div class="msg"></div></div>`}
@@ -1747,11 +1747,12 @@ ${trustH()}
     // a branch = name, then the address, then the phones (written after «📞» in the dashboard)
     const brSplit = (a) => { const m = String(a || "").match(/^(.*?)\s*·?\s*📞\s*(.+)$/); return m ? [m[1].trim(), m[2].trim()] : [String(a || "").trim(), ""]; };
     const brCard = (b) => { const [ad, tel] = brSplit(b.address); return `<b>${esc(b.name)}</b>${ad ? `<span class="qb-ad">📍 ${esc(ad)}</span>` : ""}${tel ? `<span class="qb-tel">📞 ${telLtr(tel)}</span>` : ""}`; };
+    const isArea = (L) => !!L.length && !L.some((b) => /^(فرع|مكتب)/.test(b.name)); // e.g. Masarat: Manbij, Azaz, Al-Bab…
     const openBranches = () => {
       const c = curCarrier(), gv = curGov(), L = (gv && gv.branches) || [];
-      if (!c || c.type !== "branch" || !L.length) return;
-      const cur = f.branch.value;
-      openSheet("اختار الفرع — " + gv.name, `<p class="sh-sub">${esc(c.name)} · ${L.length > 1 ? "كبسة عالفرع يلي بدك تستلم منه" : "هاد الفرع يلي رح تستلم منه"}</p>${L.length > 7 ? `<input class="qb-q" type="search" placeholder="دوّر على فرع أو منطقة…" data-qb-q>` : ""}<div class="qb-list">${L.map((b) => `<button type="button" class="qb-card${b.name === cur ? " on" : ""}" data-qb-name="${esc(b.name)}">${brCard(b)}</button>`).join("")}</div>`, (body) => {
+      if (!c || c.type !== "branch" || L.length < 2) return; // one branch: it's picked for the customer
+      const cur = f.branch.value, area = isArea(L);
+      openSheet((area ? "اختار منطقتك — " : "اختار الفرع — ") + gv.name, `<p class="sh-sub">${esc(c.name)} · ${area ? "كبسة عالمنطقة يلي بدك تستلم فيها" : "كبسة عالفرع يلي بدك تستلم منه"}</p>${L.length > 7 ? `<input class="qb-q" type="search" placeholder="دوّر على فرع أو منطقة…" data-qb-q>` : ""}<div class="qb-list">${L.map((b) => `<button type="button" class="qb-card${b.name === cur ? " on" : ""}" data-qb-name="${esc(b.name)}">${brCard(b)}</button>`).join("")}</div>`, (body) => {
         body.addEventListener("click", (e) => {
           const x = e.target.closest("[data-qb-name]"); if (!x) return;
           f.branch.value = x.dataset.qbName;
@@ -1764,6 +1765,7 @@ ${trustH()}
       });
     };
     f.addEventListener("click", (e) => { if (e.target.closest("[data-branch-pick]")) openBranches(); });
+    let lastGov;
     const sync = () => {
       let yg = ygOn(), g = govVal();
       // دمشق وريفها: خيارين جنب بعض (القدموس / يلا غو)، الزبون بيختار وما في شي مختار سلفاً
@@ -1776,21 +1778,28 @@ ${trustH()}
         const opts = carrierOpts(twoWay ? f.governorate.value : g).filter((c) => c !== YG).concat(twoWay ? [YG] : []), box = f.querySelector("[data-carriers]");
         f.querySelector("[data-carrier-field]").hidden = !g || (yg && !twoWay);
         box.classList.toggle("ship2", twoWay);
-        const prev = (f.querySelector("[name=carrier]:checked") || {}).value || (twoWay ? "" : saved.carrier);
-        box.innerHTML = opts.map((c, i) => `<label class="pay-opt"><input type="radio" name="carrier" value="${esc(c.id)}" ${(opts.some((x) => x.id === prev) ? prev === c.id : !twoWay && i === 0) ? "checked" : ""}><span><b>${esc(c.name)}</b>${c.note ? `<small>${esc(c.note)}</small>` : ""}</span></label>`).join("") || `<div class="note">ما في شحن لهالمحافظة حالياً</div>`;
+        const ck = (f.querySelector("[name=carrier]:checked") || {}).value, multi = opts.length > 1, gNew = lastGov !== (twoWay ? f.governorate.value : g);
+        lastGov = twoWay ? f.governorate.value : g;
+        // a new governorate with two companies (Aleppo: Al-Qadmous / Masarat): the customer picks, nothing is chosen for him
+        const prev = twoWay ? (gNew ? "" : ck || "") : multi && gNew ? (saved.governorate === g ? saved.carrier : "") : ck || saved.carrier;
+        const places = (c) => { const L = ((c.govs || []).find((x) => x.name === g) || {}).branches || []; return multi && !twoWay && L.length && L.length <= 4 ? `<small class="co-places">📍 ${L.map((b) => esc(String(b.name).replace(/^فرع\s+/, ""))).join("، ")}</small>` : ""; };
+        box.innerHTML = opts.map((c, i) => `<label class="pay-opt"><input type="radio" name="carrier" value="${esc(c.id)}" ${(opts.some((x) => x.id === prev) ? prev === c.id : !twoWay && !multi && i === 0) ? "checked" : ""}><span><b>${esc(c.name)}</b>${places(c)}${c.note ? `<small>${esc(c.note)}</small>` : ""}</span></label>`).join("") || `<div class="note">ما في شحن لهالمحافظة حالياً</div>`;
         if (twoWay && f.yalla) { const ck1 = f.querySelector("[name=carrier]:checked"), want = !!ck1 && ck1.value === YG.id; if (f.yalla.checked !== want) { f.yalla.checked = want; return sync(); } }
         const c = curCarrier(), gv = curGov();
-        door = !c || c.type === "door";
+        door = !!c && c.type === "door"; // (no company picked yet: no address box)
         const bf = f.querySelector("[data-branch-field]");
         const noBr = !!(c && c.type === "branch" && gv && !(gv.branches || []).length); // e.g. Al-Awda, Masarat: the shop confirms the pick-up place
         bf.hidden = yg || !c || c.type !== "branch" || noBr;
-        { const bl = f.querySelector("[data-branch-label]"); if (bl && c) bl.textContent = /القدموس/.test(c.name) ? "فرع القدموس للشحن" : "فرع " + c.name; }
+        const area = isArea((gv && gv.branches) || []);
+        { const bl = f.querySelector("[data-branch-label]"); if (bl && c) bl.textContent = area ? "وين بدك تستلم؟" : /القدموس/.test(c.name) ? "فرع القدموس للشحن" : "فرع " + c.name; }
         if (c && c.type === "branch" && gv) {
           const sel = f.branch, prevB = sel.value || saved.branch;
           sel.innerHTML = `<option value="">اختار الفرع</option>` + (gv.branches || []).map((b) => `<option value="${esc(b.name)}" ${prevB === b.name ? "selected" : ""}>${esc(b.name)}</option>`).join("");
+          const one = (gv.branches || []).length === 1;
+          if (one) sel.value = gv.branches[0].name; // the only branch in this governorate: no need to ask
           const b = (gv.branches || []).find((x) => x.name === sel.value), pk = f.querySelector("[data-branch-pick]");
-          pk.classList.toggle("on", !!b);
-          pk.innerHTML = b ? `<span class="qb-in">${brCard(b)}</span><span class="qb-chg">تغيير</span>` : `<span class="qb-ph">📍 اختار الفرع يلي بدك تستلم منه</span><span class="qb-chg">اختار</span>`;
+          pk.classList.toggle("on", !!b); pk.classList.toggle("one", one);
+          pk.innerHTML = b ? `<span class="qb-in">${brCard(b)}</span>${one ? "" : `<span class="qb-chg">تغيير</span>`}` : `<span class="qb-ph">📍 ${area ? "اختار المنطقة يلي بدك تستلم فيها" : "اختار الفرع يلي بدك تستلم منه"}</span><span class="qb-chg">اختار</span>`;
         }
         ready = !!gv;
         const gfee = gv ? gv.fee ?? flatOf(c) ?? (c && c.flatFee === undefined && c.id === "qadmous" ? 1 : null) : null;
@@ -1844,7 +1853,7 @@ ${trustH()}
       const em = "";
       if (!v.governorate) errs.governorate = "اختار المحافظة";
       else if (useCarriers && !c) errs.carrier = "اختار طريقة الشحن";
-      else if (useCarriers && c.type === "branch" && !v.branch && ((c.govs || []).find((x) => x.name === v.governorate) || {}).branches?.length) errs.branch = "اختار الفرع";
+      else if (useCarriers && c.type === "branch" && !v.branch && ((c.govs || []).find((x) => x.name === v.governorate) || {}).branches?.length) errs.branch = isArea(((c.govs || []).find((x) => x.name === v.governorate) || {}).branches) ? "اختار المنطقة" : "اختار الفرع";
       if (!useCarriers && v.governorate && !door && (v.center || "").trim().length < 3) errs.center = "اكتب اسم مركز القدموس";
       if (Object.keys(errs).length) {
         for (const [k, m] of Object.entries(errs)) {

@@ -1917,3 +1917,6 @@ html[data-theme=dark] .f-active .chip.on,html[data-theme=dark] .f-multi .chip.on
 .qb-card[hidden]{display:none}
 html[data-theme=dark] .qb-pick,html[data-theme=dark] .qb-q{background:#15151b;color:var(--c-page-fg)}
 html[data-theme=dark] .qb-card.on,html[data-theme=dark] .qb-pick.on{border-color:var(--c-link)}
+.qb-pick.one{cursor:default}
+.qb-pick.one:active{transform:none}
+.pay-opt small.co-places{color:var(--c-card-fg);font-weight:600;margin:2px 0 1px}
