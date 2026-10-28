@@ -1874,7 +1874,7 @@ function orderText(o, origin) {
   const m = moneyOf(o), c = o.customer, dl = o.delivery || {};
   const where = dl.carrierId && /yalla/i.test(dl.carrierId) || /يلا/.test(dl.carrier || "")
     ? `🚚 ${dl.carrier || "يلا غو"} — ${c.governorate}${c.address ? " — " + c.address : ""}`
-    : `🚚 ${[c.governorate, dl.carrier, dl.branch ? (/^فرع/.test(dl.branch) ? "" : "فرع ") + dl.branch + (dl.branchAddress ? " (" + dl.branchAddress + ")" : "") : "", c.address, c.center && !dl.branch ? c.center : ""].filter(Boolean).join(" — ")}`;
+    : `🚚 ${[c.governorate, dl.carrier, dl.branch ? (/^فرع/.test(dl.branch) ? "" : "فرع ") + dl.branch + (dl.branchAddress ? " (" + String(dl.branchAddress).replace(/\d[\d-]*\d(?:\s*\/\s*\d[\d-]*\d)*/g, "\u2066$&\u2069") + ")" : "") : "", c.address, c.center && !dl.branch ? c.center : ""].filter(Boolean).join(" — ")}`;
   const lines = o.items.map((i) => `• ${i.name}${i.opt ? " — " + i.opt : ""} × ${i.qty} = ${m(i.price * i.qty)}`);
   const afterDisc = Math.max(0, o.subtotal - (o.discount ? o.discount.amount : 0));
   const tot = [];
@@ -2387,6 +2387,45 @@ async function runMig2(env) {
   mig2Done = true;
 }
 
+// ======================================================================================
+// One-time update (owner, 28 Oct 2026): Al-Qadmous branches, as the owner listed them (phones are in the address).
+// Branch «ميسلون» in Aleppo is left out: it only sends parcels, nobody can pick up from it.
+// Deir ez-Zor gets Al-Qadmous too (the Jourah branch); Al-Awda stays there as a second choice.
+// Fees, the other companies and Yalla Go are not touched.
+// ======================================================================================
+const MIG3_ID = "mig:2026-10-28-a";
+let mig3Done = false;
+const QD_BRANCHES = {
+  "دمشق وريفها": [["فرع البرامكة", "الفحامة - زقاق الجن (مركز الشحن الرئيسي) · 📞 011-2223034"], ["فرع شارع الحمرا", "وسط المدينة - شارع الحمرا · 📞 011-3320845 / 011-3320846"], ["فرع شارع بغداد", "ساحة التحرير · 📞 011-4470938"], ["فرع العدوي", "كراجات الانطلاق · 📞 011-4462649"], ["فرع المزة", "منطقة الشيخ سعد · 📞 011-6630676 / 011-6611737"], ["فرع الحريقة", "مقابل المصرف التجاري · 📞 011-2239496"], ["فرع قطنا", "الشارع العام - مفرق كراجات دمشق · 📞 011-6811211"], ["فرع ضاحية الأسد", "ضاحية الشام - الجزيرة B · 📞 011-5340399"], ["فرع قدسيا", "الساحة العامة · 📞 011-3137733 / 011-3236864"], ["فرع مساكن الحرس", "ريف دمشق · 📞 011-3160019"], ["فرع دار المجد", "مقابل كلية الهندسة المدنية · 📞 011-2128266 / 011-2136889"], ["فرع جرمانا", "الساحة الرئيسية · 📞 011-5660018"], ["فرع القطيفة", "ريف دمشق · 📞 011-7757200 / 011-7757201"], ["فرع يبرود", "مدينة يبرود · 📞 011-7819363"], ["فرع جديدة عرطوز", "الشارع الرئيسي · 📞 0991867480"], ["فرع حوش بلاس", "المنطقة الصناعية لريف دمشق"], ["فرع النبك", "مدينة النبك"]],
+  "حلب": [["فرع الفرقان", "خلف جامع أهل بدر - شارع صيدلية العناية (جانب مملكة الدولار) · 📞 0930746311"], ["فرع الجميلية", "وسط المدينة - مقابل البريد"], ["فرع بارون", "أول شارع بارون - أمام المتحف الوطني · 📞 021-2122222"]],
+  "اللاذقية": [["فرع شارع 8 آذار الرئيسي", "قرب دخلة المشفى المركزي · 📞 041-469515"], ["فرع مشروع الزراعة", "حي الزراعة - قبل جامعة تشرين (بالقرب من بوظة أمية)"], ["فرع الجامعة (سبيرو)", "حي الجامعة - مقابل موقف سبيرو القديم"], ["فرع سقوبين", "ريف اللاذقية - مقابل كازية النصر"], ["فرع الرمل الشمالي", "حي الرمل - مقابل جامع الإمام جعفر الصادق"], ["فرع جبلة الرئيسي", "مدينة جبلة - جانب الملعب البلدي"], ["فرع جبلة رأس العين", "ريف جبلة - جانب المؤسسة الاستهلاكية"], ["فرع القرداحة", "وسط المدينة - غرب مصرف التسليف"], ["فرع سوق التجار", "وسط مدينة اللاذقية"]],
+  "طرطوس": [["فرع طرطوس الرئيسي", "المدينة - جانب حديقة الباسل"], ["فرع المنطقة الصناعية", "طرطوس - جانب معمل شفيق للتنك"], ["فرع محطة القدموس", "منتجع الرمال الذهبية"], ["فرع بانياس", "كورنيش البحر"], ["فرع صافيتا", "الحارة الشرقية"], ["فرع دريكيش", "الساحة العامة للمدينة"], ["فرع مدينة القدموس", "ريف طرطوس - جانب المؤسسة الاستهلاكية · 📞 0949392998"], ["فرع الشيخ سعد", "مقابل كازية الشيخ سعد"], ["فرع الشيخ بدر", "مقابل مدرسة الشيخ صالح العالي"]],
+  "حمص": [["فرع الحضارة", "شارع الحضارة - مقابل بنك بيمو"], ["فرع الحمرا", "حي الغوطة - جانب مطعم كريش"], ["فرع الزهراء", "شارع إسكندون"], ["فرع شين", "ريف حمص - غربي شعبة الكهرباء"], ["فرع الحواش", "ريف حمص - منطقة وادي النصارى"]],
+  "حماة": [["فرع الكراج", "كراج البولمان"], ["فرع ساحة العاصي", "وسط المدينة - ساحة العاصي"], ["فرع السلمية", "مدينة سلمية - جانب مشفى فرج"], ["فرع مصياف", "مدينة مصياف - غرب دوار تمثال الرئيس"], ["فرع سلحب", "حي المشتل"], ["فرع السقيلبية", "المركز الرئيسي للمدينة"]],
+  "السويداء": [["فرع السويداء الرئيسي", "مدينة السويداء - ساحة تشرين - نزلة الوادي · 📞 016-213475 / 016-213335"]],
+  "درعا": [["فرع درعا الرئيسي", "مدينة درعا - حي القصور - طريق البانوراما · 📞 015-213222"], ["فرع الصنمين", "مدينة الصنمين - السوق الرئيسي"], ["فرع ازرع", "مدينة ازرع - المحطة"]],
+  "دير الزور": [["فرع دير الزور الرئيسي", "حي الجورة"]],
+};
+async function runMig3(env) {
+  if (mig3Done || !env.STORE) return;
+  if (await env.STORE.get(MIG3_ID)) { mig3Done = true; return; }
+  const raw = await env.STORE.get("settings"); if (!raw) { mig3Done = true; return; }
+  const st = JSON.parse(raw), qd = st.shipping && Array.isArray(st.shipping.carriers) && st.shipping.carriers.find((c) => c.id === "qadmous");
+  if (!qd) { mig3Done = true; return; }
+  if (!(await env.STORE.get("bak:pre-" + MIG3_ID + ":settings"))) await env.STORE.put("bak:pre-" + MIG3_ID + ":settings", raw, { metadata: { ts: new Date().toISOString(), why: "pre-fix" } });
+  qd.govs = qd.govs || [];
+  for (const [name, list] of Object.entries(QD_BRANCHES)) {
+    let g = qd.govs.find((x) => x.name === name);
+    if (!g) qd.govs.push((g = { name, fee: null, branches: [] }));
+    g.branches = list.map(([n, a]) => ({ name: n, address: a }));
+  }
+  if ((await env.STORE.get("settings")) !== raw) return; // saved meanwhile: try again on a later visit
+  await env.STORE.put("settings", JSON.stringify(st));
+  await env.STORE.put(MIG3_ID, JSON.stringify({ at: new Date().toISOString() }));
+  await purgeEdge("settings");
+  mig3Done = true;
+}
+
 export default {
   async fetch(request, rawEnv, ctx) {
     // Accept the KV binding whatever it was named (STORE, store, KV...).
@@ -2402,6 +2441,7 @@ export default {
     const m = request.method;
     if (!migDone && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMigrations(env, request).catch(() => {}));
     if (migDone && !mig2Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig2(env).catch(() => {}));
+    if (migDone && mig2Done && !mig3Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig3(env).catch(() => {}));
     // the main address ko-sport.online opens the shop at /ar (the app opens that same address)
     if (url.hostname === "ko-sport.online" && path === "/" && m === "GET") {
       return Response.redirect("https://ko-sport.online/ar" + url.search, 301);

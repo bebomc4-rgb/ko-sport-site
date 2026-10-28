@@ -5,6 +5,7 @@
   const NOIMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect width='10' height='10' fill='%23ebe7df'/%3E%3C/svg%3E";
   const img = (u) => u || NOIMG;
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const telLtr = (s) => esc(s).replace(/\d[\d-]*\d(?:\s*\/\s*\d[\d-]*\d)*/g, (m) => `<bdi dir="ltr">${m}</bdi>`);
   const money = (n) => "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 });
   const split = (s) => String(s || "").split(/[،,]/).map((x) => x.trim()).filter(Boolean);
   const STATUS = { new: "جديد", pending_payment: "بانتظار التحويل", paid: "تم الدفع", confirmed: "تم التأكيد", shipped: "انشحن", delivered: "انسلّم", cancelled: "ملغي" };
@@ -1150,7 +1151,7 @@
         <div class="o-cust">
           <div><b>${esc(c.name)}</b></div>
           <div><a href="tel:${esc(c.phone)}" dir="ltr">${esc(c.phone)}</a> · <a target="_blank" rel="noopener" href="https://wa.me/${waNum(c.phone)}?text=${encodeURIComponent(msg)}">واتساب</a></div>
-          <div>📍 ${esc(c.governorate)} — ${o.delivery && o.delivery.carrier ? esc(o.delivery.carrier) + " — " : ""}${c.address ? esc(c.address) : (o.delivery && o.delivery.carrier ? "" : "مركز القدموس: ") + esc(c.center)}${o.delivery && o.delivery.branchAddress ? ` <small>(${esc(o.delivery.branchAddress)})</small>` : ""}</div>
+          <div>📍 ${esc(c.governorate)} — ${o.delivery && o.delivery.carrier ? esc(o.delivery.carrier) + " — " : ""}${c.address ? esc(c.address) : (o.delivery && o.delivery.carrier ? "" : "مركز القدموس: ") + esc(c.center)}${o.delivery && o.delivery.branchAddress ? ` <small>(${telLtr(o.delivery.branchAddress)})</small>` : ""}</div>
           ${c.email ? `<div>✉️ <span dir="ltr">${esc(c.email)}</span></div>` : ""}${c.altPhone ? `<div>☎️ <span dir="ltr">${esc(c.altPhone)}</span></div>` : ""}${c.postal ? `<div>📮 ${esc(c.postal)}</div>` : ""}
           ${c.notes ? `<div>📝 ${esc(c.notes)}</div>` : ""}
         </div>

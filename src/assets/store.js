@@ -20,6 +20,8 @@
   const PDP_W = [640, 828, 1080], PDP_SIZES = "(max-width:900px) 100vw, 560px";
   const imgSet = (u, ws, sizes) => LOCAL_IMG.test(u || "") ? ` srcset="${ws.map((w) => imgW(u, w) + " " + w + "w").join(", ")}" sizes="${sizes}"` : "";
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // phone numbers inside Arabic text («011-2223034») keep their order instead of flipping around the dash
+  const telLtr = (s) => esc(s).replace(/\d[\d-]*\d(?:\s*\/\s*\d[\d-]*\d)*/g, (m) => `<bdi dir="ltr">${m}</bdi>`);
   let LAY = {}; // current layout (from the design template)
   let arFmt = null;
   // shop currency: prices are stored in dollars; in Syrian pounds they are dollars × (today's sell rate + the owner's margin)
@@ -1766,7 +1768,7 @@ ${trustH()}
           const sel = f.branch, prevB = sel.value || saved.branch;
           sel.innerHTML = `<option value="">اختار الفرع</option>` + (gv.branches || []).map((b) => `<option value="${esc(b.name)}" ${prevB === b.name ? "selected" : ""}>${esc(b.name)}</option>`).join("");
           const b = (gv.branches || []).find((x) => x.name === sel.value);
-          f.querySelector("[data-branch-addr]").textContent = b ? "📍 " + b.address : "";
+          f.querySelector("[data-branch-addr]").innerHTML = b ? "📍 " + telLtr(b.address) : "";
         }
         ready = !!gv;
         const gfee = gv ? gv.fee ?? flatOf(c) ?? (c && c.flatFee === undefined && c.id === "qadmous" ? 1 : null) : null;
@@ -1875,7 +1877,7 @@ ${trustH()}
       ${o ? orderBox(o) : ""}
       <div class="ok">✓</div><h1>تم إرسال طلبك</h1><p class="done-msg">سوف نتواصل معك في أسرع وقت ممكن على واتساب</p>
       <div>رقم الطلب</div><div class="order-no">${esc(id)}</div>
-      ${o && o.delivery && o.delivery.carrier ? `<div class="pay-info"><b>الشحن: ${esc(o.delivery.carrier)}</b>${o.delivery.branch ? `\nالفرع: ${esc(o.delivery.branch)}${o.delivery.branchAddress ? " — " + esc(o.delivery.branchAddress) : ""}` : ""}</div>` : ""}
+      ${o && o.delivery && o.delivery.carrier ? `<div class="pay-info"><b>الشحن: ${esc(o.delivery.carrier)}</b>${o.delivery.branch ? `\nالفرع: ${esc(o.delivery.branch)}${o.delivery.branchAddress ? " — " + telLtr(o.delivery.branchAddress) : ""}` : ""}</div>` : ""}
       <div class="pay-info"><b>طريقة الدفع: لم يتم التحديد بعد</b></div>
       <div class="buy-row" style="justify-content:center"><a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent(msg)}">أرسل الطلب على واتساب</a></div>
       <p class="hint" style="margin-top:16px">بعد ما يوصلك طلبك، رأيك بيفرق معنا كتير: <a href="/review" target="_blank" rel="noopener"><b>قيّمنا على جوجل ⭐</b></a></p></div>`;
