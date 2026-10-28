@@ -625,10 +625,8 @@ async function ordersPost(request, env, ctx) {
   };
   await env.STORE.put(orderKey(ts, id), JSON.stringify(order));
   await env.STORE.put(`orderid:${id}`, orderKey(ts, id));
-  // one-time key: the customer's browser draws a picture of the cart and sends it here, we forward it to Telegram
   const tgOn = !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID);
   const shot = tgOn ? newKey() : "";
-  if (shot) await env.STORE.put("ordershot:" + id, shot, { expirationTtl: 3600 }).catch(() => {});
   // discount usage + the abandoned cart of this visitor is now an order
   if (disc) ctx.waitUntil((async () => { const u = (await env.STORE.get("disc_used", "json")) || {}; u[disc.id] = (u[disc.id] || 0) + 1; await env.STORE.put("disc_used", JSON.stringify(u)); })().catch(() => {}));
   if (/^[a-z0-9]{8,32}$/.test(body.sid || "")) ctx.waitUntil(env.STORE.delete("cart:" + body.sid).catch(() => {}));
@@ -640,13 +638,20 @@ async function ordersPost(request, env, ctx) {
     await purgeEdge("products");
   })().catch(() => {}));
 
-  if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
+  if (tgOn) {
     const syp = await fxRate(env, ctx, settings).catch(() => 0);
     const text = orderText(order, new URL(request.url).origin, syp);
-    ctx.waitUntil(fetch(`https://api.telegram.org/bot${String(env.TELEGRAM_BOT_TOKEN).trim()}/sendMessage`, {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ chat_id: String(env.TELEGRAM_CHAT_ID).trim(), text }),
-    }).catch(() => {}));
+    // The text goes out straight away (so no order is ever missed). The customer's browser then draws a picture
+    // of the cart and sends it with this one-time key: the text is replaced by ONE message, the picture with the text under it.
+    await env.STORE.put("ordershot:" + id, JSON.stringify({ k: shot, text }), { expirationTtl: 3600 }).catch(() => {});
+    ctx.waitUntil((async () => {
+      const r = await fetch(`https://api.telegram.org/bot${String(env.TELEGRAM_BOT_TOKEN).trim()}/sendMessage`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: String(env.TELEGRAM_CHAT_ID).trim(), text, link_preview_options: { is_disabled: true } }),
+      });
+      const j = await r.json().catch(() => null), mid = j && j.ok && j.result && j.result.message_id;
+      if (mid) await tgMidSet(env, id, mid);
+    })().catch(() => {}));
   }
   ctx.waitUntil(pushToAdmins(env, { title: `🛒 طلب جديد ${id}`, body: `${customer.name} — ${customer.governorate || ""} — ${moneyOf(order)(total)}`, url: "/admin", tag: "order-" + id }));
   const mails = ((settings.notify && settings.notify.emails) || []).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).slice(0, 5);
@@ -1918,23 +1923,44 @@ async function orderItemsGet(request, env) {
   return json({ id: o.id, createdAt: o.createdAt, items: o.items.map((i) => ({ id: i.id, name: i.name, opt: i.opt, qty: i.qty, price: i.price, image: i.image })), subtotal: o.subtotal, discount: o.discount ? { name: o.discount.name, amount: o.discount.amount } : null, fee: o.delivery ? o.delivery.fee : null, total: o.total, display: o.display || null, status: o.status });
 }
 
-// the picture of the cart (drawn by the customer's browser right after ordering) → a photo under the order message in Telegram
+// the Telegram message of a new order (its number), kept for an hour: the edge cache answers at once
+// in this data centre, KV is the fallback
+const tgMidReq = (id) => new Request("https://tg.internal/order-msg/" + encodeURIComponent(id));
+async function tgMidSet(env, id, mid) {
+  if (typeof caches !== "undefined") await caches.default.put(tgMidReq(id), new Response(String(mid), { headers: { "cache-control": "max-age=3600" } })).catch(() => {});
+  await env.STORE.put("ordertg:" + id, String(mid), { expirationTtl: 3600 }).catch(() => {});
+}
+async function tgMidGet(env, id, kv) {
+  if (typeof caches !== "undefined") { const h = await caches.default.match(tgMidReq(id)).catch(() => null); if (h) return +(await h.text()) || 0; }
+  return kv ? +(await env.STORE.get("ordertg:" + id).catch(() => 0)) || 0 : 0;
+}
+// the picture of the cart (drawn by the customer's browser right after ordering) → ONE Telegram message:
+// the picture with the order text under it; the text-only message sent a moment earlier is then removed
 async function orderShot(request, env, id) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return json({ ok: false });
   const k = new URL(request.url).searchParams.get("k") || "";
-  const want = /^KO-\d{4}-[A-Z0-9]{4}$/.test(id) ? await env.STORE.get("ordershot:" + id) : null;
+  const raw = /^KO-\d{4}-[A-Z0-9]{4}$/.test(id) ? await env.STORE.get("ordershot:" + id) : null;
+  let want = "", text = "";
+  try { const j = JSON.parse(raw); want = j.k || ""; text = j.text || ""; } catch { want = raw || ""; }
   if (!want || k !== want) return json({ error: "denied" }, 403);
   if ((+request.headers.get("content-length") || 0) > 4e6) return json({ error: "too big" }, 413);
   const buf = new Uint8Array(await request.arrayBuffer());
   const png = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e, jpg = buf[0] === 0xff && buf[1] === 0xd8;
   if (buf.length > 4e6 || buf.length < 200 || (!png && !jpg)) return json({ error: "bad image" }, 400);
   await env.STORE.delete("ordershot:" + id); // once per order
+  const tg = (m) => `https://api.telegram.org/bot${String(env.TELEGRAM_BOT_TOKEN).trim()}/${m}`, chat = String(env.TELEGRAM_CHAT_ID).trim();
+  // the text message may still be on its way: wait for its number a little
+  let mid = 0;
+  for (let i = 0; i < 5 && !mid; i++) { if (i) await new Promise((r) => setTimeout(r, 1000)); mid = await tgMidGet(env, id, i === 4); }
+  const cap = text ? (text.length > 1024 ? text.slice(0, 1023) + "…" : text) : `🛒 سلة الطلب ${id}`;
   const fd = new FormData();
-  fd.append("chat_id", String(env.TELEGRAM_CHAT_ID).trim());
-  fd.append("caption", `🛒 سلة الطلب ${id}`);
+  fd.append("chat_id", chat);
+  fd.append("caption", cap);
   fd.append("photo", new Blob([buf], { type: png ? "image/png" : "image/jpeg" }), png ? "cart.png" : "cart.jpg");
-  const r = await fetch(`https://api.telegram.org/bot${String(env.TELEGRAM_BOT_TOKEN).trim()}/sendPhoto`, { method: "POST", body: fd }).catch(() => null);
-  return json({ ok: !!(r && r.ok) });
+  const r = await fetch(tg("sendPhoto"), { method: "POST", body: fd }).catch(() => null);
+  const ok = !!(r && r.ok);
+  if (ok && mid && text) await fetch(tg("deleteMessage"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: chat, message_id: mid }) }).catch(() => {});
+  return json({ ok });
 }
 // a product photo of one order, from our own address (so the browser may draw it into the cart picture)
 async function orderThumb(request, env) {
