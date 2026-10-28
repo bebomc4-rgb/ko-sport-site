@@ -642,6 +642,7 @@ async function ordersPost(request, env, ctx) {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ chat_id: String(env.TELEGRAM_CHAT_ID).trim(), text }),
     }).catch(() => {}));
+    ctx.waitUntil(sendOrderPhotos(env, order, new URL(request.url).origin).catch(() => {}));
   }
   ctx.waitUntil(pushToAdmins(env, { title: `🛒 طلب جديد ${id}`, body: `${customer.name} — ${customer.governorate || ""} — ${moneyOf(order)(total)}`, url: "/admin", tag: "order-" + id }));
   const mails = ((settings.notify && settings.notify.emails) || []).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).slice(0, 5);
@@ -1869,6 +1870,19 @@ async function fxApi(request, env, ctx) {
 function moneyOf(order) {
   const d = order.display || {};
   return (n) => (d.cur === "syp" && d.rate > 0 ? `${Math.round(Number(n) * d.rate).toLocaleString("en-US")} ل.س جديدة` : `$${Math.round(Number(n) * 100) / 100}`);
+}
+// the products' photos under the order: an album, each photo with its name, quantity and price
+async function sendOrderPhotos(env, order, origin) {
+  const token = String(env.TELEGRAM_BOT_TOKEN).trim(), chat = String(env.TELEGRAM_CHAT_ID).trim(), m = moneyOf(order);
+  const items = (order.items || []).filter((i) => i.image).slice(0, 50);
+  const api = (method, body) => fetch(`https://api.telegram.org/bot${token}/${method}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: chat, ...body }) });
+  const cap = (i) => `${i.name}${i.opt ? " — " + i.opt : ""} × ${i.qty} = ${m(i.price * i.qty)}`.slice(0, 1000);
+  const src = (i) => (/^https?:\/\//.test(i.image) ? i.image : origin + i.image);
+  for (let k = 0; k < items.length; k += 10) {
+    const part = items.slice(k, k + 10);
+    if (part.length === 1) await api("sendPhoto", { photo: src(part[0]), caption: cap(part[0]) });
+    else await api("sendMediaGroup", { media: part.map((i) => ({ type: "photo", media: src(i), caption: cap(i) })) });
+  }
 }
 function orderText(o, origin) {
   const m = moneyOf(o), c = o.customer, dl = o.delivery || {};
