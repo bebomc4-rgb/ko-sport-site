@@ -637,12 +637,12 @@ async function ordersPost(request, env, ctx) {
   })().catch(() => {}));
 
   if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
-    const text = orderText(order, new URL(request.url).origin);
+    const syp = await fxRate(env, ctx, settings).catch(() => 0);
+    const text = orderText(order, new URL(request.url).origin, syp);
     ctx.waitUntil(fetch(`https://api.telegram.org/bot${String(env.TELEGRAM_BOT_TOKEN).trim()}/sendMessage`, {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ chat_id: String(env.TELEGRAM_CHAT_ID).trim(), text }),
     }).catch(() => {}));
-    ctx.waitUntil(sendOrderPhotos(env, order, new URL(request.url).origin).catch(() => {}));
   }
   ctx.waitUntil(pushToAdmins(env, { title: `🛒 طلب جديد ${id}`, body: `${customer.name} — ${customer.governorate || ""} — ${moneyOf(order)(total)}`, url: "/admin", tag: "order-" + id }));
   const mails = ((settings.notify && settings.notify.emails) || []).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).slice(0, 5);
@@ -1871,42 +1871,26 @@ function moneyOf(order) {
   const d = order.display || {};
   return (n) => (d.cur === "syp" && d.rate > 0 ? `${Math.round(Number(n) * d.rate).toLocaleString("en-US")} ل.س جديدة` : `$${Math.round(Number(n) * 100) / 100}`);
 }
-// the products' photos under the order: an album, each photo with its name, quantity and price
-async function sendOrderPhotos(env, order, origin) {
-  const token = String(env.TELEGRAM_BOT_TOKEN).trim(), chat = String(env.TELEGRAM_CHAT_ID).trim(), m = moneyOf(order);
-  const items = (order.items || []).filter((i) => i.image).slice(0, 50);
-  const api = (method, body) => fetch(`https://api.telegram.org/bot${token}/${method}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: chat, ...body }) });
-  const cap = (i) => `${i.name}${i.opt ? " — " + i.opt : ""} × ${i.qty} = ${m(i.price * i.qty)}`.slice(0, 1000);
-  const src = (i) => (/^https?:\/\//.test(i.image) ? i.image : origin + i.image);
-  for (let k = 0; k < items.length; k += 10) {
-    const part = items.slice(k, k + 10);
-    if (part.length === 1) await api("sendPhoto", { photo: src(part[0]), caption: cap(part[0]) });
-    else await api("sendMediaGroup", { media: part.map((i) => ({ type: "photo", media: src(i), caption: cap(i) })) });
-  }
-}
-function orderText(o, origin) {
-  const m = moneyOf(o), c = o.customer, dl = o.delivery || {};
-  const where = dl.carrierId && /yalla/i.test(dl.carrierId) || /يلا/.test(dl.carrier || "")
-    ? `🚚 ${dl.carrier || "يلا غو"} — ${c.governorate}${c.address ? " — " + c.address : ""}`
-    : `🚚 ${[c.governorate, dl.carrier, dl.branch ? (/^فرع/.test(dl.branch) ? "" : "فرع ") + dl.branch + (dl.branchAddress ? " (" + String(dl.branchAddress).replace(/\d[\d-]*\d(?:\s*\/\s*\d[\d-]*\d)*/g, "\u2066$&\u2069") + ")" : "") : "", c.address, c.center && !dl.branch ? c.center : ""].filter(Boolean).join(" — ")}`;
-  const lines = o.items.map((i) => `• ${i.name}${i.opt ? " — " + i.opt : ""} × ${i.qty} = ${m(i.price * i.qty)}`);
-  const afterDisc = Math.max(0, o.subtotal - (o.discount ? o.discount.amount : 0));
+function orderText(o, origin, syp) {
+  const c = o.customer, dl = o.delivery || {}, usd = (n) => `$${Math.round(Number(n) * 100) / 100}`;
+  const sy = (n) => (syp > 0 ? `${Math.round(Number(n) * syp).toLocaleString("en-US")} ل.س` : "");
+  const yg = (dl.carrierId && /yalla/i.test(dl.carrierId)) || /يلا/.test(dl.carrier || "");
+  const company = String(dl.carrier || "").replace(/^شركة\s+/, "").replace(/\s+للشحن$/, "");
+  const branch = String(dl.branch || "").replace(/^فرع\s+/, "");
+  const where = yg ? [dl.carrier || "يلا غو", c.governorate] : [company, c.governorate, branch];
+  const after = Math.max(0, o.subtotal - (o.discount ? o.discount.amount : 0));
+  const items = o.items.map((i) => `• ${i.name}${i.opt ? " — " + i.opt : ""} × ${i.qty}\n${origin}/ar/p/${encodeURIComponent(i.id)}`);
   const tot = [];
-  if (o.discount) tot.push(`🏷 الخصم: ${o.discount.name}${o.discount.code ? " (" + o.discount.code + ")" : ""} −${m(o.discount.amount)}`);
-  if (o.tax && o.tax.amount) tot.push(`${o.tax.label}: ${m(o.tax.amount)}${o.tax.mode === "included" ? " (ضمن السعر)" : ""}`);
-  if (o.delivery.fee == null) tot.push(`💵 المجموع بدون توصيل: ${m(o.total)}`, "التوصيل: بيتحدد عند التأكيد");
-  else if (o.delivery.fee === 0) tot.push(`💵 الإجمالي (التوصيل مجاني): ${m(o.total)}`);
-  else tot.push(`💵 المجموع بدون توصيل: ${m(o.total - o.delivery.fee)}`, `التوصيل: ${m(o.delivery.fee)}`, `💵 الإجمالي مع التوصيل: ${m(o.total)}`);
-  void afterDisc;
-  return [
-    `👤 ${c.name}`,
-    `📞 ${c.phone}`,
-    where,
-    `🛒 الطلب ${o.id}: ${origin}/ar/o/${encodeURIComponent(o.id)}`,
-    ...lines,
-    ...tot,
-    c.notes ? `📝 ملاحظة: ${c.notes}` : "",
-  ].filter(Boolean).join("\n");
+  if (syp > 0) {
+    tot.push(`المجموع قبل الحسم: ${sy(o.subtotal)}`);
+    if (o.discount) tot.push(`المجموع بعد الحسم: ${sy(after)}`);
+  }
+  tot.push(`بالدولار: ${usd(o.subtotal)}${o.discount ? " قبل الحسم، " + usd(after) + " بعد الحسم" : ""}`);
+  if (o.delivery.fee == null) tot.push("التوصيل: بيتحدد عند التأكيد");
+  else if (o.delivery.fee > 0) tot.push(`التوصيل: ${sy(o.delivery.fee) || usd(o.delivery.fee)}`);
+  const head = [c.name, where.filter(Boolean).join(" "), c.phone, c.address ? "📍 " + c.address : "", `🛒 الطلب ${o.id}: ${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
+  const body = [...items, "", ...tot, c.notes ? `📝 ${c.notes}` : ""].filter((x, k, a) => x !== "" || (a[k - 1] !== "" && k < a.length - 1));
+  return [head.join("\n"), body.join("\n")].join("\n\n");
 }
 async function fxRate(env, ctx, settings) {
   const f = settings.fx || {}, margin = f.margin === "" || f.margin == null || isNaN(+f.margin) ? 2 : +f.margin;
