@@ -33,3 +33,16 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
 });
 chrome.runtime.onInstalled.addListener(() => config(true));
 chrome.runtime.onStartup.addListener(() => config(true));
+
+// صفحة المسنجر لازم تضل صاحية: منمنع المتصفح يسكّرها لتوفير الذاكرة، وإذا سكّرها منرجّع نفتحها
+const MSG_URLS = ["https://www.facebook.com/messages/*", "https://web.facebook.com/messages/*", "https://www.messenger.com/*"];
+async function keepAwake() {
+  const cfg = await config();
+  if (!cfg || cfg.error || !cfg.on) return;
+  for (const t of await chrome.tabs.query({ url: MSG_URLS })) {
+    try { if (t.autoDiscardable !== false) await chrome.tabs.update(t.id, { autoDiscardable: false }); } catch {}
+    try { if (t.discarded) await chrome.tabs.reload(t.id); } catch {}
+  }
+}
+chrome.alarms.create("rafiq-awake", { periodInMinutes: 1 });
+chrome.alarms.onAlarm.addListener((a) => { if (a.name === "rafiq-awake") keepAwake(); });

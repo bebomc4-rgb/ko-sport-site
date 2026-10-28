@@ -5,7 +5,7 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const rand = (a, b) => a + Math.random() * Math.max(0, b - a);
   const visible = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
-  let busy = false, lastInput = 0;
+  let busy = 0, lastInput = 0;
   // إنت عم تستعمل الصفحة؟ (كبسات وضغطات حقيقية بس)
   for (const ev of ["keydown", "mousedown", "touchstart", "wheel"]) addEventListener(ev, (e) => { if (e.isTrusted) lastInput = Date.now(); }, true);
 
@@ -108,7 +108,12 @@
   async function saveMem(m) { m.log = (m.log || []).slice(-60); m.times = (m.times || []).filter((t) => Date.now() - t < 3600e3); await chrome.storage.local.set({ mem: m }); }
   function log(m, e) { const entry = { at: Date.now(), ...e }; m.log = m.log || []; m.log.push(entry); try { chrome.runtime.sendMessage({ type: "log", entry }); } catch {} }
   const sigOf = (t) => { const them = t.msgs.filter((x) => x.from === "them"); const l = them[them.length - 1]; return l ? them.length + "|" + l.text.slice(0, 200) : ""; };
-  const ask = (msg) => new Promise((res) => { try { chrome.runtime.sendMessage(msg, (r) => res(r || { ok: false, error: chrome.runtime.lastError ? chrome.runtime.lastError.message : "ما في رد" })); } catch (e) { res({ ok: false, error: String(e.message) }); } });
+  // طلب من الخلفية، وإذا ما إجا جواب خلال دقيقتين منكمّل (مشان ما يعلق البوت)
+  const ask = (msg, ms = 120e3) => new Promise((res) => {
+    const t = setTimeout(() => res({ ok: false, error: "ما إجا رد من المجيب بالوقت" }), ms);
+    try { chrome.runtime.sendMessage(msg, (r) => { clearTimeout(t); res(r || { ok: false, error: chrome.runtime.lastError ? chrome.runtime.lastError.message : "ما في رد" }); }); }
+    catch (e) { clearTimeout(t); res({ ok: false, error: String(e.message) }); }
+  });
   const notify = (title, text, sticky) => { try { chrome.runtime.sendMessage({ type: "notify", title, text, sticky }); } catch {} };
 
   function inHours(cfg) {
@@ -127,8 +132,13 @@
     if (t.group && !cfg.groups) return done("تجاهل: مجموعة");
     if ((th.pausedUntil || 0) > Date.now()) return done("موقّف بهالمحادثة");
     const hour = (th.times || []).filter((x) => Date.now() - x < 3600e3);
-    if (hour.length >= +cfg.perChatHour) return done("وصل حد الردود لهالشخص بالساعة");
-    if ((m.times || []).filter((x) => Date.now() - x < 3600e3).length >= +cfg.perHour) return false; // الحد العام: منرجع بعدين
+    // الحدود: ما منعلّم الرسالة كأنها خلصت، منرجع نرد عليها أول ما يخلص الحد (ومنكتب بالسجل مرة وحدة)
+    const full = hour.length >= +cfg.perChatHour ? "وصل حد الردود لهالشخص بالساعة (" + cfg.perChatHour + ")"
+      : (m.times || []).filter((x) => Date.now() - x < 3600e3).length >= +cfg.perHour ? "وصل حد الردود بالساعة لكل الناس (" + cfg.perHour + ")" : "";
+    if (full) {
+      if (th.limitSig !== sig) { m.threads[t.id] = { ...th, limitSig: sig }; log(m, { name: t.name, text: t.msgs[t.msgs.length - 1].text.slice(0, 120), status: "⏸ " + full + ": رح يرد بعد ما يخلص" }); await saveMem(m); }
+      return false;
+    }
     if (t.draft) return false; // في شي مكتوب بالصندوق (يمكن إنت): ما منلمسو
 
     const r = await ask({ type: "reply", name: t.name, messages: t.msgs.slice(-14).map(({ from, text }) => ({ from, text })) });
@@ -160,11 +170,11 @@
   }
 
   async function tick() {
-    if (busy) return;
+    if (busy && Date.now() - busy < 5 * 60e3) return; // (إذا علق أكتر من 5 دقايق منكمّل)
     const cfg = await ask({ type: "config" });
     if (!cfg || cfg.error || !cfg.on || !inHours(cfg)) return;
     if (cfg.onlyAway && document.hasFocus() && Date.now() - lastInput < 120e3) return; // إنت عم تستعمل المسنجر
-    busy = true;
+    busy = Date.now();
     try {
       const t = readThread();
       if (await handle(cfg, t)) return;
@@ -174,7 +184,7 @@
       u[0].el.click();
       await sleep(3500);
       await handle(cfg, readThread());
-    } catch (e) { /* منكمّل بالدورة الجاية */ } finally { busy = false; }
+    } catch (e) { /* منكمّل بالدورة الجاية */ } finally { busy = 0; }
   }
   setInterval(tick, 6000);
 
