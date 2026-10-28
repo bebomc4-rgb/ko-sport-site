@@ -106,7 +106,7 @@
   // ---------- الذاكرة: شو رد على مين ----------
   async function mem() { const s = await chrome.storage.local.get("mem"); return s.mem || { threads: {}, times: [], log: [] }; }
   async function saveMem(m) { m.log = (m.log || []).slice(-60); m.times = (m.times || []).filter((t) => Date.now() - t < 3600e3); await chrome.storage.local.set({ mem: m }); }
-  function log(m, e) { m.log = m.log || []; m.log.push({ at: Date.now(), ...e }); }
+  function log(m, e) { const entry = { at: Date.now(), ...e }; m.log = m.log || []; m.log.push(entry); try { chrome.runtime.sendMessage({ type: "log", entry }); } catch {} }
   const sigOf = (t) => { const them = t.msgs.filter((x) => x.from === "them"); const l = them[them.length - 1]; return l ? them.length + "|" + l.text.slice(0, 200) : ""; };
   const ask = (msg) => new Promise((res) => { try { chrome.runtime.sendMessage(msg, (r) => res(r || { ok: false, error: chrome.runtime.lastError ? chrome.runtime.lastError.message : "ما في رد" })); } catch (e) { res({ ok: false, error: String(e.message) }); } });
   const notify = (title, text, sticky) => { try { chrome.runtime.sendMessage({ type: "notify", title, text, sticky }); } catch {} };
@@ -125,9 +125,6 @@
     if (!sig || th.sig === sig || (th.retryAt || 0) > Date.now()) return false;
     const done = async (status, extra = {}) => { th.sig = sig; m.threads[t.id] = { ...th, ...extra }; log(m, { name: t.name, text: t.msgs[t.msgs.length - 1].text.slice(0, 120), status, ...(extra.logReply ? { reply: extra.logReply } : {}) }); delete m.threads[t.id].logReply; await saveMem(m); return true; };
     if (t.group && !cfg.groups) return done("تجاهل: مجموعة");
-    const rule = rafiqPerson(cfg, t.name);
-    if (rafiqIgnore(rule)) return done("تجاهل: مكتوب بالإعدادات");
-    if (cfg.scope === "only" && rule == null) return done("تجاهل: مو بقائمة الناس");
     if ((th.pausedUntil || 0) > Date.now()) return done("موقّف بهالمحادثة");
     const hour = (th.times || []).filter((x) => Date.now() - x < 3600e3);
     if (hour.length >= +cfg.perChatHour) return done("وصل حد الردود لهالشخص بالساعة");
@@ -136,6 +133,7 @@
 
     const r = await ask({ type: "reply", name: t.name, messages: t.msgs.slice(-14).map(({ from, text }) => ({ from, text })) });
     if (!r.ok) { m.threads[t.id] = { ...th, retryAt: Date.now() + 90e3 }; log(m, { name: t.name, status: "خطأ: " + r.error }); await saveMem(m); return true; }
+    if (r.skip) return done("تجاهل: " + r.skip);
 
     // استنى شوي متل البني آدم، وتأكد إنو ما تغيّر شي (رسالة جديدة أو انتقلت لمحادثة تانية)
     await sleep(rand(+cfg.delayMin, +cfg.delayMax) * 1000);
@@ -163,8 +161,8 @@
 
   async function tick() {
     if (busy) return;
-    const cfg = await rafiqLoad();
-    if (!cfg.on || !inHours(cfg)) return;
+    const cfg = await ask({ type: "config" });
+    if (!cfg || cfg.error || !cfg.on || !inHours(cfg)) return;
     if (cfg.onlyAway && document.hasFocus() && Date.now() - lastInput < 120e3) return; // إنت عم تستعمل المسنجر
     busy = true;
     try {

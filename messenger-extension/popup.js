@@ -1,23 +1,27 @@
 // رفيق المسنجر — النافذة الصغيرة
 (async () => {
   const $ = (s) => document.querySelector(s);
-  let cfg = await rafiqLoad();
+  const send = (msg) => chrome.runtime.sendMessage(msg);
+  let cfg = await send({ type: "config", fresh: true });
   const paint = () => {
-    $("#on").checked = cfg.on; $("#mode").value = cfg.mode;
-    const s = $("#state");
-    s.textContent = !cfg.on ? "مطفي" : cfg.mode === "send" ? "بيرد لحالو" : "بيكتب بس";
-    s.className = "pill" + (cfg.on ? (cfg.mode === "send" ? " on" : " draft") : "");
+    const err = !cfg || cfg.error, s = $("#state");
+    $("#conn").textContent = err ? "⚠️ " + ((cfg && cfg.error) || "المجيب مو شغّال") + ". شغّل المنصة (RESTART-ALL.vbs)." : "✓ متصل بالمجيب الآلي";
+    $("#on").disabled = $("#mode").disabled = !!err;
+    if (!err) { $("#on").checked = cfg.on; $("#mode").value = cfg.mode; }
+    s.textContent = err ? "مو متصل" : !cfg.on ? "مطفي" : cfg.mode === "send" ? "بيرد لحالو" : "بيكتب بس";
+    s.className = "pill" + (!err && cfg.on ? (cfg.mode === "send" ? " on" : " draft") : "");
   };
   paint();
-  const save = async () => { await rafiqSave(cfg); paint(); };
-  $("#on").onchange = (e) => { cfg.on = e.target.checked; save(); };
-  $("#mode").onchange = (e) => { cfg.mode = e.target.value; save(); };
-  $("#opts").onclick = () => chrome.runtime.openOptionsPage();
+  const toggle = async (change) => { const r = await send({ type: "toggle", change }); if (r && r.ok !== false) cfg = r; paint(); };
+  $("#on").onchange = (e) => toggle({ on: e.target.checked });
+  $("#mode").onchange = (e) => toggle({ mode: e.target.value });
+  $("#opts").onclick = async () => chrome.tabs.create({ url: (await rafiqServer()) + "/#/messenger" });
+  $("#server").value = await rafiqServer();
+  $("#server").onchange = async (e) => { await chrome.storage.local.set({ server: e.target.value.trim() }); cfg = await send({ type: "config", fresh: true }); paint(); };
 
   const URLS = ["https://www.facebook.com/messages/*", "https://web.facebook.com/messages/*", "https://www.messenger.com/*"];
   const tabs = await chrome.tabs.query({ url: URLS });
-  const noKey = !(cfg.gemini.on && cfg.gemini.keys.trim()) && !(cfg.cloudflare.on && cfg.cloudflare.token) && !cfg.local.on;
-  $("#tab").textContent = (tabs.length ? "✓ صفحة المسنجر مفتوحة. خليها مفتوحة (حتى لو بالخلفية) لحتى يشتغل البوت." : "افتح facebook.com/messages وخليها مفتوحة لحتى يشتغل البوت.") + (noKey ? " ⚠️ لسا ما حطيت مفتاح ذكاء اصطناعي بالإعدادات." : "");
+  $("#tab").textContent = tabs.length ? "✓ صفحة المسنجر مفتوحة. خليها مفتوحة (حتى لو بالخلفية)." : "افتح facebook.com/messages وخليها مفتوحة لحتى يشتغل البوت.";
 
   $("#diag").onclick = async () => {
     const out = $("#diagOut"); out.style.display = ""; out.textContent = "عم افحص…";
