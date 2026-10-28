@@ -1,10 +1,10 @@
 // رفيق المسنجر — الإعدادات الافتراضية وبناء تعليمات البوت (مشتركة بين كل أجزاء الإضافة)
 const RAFIQ_DEFAULTS = {
-  on: false,
+  on: true, // جاهز من أول ما تتركّب، بوضع «بيكتب بس»
   mode: "draft", // draft = بيكتب الرد بس وإنت بتبعتو — send = بيبعت لحالو
   // مين إنت وشو البوت بيعرف عنك
   ownerName: "",
-  about: "",
+  about: "عندي متجر KO SPORT للأدوات الرياضية بقدسيا، والموقع ko-sport.online",
   // طريقة الرد
   style: "syrian", // syrian | friendly | formal | funny | custom
   styleCustom: "",
@@ -37,7 +37,7 @@ const RAFIQ_DEFAULTS = {
   order: ["gemini", "cloudflare", "local"],
   gemini: { on: true, keys: "", model: "gemini-flash-lite-latest" },
   cloudflare: { on: false, account: "", token: "", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" },
-  local: { on: false, url: "http://localhost:8080/v1", model: "qwen2.5-7b-instruct" },
+  local: { on: true, url: "http://localhost:8080/v1", model: "qwen2.5-7b-instruct" }, // Qwen يلي على جهازك: بلا مفاتيح
 };
 
 function rafiqMerge(base, over) {
