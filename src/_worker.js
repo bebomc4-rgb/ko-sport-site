@@ -1413,6 +1413,14 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
   let seo = null;
   if (!home && ctx) { try { seo = await pageSeo(request, env, ctx, st); } catch {} }
   if (seo && seo.noindex) rules.push(["head", { element(e) { e.append('<meta name="robots" content="noindex,follow">', { html: true }); } }]);
+  if (seo && seo.og) {
+    const og = seo.og, esc2 = (x) => String(x || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    rules.push(["title", { element(e) { e.setInnerContent(esc2(og.title)); } }],
+      ['meta[property="og:title"]', { element(e) { e.setAttribute("content", esc2(og.title)); } }],
+      ['meta[property="og:description"]', { element(e) { e.setAttribute("content", esc2(og.description)); } }],
+      ['meta[name="description"]', { element(e) { e.setAttribute("content", esc2(og.description)); } }],
+      ['meta[property="og:image"]', { element(e) { if (og.image) e.setAttribute("content", og.image); } }]);
+  }
   else if (seo) {
     const si = seo.image ? abs(seo.image) : img;
     rules.push(
@@ -2055,6 +2063,14 @@ async function pageSeo(request, env, ctx, st) {
   const S = st.store || {}, D = st.design || {}, name = S.name || "KO SPORT";
   const label = (c) => (D.catLabels || {})[c] || c;
   // pages that must not show up in Google
+  if (a === "o" && b) {
+    // the order link in Telegram: a preview with the first product's photo, the number and the total (no name, no phone)
+    const f = await findOrder(env, b).catch(() => null), o = f && f.order;
+    if (!o) return { noindex: true };
+    const first = (o.items || []).find((i) => i.image);
+    const n = (o.items || []).reduce((t, i) => t + (+i.qty || 0), 0);
+    return { noindex: true, og: { title: `طلب ${o.id} — ${S.name || "KO SPORT"}`, description: `${n} قطعة · المجموع $${Math.round(Number(o.total || 0) * 100) / 100}`, image: first ? (/^https?:/.test(first.image) ? first.image : origin + first.image) : "" } };
+  }
   if (["cart", "checkout", "done", "account", "o", "search"].includes(a)) return { noindex: true };
   const data = await seoData(request, env, ctx);
   const list = data.products, cats = new Set(list.flatMap((x) => x.collections));
