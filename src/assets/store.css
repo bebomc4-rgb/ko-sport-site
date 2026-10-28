@@ -1920,14 +1920,15 @@ html[data-theme=dark] .qb-card.on,html[data-theme=dark] .qb-pick.on{border-color
 .qb-pick.one{cursor:default}
 .qb-pick.one:active{transform:none}
 .pay-opt small.co-places{color:var(--c-card-fg);font-weight:600;margin:2px 0 1px}
-/* home page on phones: cart on the left, search on the right */
+/* home page on phones: search button on the left, logo in the middle, menu on the right;
+   below: cart on the left, search bar on the right */
 @media (max-width:640px){
-  body[data-page=home] .top-in{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"menu logo logo" "search search cart";gap:8px 10px;align-items:center}
-  body[data-page=home] .menu-btn{grid-area:menu;justify-self:start}
+  body[data-page=home] .top-in{display:grid;grid-template-columns:44px 1fr 44px;grid-template-areas:"menu logo sbtn" "search search cart";gap:8px 6px;align-items:center}
+  body[data-page=home] .search-btn{grid-area:sbtn;justify-self:start;display:grid}
   body[data-page=home] .logo{grid-area:logo;justify-self:center;margin:0}
+  body[data-page=home] .menu-btn{grid-area:menu;justify-self:end}
+  body[data-page=home] .cart-btn{grid-area:cart;justify-self:start}
   body[data-page=home] .search{grid-area:search;width:100%;max-width:none;order:0}
-  body[data-page=home] .search-btn{display:none}
-  body[data-page=home] .cart-btn{grid-area:cart;justify-self:end}
 }
 /* a list opened over the shop: the page behind stays still */
 html.sheet-lock,html.sheet-lock body{overflow:hidden}
