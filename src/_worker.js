@@ -625,6 +625,10 @@ async function ordersPost(request, env, ctx) {
   };
   await env.STORE.put(orderKey(ts, id), JSON.stringify(order));
   await env.STORE.put(`orderid:${id}`, orderKey(ts, id));
+  // one-time key: the customer's browser draws a picture of the cart and sends it here, we forward it to Telegram
+  const tgOn = !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID);
+  const shot = tgOn ? newKey() : "";
+  if (shot) await env.STORE.put("ordershot:" + id, shot, { expirationTtl: 3600 }).catch(() => {});
   // discount usage + the abandoned cart of this visitor is now an order
   if (disc) ctx.waitUntil((async () => { const u = (await env.STORE.get("disc_used", "json")) || {}; u[disc.id] = (u[disc.id] || 0) + 1; await env.STORE.put("disc_used", JSON.stringify(u)); })().catch(() => {}));
   if (/^[a-z0-9]{8,32}$/.test(body.sid || "")) ctx.waitUntil(env.STORE.delete("cart:" + body.sid).catch(() => {}));
@@ -654,7 +658,7 @@ async function ordersPost(request, env, ctx) {
       body: JSON.stringify({ from: env.MAIL_FROM || `${settings.store.name || "KO SPORT"} <onboarding@resend.dev>`, to: mails, subject: `طلب جديد ${id} — ${settings.currency}${total}`, html }),
     }).catch(() => {}));
   }
-  return json({ ok: true, order }, 201);
+  return json({ ok: true, order, ...(shot ? { shot } : {}) }, 201);
 }
 
 async function ordersGet(request, env) {
@@ -1914,6 +1918,38 @@ async function orderItemsGet(request, env) {
   return json({ id: o.id, createdAt: o.createdAt, items: o.items.map((i) => ({ id: i.id, name: i.name, opt: i.opt, qty: i.qty, price: i.price, image: i.image })), subtotal: o.subtotal, discount: o.discount ? { name: o.discount.name, amount: o.discount.amount } : null, fee: o.delivery ? o.delivery.fee : null, total: o.total, display: o.display || null, status: o.status });
 }
 
+// the picture of the cart (drawn by the customer's browser right after ordering) → a photo under the order message in Telegram
+async function orderShot(request, env, id) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return json({ ok: false });
+  const k = new URL(request.url).searchParams.get("k") || "";
+  const want = /^KO-\d{4}-[A-Z0-9]{4}$/.test(id) ? await env.STORE.get("ordershot:" + id) : null;
+  if (!want || k !== want) return json({ error: "denied" }, 403);
+  if ((+request.headers.get("content-length") || 0) > 4e6) return json({ error: "too big" }, 413);
+  const buf = new Uint8Array(await request.arrayBuffer());
+  const png = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e, jpg = buf[0] === 0xff && buf[1] === 0xd8;
+  if (buf.length > 4e6 || buf.length < 200 || (!png && !jpg)) return json({ error: "bad image" }, 400);
+  await env.STORE.delete("ordershot:" + id); // once per order
+  const fd = new FormData();
+  fd.append("chat_id", String(env.TELEGRAM_CHAT_ID).trim());
+  fd.append("caption", `🛒 سلة الطلب ${id}`);
+  fd.append("photo", new Blob([buf], { type: png ? "image/png" : "image/jpeg" }), png ? "cart.png" : "cart.jpg");
+  const r = await fetch(`https://api.telegram.org/bot${String(env.TELEGRAM_BOT_TOKEN).trim()}/sendPhoto`, { method: "POST", body: fd }).catch(() => null);
+  return json({ ok: !!(r && r.ok) });
+}
+// a product photo of one order, from our own address (so the browser may draw it into the cart picture)
+async function orderThumb(request, env) {
+  const u = new URL(request.url), id = u.searchParams.get("id") || "";
+  if (!/^KO-\d{4}-[A-Z0-9]{4}$/.test(id)) return new Response("", { status: 404 });
+  const f = await findOrder(env, id).catch(() => null);
+  const it = f && (f.order.items || [])[parseInt(u.searchParams.get("i"))];
+  const src = it && it.image ? new URL(it.image, u.origin) : null;
+  if (!src || !/^https?:$/.test(src.protocol)) return new Response("", { status: 404 });
+  const r = await fetch(src.href, { cf: { cacheTtl: 86400, cacheEverything: true } }).catch(() => null);
+  const ct = (r && r.headers.get("content-type")) || "";
+  if (!r || !r.ok || !/^image\//.test(ct)) return new Response("", { status: 404 });
+  return new Response(r.body, { headers: { "content-type": ct, "cache-control": "private, max-age=3600" } });
+}
+
 // ---------- /api/ai/image-edit: edit a product photo with words (Google Gemini «Nano Banana»; needs GEMINI_API_KEY) ----------
 async function aiImageEdit(request, env) {
   if (!isAdmin(request, env)) return denied();
@@ -2579,6 +2615,7 @@ export default {
       }
       if (path === "/api/rate" && (m === "GET" || m === "POST")) return fxApi(request, env, ctx);
       if (path === "/api/order-items" && m === "GET") return orderItemsGet(request, env);
+      if (path === "/api/order-thumb" && m === "GET") return orderThumb(request, env);
       // the dashboard reads through its own addresses: the shop's service worker never touches them,
       // so the owner always edits the real, complete data (never a cached shop copy)
       if (path === "/api/admin/backups" || path === "/api/admin/backups/restore" || path === "/api/admin/backup-download") return backupsApi(request, env, path);
@@ -2598,6 +2635,7 @@ export default {
         if (m === "GET") return ordersGet(request, env);
       } else if (path.startsWith("/api/orders/")) {
         const id = decodeURIComponent(path.slice("/api/orders/".length));
+        if (m === "POST" && id.endsWith("/shot")) return orderShot(request, env, id.slice(0, -5));
         if (m === "PATCH") return orderPatch(request, env, id);
         if (m === "DELETE") return orderDelete(request, env, id);
       } else if (path === "/api/images") {

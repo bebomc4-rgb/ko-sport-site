@@ -1886,6 +1886,7 @@ ${trustH()}
         if (!r.ok) throw new Error(j.error || "صار خطأ");
         cart = []; saveCart(); store.set("ko_sid", "");
         store.set("ko_last_order", j.order);
+        if (j.shot) cartShot(j.order, j.shot).catch(() => {});
         pixel("Purchase", { value: j.order.total, currency: "USD" });
         store.set("ko_orders", [{ id: j.order.id, phone: body.customer.phone, at: j.order.createdAt, total: j.order.total, n: j.order.items.reduce((a, i) => a + i.qty, 0) }, ...store.get("ko_orders", [])].slice(0, 20));
         navTo("#/done/" + encodeURIComponent(j.order.id));
@@ -1908,6 +1909,75 @@ ${trustH()}
       <div class="ob-r sub"><span>التوصيل</span><span>${fee == null ? "بيتحدد عند التأكيد" : fee === 0 ? "مجاني" : m(fee)}</span></div>
       <div class="ob-r tot"><span>الإجمالي</span><b>${m(o.total)}${fee > 0 ? `<small class="tot-split">${m(sub)} + ${m(fee)} توصيل</small>` : ""}</b></div>
     </div>`;
+  }
+  // A picture of the order, like the «done» page, for the shop's Telegram. Drawn here (the browser writes Arabic
+  // properly), the server only forwards it, once, with the one-time key it gave this order.
+  async function cartShot(o, key) {
+    const load = (src) => new Promise((res) => {
+      const im = new Image(), t = setTimeout(() => res(null), 6000);
+      im.onload = () => { clearTimeout(t); res(im); }; im.onerror = () => { clearTimeout(t); res(null); }; im.src = src;
+    });
+    const thumbs = await Promise.all(o.items.map((it, i) => !it.image ? null
+      : load(LOCAL_IMG.test(it.image) ? imgW(it.image, 120) : `/api/order-thumb?id=${encodeURIComponent(o.id)}&i=${i}`)));
+    try { if (document.fonts) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2000))]); } catch {}
+    const m = oMoney(o), dl = o.delivery || {}, fee = dl.fee, disc = o.discount, sub = fee == null ? o.total : o.total - (fee || 0);
+    const W = 600, P = 16, X = 2, R = W - P, L = P, F = getComputedStyle(document.body).fontFamily || "sans-serif";
+    const cv = document.createElement("canvas"), c = cv.getContext("2d");
+    const font = (px, b) => { c.font = `${b ? "700" : "400"} ${px}px ${F}`; };
+    const fit = (t, w) => { t = String(t || ""); if (c.measureText(t).width <= w) return t; while (t.length > 1 && c.measureText(t + "…").width > w) t = t.slice(0, -1); return t + "…"; };
+    const wrap = (t, w, max) => { const out = []; let line = ""; for (const wd of String(t || "").split(/\s+/)) { const nx = line ? line + " " + wd : wd; if (line && c.measureText(nx).width > w) { out.push(line); line = wd; } else line = nx; } if (line) out.push(line); return out.length > max ? [...out.slice(0, max - 1), fit(out.slice(max - 1).join(" "), w)] : out; };
+    const ship = [dl.carrier ? "الشحن: " + dl.carrier : "", dl.branch ? "الفرع: " + dl.branch + (dl.branchAddress ? " — " + dl.branchAddress : "") : ""].filter(Boolean);
+    font(14, true); const shipLines = ship.flatMap((t, i) => (i ? (font(14), wrap(t, R - L - 28, 3)) : [t]));
+    const rowH = 56, rows = [disc ? 1 : 0, 1, 1].reduce((a, b) => a + b, 0);
+    const cardH = 12 + o.items.length * rowH + rows * 34 + 50 + 8;
+    const H = P + 40 + cardH + 24 + 26 + 54 + (shipLines.length ? 20 + shipLines.length * 24 + 24 : 0) + P;
+    cv.width = W * X; cv.height = H * X; c.scale(X, X); c.direction = "rtl"; c.textBaseline = "middle";
+    const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+    const txt = (t, x, y, al, col) => { c.textAlign = al; c.fillStyle = col || "#111"; c.fillText(t, x, y); };
+    const dash = (y) => { c.save(); c.strokeStyle = "#e3e3e3"; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(L + 12, y); c.lineTo(R - 12, y); c.stroke(); c.restore(); };
+    c.fillStyle = "#fff"; c.fillRect(0, 0, W, H);
+    // header: the shop, the order number, the time
+    let y = P + 20;
+    font(20, true); txt(`طلب ${o.id}`, R, y, "right");
+    font(13); txt(new Date(o.createdAt || Date.now()).toLocaleString("ar-SY", { dateStyle: "short", timeStyle: "short" }), L, y, "left", "#777");
+    y += 20;
+    // the card: products, discount, totals
+    const top = y; rr(L, top, R - L, cardH, 14); c.fillStyle = "#f7f7f7"; c.fill(); c.strokeStyle = "#e2e2e2"; c.lineWidth = 1; c.stroke();
+    y = top + 12;
+    // price column as wide as the widest price (pounds are longer than dollars), then the quantity, then the name
+    font(15, true); const pw = Math.max(...o.items.map((it) => c.measureText(m(it.price * it.qty)).width));
+    font(14); const qx = L + 12 + pw + 18 + c.measureText("× 99").width;
+    o.items.forEach((it, i) => {
+      const cy = y + rowH / 2, tx = R - 12, im = thumbs[i];
+      c.save(); rr(tx - 42, cy - 21, 42, 42, 8); c.fillStyle = "#fff"; c.fill(); c.clip();
+      if (im) { const s = Math.max(42 / im.naturalWidth, 42 / im.naturalHeight), w = im.naturalWidth * s, h = im.naturalHeight * s; try { c.drawImage(im, tx - 21 - w / 2, cy - h / 2, w, h); } catch {} }
+      c.restore();
+      font(15, true); txt(`${m(it.price * it.qty)}`, L + 12, cy, "left");
+      font(14); txt(`× ${it.qty}`, qx, cy, "right", "#777");
+      const nw = tx - 42 - 12 - (qx + 14);
+      if (it.opt) { font(15); txt(fit(it.name, nw), tx - 54, cy - 9, "right"); font(12); txt(fit(it.opt, nw), tx - 54, cy + 11, "right", "#777"); }
+      else { font(15); txt(fit(it.name, nw), tx - 54, cy, "right"); }
+      y += rowH;
+    });
+    const line = (a, b, opt = {}) => { dash(y); const cy = y + 17; font(opt.px || 14, opt.bold); txt(a, R - 12, cy, "right", opt.col); font(opt.px || 14, opt.boldVal !== false); txt(b, L + 12, cy, "left", opt.col); y += 34; };
+    if (disc) line("🏷 الحسم: " + disc.name, "−" + m(disc.amount), { col: "#16a34a" });
+    line("المجموع (بدون توصيل)", m(sub));
+    line("التوصيل", fee == null ? "بيتحدد عند التأكيد" : fee === 0 ? "مجاني" : m(fee), { col: "#777", px: 13, boldVal: false });
+    dash(y); font(18, true); txt("الإجمالي", R - 12, y + 25, "right"); txt(m(o.total), L + 12, y + 25, "left");
+    y = top + cardH + 24;
+    // the order number, like on the page
+    font(14); txt("رقم الطلب", W / 2, y + 6, "center", "#333"); y += 26;
+    font(24, true); const nw2 = c.measureText(o.id).width + 36;
+    rr(W / 2 - nw2 / 2, y, nw2, 44, 10); c.fillStyle = "#efefef"; c.fill(); txt(o.id, W / 2, y + 23, "center"); y += 54;
+    // shipping company and branch
+    if (shipLines.length) {
+      y += 20; const bh = shipLines.length * 24 + 16;
+      rr(L, y - 8, R - L, bh, 12); c.fillStyle = "#f1f1f1"; c.fill();
+      shipLines.forEach((t, i) => { font(14, i === 0); txt(t, R - 14, y + 12 + i * 24, "right"); });
+    }
+    const blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.9));
+    if (!blob) return;
+    await fetch(`/api/orders/${encodeURIComponent(o.id)}/shot?k=${encodeURIComponent(key)}`, { method: "POST", headers: { "content-type": "image/jpeg" }, body: blob });
   }
   function done(id) {
     if (window.KOMedia) KOMedia.sfx("success");
