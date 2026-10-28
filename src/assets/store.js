@@ -1151,9 +1151,18 @@
     document.body.appendChild(w);
     requestAnimationFrame(() => w.classList.add("open"));
     w.addEventListener("click", (e) => { if (e.target === w || e.target.closest("[data-sheet-x]")) closeSheet(); });
+    // a swipe on the list scrolls the list only: the page behind does not move
+    document.documentElement.classList.add("sheet-lock");
+    w.addEventListener("touchmove", (e) => { if (!e.target.closest(".sheet")) e.preventDefault(); }, { passive: false });
+    // «فيه أفرع أكتر تحت» while there is more to scroll to
+    const sh = w.querySelector(".sheet"), more = document.createElement("div");
+    more.className = "sheet-more"; more.hidden = true; more.textContent = "⬇ فيه أكتر تحت"; w.appendChild(more);
+    const chk = () => { more.hidden = !(sh.scrollHeight - sh.scrollTop - sh.clientHeight > 24); };
+    sh.addEventListener("scroll", chk, { passive: true }); w._chk = chk;
+    requestAnimationFrame(() => requestAnimationFrame(chk));
     if (bind) bind(w.querySelector(".sheet-body"));
   }
-  function closeSheet() { document.querySelectorAll("[data-sheet]").forEach((x) => x.remove()); }
+  function closeSheet() { document.querySelectorAll("[data-sheet]").forEach((x) => x.remove()); document.documentElement.classList.remove("sheet-lock"); }
 
 
   // ---------- filters: brand, size, colour (read from the product names and options) ----------
@@ -1194,6 +1203,7 @@
       if (st.colors.length) list = list.filter((p) => facetsOf(p).colors.some((x) => st.colors.includes(x)));
       if (st.min !== "") list = list.filter((p) => p.price >= +st.min);
       if (st.max !== "") list = list.filter((p) => p.price <= +st.max);
+      if (st.sort === "default") list = takeTurns(list); // not all the belts together: sections take turns
       if (st.sort === "low") list.sort((a, b) => a.price - b.price);
       else if (st.sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ar"));
       else if (st.sort === "high") list.sort((a, b) => b.price - a.price);
@@ -1658,19 +1668,18 @@ ${trustH()}
     const others = useCarriers ? C.carriers.filter((c) => c !== YG) : [];
     let govs = govList();
     if (!govs.length) govs = govList();
-    const sn = String(saved.name || "").trim().split(/\s+/), n1 = saved.n1 ?? sn[0] ?? "", n2 = saved.n2 ?? (sn.length > 2 ? sn.slice(1, -1).join(" ") : sn.length === 2 ? "" : "") ?? "", n3 = saved.n3 ?? (sn.length > 1 ? sn[sn.length - 1] : "");
+    const fullName = String(saved.name || "").trim();
     app.innerHTML = `<h1 class="page-title">إتمام الطلب</h1><div class="cart-wrap">
       <form class="form" data-checkout novalidate>
         <h3><span class="step">1</span> معلوماتك</h3>
-        <div class="field"><label for="f-n1">الاسم الأول</label><input id="f-n1" name="n1" autocomplete="given-name" value="${esc(n1)}" required><div class="msg"></div></div>
-        <div class="field"><label for="f-n2">اسم الأب</label><input id="f-n2" name="n2" autocomplete="additional-name" value="${esc(n2)}" required><div class="msg"></div></div>
-        <div class="field"><label for="f-n3">الكنية</label><input id="f-n3" name="n3" autocomplete="family-name" value="${esc(n3)}" required><div class="msg"></div></div>
+        <div class="field"><label for="f-name">الاسم الثلاثي (كما في الهوية)</label><input id="f-name" name="fullname" autocomplete="name" value="${esc(fullName)}" placeholder="مثلاً: أحمد محمد الحسن" required><small>لازم تكتب اسمك الثلاثي حصرا</small><div class="msg"></div></div>
         <div class="field"><label for="f-phone">رقم الموبايل</label><input id="f-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx" autocomplete="tel" value="${esc(saved.phone)}" required><div class="msg"></div></div>
         <h3><span class="step">2</span> التوصيل</h3>
         <div class="field" data-gov-field><label for="f-gov">المحافظة</label><select id="f-gov" name="governorate" required><option value="">اختار المحافظة</option>${govs.map((g) => `<option ${saved.governorate === g ? "selected" : ""}>${esc(g)}</option>`).join("")}</select><div class="msg"></div></div>
         ${heavyCart ? `<div class="note heavy-note" data-heavy-note hidden>🏋️ طلبك فيه أغراض تقيلة (أوزان، دامبل، كيس ملاكمة…)، فسعر الشحن بيتحدد عند التأكيد.</div>` : ""}
-        ${useCarriers ? `<div class="field" data-carrier-field hidden><label>شركة الشحن</label><div class="pay-opts" data-carriers></div><div class="msg"></div></div>
+        ${useCarriers ? `<div class="field" data-carrier-field hidden><label>شركة الشحن</label><div class="pay-opts" data-carriers></div><div class="msg"></div><div class="note ship-note" data-ship-note><b>⏱ مدة الشحن من 2 لـ 4 أيام</b> حسب الفرع. منشحن الطلب فور استلامه، والتأخير بيكون من شركة الشحن حسب المحافظة والفرع.</div></div>
         <div class="field" data-branch-field hidden><label data-branch-label>فرع القدموس للشحن</label><select id="f-branch" name="branch" hidden tabindex="-1" aria-hidden="true"></select><button type="button" class="qb-pick" data-branch-pick></button><div class="msg"></div></div>` : ""}
+        ${YG ? `<div class="note ship-note" data-yg-note hidden>🚀 <b>يلا غو داخل دمشق:</b> التوصيل فوري بنفس اليوم.</div>` : ""}
         ${YG ? `<label class="yg-opt" data-yg-card hidden><input type="checkbox" name="yalla" ${saved.yalla ? "checked" : ""}><span class="yg-ic">⚡</span><span><small class="yg-or">أو بدل الشحن بالقدموس:</small><b>توصيل سريع لباب البيت عن طريق يلا غو (ضمن دمشق)</b><small>${esc(YG.note || "اختاره إذا كنت بدمشق، والطلب بيوصل لعندك عالبيت")}</small></span></label>` : ""}
         <div class="field" data-door><label for="f-addr">العنوان (اختياري)</label><input id="f-addr" name="address" placeholder="المنطقة، الشارع، البناء، أقرب نقطة دالة" value="${esc(saved.address)}"><small>إذا بتحب اكتب العنوان أو أقرب نقطة دالة، وإلا منتواصل معك</small><div class="msg"></div></div>
         ${useCarriers ? "" : `<div class="field" data-qadmous><label for="f-center">اسم مركز القدموس</label><input id="f-center" name="center" value="${esc(saved.center)}"><div class="msg"></div></div>`}
@@ -1723,7 +1732,7 @@ ${trustH()}
       cartT = setTimeout(() => {
         const v = Object.fromEntries(new FormData(f)), ph = String(v.phone || "").replace(/\D/g, "");
         if (ph.length < 9) return;
-        const payload = JSON.stringify({ sid, name: [v.n1, v.n2, v.n3].filter(Boolean).join(" "), phone: v.phone, governorate: v.governorate || "", items: lines.map((l) => ({ id: l.id, opt: l.opt, qty: l.qty })) });
+        const payload = JSON.stringify({ sid, name: v.fullname || "", phone: v.phone, governorate: v.governorate || "", items: lines.map((l) => ({ id: l.id, opt: l.opt, qty: l.qty })) });
         if (payload === cartSent) return; cartSent = payload;
         fetch("/api/carts", { method: "POST", headers: { "content-type": "application/json" }, body: payload, keepalive: true }).catch(() => {});
       }, 1500);
@@ -1761,7 +1770,7 @@ ${trustH()}
           closeSheet();
         });
         const q = body.querySelector("[data-qb-q]");
-        if (q) q.addEventListener("input", () => { const t = norm(q.value).trim(); body.querySelectorAll(".qb-card").forEach((el) => (el.hidden = !!t && !norm(el.textContent).includes(t))); });
+        if (q) q.addEventListener("input", () => { const t = norm(q.value).trim(); body.querySelectorAll(".qb-card").forEach((el) => (el.hidden = !!t && !norm(el.textContent).includes(t))); q.closest("[data-sheet]")?._chk?.(); });
       });
     };
     f.addEventListener("click", (e) => { if (e.target.closest("[data-branch-pick]")) openBranches(); });
@@ -1773,6 +1782,7 @@ ${trustH()}
       if (ygc0) ygc0.hidden = true;
       if (f.yalla) { const ck0 = f.querySelector("[name=carrier]:checked"), want = twoWay && !!ck0 && ck0.value === YG.id; if (f.yalla.checked !== want) f.yalla.checked = want; }
       yg = ygOn(); g = govVal(); // (Yalla Go → back to Al-Qadmous: the branch shows again straight away)
+      { const s1 = f.querySelector("[data-ship-note]"), s2 = f.querySelector("[data-yg-note]"); if (s1) s1.hidden = !!yg; if (s2) s2.hidden = !yg; }
       let fee = 0, feeTxt = "اختار المحافظة", door = true, ready = !!g;
       if (useCarriers) {
         const opts = carrierOpts(twoWay ? f.governorate.value : g).filter((c) => c !== YG).concat(twoWay ? [YG] : []), box = f.querySelector("[data-carriers]");
@@ -1840,14 +1850,12 @@ ${trustH()}
       e.preventDefault();
       f.querySelectorAll(".field").forEach((x) => { x.classList.remove("err"); const m = x.querySelector(".msg"); if (m) m.textContent = ""; });
       const v = Object.fromEntries(new FormData(f));
-      v.name = [v.n1, v.n2, v.n3].map((x) => String(x || "").trim()).join(" ").trim();
+      v.name = String(v.fullname || "").trim().replace(/\s+/g, " ");
       if (ygOn()) { v.governorate = govVal(); v.carrier = YG.id; v.branch = ""; }
       const c = curCarrier();
       const door = useCarriers ? !!c && c.type === "door" : (zoneOf(v.governorate) || {}).method === "door";
       const errs = {};
-      if (!String(v.n1 || "").trim()) errs.n1 = "اكتب الاسم الأول";
-      if (!String(v.n2 || "").trim()) errs.n2 = "اكتب اسم الأب";
-      if (!String(v.n3 || "").trim()) errs.n3 = "اكتب الكنية";
+      if (v.name.split(" ").filter(Boolean).length < 3) errs.fullname = "اكتب اسمك الثلاثي كما في الهوية";
       const digits = (v.phone || "").replace(/\D/g, "");
       if (digits.length < 9 || digits.length > 13) errs.phone = digits ? "رقم الموبايل مو صحيح" : "اكتب رقم الموبايل";
       const em = "";
@@ -1864,7 +1872,7 @@ ${trustH()}
         if (errs.branch && Object.keys(errs).length === 1) { f.querySelector("[data-branch-field]").scrollIntoView({ block: "center", behavior: "smooth" }); openBranches(); return; }
         if (first) first.focus(); return;
       }
-      store.set("ko_customer", { name: v.name, n1: v.n1, n2: v.n2, n3: v.n3, yalla: ygOn(), phone: v.phone, email: v.email, altPhone: v.altPhone, postal: v.postal, governorate: v.governorate, address: v.address, center: v.center, carrier: v.carrier, branch: v.branch, payment: v.payment });
+      store.set("ko_customer", { name: v.name, yalla: ygOn(), phone: v.phone, email: v.email, altPhone: v.altPhone, postal: v.postal, governorate: v.governorate, address: v.address, center: v.center, carrier: v.carrier, branch: v.branch, payment: v.payment });
       const btn = $("[data-submit]"); btn.disabled = true; btn.textContent = "جاري الإرسال…";
       const body = {
         customer: { name: v.name.trim(), phone: (v.phone || "").trim(), email: em, altPhone: (v.altPhone || "").trim(), postal: (v.postal || "").trim(), governorate: v.governorate, address: door ? (v.address || "").trim() : "", center: door ? "" : (v.center || "").trim(), notes: (v.notes || "").trim() },
@@ -2056,6 +2064,14 @@ ${trustH()}
   // going back to a page you already saw (e.g. the product list) puts you exactly where you were
   let navK = Date.now() % 1e9, curK = null; const scrollMem = {};
   addEventListener("scroll", () => { if (curK != null) scrollMem[curK] = window.scrollY; }, { passive: true });
+  // one from each section in turn (the order inside each section is kept)
+  function takeTurns(list) {
+    const by = new Map();
+    for (const p of list) { const k = p.category || ""; if (!by.has(k)) by.set(k, []); by.get(k).push(p); }
+    const arrs = [...by.values()], out = [];
+    for (let i = 0, more = true; more; i++) { more = false; for (const a of arrs) if (i < a.length) { out.push(a[i]); more = true; } }
+    return out;
+  }
   function route(e, keepScroll) {
     let hs = history.state; const revisit = !keepScroll && hs && hs.koK != null && scrollMem[hs.koK] != null;
     if (!hs || hs.koK == null) { hs = { ...(hs || {}), koK: ++navK }; try { history.replaceState(hs, ""); } catch {} }

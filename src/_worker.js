@@ -2459,6 +2459,25 @@ async function runMig4(env) {
   mig4Done = true;
 }
 
+// ======================================================================================
+// One-time update (owner, 28 Oct 2026, later): the Al-Qadmous branch in «ضاحية الأسد» is removed.
+// ======================================================================================
+const MIG5_ID = "mig:2026-10-28-c";
+let mig5Done = false;
+async function runMig5(env) {
+  if (mig5Done || !env.STORE) return;
+  if (await env.STORE.get(MIG5_ID)) { mig5Done = true; return; }
+  const raw = await env.STORE.get("settings"); if (!raw) { mig5Done = true; return; }
+  const st = JSON.parse(raw), L = st.shipping && Array.isArray(st.shipping.carriers) ? st.shipping.carriers : [];
+  if (!(await env.STORE.get("bak:pre-" + MIG5_ID + ":settings"))) await env.STORE.put("bak:pre-" + MIG5_ID + ":settings", raw, { metadata: { ts: new Date().toISOString(), why: "pre-fix" } });
+  for (const c of L) for (const g of c.govs || []) if (Array.isArray(g.branches)) g.branches = g.branches.filter((b) => !/ضاحية الأسد/.test(b.name || ""));
+  if ((await env.STORE.get("settings")) !== raw) return;
+  await env.STORE.put("settings", JSON.stringify(st));
+  await env.STORE.put(MIG5_ID, JSON.stringify({ at: new Date().toISOString() }));
+  await purgeEdge("settings");
+  mig5Done = true;
+}
+
 export default {
   async fetch(request, rawEnv, ctx) {
     // Accept the KV binding whatever it was named (STORE, store, KV...).
@@ -2476,6 +2495,7 @@ export default {
     if (migDone && !mig2Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig2(env).catch(() => {}));
     if (migDone && mig2Done && !mig3Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig3(env).catch(() => {}));
     if (migDone && mig2Done && mig3Done && !mig4Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig4(env).catch(() => {}));
+    if (migDone && mig2Done && mig3Done && mig4Done && !mig5Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig5(env).catch(() => {}));
     // the main address ko-sport.online opens the shop at /ar (the app opens that same address)
     if (url.hostname === "ko-sport.online" && path === "/" && m === "GET") {
       return Response.redirect("https://ko-sport.online/ar" + url.search, 301);
