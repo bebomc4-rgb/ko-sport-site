@@ -1879,7 +1879,6 @@ function orderText(o, origin, syp) {
   const branch = String(dl.branch || "").replace(/^فرع\s+/, "");
   const where = yg ? [dl.carrier || "يلا غو", c.governorate] : [company, c.governorate, branch];
   const after = Math.max(0, o.subtotal - (o.discount ? o.discount.amount : 0));
-  const items = o.items.map((i) => `• ${i.name}${i.opt ? " — " + i.opt : ""} × ${i.qty}\n${origin}/ar/p/${encodeURIComponent(i.id)}`);
   const tot = [];
   if (syp > 0) {
     tot.push(`المجموع قبل الحسم: ${sy(o.subtotal)}`);
@@ -1889,7 +1888,7 @@ function orderText(o, origin, syp) {
   if (o.delivery.fee == null) tot.push("التوصيل: بيتحدد عند التأكيد");
   else if (o.delivery.fee > 0) tot.push(`التوصيل: ${sy(o.delivery.fee) || usd(o.delivery.fee)}`);
   const head = [c.name, where.filter(Boolean).join(" "), c.phone, c.address ? "📍 " + c.address : "", `🛒 الطلب ${o.id}: ${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
-  const body = [...items, "", ...tot, c.notes ? `📝 ${c.notes}` : ""].filter((x, k, a) => x !== "" || (a[k - 1] !== "" && k < a.length - 1));
+  const body = [...tot, c.notes ? `📝 ${c.notes}` : ""].filter((x, k, a) => x !== "" || (a[k - 1] !== "" && k < a.length - 1));
   return [head.join("\n"), body.join("\n")].join("\n\n");
 }
 async function fxRate(env, ctx, settings) {
