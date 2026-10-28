@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>إدارة فضفضة</title>
+<link rel="stylesheet" href="/app.css?v=1">
+<style>
+  .wrap{max-width:900px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .stats div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}
+  .stats b{display:block;font-size:24px}
+  .stats small{color:var(--soft)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .tabs button{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:7px 12px;font-weight:700}
+  .tabs button.on{background:var(--brand);color:var(--brand-ink);border-color:transparent}
+  .item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px}
+  .item.done{opacity:.55}
+  .item .meta{font-size:13px;color:var(--soft)}
+  .item .text{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);border-radius:10px;padding:8px 10px}
+  .item .acts{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{display:inline-block;font-size:12px;border-radius:8px;padding:0 6px;background:var(--bad);color:#fff}
+  @media (max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap" id="w"></div>
+<script>
+(() => {
+  const w = document.getElementById("w");
+  let pass = sessionStorage.getItem("ff_admin") || "", tab = "reports";
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const when = (t) => new Date(t).toLocaleString("ar-SY");
+  const api = async (p, body) => {
+    const r = await fetch("/api/admin/" + p, { method: body ? "POST" : "GET", headers: { "content-type": "application/json", "x-admin": pass }, body: body ? JSON.stringify(body) : undefined });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401) { sessionStorage.removeItem("ff_admin"); pass = ""; login(j.error); throw new Error(j.error); }
+    if (!r.ok) throw new Error(j.error || "خطأ");
+    return j;
+  };
+  function login(err) {
+    w.innerHTML = `<div class="card field" style="margin-top:40px"><label>كلمة سر الإدارة</label><input class="in" type="password" id="p" autocomplete="current-password"><div class="err">${esc(err || "")}</div><button class="btn" id="go">دخول</button></div>`;
+    const go = () => { pass = document.getElementById("p").value; sessionStorage.setItem("ff_admin", pass); main(); };
+    document.getElementById("go").onclick = go;
+    document.getElementById("p").onkeydown = (e) => { if (e.key === "Enter") go(); };
+  }
+  async function act(body, msg) { try { await api("act", body); main(); } catch (e) { alert(e.message); } }
+  window.ffAct = (a, uid, id, ip) => {
+    if (a === "ban" && !confirm("إيقاف هالحساب؟" + (ip ? " (ومنع جهازو يفتح حساب جديد)" : ""))) return;
+    act({ act: a, uid, id, ip: !!ip });
+  };
+  async function main() {
+    if (!pass) return login();
+    let st;
+    try { st = await api("stats"); } catch (e) { return; }
+    const rooms = [["general", "العامة"], ["vent", "فضفضة"], ["sport", "رياضة"], ["youth", "شباب وصبايا"]];
+    w.innerHTML = `<div class="top" style="position:static;padding:0;border:0"><h2>إدارة فضفضة</h2><button class="btn small ghost" id="out">خروج</button></div>
+      <div class="stats"><div><b>${st.users}</b><small>حساب</small></div><div><b>${st.active}</b><small>نشيط اليوم</small></div><div><b>${st.msgs}</b><small>رسالة اليوم</small></div><div><b>${st.reports}</b><small>تبليغ مفتوح</small></div></div>
+      <div class="tabs"><button data-t="reports" class="${tab === "reports" ? "on" : ""}">التبليغات</button>${rooms.map(([id, n]) => `<button data-t="${id}" class="${tab === id ? "on" : ""}">غرفة ${n}</button>`).join("")}</div>
+      <div id="list" class="list"><div class="empty">جاري التحميل…</div></div>`;
+    document.getElementById("out").onclick = () => { sessionStorage.removeItem("ff_admin"); pass = ""; login(); };
+    w.querySelectorAll("[data-t]").forEach((b) => (b.onclick = () => { tab = b.dataset.t; main(); }));
+    const list = document.getElementById("list");
+    if (tab === "reports") {
+      const rs = await api("reports");
+      list.innerHTML = rs.length ? rs.map((r) => `<div class="item ${r.done ? "done" : ""}">
+        <div class="meta">🚩 ${esc(r.reason || "بلا سبب")} · من ${esc(r.pname || "؟")} · ${when(r.at)}${r.room ? " · " + esc(r.room) : ""}</div>
+        <div><b>${esc(r.tname || "؟")}</b> <small class="meta">#${esc((r.target || "").slice(-4))}</small> ${r.banned ? '<span class="tag">موقوف</span>' : ""}</div>
+        ${r.text ? `<div class="text">${esc(r.text)}${r.del ? " <small class=meta>(انمحت)</small>" : ""}</div>` : ""}
+        <div class="acts">
+          ${r.msg && !r.del ? `<button class="btn small ghost" onclick="ffAct('delmsg',null,${r.msg})">امحي الرسالة</button>` : ""}
+          ${r.banned ? `<button class="btn small ghost" onclick="ffAct('unban','${esc(r.target)}')">رجّع الحساب</button>`
+            : `<button class="btn small danger" onclick="ffAct('ban','${esc(r.target)}')">أوقف الحساب</button><button class="btn small danger" onclick="ffAct('ban','${esc(r.target)}',0,1)">أوقف الحساب والجهاز</button>`}
+          ${r.done ? "" : `<button class="btn small" onclick="ffAct('done',null,${r.id})">تمت المعالجة</button>`}
+        </div></div>`).join("") : '<div class="empty">ما في تبليغات 👌</div>';
+    } else {
+      const ms = await api("msgs?room=" + tab);
+      list.innerHTML = ms.length ? ms.map((m) => `<div class="item ${m.del ? "done" : ""}">
+        <div class="meta"><b>${esc(m.name)}</b> #${esc(m.uid.slice(-4))} · ${when(m.at)} ${m.banned ? '<span class="tag">موقوف</span>' : ""}</div>
+        <div class="text">${esc(m.text)}</div>
+        <div class="acts">${m.del ? "" : `<button class="btn small ghost" onclick="ffAct('delmsg',null,${m.id})">امحي</button>`}
+          ${m.banned ? `<button class="btn small ghost" onclick="ffAct('unban','${esc(m.uid)}')">رجّع الحساب</button>` : `<button class="btn small danger" onclick="ffAct('ban','${esc(m.uid)}')">أوقف</button>`}</div></div>`).join("") : '<div class="empty">ما في رسائل</div>';
+    }
+  }
+  main();
+})();
+</script>
+</body>
+</html>
