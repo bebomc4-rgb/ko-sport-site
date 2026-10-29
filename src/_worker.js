@@ -2580,6 +2580,74 @@ async function runMig6(env) {
   mig6Done = true;
 }
 
+// ======================================================================================
+// Al-Qadmous branches follow the company's own list (owner, 29 Oct 2026): their site loads it from
+// https://www.alkadmous.com/branches_final.json. It is checked every 3 hours; any branch added, removed or changed
+// goes onto the shop straight away (fees kept), and the owner gets a Telegram message saying what changed.
+// A failed, broken or tiny answer changes nothing. Quneitra and the governorates other companies serve are skipped.
+// ======================================================================================
+const QD_SRC = "https://www.alkadmous.com/branches_final.json";
+const QD_EVERY = 3 * 3600e3;
+const QD_SKIP = ["القنيطرة", "الحسكة", "دير الزور", "الرقة", "إدلب"];
+const QD_GOV = { "دمشق": "دمشق وريفها", "ريف دمشق": "دمشق وريفها", "حماه": "حماة" };
+const QD_FIX = [[/السليمانيه/g, "السليمانية"], [/محرده/g, "محردة"], [/^سقيلبية/, "السقيلبية"], [/اشرفية/g, "أشرفية"], [/الاوقاف/g, "الأوقاف"], [/بوظة امية/g, "بوظة أمية"], [/اوتوستراد/g, "أوتوستراد"], [/(^|\s)اول(?=\s)/g, "$1أول"], [/دير عطيه/g, "دير عطية"], [/دورا الكهرباء/g, "دوار الكهرباء"]];
+let qdLocalAt = 0;
+const qdFix = (s) => QD_FIX.reduce((t, [a, b]) => t.replace(a, b), String(s || "").replace(/\s+/g, " ").trim());
+function qdParse(list) {
+  const out = {};
+  for (const b of list) {
+    if (!b || !b.name || !b.city) continue;
+    const city = String(b.city).trim(), gov = QD_GOV[city] || city;
+    let n = qdFix(String(b.name).replace(/^(دمشق|اللاذقية|طرطوس|حمص|حماه|حماة|حلب|درعا|السويداء)\s*-?\s*/, "")) || qdFix(b.name);
+    if (!/^(مكتب|المكتب|محطة|فرع)/.test(n)) n = "فرع " + n;
+    let a = qdFix(String(b.address || "").replace(/\s*[–-]\s*/g, " - "));
+    const ph = String(b.phone || "").replace(/\D/g, "");
+    if (ph) a = (a ? a + " · " : "") + "📞 " + ph;
+    const L = (out[gov] = out[gov] || []);
+    let name = n, k = 2; while (L.some((x) => x.name === name)) name = n + " " + k++;
+    L.push({ name, address: a });
+  }
+  return out;
+}
+async function qdSync(env) {
+  if (!env.STORE || Date.now() - qdLocalAt < 10 * 60e3) return;
+  qdLocalAt = Date.now();
+  if (Date.now() - (Number(await env.STORE.get("qdsync:at")) || 0) < QD_EVERY) return;
+  await env.STORE.put("qdsync:at", String(Date.now()));
+  const r = await fetch(QD_SRC, { headers: { accept: "application/json", "user-agent": "Mozilla/5.0 (KO SPORT branches sync)" } });
+  const list = r.ok ? await r.json().catch(() => null) : null;
+  if (!Array.isArray(list) || list.length < 20) { await env.STORE.put("qdsync:last", JSON.stringify({ at: new Date().toISOString(), ok: false, status: r.status })); return; }
+  const next = qdParse(list);
+  for (const g of QD_SKIP) delete next[g];
+  if (Object.values(next).flat().length < 20) return;
+  const raw = await env.STORE.get("settings"); if (!raw) return;
+  const st = JSON.parse(raw), qd = st.shipping && Array.isArray(st.shipping.carriers) && st.shipping.carriers.find((c) => c.id === "qadmous");
+  if (!qd) return;
+  const before = {}; for (const g of qd.govs || []) before[g.name] = g.branches || [];
+  const added = [], removed = [], changed = [];
+  for (const [gov, L] of Object.entries(next)) {
+    const old = before[gov] || [];
+    for (const b of L) { const o = old.find((x) => x.name === b.name); if (!o) added.push(gov + " · " + b.name); else if (o.address !== b.address) changed.push(gov + " · " + b.name + ": " + b.address); }
+    for (const o of old) if (!L.some((b) => b.name === o.name)) removed.push(gov + " · " + o.name);
+  }
+  for (const [gov, old] of Object.entries(before)) if (!next[gov]) for (const o of old) removed.push(gov + " · " + o.name);
+  await env.STORE.put("qdsync:last", JSON.stringify({ at: new Date().toISOString(), ok: true, count: Object.values(next).flat().length, added: added.length, removed: removed.length, changed: changed.length }));
+  if (!added.length && !removed.length && !changed.length) return;
+  await env.STORE.put("bak:qdsync-" + new Date().toISOString().slice(0, 16) + ":settings", raw, { metadata: { ts: new Date().toISOString(), why: "pre-qdsync" } });
+  qd.govs = Object.entries(next).map(([name, branches]) => ({ ...((qd.govs || []).find((g) => g.name === name) || { name, fee: null }), branches }));
+  if ((await env.STORE.get("settings")) !== raw) { await env.STORE.delete("qdsync:at"); return; } // saved meanwhile: next visit tries again
+  await env.STORE.put("settings", JSON.stringify(st));
+  await purgeEdge("settings");
+  if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
+    const part = (t, L) => (L.length ? `${t} (${L.length}):\n${L.map((x) => "• " + x).join("\n")}\n\n` : "");
+    const text = ("🔄 فروع القدموس تحدّثت حسب موقعهم:\n\n" + part("➕ انضاف", added) + part("➖ انحذف", removed) + part("✏️ تغيّر العنوان أو الرقم", changed)).slice(0, 3900);
+    await fetch(`https://api.telegram.org/bot${String(env.TELEGRAM_BOT_TOKEN).trim()}/sendMessage`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: String(env.TELEGRAM_CHAT_ID).trim(), text, link_preview_options: { is_disabled: true } }),
+    }).catch(() => {});
+  }
+}
+
 export default {
   async fetch(request, rawEnv, ctx) {
     // Accept the KV binding whatever it was named (STORE, store, KV...).
@@ -2599,6 +2667,7 @@ export default {
     if (migDone && mig2Done && mig3Done && !mig4Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig4(env).catch(() => {}));
     if (migDone && mig2Done && mig3Done && mig4Done && !mig5Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig5(env).catch(() => {}));
     if (migDone && mig2Done && mig3Done && mig4Done && mig5Done && !mig6Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig6(env).catch(() => {}));
+    if (mig6Done && env.STORE && ctx && ctx.waitUntil && Date.now() - qdLocalAt > 10 * 60e3) ctx.waitUntil(qdSync(env).catch(() => {}));
     // the main address ko-sport.online opens the shop at /ar (the app opens that same address)
     if (url.hostname === "ko-sport.online" && path === "/" && m === "GET") {
       return Response.redirect("https://ko-sport.online/ar" + url.search, 301);
