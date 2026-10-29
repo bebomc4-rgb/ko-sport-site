@@ -2582,13 +2582,13 @@ async function runMig6(env) {
 
 // ======================================================================================
 // Al-Qadmous branches follow the company's own list (owner, 29 Oct 2026): their site loads it from
-// https://www.alkadmous.com/branches_final.json. It is checked every 3 hours; any branch added, removed or changed
+// https://www.alkadmous.com/branches_final.json. It is checked once a day; any branch added, removed or changed
 // goes onto the shop straight away (fees kept), and the owner gets a Telegram message saying what changed.
-// A failed, broken or tiny answer changes nothing. Quneitra and the governorates other companies serve are skipped.
+// A failed, broken or tiny answer changes nothing. Branches in a new governorate are added too (owner, 29 Oct); Quneitra is skipped.
 // ======================================================================================
 const QD_SRC = "https://www.alkadmous.com/branches_final.json";
-const QD_EVERY = 3 * 3600e3;
-const QD_SKIP = ["القنيطرة", "الحسكة", "دير الزور", "الرقة", "إدلب"];
+const QD_EVERY = 24 * 3600e3;
+const QD_SKIP = ["القنيطرة"]; // (no shipping to Quneitra; any other new governorate is added)
 const QD_GOV = { "دمشق": "دمشق وريفها", "ريف دمشق": "دمشق وريفها", "حماه": "حماة" };
 const QD_FIX = [[/السليمانيه/g, "السليمانية"], [/محرده/g, "محردة"], [/^سقيلبية/, "السقيلبية"], [/اشرفية/g, "أشرفية"], [/الاوقاف/g, "الأوقاف"], [/بوظة امية/g, "بوظة أمية"], [/اوتوستراد/g, "أوتوستراد"], [/(^|\s)اول(?=\s)/g, "$1أول"], [/دير عطيه/g, "دير عطية"], [/دورا الكهرباء/g, "دوار الكهرباء"]];
 let qdLocalAt = 0;
