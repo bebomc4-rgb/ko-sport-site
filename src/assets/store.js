@@ -503,7 +503,7 @@
     // a plain badge text stays on the photo; a discount sits next to the price; sold-out shows «خالصة» and no discount
     const cb = S.design.cardBadge || "", isDiscText = /[%٪]/.test(cb) || !!discBadge(p);
     const promo = p.inStock && cb && !isDiscText ? `<span class="promo">${ICON.ticket}${esc(cb)}</span>` : "";
-    return `<article class="card${p.inStock ? "" : " out"}">
+    return `<article class="card${p.inStock ? "" : " out"}" data-pid="${esc(p.id)}">
       ${promo}
       <a class="pic" href="#/p/${encodeURIComponent(p.id)}"><img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(p.thumb || p.image, 540))}"${imgSet(p.thumb || p.image, [360, 540, 640, 800], "(max-width:640px) 86vw, 340px")} alt="${esc(p.name)}">${p.inStock ? "" : '<span class="out-stamp">خالص</span>'}</a>
       <div class="body">
@@ -2149,6 +2149,11 @@ ${trustH()}
     const h = curRoute();
     let [, a, b] = h.split("/");
     const sticky = $("[data-sticky]"); if (sticky) sticky.hidden = true;
+    // redraw of the same page (fresh data arrived), or the first draw over the page the server already sent
+    // (you may have scrolled it while the shop was starting): stay where you are, and hold the page height meanwhile
+    if (!route.n) keepScroll = true;
+    const keepY = keepScroll ? window.scrollY : null;
+    if (keepY) app.style.minHeight = app.offsetHeight + "px";
     // jump to the top BEFORE the new page is drawn (instantly, even if smooth scrolling is on), so it opens in place
     if (!keepScroll && !revisit) toTop();
     document.body.classList.remove("has-sticky"); closeSheet();
@@ -2181,6 +2186,12 @@ ${trustH()}
     else home();
     if (revisit) { const y = scrollMem[hs.koK], de = document.documentElement.style; de.setProperty("scroll-behavior", "auto", "important"); window.scrollTo(0, y); requestAnimationFrame(() => { window.scrollTo(0, y); de.removeProperty("scroll-behavior"); }); }
     else if (!keepScroll && window.scrollY) toTop();
+    if (keepY) {
+      const de = document.documentElement.style; de.setProperty("scroll-behavior", "auto", "important");
+      if (Math.abs(window.scrollY - keepY) > 2) window.scrollTo(0, keepY);
+      requestAnimationFrame(() => { if (Math.abs(window.scrollY - keepY) > 2) window.scrollTo(0, keepY); de.removeProperty("scroll-behavior"); });
+      clearTimeout(route.mh); route.mh = setTimeout(() => { app.style.minHeight = ""; }, 3000);
+    }
     curK = hs.koK;
     closeMenu();
     if (!route.o && window.KOFx) { route.o = 1; KOFx.open(); }
@@ -2425,6 +2436,14 @@ ${trustH()}
     if (q) navTo("#/search/" + encodeURIComponent(q));
   });
   window.addEventListener("hashchange", route);
+  // the whole product card opens the product (not only the photo or the name); buttons and links keep their own job
+  document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const c = e.target.closest && e.target.closest(".card[data-pid]");
+    if (!c || e.target.closest("a, button, input, select, textarea, label")) return;
+    try { if (String(getSelection()).length) return; } catch {}
+    navTo("#/p/" + encodeURIComponent(c.dataset.pid));
+  });
 
   // ---------- full-screen photo viewer: swipe between photos, pinch / double-tap to zoom the photo only ----------
   function openViewer(pics, start, name) {
