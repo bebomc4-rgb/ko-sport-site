@@ -1427,6 +1427,8 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
   // deeper pages: their own title / description / link / structured data / readable content for search engines
   let seo = null;
   if (!home && ctx) { try { seo = await pageSeo(request, env, ctx, st); } catch {} }
+  // a removed product / section / page: send people (and Google) to the main shop instead of an empty «not available» page
+  if (seo && seo.gone && request.method === "GET") return Response.redirect(origin + "/ar", 301);
   if (seo && seo.noindex) rules.push(["head", { element(e) { e.append('<meta name="robots" content="noindex,follow">', { html: true }); } }]);
   if (seo && seo.og) {
     const og = seo.og, esc2 = (x) => String(x || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -2148,7 +2150,7 @@ async function pageSeo(request, env, ctx, st) {
 
   if (a === "p" && b) {
     const x = list.find((y) => y.id === b);
-    if (!x) return { noindex: true };
+    if (!x) return list.length ? { gone: true } : { noindex: true };
     const c = x.category, cu = origin + "/ar/c/" + encodeURIComponent(catSlugOf(st, c));
     const canon = origin + "/ar/p/" + encodeURIComponent(x.id);
     const price = `$${x.price_usd}${x.price_syp ? ` (${SYP(x.price_syp)} ل.س)` : ""}`;
@@ -2184,11 +2186,11 @@ ${same.length ? `<h2>منتجات مشابهة</h2><ul>${same.map(cardHtml).join
       t = label(c); cu = origin + "/ar/c/" + encodeURIComponent(catSlugOf(st, c));
     } else {
       const g = (D.groups || []).find((y) => y.name === b);
-      if (!g) return { noindex: true };
+      if (!g) return list.length ? { gone: true } : { noindex: true };
       items = list.filter((y) => g.cats.some((c) => y.collections.includes(c)));
       t = g.name; cu = origin + "/ar/g/" + encodeURIComponent(g.name);
     }
-    if (!items.length) return { noindex: true };
+    if (!items.length) return list.length ? { gone: true } : { noindex: true };
     items = items.slice().sort((x, y) => (y.in_stock - x.in_stock));
     const lo = Math.min(...items.map((y) => y.price_usd));
     const title = seoCut(mt.seoTitle || `${t} بسوريا — أسعار وتوصيل | ${name}`, 70);
@@ -2210,10 +2212,10 @@ ${same.length ? `<h2>منتجات مشابهة</h2><ul>${same.map(cardHtml).join
   if (a === "page" && b) {
     const pg = (Array.isArray(st.pages) ? st.pages : []).find((y) => y.slug === b && y.on !== false);
     const t = pg ? pg.title : "";
-    if (!t) return null;
+    if (!t) return { gone: true };
     return { title: seoCut(`${t} | ${name}`, 70), desc: seoCut(seoPlain(pg.body || pg.content || t), 158), canon: origin + "/ar/page/" + encodeURIComponent(b), type: "article" };
   }
-  return null;
+  return { noindex: true }; // any other deep page (games…) stays out of Google, so Google's extra links always lead to real pages
 }
 
 // a product link that shows the photo, name and price when pasted in WhatsApp, then opens the product
