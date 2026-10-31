@@ -840,6 +840,14 @@ async function acctFromReq(request, env) {
 const acctOut = (a) => ({ name: a.name, phone: a.phone, governorate: a.governorate, at: a.at });
 // WhatsApp code: the site signs the request (ECDSA P-256, private key kept in KV), K FAST AI checks it with /api/acct/otp-key
 const OTP_SENDER = "https://k-fast-ai.pages.dev/api/otp/ko";
+// the workers.dev address switches to the phone a few seconds faster than pages.dev when the PC goes down: try it first
+const OTP_HOSTS = ["https://k-fast-ai.sfa7al3asme.workers.dev", "https://k-fast-ai.pages.dev"];
+async function botPost(path, body, ms) {
+  for (const h of OTP_HOSTS) {
+    try { const r = await fetch(h + path, { method: "POST", headers: { "content-type": "application/json" }, body, signal: AbortSignal.timeout(ms) }); if (r.ok) return r; if (r.status < 500) return r; } catch {}
+  }
+  return null;
+}
 async function otpKeys(env) {
   if (env.__otpk) return env.__otpk;
   let k = await env.STORE.get("acct:otpkey", "json");
@@ -855,8 +863,8 @@ async function sendOtp(env, phone, code) {
   const key = await crypto.subtle.importKey("jwk", k.priv, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`${phone}|${code}|${ts}|${nonce}`)));
   try {
-    const r = await fetch(OTP_SENDER, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone, code, ts, nonce, sig }), signal: AbortSignal.timeout(12000) });
-    return r.ok;
+    const r = await botPost("/api/otp/ko", JSON.stringify({ phone, code, ts, nonce, sig }), 6000);
+    return !!(r && r.ok);
   } catch { return false; }
 }
 const otpHash = async (env, phone, code) => hmac(env, "otp|" + phone + "|" + code);
@@ -866,8 +874,8 @@ async function botCall(env, kind, t) {
   const key = await crypto.subtle.importKey("jwk", k.priv, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`${kind}|${t}|${ts}|${nonce}`)));
   try {
-    const r = await fetch(OTP_SENDER.replace(/\/ko$/, "/ko-" + kind), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t, ts, nonce, sig }), signal: AbortSignal.timeout(10000) });
-    return r.ok ? await r.json() : null;
+    const r = await botPost("/api/otp/ko-" + kind, JSON.stringify({ t, ts, nonce, sig }), 5000);
+    return r && r.ok ? await r.json() : null;
   } catch { return null; }
 }
 
