@@ -1657,12 +1657,58 @@
             if (j.field && f[j.field]) show(j.field, esc(j.error)); else toast(esc(j.error || "صار خطأ، جرّب كمان مرة"));
             return;
           }
+          if (j.otp) { codeStep(ph, { name: v.name, phone: ph, governorate: v.governorate, password: v.password }); return; }
+          done(j);
+        } catch (err) { btn.disabled = false; btn.textContent = lbl; toast("ما في اتصال، جرّب كمان مرة"); }
+      });
+    };
+    const done = (j) => {
           acctSet(j);
           const old = store.get("ko_customer", {}) || {};
           store.set("ko_customer", { ...old, name: j.account.name, phone: j.account.phone, governorate: old.governorate || j.account.governorate });
           toast(tab === "reg" ? "✓ انعمل حسابك" : "✓ أهلين " + esc(j.account.name.split(" ")[0]));
           next();
-        } catch (err) { btn.disabled = false; btn.textContent = lbl; toast("ما في اتصال، جرّب كمان مرة"); }
+    };
+    // step 2 of sign-up: the 6-digit code that arrived on WhatsApp
+    const codeStep = (ph, reg) => {
+      let left = 60, timer = 0;
+      app.innerHTML = `<div class="auth"><h1 class="page-title">تأكيد الرقم</h1>
+        <p class="auth-why">بعتنالك كود من 6 أرقام على <b>الواتساب</b> على الرقم <b dir="ltr">${esc(ph)}</b> من رقم المتجر. اكتبو هون:</p>
+        <form class="form auth-form" data-code novalidate>
+          <div class="field"><label for="a-code">كود التأكيد</label><input id="a-code" name="code" class="otp-in" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" placeholder="••••••" required><div class="msg"></div></div>
+          <button class="btn btn-red" data-code-go>تأكيد وكمّل</button>
+          <small class="auth-note"><button type="button" class="link-btn" data-resend disabled>إعادة الإرسال (60)</button> · <button type="button" class="link-btn" data-edit>تعديل الرقم</button></small>
+        </form></div>`;
+      const f = app.querySelector("[data-code]"), rs = app.querySelector("[data-resend]");
+      const tick = () => { left--; if (!app.contains(rs)) return clearInterval(timer); rs.disabled = left > 0; rs.textContent = left > 0 ? `إعادة الإرسال (${left})` : "إعادة الإرسال"; if (left <= 0) clearInterval(timer); };
+      timer = setInterval(tick, 1000);
+      f.code.focus();
+      f.code.addEventListener("input", () => { f.code.value = f.code.value.replace(/[٠-٩]/g, (x) => "٠١٢٣٤٥٦٧٨٩".indexOf(x)).replace(/\D/g, "").slice(0, 6); if (f.code.value.length === 6) f.requestSubmit(); });
+      app.onclick = async (e) => {
+        if (e.target.closest("[data-edit]")) { clearInterval(timer); tab = "reg"; draw(); const ff = app.querySelector("[data-auth]"); ff.name.value = reg.name; ff.phone.value = ph; ff.governorate.value = reg.governorate; ff.phone.focus(); return; }
+        if (e.target.closest("[data-resend]") && !rs.disabled) {
+          rs.disabled = true;
+          const r = await fetch("/api/acct/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(reg) }).catch(() => null);
+          const j = r ? await r.json().catch(() => ({})) : {};
+          if (r && r.ok && j.token) return done(j);
+          toast(r && r.ok ? "✓ بعتنالك كود جديد" : esc(j.error || "ما قدرنا نبعت، جرّب كمان شوي"));
+          left = 60; clearInterval(timer); timer = setInterval(tick, 1000);
+        }
+      };
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fl = f.code.closest(".field"), msg = fl.querySelector(".msg"); fl.classList.remove("err"); msg.textContent = "";
+        if (!/^\d{6}$/.test(f.code.value)) { fl.classList.add("err"); msg.textContent = "الكود 6 أرقام"; return; }
+        const btn = f.querySelector("[data-code-go]"); btn.disabled = true; btn.textContent = "لحظة…";
+        try {
+          const r = await fetch("/api/acct/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone: ph, code: f.code.value }) });
+          const j = await r.json().catch(() => ({}));
+          if (r.ok && j.token) { clearInterval(timer); return done(j); }
+          btn.disabled = false; btn.textContent = "تأكيد وكمّل";
+          if (j.exists) { clearInterval(timer); tab = "login"; draw(); app.querySelector("[data-auth]").phone.value = ph; return; }
+          fl.classList.add("err"); msg.textContent = j.error || "صار خطأ"; f.code.select();
+          if (j.expired) { rs.disabled = false; left = 0; rs.textContent = "اطلب كود جديد"; }
+        } catch { btn.disabled = false; btn.textContent = "تأكيد وكمّل"; toast("ما في اتصال، جرّب كمان مرة"); }
       });
     };
     draw(); window.scrollTo(0, 0);

@@ -838,6 +838,29 @@ async function acctFromReq(request, env) {
   return a && !a.blocked && a.hash.slice(0, 8) === pv ? a : null;
 }
 const acctOut = (a) => ({ name: a.name, phone: a.phone, governorate: a.governorate, at: a.at });
+// WhatsApp code: the site signs the request (ECDSA P-256, private key kept in KV), K FAST AI checks it with /api/acct/otp-key
+const OTP_SENDER = "https://k-fast-ai.pages.dev/api/otp/ko";
+async function otpKeys(env) {
+  if (env.__otpk) return env.__otpk;
+  let k = await env.STORE.get("acct:otpkey", "json");
+  if (!k) {
+    const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    k = { priv: await crypto.subtle.exportKey("jwk", kp.privateKey), pub: await crypto.subtle.exportKey("jwk", kp.publicKey) };
+    await env.STORE.put("acct:otpkey", JSON.stringify(k));
+  }
+  return (env.__otpk = k);
+}
+async function sendOtp(env, phone, code) {
+  const k = await otpKeys(env), ts = Date.now(), nonce = b64u(crypto.getRandomValues(new Uint8Array(12)));
+  const key = await crypto.subtle.importKey("jwk", k.priv, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`${phone}|${code}|${ts}|${nonce}`)));
+  try {
+    const r = await fetch(OTP_SENDER, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone, code, ts, nonce, sig }), signal: AbortSignal.timeout(12000) });
+    return r.ok;
+  } catch { return false; }
+}
+const otpHash = async (env, phone, code) => hmac(env, "otp|" + phone + "|" + code);
+
 async function acctApi(request, env, path, m) {
   if (!env.STORE) return json({ error: "الحسابات مو متاحة هلق" }, 503);
   if (path === "/api/acct/me") {
@@ -852,24 +875,54 @@ async function acctApi(request, env, path, m) {
     }
     return json({ error: "Method not allowed" }, 405);
   }
+  if (path === "/api/acct/otp-key" && m === "GET") return json({ jwk: (await otpKeys(env)).pub });
   if (m !== "POST") return json({ error: "Method not allowed" }, 405);
   const b = await request.json().catch(() => ({}));
   const phone = syPhone(b.phone), pw = String(b.password || "");
   if (!phone) return json({ error: "اكتب رقم موبايل سوري صحيح (09xxxxxxxx)", field: "phone" }, 400);
   const failK = "acct:fail:" + phone, fails = +(await env.STORE.get(failK)) || 0;
   if (fails >= 8) return json({ error: "محاولات كتير، جرّب بعد ربع ساعة" }, 429);
+  // the account is created only after the WhatsApp code is typed (proves the number is really theirs)
+  const makeAcct = async (pend, verified) => {
+    const a = { name: pend.name, phone, governorate: pend.governorate, salt: pend.salt, hash: pend.hash, verified, at: new Date().toISOString() };
+    await env.STORE.put("acct:" + phone, JSON.stringify(a));
+    try { const all = (await env.STORE.get("customers", "json")) || {}, k = custKey(phone); all[k] = { ...cleanCust({ name: a.name, phone, gov: a.governorate, tags: ["حساب بالموقع"] }), ...(all[k] || {}), name: a.name, phone, gov: a.governorate, account: true }; await env.STORE.put("customers", JSON.stringify(all)); } catch {}
+    return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
+  };
   if (path === "/api/acct/register") {
     const name = clip(String(b.name || "").replace(/\s+/g, " "), 80), parts = name.split(" ").filter(Boolean);
     if (parts.length < 3 || parts.some((w) => w.length < 2) || /[0-9٠-٩@#$%^&*_=+<>{}\[\]|\\\/]/.test(name)) return json({ error: "اكتب الاسم الثلاثي متل الهوية (الاسم، اسم الأب، الكنية)", field: "name" }, 400);
     if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة", field: "governorate" }, 400);
     if (pw.length < 6 || pw.length > 64) return json({ error: "كلمة السر لازم تكون 6 أحرف أو أكتر", field: "password" }, 400);
     if (await env.STORE.get("acct:" + phone)) return json({ error: "هالرقم عندو حساب، سجّل دخول", field: "phone", exists: true }, 409);
+    // one code a minute per number, 5 an hour per number, 15 an hour per visitor
+    const ip = request.headers.get("cf-connecting-ip") || "x", hr = Math.floor(Date.now() / 3600e3);
+    const last = await env.STORE.get("acct:otpwait:" + phone);
+    if (last) return json({ error: "بعتنالك كود من شوي، استنى دقيقة وجرّب", field: "phone", wait: true }, 429);
+    const nPh = +(await env.STORE.get(`acct:otpn:${phone}:${hr}`)) || 0, nIp = +(await env.STORE.get(`acct:otpip:${ip}:${hr}`)) || 0;
+    if (nPh >= 5 || nIp >= 15) return json({ error: "طلبت أكواد كتير، جرّب بعد ساعة" }, 429);
     const salt = b64u(crypto.getRandomValues(new Uint8Array(16)));
-    const a = { name, phone, governorate: b.governorate, salt, hash: await passHash(pw, salt), at: new Date().toISOString() };
-    await env.STORE.put("acct:" + phone, JSON.stringify(a));
-    // the owner sees every new account in «العملاء»
-    try { const all = (await env.STORE.get("customers", "json")) || {}, k = custKey(phone); all[k] = { ...cleanCust({ name, phone, gov: a.governorate, tags: ["حساب بالموقع"] }), ...(all[k] || {}), name, phone, gov: a.governorate, account: true }; await env.STORE.put("customers", JSON.stringify(all)); } catch {}
-    return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
+    const pend = { name, governorate: b.governorate, salt, hash: await passHash(pw, salt), tries: 0 };
+    const code = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
+    const sent = await sendOtp(env, phone, code);
+    // WhatsApp can't be reached (the bot's device is off): don't lose the customer, make the account without the code
+    if (!sent) return makeAcct(pend, false);
+    pend.code = await otpHash(env, phone, code);
+    await env.STORE.put("acct:pend:" + phone, JSON.stringify(pend), { expirationTtl: 600 });
+    await env.STORE.put("acct:otpwait:" + phone, "1", { expirationTtl: 60 });
+    await env.STORE.put(`acct:otpn:${phone}:${hr}`, String(nPh + 1), { expirationTtl: 3700 });
+    await env.STORE.put(`acct:otpip:${ip}:${hr}`, String(nIp + 1), { expirationTtl: 3700 });
+    return json({ ok: true, otp: true, phone });
+  }
+  if (path === "/api/acct/verify") {
+    const pend = await env.STORE.get("acct:pend:" + phone, "json");
+    if (!pend) return json({ error: "الكود انتهى، ارجع واطلب كود جديد", expired: true }, 410);
+    const code = String(b.code || "").replace(/[٠-٩]/g, (x) => "٠١٢٣٤٥٦٧٨٩".indexOf(x)).replace(/\D/g, "");
+    if (pend.tries >= 5) { await env.STORE.delete("acct:pend:" + phone); return json({ error: "غلطت كتير، اطلب كود جديد", expired: true }, 410); }
+    if ((await otpHash(env, phone, code)) !== pend.code) { pend.tries++; await env.STORE.put("acct:pend:" + phone, JSON.stringify(pend), { expirationTtl: 600 }); return json({ error: "الكود غلط", field: "code" }, 400); }
+    await env.STORE.delete("acct:pend:" + phone);
+    if (await env.STORE.get("acct:" + phone)) return json({ error: "هالرقم عندو حساب، سجّل دخول", exists: true }, 409);
+    return makeAcct(pend, true);
   }
   if (path === "/api/acct/login") {
     const a = await env.STORE.get("acct:" + phone, "json");
