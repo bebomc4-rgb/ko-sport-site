@@ -1389,7 +1389,7 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": ["SportingGoodsStore", "OnlineStore"], "@id": origin + "/#store", name: S.name, alternateName: ["كو سبورت", "KO Sport Syria", "ko-sport"],
+        "@type": ["SportingGoodsStore", "OnlineStore"], "@id": origin + "/#store", name: S.name, alternateName: ["كو سبورت", "KO Sport Syria", "KO SPORT سوريا", "ko-sport", "ko.sport_2"], foundingLocation: "قدسيا، دمشق، سوريا",
         url: origin + "/ar", description: desc, ...(img ? { image: img } : {}), ...(logoUrl ? { logo: logoUrl } : {}),
         ...(S.whatsapp ? { telephone: "+" + S.whatsapp } : {}),
         address: { "@type": "PostalAddress", streetAddress: S.address, addressLocality: "دمشق", addressCountry: "SY" },
@@ -1406,7 +1406,7 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
         description: "تطبيق KO SPORT: تسوّق كل الأدوات الرياضية بسوريا من موبايلك، مع توصيل لكل المحافظات.",
       },
       {
-        "@type": "WebSite", "@id": origin + "/#site", url: origin + "/ar", name: S.name, inLanguage: "ar", publisher: { "@id": origin + "/#store" },
+        "@type": "WebSite", "@id": origin + "/#site", url: origin + "/ar", name: S.name, alternateName: ["KO SPORT سوريا", "كو سبورت", "KO Sport Syria"], inLanguage: "ar", publisher: { "@id": origin + "/#store" },
         potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: origin + "/ar/search/{q}" }, "query-input": "required name=q" },
       },
     ],
