@@ -917,7 +917,7 @@ async function acctApi(request, env, path, m) {
     if (!pend) return json({ error: "انتهى الوقت، جرّب من جديد", expired: true }, 410);
     const c = await botCall(env, "claim", t);
     if (!c) return json({ ok: true, waiting: true, off: true });
-    if (!c.known) return json({ error: "انتهى الوقت، جرّب من جديد", expired: true }, 410);
+    if (!c.known) return json({ ok: true, waiting: true }); // the store's WhatsApp may have just moved PC ↔ phone: keep waiting (this code still lives 20 minutes here)
     const phone = syPhone(c.phone);
     if (!phone) return json({ ok: true, waiting: true });
     await env.STORE.delete("acct:wapend:" + t);

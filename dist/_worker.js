@@ -35,7 +35,7 @@ function __embAssets(real) {
 //   Optional      TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (instant order alerts)
 
 // Replaced by build.mjs with the moment this copy was built — so we can tell which deploy is live.
-const BUILD_AT = "2026-10-31 08:21Z";
+const BUILD_AT = "2026-10-31 08:44Z";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -946,7 +946,7 @@ async function acctApi(request, env, path, m) {
     if (!pend) return json({ error: "انتهى الوقت، جرّب من جديد", expired: true }, 410);
     const c = await botCall(env, "claim", t);
     if (!c) return json({ ok: true, waiting: true, off: true });
-    if (!c.known) return json({ error: "انتهى الوقت، جرّب من جديد", expired: true }, 410);
+    if (!c.known) return json({ ok: true, waiting: true }); // the store's WhatsApp may have just moved PC ↔ phone: keep waiting (this code still lives 20 minutes here)
     const phone = syPhone(c.phone);
     if (!phone) return json({ ok: true, waiting: true });
     await env.STORE.delete("acct:wapend:" + t);
