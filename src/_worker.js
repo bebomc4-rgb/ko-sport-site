@@ -1634,7 +1634,7 @@ async function siteFiles(request, env, path, ctx) {
       `<url><loc>${origin}/ar/all</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`,
       ...groups.map((g) => `<url><loc>${x(origin + "/ar/g/" + encodeURIComponent(g.name))}</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`),
       ...cats.map((c) => `<url><loc>${x(curl(c))}</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`),
-      ...list.map((p) => `<url><loc>${x(origin + "/ar/p/" + encodeURIComponent(p.id))}</loc><changefreq>weekly</changefreq><priority>${p.in_stock ? "0.7" : "0.4"}</priority>${p.image ? `<image:image><image:loc>${x(p.image)}</image:loc><image:title>${x(p.name)}</image:title></image:image>` : ""}</url>`),
+      ...list.filter((p) => seoMain(list, p) === p).map((p) => `<url><loc>${x(origin + "/ar/p/" + encodeURIComponent(p.id))}</loc><changefreq>weekly</changefreq><priority>${p.in_stock ? "0.7" : "0.4"}</priority>${p.image ? `<image:image><image:loc>${x(p.image)}</image:loc><image:title>${x(p.name)}</image:title></image:image>` : ""}</url>`),
       ...(Array.isArray(st.pages) ? st.pages : []).filter((g) => g.slug && g.on !== false).map((g) => `<url><loc>${x(origin + "/ar/page/" + encodeURIComponent(g.slug))}</loc><priority>0.5</priority></url>`),
     ];
     return txt(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`, "application/xml; charset=utf-8");
@@ -2092,7 +2092,7 @@ async function catalogApi(request, env, ctx, kind) {
     return new Response(JSON.stringify({ query: u.searchParams.get("q") || id || "", count: list.length, store: data.store, products: list }), { headers: { "content-type": "application/json; charset=utf-8", ...cors } });
   }
   if (kind === "txt") {
-    const line = (p) => [`• ${p.name}`, `القسم: ${p.category}`, `السعر: $${p.price_usd}${p.price_syp ? ` (${p.price_syp.toLocaleString("en-US")} ل.س)` : ""}${p.discount_percent ? ` بعد خصم ${p.discount_percent}% (كان $${p.old_price_usd})` : ""}`, p.in_stock ? "متوفر" : "خالص", p.options ? `الخيارات: ${p.options.join("، ")}` : "", `الرابط: ${p.url}`, `الصورة: ${p.image}`].filter(Boolean).join(" | ");
+    const line = (p) => [`• ${p.name}`, `القسم: ${p.category}`, `السعر: $${p.price_usd}${p.price_syp ? ` (${p.price_syp.toLocaleString("en-US")} ل.س)` : ""}${p.discount_percent ? ` بعد خصم ${p.discount_percent}% (كان $${p.old_price_usd})` : ""}`, p.in_stock ? "متوفر" : "خالص", p.options ? `الخيارات: ${p.options.join("، ")}` : "", `الرابط: ${String(p.url || "").replace(/\/p\//, "/ar/p/")}`, `الصورة: ${p.image}`].filter(Boolean).join(" | ");
     return new Response(`${data.store.name} — ${data.store.url}\n${data.store.currency_note}\n\n` + data.products.map(line).join("\n"), { headers: { "content-type": "text/plain; charset=utf-8", ...cors } });
   }
   return new Response(JSON.stringify(data), { headers: { "content-type": "application/json; charset=utf-8", ...cors } });
@@ -2125,6 +2125,12 @@ async function seoData(request, env, ctx) {
   if (cache) ctx.waitUntil(cache.put(ck, new Response(JSON.stringify(d), { headers: { "content-type": "application/json", "cache-control": "public, max-age=60" } })));
   return d;
 }
+// products with the same name count as one page for Google: the first one in stock (else the first) is the main one
+const seoKey = (n) => String(n || "").replace(/[\u064b-\u0652\u0640]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\s+/g, " ").trim().toLowerCase();
+function seoMain(list, x) {
+  if (!list.__main) { const m = new Map(); for (const y of list) { const k = seoKey(y.name), cur = m.get(k); if (!cur || (!cur.in_stock && y.in_stock)) m.set(k, y); } Object.defineProperty(list, "__main", { value: m }); }
+  return list.__main.get(seoKey(x.name)) || x;
+}
 async function pageSeo(request, env, ctx, st) {
   const url = new URL(request.url), origin = url.origin;
   let p = url.pathname.replace(/^\/ar/, "") || "/";
@@ -2152,7 +2158,8 @@ async function pageSeo(request, env, ctx, st) {
     const x = list.find((y) => y.id === b);
     if (!x) return list.length ? { gone: true } : { noindex: true };
     const c = x.category, cu = origin + "/ar/c/" + encodeURIComponent(catSlugOf(st, c));
-    const canon = origin + "/ar/p/" + encodeURIComponent(x.id);
+    // the same product listed several times (colours/sizes as separate items): Google indexes one of them, the others point to it
+    const canon = origin + "/ar/p/" + encodeURIComponent(seoMain(list, x).id);
     const price = `$${x.price_usd}${x.price_syp ? ` (${SYP(x.price_syp)} ل.س)` : ""}`;
     const title = seoCut(`${x.name} | ${label(c)} بسوريا | ${name}`, 70);
     const about = seoPlain(x.description || x.details || "");
