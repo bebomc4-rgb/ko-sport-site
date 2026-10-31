@@ -485,13 +485,17 @@
     const m = new Map();
     for (const p of products) {
       for (const c of [p.category, ...(p.also || [])]) {
-        if (!m.has(c)) m.set(c, { name: c, count: 0, image: "" });
+        if (!m.has(c)) m.set(c, { name: c, count: 0, image: "", pool: [] });
         const e = m.get(c); e.count++;
-        if (!e.image && p.inStock && p.image) e.image = p.thumb || p.image;
+        if (p.inStock && !p.sold && p.image) e.pool.push(p.thumb || p.image);
       }
     }
     cats = [...m.values()];
-    for (const c of cats) { const mi = catMeta(c.name).image; if (mi) c.image = mi; }
+    // each section's photo = one of its products that is in stock, picked at random and changed every day (Damascus date);
+    // the owner's own section photo is used only when nothing in the section is in stock
+    const day = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+    const pick = (k, n) => { let h = 2166136261; for (const ch of k) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) % n; };
+    for (const c of cats) { c.image = c.pool.length ? c.pool[pick(c.name + "|" + day, c.pool.length)] : (catMeta(c.name).image || ""); delete c.pool; }
     // a product that got a cleaner address: carts and «seen lately» made before still find it
     const alias = new Map(); for (const p of products) for (const a of p.aliases || []) if (!byId.has(a)) alias.set(a, p.id);
     if (alias.size) { cart = cart.map((l) => (alias.has(l.id) ? { ...l, id: alias.get(l.id) } : l)); try { const r = store.get("ko_recent", []); if (r.some((i) => alias.has(i))) store.set("ko_recent", [...new Set(r.map((i) => alias.get(i) || i))]); } catch {} }
