@@ -1782,7 +1782,7 @@ html[data-cd-hov=shine] #app .card .pic::after{content:"";position:absolute;inse
 #app .cst-circle .cat-tile img{border-radius:50%;aspect-ratio:1;object-fit:cover;padding:3px;border:2.5px solid var(--c-link,var(--red));background:var(--c-card-bg)}
 #app .cst-overlay .cat-tile{position:relative;padding:0;overflow:hidden;border:0}
 #app .cst-overlay .cat-tile img{margin:0;border-radius:0;aspect-ratio:1;object-fit:cover}
-#app .cst-overlay .cat-tile::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.72),transparent 55%);pointer-events:none}
+#app .cst-overlay .cat-tile::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55),transparent 38%);pointer-events:none}
 #app .cst-overlay .cat-tile b,#app .cst-overlay .cat-tile span,#app .cst-overlay .cat-tile .ct-btn{position:absolute;z-index:1;color:#fff}
 #app .cst-overlay .cat-tile b{inset-inline:10px;bottom:26px;text-align:start}#app .cst-overlay .cat-tile span{inset-inline:10px;bottom:8px;text-align:start;opacity:.85;color:#fff}
 #app .cst-overlay .cat-tile .ct-btn{top:8px;inset-inline-end:8px;margin:0}
@@ -1946,3 +1946,6 @@ html.sheet-lock,html.sheet-lock body{overflow:hidden}
 .app-bar small{opacity:.75;font-size:12px}
 .app-bar a{background:#e5484d;color:#fff;padding:7px 16px;border-radius:999px;font-weight:700;text-decoration:none}
 .app-bar button{background:none;border:0;color:#fff;opacity:.7;font-size:16px;padding:4px 6px;cursor:pointer}
+
+/* every product / section photo on the site: a touch brighter and livelier (lowest priority, so «sold out» grey and fade-in effects still win) */
+:where(.card .pic, .pdp-img, .pdp-thumbs, .cat-tile, .br-card, .ac-img, .kx-cimg, .line, .cu-i, .slide, .car-i, .sr-i, .rv-i, .co-i, .sx-img) img{filter:brightness(1.06) saturate(1.08) contrast(1.03)}

@@ -1286,7 +1286,7 @@ async function galleryCopy(request, env) {
 }
 
 // Same helper as the shop: resized copy of one of our own photos (Cloudflare Image Transformations), original if anything else.
-const imgW = (u, w) => /^\/img\/[a-z0-9]+$/.test(u || "") ? `/cdn-cgi/image/width=${w},quality=75,format=auto,onerror=redirect${u}` : (u || "");
+const imgW = (u, w, q) => /^\/img\/[a-z0-9]+$/.test(u || "") ? `/cdn-cgi/image/width=${w},quality=${q || 90},format=auto,onerror=redirect${u}` : (u || "");
 async function imageGet(request, env, ctx, key) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const hit = cache && (await cache.match(request));

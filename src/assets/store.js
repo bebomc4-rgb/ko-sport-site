@@ -17,7 +17,7 @@
   // Resized copies made by Cloudflare (Image Transformations): the same photo, sized for the screen, a fraction of the KB.
   // onerror=redirect → if the free monthly quota ever runs out, the original photo is served instead (nothing breaks).
   const LOCAL_IMG = /^\/img\/[a-z0-9]+$/;
-  const imgW = (u, w, q) => LOCAL_IMG.test(u || "") ? `/cdn-cgi/image/width=${w},quality=${q || 75},format=auto,onerror=redirect${u}` : (u || NOIMG);
+  const imgW = (u, w, q) => LOCAL_IMG.test(u || "") ? `/cdn-cgi/image/width=${w},quality=${q || 90},format=auto,onerror=redirect${u}` : (u || NOIMG);
   // product page photo: same sizes as the <link rel=preload> the server puts in the page head
   const PDP_W = [640, 828, 1080], PDP_SIZES = "(max-width:900px) 100vw, 560px";
   const imgSet = (u, ws, sizes) => LOCAL_IMG.test(u || "") ? ` srcset="${ws.map((w) => imgW(u, w) + " " + w + "w").join(", ")}" sizes="${sizes}"` : "";
@@ -511,7 +511,7 @@
     const promo = p.inStock && cb && !isDiscText ? `<span class="promo">${ICON.ticket}${esc(cb)}</span>` : "";
     return `<article class="card${p.inStock ? "" : " out"}" data-pid="${esc(p.id)}">
       ${promo}
-      <a class="pic" href="#/p/${encodeURIComponent(p.id)}"><img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(p.thumb || p.image, 540))}"${imgSet(p.thumb || p.image, [360, 540, 640, 800], "(max-width:640px) 86vw, 340px")} alt="${esc(p.name)}">${p.inStock ? "" : '<span class="out-stamp">خالص</span>'}</a>
+      <a class="pic" href="#/p/${encodeURIComponent(p.id)}"><img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(p.image || p.thumb, 720))}"${imgSet(p.image || p.thumb, [360, 540, 720, 900], "(max-width:640px) 86vw, 340px")} alt="${esc(p.name)}">${p.inStock ? "" : '<span class="out-stamp">خالص</span>'}</a>
       <div class="body">
         <a class="name" href="#/p/${encodeURIComponent(p.id)}">${esc(p.name)}</a>
         ${stars(p.rt)}
@@ -1619,7 +1619,7 @@
     if (!lines.length) { app.innerHTML = `<div class="empty"><b>السلة فاضية</b><a class="btn btn-dark" href="#/" style="margin-top:12px">ابدأ التسوق</a></div>`; return; }
     app.innerHTML = `<div class="cart-head"><h1 class="page-title">السلة</h1><button type="button" class="clear-cart" data-clear-cart>🗑 حذف كامل السلة</button></div><div class="cart-wrap">
       <div class="lines">${lines.map((l, i) => `<div class="line">
-        <img src="${esc(imgW(l.p.thumb || l.p.image, 200))}" alt="" decoding="async">
+        <img src="${esc(imgW(l.p.image || l.p.thumb, 300))}" alt="" decoding="async">
         <div><a class="nm" href="#/p/${encodeURIComponent(l.p.id)}">${esc(l.p.name)}</a>${l.opt ? `<div class="op">${esc(l.opt)}</div>` : ""}
           ${l.p.inStock ? "" : `<div class="op" style="color:var(--red)">صار خالص — شيله من السلة</div>`}
           <div class="ctrl"><div class="qty"><button data-lq="${i}" data-d="1">+</button><input value="${l.qty}" readonly aria-label="الكمية"><button data-lq="${i}" data-d="-1">−</button></div><button class="rm" data-rm="${i}" aria-label="حذف المنتج">🗑 حذف</button></div></div>
@@ -1698,7 +1698,7 @@ ${trustH()}
         ${S.delivery.note ? `<div class="note">${esc(S.delivery.note)}</div>` : ""}
       </form>
       <div class="summary co-sum"><h3>🧾 طلبك (${lines.reduce((a, l) => a + l.qty, 0)} قطعة)</h3>
-        <div class="co-items">${lines.map((l) => `<div class="co-i"><img src="${esc(imgW(l.p.thumb || l.p.image, 200))}" alt="" loading="lazy"><span class="co-n">${esc(l.p.name)}${l.opt ? `<small>${esc(l.opt)}</small>` : ""}<small>الكمية: ${l.qty}${prodPct(l.p) ? ` · <b class="co-pct">حسم ${prodPct(l.p)}%</b>` : ""}</small></span><span class="co-p">${priceH(l.p, l.qty)}</span></div>`).join("")}</div>
+        <div class="co-items">${lines.map((l) => `<div class="co-i"><img src="${esc(imgW(l.p.image || l.p.thumb, 300))}" alt="" loading="lazy"><span class="co-n">${esc(l.p.name)}${l.opt ? `<small>${esc(l.opt)}</small>` : ""}<small>الكمية: ${l.qty}${prodPct(l.p) ? ` · <b class="co-pct">حسم ${prodPct(l.p)}%</b>` : ""}</small></span><span class="co-p">${priceH(l.p, l.qty)}</span></div>`).join("")}</div>
         <div class="sum-row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px"><span>المجموع قبل الحسم</span><b>${money(sub)}</b></div>
         <div class="sum-row disc" data-disc-row hidden><span data-disc-name></span><b data-disc-amt></b></div>
         <div class="sum-row"><span>التوصيل</span><span data-fee>اختار المحافظة</span></div>
@@ -1924,7 +1924,7 @@ ${trustH()}
       im.onload = () => { clearTimeout(t); res(im); }; im.onerror = () => { clearTimeout(t); res(null); }; im.src = src;
     });
     const thumbs = await Promise.all(o.items.map((it, i) => !it.image ? null
-      : load(LOCAL_IMG.test(it.image) ? imgW(it.image, 120) : `/api/order-thumb?id=${encodeURIComponent(o.id)}&i=${i}`)));
+      : load(LOCAL_IMG.test(it.image) ? imgW(it.image, 240) : `/api/order-thumb?id=${encodeURIComponent(o.id)}&i=${i}`)));
     try { if (document.fonts) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2000))]); } catch {}
     const m = oMoney(o), dl = o.delivery || {}, fee = dl.fee, disc = o.discount, sub = fee == null ? o.total : o.total - (fee || 0);
     const W = 600, P = 16, X = 2, R = W - P, L = P, F = getComputedStyle(document.body).fontFamily || "sans-serif";
@@ -2113,7 +2113,7 @@ ${trustH()}
       if (q.length < 2) { close(); return; }
       const list = findProducts(q, true).slice(0, 14), cs = findCats(q);
       box.innerHTML = (cs.length ? `<div class="sx-cats">${cs.map((c) => `<a href="${cHref(c.name)}">${esc(catLabel(c.name))}</a>`).join("")}</div>` : "")
-        + (list.length ? `<div class="sx-row">${list.map((p) => `<a class="sx-p" href="#/p/${encodeURIComponent(p.id)}"><span class="sx-img"><img src="${esc(imgW(p.thumb || p.image, 240))}" alt="" loading="lazy" decoding="async"></span><b>${esc(p.name)}</b><span class="sx-pr">${p.inStock ? priceH(p) : "خالص"}</span></a>`).join("")}</div>
+        + (list.length ? `<div class="sx-row">${list.map((p) => `<a class="sx-p" href="#/p/${encodeURIComponent(p.id)}"><span class="sx-img"><img src="${esc(imgW(p.image || p.thumb, 360))}" alt="" loading="lazy" decoding="async"></span><b>${esc(p.name)}</b><span class="sx-pr">${p.inStock ? priceH(p) : "خالص"}</span></a>`).join("")}</div>
           <a class="sx-all" href="#/search/${encodeURIComponent(q)}">شوف كل النتائج ←</a>`
           : `<p class="sx-none">ما لقينا شي بهالاسم. جرّب كلمة تانية، متل «قفاز» أو «Venum».</p>`);
       fixLinks(box); box.hidden = false; form.classList.add("sx-on");
