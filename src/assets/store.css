@@ -1976,3 +1976,18 @@ html.sheet-lock,html.sheet-lock body{overflow:hidden}
 @keyframes waPulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,.55)}100%{box-shadow:0 0 0 22px rgba(37,211,102,0)}}
 .wa-code{font-family:ui-monospace,monospace;font-size:13px;letter-spacing:2px;color:var(--muted)}
 .wa-wait .msg{font-size:13px;color:var(--muted)}
+
+/* «حمّل التطبيق»: أندرويد (Google Play) + آيفون (إضافة إلى الشاشة الرئيسية) */
+.app-dl{display:grid;gap:10px;margin:18px 0 6px}
+.app-dl>b{font-size:15px}
+.app-dl-btns{display:flex;gap:10px;flex-wrap:wrap}
+.app-dl-btn{display:inline-flex;align-items:center;gap:10px;padding:9px 16px;border-radius:12px;background:#000;color:#fff!important;border:1px solid rgba(255,255,255,.25);font:inherit;font-weight:800;font-size:15px;line-height:1.15;text-decoration:none;cursor:pointer;min-width:150px}
+.app-dl-btn span{display:grid;text-align:start}.app-dl-btn small{font-size:11px;font-weight:500;opacity:.8}
+.app-dl-btn:active{transform:scale(.97)}
+.app-dl-btn.sm{min-width:0;padding:8px 14px;font-size:14px}
+.dw-app{display:grid;gap:8px;margin:12px 0}.dw-app>div{display:flex;gap:8px}.dw-app small{color:var(--muted)}
+.ios-install{display:grid;gap:12px;padding:4px 2px 10px}
+.ios-steps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.ios-steps li{display:flex;gap:12px;align-items:flex-start;line-height:1.7}
+.ios-steps .n{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--red);color:#fff;font-weight:800}
+.ios-note{margin:0;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--red) 9%,transparent);line-height:1.7}

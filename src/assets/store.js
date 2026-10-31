@@ -2569,6 +2569,7 @@ ${trustH()}
         <div class="dw-list">${C.groups.map((g, i) => `<details class="dw-grp"><summary><span class="dw-ic" style="color:${ics[i % ics.length]}"><svg viewBox="0 0 24 24" width="18" height="18"><rect x="4" y="4" width="16" height="16" rx="${[8, 3, 8, 3, 6][i % 5]}" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></span><span class="dw-name">${esc(g.name)}</span><i class="dw-pm" aria-hidden="true"></i></summary>
           <div class="dw-cats">${g.cats.map((c) => cats.find((x) => x.name === c)).filter(Boolean).map((c) => `<a href="${cHref(c.name)}">${esc(catLabel(c.name))}</a>`).join("")}</div></details>`).join("")}
           <a class="dw-all" href="#/all"><span class="dw-ic" style="color:#6e56cf">${ICON.grid}</span><span class="dw-name">جميع المنتجات بصفحة واحدة</span></a></div>
+        ${/; wv\)|appcreator/i.test(navigator.userAgent || "") || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true ? "" : `<div class="dw-app"><small>حمّل التطبيق</small><div><a class="app-dl-btn sm" href="${KO_PLAY}" target="_blank" rel="noopener">▶ أندرويد</a><button type="button" class="app-dl-btn sm" data-ios-install> آيفون</button></div></div>`}
         <div class="dw-social"><small>تابعنا على</small><div>
           ${soc(C.facebook, "فيسبوك", "M14 8h3V4h-3a4 4 0 0 0-4 4v2H8v4h2v8h4v-8h3l1-4h-4V8z")}
           ${soc(KO_MAP, "موقعنا عالخريطة", "M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zm0-14a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z")}
@@ -2591,10 +2592,28 @@ ${trustH()}
     $("[data-fb]").href = C.facebook;
     $("[data-ig]").href = C.instagram;
     const mp = $("[data-map]"); if (mp) mp.href = KO_MAP;
-    const pl = $("[data-play]"); if (pl) pl.href = KO_PLAY;
+    document.querySelectorAll("[data-play]").forEach((pl) => (pl.href = KO_PLAY));
+    // «حمّل التطبيق»: Google Play لأندرويد، وللآيفون خطوات «إضافة إلى الشاشة الرئيسية» (بيفتح الموقع متل تطبيق)
+    { const box = $("[data-app-dl]"), ua = navigator.userAgent || "";
+      if (box) box.hidden = /; wv\)|appcreator/i.test(ua) || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; }
     appBanner();
   }
   // شريط «حمّل تطبيقنا»: بس لزوار أندرويد من المتصفح (مو جوّا التطبيق نفسو)، وبيختفي إذا سكّرو
+  function iosInstall() {
+    const ua = navigator.userAgent || "", ios = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    const safari = ios && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA|Instagram|FBAN|FBAV/i.test(ua);
+    const share = `<svg viewBox="0 0 24 24" width="20" height="20" style="vertical-align:-4px"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>`;
+    const steps = !ios
+      ? `<p class="ios-note">هالطريقة للآيفون. افتح موقعنا <b>ko-sport.online</b> من الآيفون بمتصفح <b>Safari</b> واكبس نفس الزر.</p>`
+      : `${safari ? "" : `<p class="ios-note">⚠️ افتح الموقع بمتصفح <b>Safari</b> (مو من إنستغرام أو فيسبوك أو كروم)، بعدين اتبع الخطوات.</p>`}
+        <ol class="ios-steps">
+          <li><span class="n">1</span><span>اكبس زر <b>المشاركة</b> ${share} تحت الشاشة (أو فوق بالآيباد)</span></li>
+          <li><span class="n">2</span><span>انزل لتحت واختار <b>«إضافة إلى الشاشة الرئيسية»</b> ➕</span></li>
+          <li><span class="n">3</span><span>اكبس <b>«إضافة»</b> فوق، وبيطلع أيقونة <b>KO SPORT</b> على شاشتك، بتفتح متل التطبيق تماماً ✨</span></li>
+        </ol>`;
+    openSheet("تثبيت KO SPORT على الآيفون", `<div class="ios-install">${steps}</div>`);
+  }
+  document.addEventListener("click", (e) => { if (e.target.closest("[data-ios-install]")) { e.preventDefault(); iosInstall(); } });
   function appBanner() {
     try {
       const ua = navigator.userAgent || "";
