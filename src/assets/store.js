@@ -487,7 +487,7 @@
       for (const c of [p.category, ...(p.also || [])]) {
         if (!m.has(c)) m.set(c, { name: c, count: 0, image: "", pool: [] });
         const e = m.get(c); e.count++;
-        if (p.inStock && !p.sold && p.image) e.pool.push(p.thumb || p.image);
+        if (p.inStock && !p.sold && p.image) e.pool.push(p.image); // full photo (the thumb is too small for a big section tile)
       }
     }
     cats = [...m.values()];
@@ -627,7 +627,7 @@
       // look of each collection (sec.tStyle), its texts (count word, button) and name size
       const tst = ["classic", "circle", "overlay", "chip", "btn", "card", "luxe"].includes(sec.tStyle) ? sec.tStyle : "classic";
       const btnT = String(sec.btnText || "").slice(0, 24).trim(); // no product counts anywhere in the shop (owner's choice)
-      const tileH = (c) => `<a class="cat-tile" href="${cHref(c.name)}">${tst === "btn" ? "" : `<img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(c.image, 360))}" alt="${esc(catLabel(c.name))}">`}<b>${esc(catLabel(c.name))}</b>${btnT ? `<i class="ct-btn">${esc(btnT)}</i>` : ""}</a>`;
+      const tileH = (c) => `<a class="cat-tile" href="${cHref(c.name)}">${tst === "btn" ? "" : `<img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(c.image, 540))}" alt="${esc(catLabel(c.name))}">`}<b>${esc(catLabel(c.name))}</b>${btnT ? `<i class="ct-btn">${esc(btnT)}</i>` : ""}</a>`;
       const look = ["cst-" + tst, ["s", "l"].includes(sec.nameSize) ? "cns-" + sec.nameSize : ""].filter(Boolean).join(" ");
       if (sec.layout === "spot") return secHead(sec.showTitle === false ? "" : sec.title, "#/all") + `<div class="${look}">${spot(sec, sorted.map(tileH), "spot-cats")}</div>`;
       if (sec.layout === "car") return secHead(sec.showTitle === false ? "" : sec.title, "#/all") + `<div class="${look}">${carousel(sec, sorted.map(tileH), "car-cats")}</div>`;
@@ -2219,7 +2219,7 @@ ${trustH()}
   // ---------- #/browse: a fast, app-like page with every group and section ----------
   function browse() {
     document.title = "المتجر | " + (C.name || "");
-    const cimg = (c) => { if (c.image) return imgW(c.image, 420); const p = products.find((x) => x.inStock && inCat(x, c.name)) || products.find((x) => inCat(x, c.name)); return p ? imgW(p.thumb || p.image, 420) : ""; };
+    const cimg = (c) => { const u = c.image || ((products.find((x) => x.inStock && inCat(x, c.name)) || products.find((x) => inCat(x, c.name)) || {}).image) || ""; return u ? imgW(u, 720) : ""; };
     const seen = new Set();
     const card = (c, k) => { seen.add(c.name); const u = cimg(c); return `<a class="br-card" href="${cHref(c.name)}" style="--i:${k}">${u ? `<img loading="lazy" decoding="async" src="${esc(u)}" alt="">` : ""}<span class="br-n"><b>${esc(catLabel(c.name))}</b></span></a>`; };
     const groups = C.groups.map((g, i) => {
