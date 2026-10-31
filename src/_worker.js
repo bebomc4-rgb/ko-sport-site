@@ -114,6 +114,7 @@ async function htmlCached(name, request, ctx, produce) {
     body = hit.body;
   } else {
     const res = await produce();
+    if (res.status >= 300 && res.status < 400) return res; // a redirect (removed product…) goes out as it is
     const text = await res.text();
     const dig = new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text)));
     // weak tag: Cloudflare drops strong ETags when it compresses HTML, but keeps weak ones
