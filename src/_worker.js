@@ -2679,7 +2679,7 @@ export default {
       return Response.redirect("https://ko-sport.online/ar" + url.search, 301);
     }
     // ko-sport.pages.dev → ko-sport.online (pages only; /api and /media stay reachable for the bot and the app)
-    if (url.hostname === "ko-sport.pages.dev" && m === "GET" && !path.startsWith("/api/") && !path.startsWith("/media/")) {
+    if (url.hostname === "ko-sport.pages.dev" && m === "GET" && !path.startsWith("/api/") && !path.startsWith("/media/") && !/; wv\)|appcreator/i.test(request.headers.get("user-agent") || "")) { // the Android app (WebView) stays on its own address so it never jumps to the browser
       return Response.redirect("https://ko-sport.online" + path + url.search, 301);
     }
     try {
