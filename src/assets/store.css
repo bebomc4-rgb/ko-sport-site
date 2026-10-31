@@ -1966,3 +1966,13 @@ html.sheet-lock,html.sheet-lock body{overflow:hidden}
 .otp-in{font-size:26px!important;letter-spacing:10px;text-align:center;font-weight:800}
 .link-btn{border:0;background:none;padding:0;font:inherit;color:var(--c-link,var(--red));font-weight:700;cursor:pointer}
 .link-btn:disabled{color:var(--muted);cursor:default;font-weight:500}
+.btn-wa-go{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:8px;padding:14px 16px;border-radius:14px;background:#25d366;color:#fff!important;font-weight:800;font-size:16px;text-decoration:none;box-shadow:0 8px 22px -10px rgba(37,211,102,.8);transition:transform .15s}
+.btn-wa-go:active{transform:scale(.98)}
+.btn-wa-go.ghost{background:transparent;color:#1da851!important;border:2px solid #25d366;box-shadow:none;font-size:15px}
+.wa-wait{display:grid;justify-items:center;gap:10px;text-align:center;padding:22px 16px;border-radius:18px;background:var(--c-card-bg,#fff);border:1px solid var(--line)}
+.wa-wait p{margin:0;line-height:1.7;color:var(--muted)}
+.wa-pulse{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;background:#25d366;color:#fff;animation:waPulse 1.6s ease-out infinite}
+.wa-pulse svg{width:40px;height:40px}
+@keyframes waPulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,.55)}100%{box-shadow:0 0 0 22px rgba(37,211,102,0)}}
+.wa-code{font-family:ui-monospace,monospace;font-size:13px;letter-spacing:2px;color:var(--muted)}
+.wa-wait .msg{font-size:13px;color:var(--muted)}

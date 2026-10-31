@@ -1614,46 +1614,71 @@
   const ACCT_GOVS = ["دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "إدلب", "درعا", "السويداء", "القنيطرة", "دير الزور", "الرقة", "الحسكة"];
   // sign up / log in, then carry on with what the customer was doing (checkout, account…)
   function authView(next, why, startTab) {
-    let tab = startTab || "reg";
+    let tab = startTab || "reg", via = "wa";
+    const WA_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9 0-1.4.7-2 1-2.3.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.7-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"/></svg>`;
+    const fixPh = (x) => String(x || "").replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/\D/g, "").replace(/^(00963|963)/, "").replace(/^9/, "09");
     const draw = () => {
-      app.innerHTML = `<div class="auth"><h1 class="page-title">${tab === "reg" ? "حساب جديد" : "تسجيل الدخول"}</h1>
+      const reg = tab === "reg", wa = reg && via === "wa";
+      app.innerHTML = `<div class="auth"><h1 class="page-title">${reg ? "حساب جديد" : "تسجيل الدخول"}</h1>
         ${why ? `<p class="auth-why">${esc(why)}</p>` : ""}
-        <div class="auth-tabs"><button type="button" data-tab="reg" class="${tab === "reg" ? "on" : ""}">حساب جديد</button><button type="button" data-tab="login" class="${tab === "login" ? "on" : ""}">عندي حساب</button></div>
+        <div class="auth-tabs"><button type="button" data-tab="reg" class="${reg ? "on" : ""}">حساب جديد</button><button type="button" data-tab="login" class="${reg ? "" : "on"}">عندي حساب</button></div>
         <form class="form auth-form" data-auth novalidate>
-          ${tab === "reg" ? `<div class="field"><label for="a-name">الاسم الثلاثي (متل الهوية)</label><input id="a-name" name="name" autocomplete="name" placeholder="مثلاً: أحمد محمد الحسن" required><div class="msg"></div></div>` : ""}
-          <div class="field"><label for="a-phone">رقم الموبايل</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx" autocomplete="tel" required><div class="msg"></div></div>
-          ${tab === "reg" ? `<div class="field"><label for="a-gov">المحافظة</label><select id="a-gov" name="governorate" required><option value="">اختار المحافظة</option>${ACCT_GOVS.map((g) => `<option>${esc(g)}</option>`).join("")}</select><div class="msg"></div></div>` : ""}
-          <div class="field"><label for="a-pw">كلمة السر</label><input id="a-pw" name="password" type="password" autocomplete="${tab === "reg" ? "new-password" : "current-password"}" ${tab === "reg" ? 'placeholder="6 أحرف أو أكتر"' : ""} required><div class="msg"></div></div>
-          ${tab === "reg" ? `<div class="field"><label for="a-pw2">أعد كلمة السر</label><input id="a-pw2" name="password2" type="password" autocomplete="new-password" required><div class="msg"></div></div>` : ""}
-          <button class="btn btn-red" data-auth-go>${tab === "reg" ? "سجّل وكمّل" : "دخول"}</button>
-          <small class="auth-note">${tab === "reg" ? "بتسجّل مرة وحدة بس، وبعدها بتطلب بكبسة." : `نسيت كلمة السر؟ <a target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}">راسلنا على واتساب</a>`}</small>
+          ${reg ? `<div class="field"><label for="a-name">الاسم الثلاثي (متل الهوية)</label><input id="a-name" name="name" autocomplete="name" placeholder="مثلاً: أحمد محمد الحسن" required><div class="msg"></div></div>` : ""}
+          ${wa ? "" : `<div class="field"><label for="a-phone">رقم الموبايل</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx" autocomplete="tel" required><div class="msg"></div></div>`}
+          ${reg ? `<div class="field"><label for="a-gov">المحافظة</label><select id="a-gov" name="governorate" required><option value="">اختار المحافظة</option>${ACCT_GOVS.map((g) => `<option>${esc(g)}</option>`).join("")}</select><div class="msg"></div></div>` : ""}
+          <div class="field"><label for="a-pw">كلمة السر</label><input id="a-pw" name="password" type="password" autocomplete="${reg ? "new-password" : "current-password"}" ${reg ? 'placeholder="6 أحرف أو أكتر"' : ""} required><div class="msg"></div></div>
+          ${reg ? `<div class="field"><label for="a-pw2">أعد كلمة السر</label><input id="a-pw2" name="password2" type="password" autocomplete="new-password" required><div class="msg"></div></div>` : ""}
+          ${wa ? `<a class="btn btn-wa-go" href="#" target="_blank" rel="noopener" data-wa-go>${WA_ICON}<span>أكّد رقمي بالواتساب وكمّل</span></a>
+                  <small class="auth-note">بينفتح الواتساب ومعو رسالة جاهزة، بس اكبس إرسال وارجع لهون. رقمك بينأخد من الواتساب لحالو.<br><button type="button" class="link-btn" data-via="phone">ما عندي واتساب على هالجهاز</button></small>`
+              : `<button class="btn btn-red" data-auth-go>${reg ? "سجّل وكمّل" : "دخول"}</button>
+                 ${reg ? `<small class="auth-note"><button type="button" class="link-btn" data-via="wa">سجّل بالواتساب (أسهل)</button></small>`
+                       : `<a class="btn btn-wa-go ghost" href="#" target="_blank" rel="noopener" data-wa-login>${WA_ICON}<span>ادخل بالواتساب (بلا كلمة سر)</span></a>
+                          <small class="auth-note">نسيت كلمة السر؟ ادخل بالواتساب من فوق.</small>`}`}
         </form></div>`;
       app.onchange = null;
-      app.onclick = (e) => { const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; draw(); } };
       const f = app.querySelector("[data-auth]");
+      const clear = () => f.querySelectorAll(".field").forEach((x) => { x.classList.remove("err"); const m = x.querySelector(".msg"); if (m) m.textContent = ""; });
+      const show = (k, m) => { const el = f[k], fl = el && el.closest(".field"); if (fl) { fl.classList.add("err"); fl.querySelector(".msg").innerHTML = m; } };
+      const regErrs = (v) => {
+        const errs = {}, nm = String(v.name || "").trim().replace(/\s+/g, " ");
+        if (nm.split(" ").filter((w) => w.length > 1).length < 3 || /[0-9٠-٩]/.test(nm)) errs.name = "اكتب الاسم الثلاثي متل الهوية";
+        if (!v.governorate) errs.governorate = "اختار المحافظة";
+        if (String(v.password || "").length < 6) errs.password = "كلمة السر لازم تكون 6 أحرف أو أكتر";
+        else if (v.password !== v.password2) errs.password2 = "كلمتين السر مو متطابقين";
+        return errs;
+      };
+      const showErrs = (errs) => { for (const [k, m] of Object.entries(errs)) show(k, esc(m)); const first = f.querySelector(".field.err input, .field.err select"); if (first) first.focus(); };
+      app.onclick = (e) => {
+        const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; draw(); return; }
+        const vv = e.target.closest("[data-via]"); if (vv) { via = vv.dataset.via; draw(); return; }
+        // one tap: the WhatsApp message opens right away (same tap, so phones don't block it), the site is told in the background
+        const go = e.target.closest("[data-wa-go],[data-wa-login]");
+        if (go) {
+          clear();
+          const login = go.hasAttribute("data-wa-login"), v = Object.fromEntries(new FormData(f));
+          if (!login) { const errs = regErrs(v); if (Object.keys(errs).length) { e.preventDefault(); showErrs(errs); return; } }
+          const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", rb = crypto.getRandomValues(new Uint8Array(6)), code = [...rb].map((x) => A[x % A.length]).join("");
+          go.href = `https://wa.me/${C.whatsapp}?text=${encodeURIComponent((login ? "دخول لحسابي بمتجر KO SPORT" : "تأكيد حسابي بمتجر KO SPORT") + "\nKO-" + code)}`;
+          const payload = login ? { login: true, t: code } : { t: code, name: v.name, governorate: v.governorate, password: v.password };
+          store.set("ko_wa_pending", { t: code, login, at: Date.now() });
+          setTimeout(() => waWait(code, login, payload), 60); // after the tap has opened the link
+          return; // the link opens WhatsApp
+        }
+      };
       f.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        f.querySelectorAll(".field").forEach((x) => { x.classList.remove("err"); const m = x.querySelector(".msg"); if (m) m.textContent = ""; });
-        const v = Object.fromEntries(new FormData(f)), errs = {};
-        const ph = String(v.phone || "").replace(/[٠-٩]/g, (x) => "٠١٢٣٤٥٦٧٨٩".indexOf(x)).replace(/\D/g, "").replace(/^(00963|963)/, "").replace(/^9/, "09");
+        e.preventDefault(); clear();
+        const v = Object.fromEntries(new FormData(f)), ph = fixPh(v.phone), errs = reg ? regErrs(v) : {};
         if (!/^09\d{8}$/.test(ph)) errs.phone = "اكتب رقم موبايل سوري صحيح (09xxxxxxxx)";
-        if (tab === "reg") {
-          const nm = String(v.name || "").trim().replace(/\s+/g, " ");
-          if (nm.split(" ").filter((w) => w.length > 1).length < 3) errs.name = "اكتب الاسم الثلاثي متل الهوية";
-          if (!v.governorate) errs.governorate = "اختار المحافظة";
-          if (String(v.password || "").length < 6) errs.password = "كلمة السر لازم تكون 6 أحرف أو أكتر";
-          else if (v.password !== v.password2) errs.password2 = "كلمتين السر مو متطابقين";
-        } else if (!v.password) errs.password = "اكتب كلمة السر";
-        const show = (k, m) => { const el = f[k], fl = el && el.closest(".field"); if (fl) { fl.classList.add("err"); fl.querySelector(".msg").innerHTML = m; } };
-        if (Object.keys(errs).length) { for (const [k, m] of Object.entries(errs)) show(k, esc(m)); const first = f.querySelector(".field.err input, .field.err select"); if (first) first.focus(); return; }
+        if (!reg && !v.password) errs.password = "اكتب كلمة السر";
+        if (Object.keys(errs).length) { showErrs(errs); return; }
         const btn = f.querySelector("[data-auth-go]"), lbl = btn.textContent; btn.disabled = true; btn.textContent = "لحظة…";
         try {
-          const r = await fetch(tab === "reg" ? "/api/acct/register" : "/api/acct/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: v.name, phone: ph, governorate: v.governorate, password: v.password }) });
+          const r = await fetch(reg ? "/api/acct/register" : "/api/acct/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: v.name, phone: ph, governorate: v.governorate, password: v.password }) });
           const j = await r.json().catch(() => ({}));
           if (!r.ok) {
             btn.disabled = false; btn.textContent = lbl;
-            if (j.exists) { tab = "login"; draw(); const ff = app.querySelector("[data-auth]"); ff.phone.value = ph; const fl = ff.phone.closest(".field"); fl.classList.add("err"); fl.querySelector(".msg").textContent = "هالرقم عندو حساب، اكتب كلمة السر وادخل"; ff.password.focus(); return; }
-            if (j.missing) { show("phone", `ما في حساب على هالرقم. <a href="#" data-to-reg>سجّل حساب جديد</a>`); const a = f.querySelector("[data-to-reg]"); if (a) a.onclick = (ev) => { ev.preventDefault(); tab = "reg"; draw(); app.querySelector("[data-auth]").phone.value = ph; }; return; }
+            if (j.exists) { tab = "login"; via = "phone"; draw(); const ff = app.querySelector("[data-auth]"); ff.phone.value = ph; const fl = ff.phone.closest(".field"); fl.classList.add("err"); fl.querySelector(".msg").textContent = "هالرقم عندو حساب، اكتب كلمة السر وادخل"; ff.password.focus(); return; }
+            if (j.missing) { show("phone", `ما في حساب على هالرقم. <a href="#" data-to-reg>سجّل حساب جديد</a>`); const a = f.querySelector("[data-to-reg]"); if (a) a.onclick = (ev) => { ev.preventDefault(); tab = "reg"; via = "wa"; draw(); }; return; }
             if (j.field && f[j.field]) show(j.field, esc(j.error)); else toast(esc(j.error || "صار خطأ، جرّب كمان مرة"));
             return;
           }
@@ -1663,11 +1688,52 @@
       });
     };
     const done = (j) => {
-          acctSet(j);
-          const old = store.get("ko_customer", {}) || {};
-          store.set("ko_customer", { ...old, name: j.account.name, phone: j.account.phone, governorate: old.governorate || j.account.governorate });
-          toast(tab === "reg" ? "✓ انعمل حسابك" : "✓ أهلين " + esc(j.account.name.split(" ")[0]));
-          next();
+      try { localStorage.removeItem("ko_wa_pending"); } catch {}
+      acctSet(j);
+      const old = store.get("ko_customer", {}) || {};
+      store.set("ko_customer", { ...old, name: j.account.name, phone: j.account.phone, governorate: old.governorate || j.account.governorate });
+      toast(j.existed || tab === "login" ? "✓ أهلين " + esc(j.account.name.split(" ")[0]) : "✓ انعمل حسابك");
+      next();
+    };
+    // waiting for the customer's WhatsApp message (the bot sees it and tells us the number)
+    const waWait = (code, login, payload) => {
+      let stop = false, started = !payload, tries = 0, timer = 0;
+      const until = Date.now() + 20 * 60e3;
+      app.innerHTML = `<div class="auth"><h1 class="page-title">${login ? "الدخول بالواتساب" : "تأكيد بالواتساب"}</h1>
+        <div class="wa-wait"><div class="wa-pulse">${WA_ICON}</div>
+          <b>انفتح الواتساب ومعو رسالة جاهزة</b>
+          <p>اكبس <b>إرسال ✈️</b> بالواتساب، وارجع لهون. ${login ? "بتدخل" : "بينعمل حسابك"} لحالو خلال ثواني.</p>
+          <small class="wa-code" dir="ltr">KO-${esc(code)}</small>
+          <a class="btn btn-wa-go" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent((login ? "دخول لحسابي بمتجر KO SPORT" : "تأكيد حسابي بمتجر KO SPORT") + "\nKO-" + code)}">${WA_ICON}<span>افتح الواتساب مرة تانية</span></a>
+          <button type="button" class="link-btn" data-wa-cancel>إلغاء</button>
+          <div class="msg" data-wa-msg></div></div></div>`;
+      const msg = app.querySelector("[data-wa-msg]");
+      const end = () => { stop = true; clearTimeout(timer); document.removeEventListener("visibilitychange", vis); };
+      app.querySelector("[data-wa-cancel]").onclick = () => { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} draw(); };
+      const poll = async () => {
+        if (stop || !app.querySelector("[data-wa-msg]")) return end();
+        if (Date.now() > until) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} msg.textContent = "انتهى الوقت، جرّب من جديد."; return; }
+        try {
+          if (!started) {
+            const r = await fetch("/api/acct/wa-start", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload), keepalive: true });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} if (j.off) { via = "phone"; } draw(); toast(esc(j.error || "صار خطأ، جرّب كمان مرة")); return; }
+            started = true;
+          } else if (document.visibilityState === "visible") {
+            const r = await fetch("/api/acct/wa-check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t: code }) });
+            const j = await r.json().catch(() => ({}));
+            if (r.ok && j.token) { end(); return done(j); }
+            if (j.missing) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} tab = "reg"; via = "wa"; draw(); toast("ما في حساب على رقمك لهلق، سجّل حساب جديد بكبسة"); return; }
+            if (j.expired || r.status === 403) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} draw(); toast(esc(j.error || "انتهى الوقت، جرّب من جديد")); return; }
+            msg.textContent = j.off ? "عم نستنى رسالتك… (إذا بعتها وطوّل، اكبس «افتح الواتساب مرة تانية» وابعتها كمان مرة)" : "";
+          }
+        } catch {}
+        tries++;
+        timer = setTimeout(poll, started ? 2500 : 600);
+      };
+      const vis = () => { if (document.visibilityState === "visible" && !stop) { clearTimeout(timer); poll(); } };
+      document.addEventListener("visibilitychange", vis);
+      timer = setTimeout(poll, 300);
     };
     // step 2 of sign-up: the 6-digit code that arrived on WhatsApp
     const codeStep = (ph, reg) => {
@@ -1685,7 +1751,7 @@
       f.code.focus();
       f.code.addEventListener("input", () => { f.code.value = f.code.value.replace(/[٠-٩]/g, (x) => "٠١٢٣٤٥٦٧٨٩".indexOf(x)).replace(/\D/g, "").slice(0, 6); if (f.code.value.length === 6) f.requestSubmit(); });
       app.onclick = async (e) => {
-        if (e.target.closest("[data-edit]")) { clearInterval(timer); tab = "reg"; draw(); const ff = app.querySelector("[data-auth]"); ff.name.value = reg.name; ff.phone.value = ph; ff.governorate.value = reg.governorate; ff.phone.focus(); return; }
+        if (e.target.closest("[data-edit]")) { clearInterval(timer); tab = "reg"; via = "phone"; draw(); const ff = app.querySelector("[data-auth]"); ff.name.value = reg.name; ff.phone.value = ph; ff.governorate.value = reg.governorate; ff.phone.focus(); return; }
         if (e.target.closest("[data-resend]") && !rs.disabled) {
           rs.disabled = true;
           const r = await fetch("/api/acct/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(reg) }).catch(() => null);
@@ -1705,13 +1771,17 @@
           const j = await r.json().catch(() => ({}));
           if (r.ok && j.token) { clearInterval(timer); return done(j); }
           btn.disabled = false; btn.textContent = "تأكيد وكمّل";
-          if (j.exists) { clearInterval(timer); tab = "login"; draw(); app.querySelector("[data-auth]").phone.value = ph; return; }
+          if (j.exists) { clearInterval(timer); tab = "login"; via = "phone"; draw(); app.querySelector("[data-auth]").phone.value = ph; return; }
           fl.classList.add("err"); msg.textContent = j.error || "صار خطأ"; f.code.select();
           if (j.expired) { rs.disabled = false; left = 0; rs.textContent = "اطلب كود جديد"; }
         } catch { btn.disabled = false; btn.textContent = "تأكيد وكمّل"; toast("ما في اتصال، جرّب كمان مرة"); }
       });
     };
-    draw(); window.scrollTo(0, 0);
+    // came back from WhatsApp after the page was closed: carry on waiting
+    const pw = store.get("ko_wa_pending", null);
+    if (pw && pw.t && Date.now() - pw.at < 20 * 60e3) { tab = pw.login ? "login" : "reg"; waWait(pw.t, pw.login, null); }
+    else draw();
+    window.scrollTo(0, 0);
   }
   function account() {
     const A = acct();

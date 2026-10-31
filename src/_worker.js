@@ -860,6 +860,16 @@ async function sendOtp(env, phone, code) {
   } catch { return false; }
 }
 const otpHash = async (env, phone, code) => hmac(env, "otp|" + phone + "|" + code);
+// signed call to K FAST AI (open / claim a «سجّل بالواتساب» code)
+async function botCall(env, kind, t) {
+  const k = await otpKeys(env), ts = Date.now(), nonce = b64u(crypto.getRandomValues(new Uint8Array(12)));
+  const key = await crypto.subtle.importKey("jwk", k.priv, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`${kind}|${t}|${ts}|${nonce}`)));
+  try {
+    const r = await fetch(OTP_SENDER.replace(/\/ko$/, "/ko-" + kind), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t, ts, nonce, sig }), signal: AbortSignal.timeout(10000) });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
 
 async function acctApi(request, env, path, m) {
   if (!env.STORE) return json({ error: "الحسابات مو متاحة هلق" }, 503);
@@ -878,6 +888,47 @@ async function acctApi(request, env, path, m) {
   if (path === "/api/acct/otp-key" && m === "GET") return json({ jwk: (await otpKeys(env)).pub });
   if (m !== "POST") return json({ error: "Method not allowed" }, 405);
   const b = await request.json().catch(() => ({}));
+  // «سجّل / ادخل بالواتساب»: the customer sends KO-XXXXXX from their own WhatsApp to the store; that proves the number
+  if (path === "/api/acct/wa-start") {
+    const login = !!b.login;
+    let pend = { login };
+    if (!login) {
+      const name = clip(String(b.name || "").replace(/\s+/g, " "), 80), parts = name.split(" ").filter(Boolean), pw = String(b.password || "");
+      if (parts.length < 3 || parts.some((w) => w.length < 2) || /[0-9٠-٩@#$%^&*_=+<>{}\[\]|\\\/]/.test(name)) return json({ error: "اكتب الاسم الثلاثي متل الهوية (الاسم، اسم الأب، الكنية)", field: "name" }, 400);
+      if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة", field: "governorate" }, 400);
+      if (pw.length < 6 || pw.length > 64) return json({ error: "كلمة السر لازم تكون 6 أحرف أو أكتر", field: "password" }, 400);
+      const salt = b64u(crypto.getRandomValues(new Uint8Array(16)));
+      pend = { login, name, governorate: b.governorate, salt, hash: await passHash(pw, salt) };
+    }
+    const ip = request.headers.get("cf-connecting-ip") || "x", hr = Math.floor(Date.now() / 3600e3), nIp = +(await env.STORE.get(`acct:waip:${ip}:${hr}`)) || 0;
+    if (nIp >= 20) return json({ error: "جرّبت كتير، استنى شوي" }, 429);
+    // the shop makes the code itself (so WhatsApp opens on the very same tap); a fresh one is made only if it's malformed or taken
+    let t = String(b.t || "").toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(t) || (await env.STORE.get("acct:wapend:" + t))) { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", rb = crypto.getRandomValues(new Uint8Array(6)); t = [...rb].map((x) => A[x % A.length]).join(""); }
+    if (!(await botCall(env, "open", t))) return json({ error: "التأكيد بالواتساب مو متاح هلق، جرّب بعد شوي أو سجّل برقم الموبايل", off: true }, 503);
+    await env.STORE.put("acct:wapend:" + t, JSON.stringify(pend), { expirationTtl: 1200 });
+    await env.STORE.put(`acct:waip:${ip}:${hr}`, String(nIp + 1), { expirationTtl: 3700 });
+    return json({ ok: true, t });
+  }
+  if (path === "/api/acct/wa-check") {
+    const t = String(b.t || "").toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(t)) return json({ error: "رمز غلط" }, 400);
+    const pend = await env.STORE.get("acct:wapend:" + t, "json");
+    if (!pend) return json({ error: "انتهى الوقت، جرّب من جديد", expired: true }, 410);
+    const c = await botCall(env, "claim", t);
+    if (!c) return json({ ok: true, waiting: true, off: true });
+    if (!c.known) return json({ error: "انتهى الوقت، جرّب من جديد", expired: true }, 410);
+    const phone = syPhone(c.phone);
+    if (!phone) return json({ ok: true, waiting: true });
+    await env.STORE.delete("acct:wapend:" + t);
+    const ex = await env.STORE.get("acct:" + phone, "json");
+    if (ex) { if (ex.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403); return json({ ok: true, token: await acctToken(env, ex), account: acctOut(ex), existed: true }); }
+    if (pend.login) return json({ error: "ما في حساب على رقمك لهلق، سجّل حساب جديد", missing: true, phone }, 404);
+    const a = { name: pend.name, phone, governorate: pend.governorate, salt: pend.salt, hash: pend.hash, verified: true, via: "whatsapp", at: new Date().toISOString() };
+    await env.STORE.put("acct:" + phone, JSON.stringify(a));
+    try { const all = (await env.STORE.get("customers", "json")) || {}, k = custKey(phone); all[k] = { ...cleanCust({ name: a.name, phone, gov: a.governorate, tags: ["حساب بالموقع"] }), ...(all[k] || {}), name: a.name, phone, gov: a.governorate, account: true }; await env.STORE.put("customers", JSON.stringify(all)); } catch {}
+    return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
+  }
   const phone = syPhone(b.phone), pw = String(b.password || "");
   if (!phone) return json({ error: "اكتب رقم موبايل سوري صحيح (09xxxxxxxx)", field: "phone" }, 400);
   const failK = "acct:fail:" + phone, fails = +(await env.STORE.get(failK)) || 0;
