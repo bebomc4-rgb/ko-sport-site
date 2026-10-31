@@ -1,6 +1,8 @@
 (() => {
   "use strict";
   let C = {}; // flattened live settings
+  const KO_PLAY = "https://play.google.com/store/apps/details?id=com.kosport.app";
+  const KO_MAP = "https://www.google.com/maps/place/?q=place_id:ChIJvTnREgDdGBUREN7vcmrghCU";
   let S = null; // full settings object
   const $ = (s, el = document) => el.querySelector(s);
   const app = $("#app");
@@ -2336,6 +2338,8 @@ ${trustH()}
           <a class="dw-all" href="#/all"><span class="dw-ic" style="color:#6e56cf">${ICON.grid}</span><span class="dw-name">جميع المنتجات بصفحة واحدة</span></a></div>
         <div class="dw-social"><small>تابعنا على</small><div>
           ${soc(C.facebook, "فيسبوك", "M14 8h3V4h-3a4 4 0 0 0-4 4v2H8v4h2v8h4v-8h3l1-4h-4V8z")}
+          ${soc(KO_MAP, "موقعنا عالخريطة", "M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zm0-14a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z")}
+          ${soc(KO_PLAY, "تطبيقنا على Google Play", "M4 3.5v17l9-8.5-9-8.5zm10.2 7.4 2.6-2.5L6.6 2.6l7.6 8.3zm0 2.2-7.6 8.3 10.2-5.8-2.6-2.5zm3.9-3.6-2.4 2.5 2.4 2.5 2.9-1.6c.8-.5.8-1.3 0-1.8l-2.9-1.6z")}
           ${soc(C.instagram, "إنستغرام", "M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm5-9.5a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zM7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3z")}
           ${soc(C.whatsapp ? "https://wa.me/" + C.whatsapp : "", "واتساب", "M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8 1c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.4-.6 1.6-1.2.2-.6.2-1 .1-1.2z")}
         </div></div>`;
@@ -2353,6 +2357,22 @@ ${trustH()}
     $("[data-wa]").href = `https://wa.me/${C.whatsapp}`;
     $("[data-fb]").href = C.facebook;
     $("[data-ig]").href = C.instagram;
+    const mp = $("[data-map]"); if (mp) mp.href = KO_MAP;
+    const pl = $("[data-play]"); if (pl) pl.href = KO_PLAY;
+    appBanner();
+  }
+  // شريط «حمّل تطبيقنا»: بس لزوار أندرويد من المتصفح (مو جوّا التطبيق نفسو)، وبيختفي إذا سكّرو
+  function appBanner() {
+    try {
+      const ua = navigator.userAgent || "";
+      if (!/Android/i.test(ua) || /; wv\)|appcreator|AppCreator24/i.test(ua) || matchMedia("(display-mode: standalone)").matches) return;
+      if (localStorage.getItem("ko-app-hide") || document.querySelector(".app-bar")) return;
+      const b = document.createElement("div");
+      b.className = "app-bar";
+      b.innerHTML = `<img src="/favicon.svg" alt="" width="34" height="34"><span><b>تطبيق KO SPORT</b><small>تسوّق أسرع من موبايلك</small></span><a href="${KO_PLAY}" target="_blank" rel="noopener">حمّل</a><button type="button" aria-label="إغلاق">✕</button>`;
+      b.querySelector("button").onclick = () => { b.remove(); try { localStorage.setItem("ko-app-hide", "1"); } catch {} };
+      document.body.appendChild(b);
+    } catch {}
   }
   const closeMenu = () => { $("[data-drawer]").hidden = true; closeExplorer(true); };
   // ---------- products explorer: the page blurs, the main groups pop up; picking one lifts it to the top and its sections appear ----------

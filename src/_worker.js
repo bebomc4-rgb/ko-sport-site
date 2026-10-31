@@ -1396,7 +1396,13 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
         hasMap: mapUrl(S), geo: { "@type": "GeoCoordinates", latitude: BIZ.lat, longitude: BIZ.lng },
         openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: BIZ.days, opens: BIZ.opens, closes: BIZ.closes }],
         knowsAbout: ["قفازات ملاكمة", "معدات MMA", "كمال أجسام", "أدوات رياضية", "لياقة بدنية", "كرة قدم", "كرة سلة"],
-        sameAs: [S.facebook, S.instagram].filter(Boolean),
+        sameAs: [S.facebook, S.instagram, "https://play.google.com/store/apps/details?id=com.kosport.app"].filter(Boolean),
+      },
+      {
+        "@type": "MobileApplication", "@id": origin + "/#app", name: "KO Sport", alternateName: "كو سبورت", operatingSystem: "Android",
+        applicationCategory: "ShoppingApplication", url: "https://play.google.com/store/apps/details?id=com.kosport.app", installUrl: "https://play.google.com/store/apps/details?id=com.kosport.app", inLanguage: "ar",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, publisher: { "@id": origin + "/#store" },
+        description: "تطبيق KO SPORT: تسوّق كل الأدوات الرياضية بسوريا من موبايلك، مع توصيل لكل المحافظات.",
       },
       {
         "@type": "WebSite", "@id": origin + "/#site", url: origin + "/ar", name: S.name, inLanguage: "ar", publisher: { "@id": origin + "/#store" },
