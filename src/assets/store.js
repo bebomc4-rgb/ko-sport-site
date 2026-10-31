@@ -1695,6 +1695,30 @@
       toast(j.existed || tab === "login" ? "✓ أهلين " + esc(j.account.name.split(" ")[0]) : "✓ انعمل حسابك");
       next();
     };
+    // the store's WhatsApp is offline right now: no waiting — one field (the number) and the account is ready at once
+    const quickPhone = (payload) => {
+      app.innerHTML = `<div class="auth"><h1 class="page-title">آخر خطوة</h1>
+        <form class="form auth-form" data-quick novalidate>
+          <div class="field"><label for="q-phone">رقم موبايلك (الواتساب)</label><input id="q-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx" autocomplete="tel" required><div class="msg"></div></div>
+          <button class="btn btn-red" data-quick-go>حسابي جاهز، كمّل ✓</button>
+        </form></div>`;
+      const f = app.querySelector("[data-quick]"); f.phone.focus();
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fl = f.phone.closest(".field"), msg = fl.querySelector(".msg"), ph = fixPh(f.phone.value); fl.classList.remove("err"); msg.textContent = "";
+        if (!/^09\d{8}$/.test(ph)) { fl.classList.add("err"); msg.textContent = "اكتب رقم موبايل سوري صحيح (09xxxxxxxx)"; return; }
+        const btn = f.querySelector("[data-quick-go]"); btn.disabled = true; btn.textContent = "لحظة…";
+        try {
+          const r = await fetch("/api/acct/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...payload, phone: ph }) });
+          const j = await r.json().catch(() => ({}));
+          if (r.ok && j.token) return done(j);
+          if (r.ok && j.otp) return codeStep(ph, { ...payload, phone: ph });
+          btn.disabled = false; btn.textContent = "حسابي جاهز، كمّل ✓";
+          if (j.exists) { tab = "login"; via = "phone"; draw(); app.querySelector("[data-auth]").phone.value = ph; toast("هالرقم عندو حساب، ادخل بكلمة السر"); return; }
+          fl.classList.add("err"); msg.textContent = j.error || "صار خطأ، جرّب كمان مرة";
+        } catch { btn.disabled = false; btn.textContent = "حسابي جاهز، كمّل ✓"; toast("ما في اتصال، جرّب كمان مرة"); }
+      });
+    };
     // waiting for the customer's WhatsApp message (the bot sees it and tells us the number)
     const waWait = (code, login, payload) => {
       let stop = false, started = !payload, tries = 0, timer = 0;
@@ -1717,7 +1741,7 @@
           if (!started) {
             const r = await fetch("/api/acct/wa-start", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload), keepalive: true });
             const j = await r.json().catch(() => ({}));
-            if (!r.ok) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} if (j.off) { via = "phone"; } draw(); toast(esc(j.error || "صار خطأ، جرّب كمان مرة")); return; }
+            if (!r.ok) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} if (j.off && !login) return quickPhone(payload); if (j.off) { via = "phone"; } draw(); toast(esc(j.error || "صار خطأ، جرّب كمان مرة")); return; }
             started = true;
           } else if (document.visibilityState === "visible") {
             const r = await fetch("/api/acct/wa-check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t: code }) });
