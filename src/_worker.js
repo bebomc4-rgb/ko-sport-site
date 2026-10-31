@@ -2685,6 +2685,8 @@ export default {
       return Response.redirect("https://ko-sport.online" + path + url.search, 301);
     }
     try {
+      // Google Search Console ownership file (keep it: removing it un-verifies the site)
+      if (path === "/google7d560ef0d06e210c.html") return new Response("google-site-verification: google7d560ef0d06e210c.html", { headers: { "content-type": "text/html; charset=utf-8" } });
       if (path === "/api/diag" && m === "GET") return diagApi(request, env);
       if (path.startsWith("/api/") && !env.STORE) return json({ error: "مخزن KV مو مربوط بإعدادات المشروع (الموجود: " + (Object.keys(rawEnv).filter((k) => k !== "ASSETS").join("، ") || "ولا شي") + ")" }, 500);
       if (path.startsWith("/api/") && request.headers.has("authorization")) {
