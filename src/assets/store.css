@@ -1949,3 +1949,17 @@ html.sheet-lock,html.sheet-lock body{overflow:hidden}
 
 /* every product / section photo on the site: a touch brighter and livelier (lowest priority, so «sold out» grey and fade-in effects still win) */
 :where(.card .pic, .pdp-img, .pdp-thumbs, .cat-tile, .br-card, .ac-img, .kx-cimg, .line, .cu-i, .slide, .car-i, .sr-i, .rv-i, .co-i, .sx-img) img{filter:brightness(1.06) saturate(1.08) contrast(1.03)}
+
+/* customer account: sign up / log in before ordering */
+.auth{max-width:460px;margin:0 auto}
+.auth-why{margin:-4px 0 14px;padding:10px 14px;border-radius:12px;background:color-mix(in srgb,var(--red) 9%,var(--c-card-bg,#fff));border:1px solid color-mix(in srgb,var(--red) 25%,transparent);font-size:14px;line-height:1.6}
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;margin-bottom:12px;border-radius:14px;background:color-mix(in srgb,var(--c-card-fg,#111) 7%,var(--c-card-bg,#fff))}
+.auth-tabs button{border:0;border-radius:10px;padding:10px;font:inherit;font-weight:700;background:transparent;color:inherit;cursor:pointer}
+.auth-tabs button.on{background:var(--c-card-bg,#fff);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.auth-form .btn{width:100%;margin-top:6px}
+.auth-note{display:block;text-align:center;margin-top:10px;color:var(--muted)}
+.auth-note a{color:var(--c-link,var(--red));font-weight:700}
+.field .msg a{color:inherit;font-weight:700;text-decoration:underline}
+.acc-me{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.acc-me div{display:grid;gap:2px}.acc-me b{font-size:17px}.acc-me small{color:var(--muted)}
+[data-checkout] input[readonly]{background:color-mix(in srgb,var(--c-card-fg,#111) 5%,var(--c-card-bg,#fff));color:var(--muted)}

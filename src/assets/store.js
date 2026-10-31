@@ -1607,15 +1607,81 @@
     app.innerHTML = `<article class="page-doc"><h1 class="page-title">${esc(pg.title)}</h1>${richText(pg.body)}</article>`;
     app.onclick = null; app.onchange = null;
   }
+  // ---------- customer account (needed before ordering) ----------
+  const acct = () => { const a = store.get("ko_acct", null); return a && a.token && a.account ? a : null; };
+  const acctSet = (j) => store.set("ko_acct", { token: j.token, account: j.account });
+  const acctOut = () => { try { localStorage.removeItem("ko_acct"); } catch {} };
+  const ACCT_GOVS = ["دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "إدلب", "درعا", "السويداء", "القنيطرة", "دير الزور", "الرقة", "الحسكة"];
+  // sign up / log in, then carry on with what the customer was doing (checkout, account…)
+  function authView(next, why, startTab) {
+    let tab = startTab || "reg";
+    const draw = () => {
+      app.innerHTML = `<div class="auth"><h1 class="page-title">${tab === "reg" ? "حساب جديد" : "تسجيل الدخول"}</h1>
+        ${why ? `<p class="auth-why">${esc(why)}</p>` : ""}
+        <div class="auth-tabs"><button type="button" data-tab="reg" class="${tab === "reg" ? "on" : ""}">حساب جديد</button><button type="button" data-tab="login" class="${tab === "login" ? "on" : ""}">عندي حساب</button></div>
+        <form class="form auth-form" data-auth novalidate>
+          ${tab === "reg" ? `<div class="field"><label for="a-name">الاسم الثلاثي (متل الهوية)</label><input id="a-name" name="name" autocomplete="name" placeholder="مثلاً: أحمد محمد الحسن" required><div class="msg"></div></div>` : ""}
+          <div class="field"><label for="a-phone">رقم الموبايل</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx" autocomplete="tel" required><div class="msg"></div></div>
+          ${tab === "reg" ? `<div class="field"><label for="a-gov">المحافظة</label><select id="a-gov" name="governorate" required><option value="">اختار المحافظة</option>${ACCT_GOVS.map((g) => `<option>${esc(g)}</option>`).join("")}</select><div class="msg"></div></div>` : ""}
+          <div class="field"><label for="a-pw">كلمة السر</label><input id="a-pw" name="password" type="password" autocomplete="${tab === "reg" ? "new-password" : "current-password"}" ${tab === "reg" ? 'placeholder="6 أحرف أو أكتر"' : ""} required><div class="msg"></div></div>
+          ${tab === "reg" ? `<div class="field"><label for="a-pw2">أعد كلمة السر</label><input id="a-pw2" name="password2" type="password" autocomplete="new-password" required><div class="msg"></div></div>` : ""}
+          <button class="btn btn-red" data-auth-go>${tab === "reg" ? "سجّل وكمّل" : "دخول"}</button>
+          <small class="auth-note">${tab === "reg" ? "بتسجّل مرة وحدة بس، وبعدها بتطلب بكبسة." : `نسيت كلمة السر؟ <a target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}">راسلنا على واتساب</a>`}</small>
+        </form></div>`;
+      app.onchange = null;
+      app.onclick = (e) => { const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; draw(); } };
+      const f = app.querySelector("[data-auth]");
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        f.querySelectorAll(".field").forEach((x) => { x.classList.remove("err"); const m = x.querySelector(".msg"); if (m) m.textContent = ""; });
+        const v = Object.fromEntries(new FormData(f)), errs = {};
+        const ph = String(v.phone || "").replace(/[٠-٩]/g, (x) => "٠١٢٣٤٥٦٧٨٩".indexOf(x)).replace(/\D/g, "").replace(/^(00963|963)/, "").replace(/^9/, "09");
+        if (!/^09\d{8}$/.test(ph)) errs.phone = "اكتب رقم موبايل سوري صحيح (09xxxxxxxx)";
+        if (tab === "reg") {
+          const nm = String(v.name || "").trim().replace(/\s+/g, " ");
+          if (nm.split(" ").filter((w) => w.length > 1).length < 3) errs.name = "اكتب الاسم الثلاثي متل الهوية";
+          if (!v.governorate) errs.governorate = "اختار المحافظة";
+          if (String(v.password || "").length < 6) errs.password = "كلمة السر لازم تكون 6 أحرف أو أكتر";
+          else if (v.password !== v.password2) errs.password2 = "كلمتين السر مو متطابقين";
+        } else if (!v.password) errs.password = "اكتب كلمة السر";
+        const show = (k, m) => { const el = f[k], fl = el && el.closest(".field"); if (fl) { fl.classList.add("err"); fl.querySelector(".msg").innerHTML = m; } };
+        if (Object.keys(errs).length) { for (const [k, m] of Object.entries(errs)) show(k, esc(m)); const first = f.querySelector(".field.err input, .field.err select"); if (first) first.focus(); return; }
+        const btn = f.querySelector("[data-auth-go]"), lbl = btn.textContent; btn.disabled = true; btn.textContent = "لحظة…";
+        try {
+          const r = await fetch(tab === "reg" ? "/api/acct/register" : "/api/acct/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: v.name, phone: ph, governorate: v.governorate, password: v.password }) });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            btn.disabled = false; btn.textContent = lbl;
+            if (j.exists) { tab = "login"; draw(); const ff = app.querySelector("[data-auth]"); ff.phone.value = ph; const fl = ff.phone.closest(".field"); fl.classList.add("err"); fl.querySelector(".msg").textContent = "هالرقم عندو حساب، اكتب كلمة السر وادخل"; ff.password.focus(); return; }
+            if (j.missing) { show("phone", `ما في حساب على هالرقم. <a href="#" data-to-reg>سجّل حساب جديد</a>`); const a = f.querySelector("[data-to-reg]"); if (a) a.onclick = (ev) => { ev.preventDefault(); tab = "reg"; draw(); app.querySelector("[data-auth]").phone.value = ph; }; return; }
+            if (j.field && f[j.field]) show(j.field, esc(j.error)); else toast(esc(j.error || "صار خطأ، جرّب كمان مرة"));
+            return;
+          }
+          acctSet(j);
+          const old = store.get("ko_customer", {}) || {};
+          store.set("ko_customer", { ...old, name: j.account.name, phone: j.account.phone, governorate: old.governorate || j.account.governorate });
+          toast(tab === "reg" ? "✓ انعمل حسابك" : "✓ أهلين " + esc(j.account.name.split(" ")[0]));
+          next();
+        } catch (err) { btn.disabled = false; btn.textContent = lbl; toast("ما في اتصال، جرّب كمان مرة"); }
+      });
+    };
+    draw(); window.scrollTo(0, 0);
+  }
   function account() {
+    const A = acct();
+    if (!A) { authView(() => account(), "سجّل حساب أو ادخل على حسابك لتطلب وتتابع طلباتك.", "login"); return; }
     const list = store.get("ko_orders", []);
-    const me = store.get("ko_customer", {}) || {};
+    const me = { ...(store.get("ko_customer", {}) || {}), phone: A.account.phone };
     app.innerHTML = `<h1 class="page-title">حسابي</h1>
+      <section class="acc-card acc-me"><div><b>${esc(A.account.name)}</b><small dir="ltr">${esc(A.account.phone)}</small><small>${esc(A.account.governorate || "")}</small></div><button type="button" class="btn btn-ghost sm" data-logout>تسجيل خروج</button></section>
       <section class="acc-card"><h2>طلباتي</h2>${list.length ? list.map((o) => `<div class="acc-order"><div><b dir="ltr">${esc(o.id)}</b><small>${new Date(o.at).toLocaleDateString("ar-SY")} · ${o.n} منتج · ${money(o.total)}</small></div>
         <button type="button" class="btn btn-ghost sm" data-track="${esc(o.id)}" data-phone="${esc(o.phone)}">تتبّع</button></div><div class="acc-st" data-st="${esc(o.id)}" hidden></div>`).join("") : `<p class="acc-empty">ما في طلبات من هالجهاز لهلق. <a href="#/all">ابدأ التسوق</a></p>`}</section>
       <section class="acc-card"><h2>تتبّع طلب</h2><form class="acc-form" data-track-form><input name="no" placeholder="رقم الطلب (KO-…)" dir="ltr" required><input name="phone" placeholder="رقم الموبايل يلي طلبت فيه" inputmode="tel" dir="ltr" value="${esc(me.phone || "")}" required><button class="btn btn-dark">تتبّع</button></form><div data-track-out hidden></div></section>
       <section class="acc-card acc-links"><a href="#/cart">🛒 السلة</a><a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">💬 تواصل معنا على واتساب</a></section>`;
-    app.onclick = (e) => { const b = e.target.closest("[data-track]"); if (b) track(b.dataset.track, b.dataset.phone, app.querySelector(`[data-st="${CSS.escape(b.dataset.track)}"]`)); };
+    app.onclick = (e) => {
+      if (e.target.closest("[data-logout]")) { askConfirm("بدك تسجّل خروج من حسابك؟", "نعم، اطلع").then((y) => { if (y) { acctOut(); account(); } }); return; }
+      const b = e.target.closest("[data-track]"); if (b) track(b.dataset.track, b.dataset.phone, app.querySelector(`[data-st="${CSS.escape(b.dataset.track)}"]`));
+    };
     app.onchange = null;
     app.querySelector("[data-track-form]").addEventListener("submit", (e) => { e.preventDefault(); const f = e.target; track(f.no.value.trim(), f.phone.value.trim(), app.querySelector("[data-track-out]")); });
   }
@@ -1679,7 +1745,10 @@ ${trustH()}
   function checkout() {
     const lines = cartLines().filter((l) => l.p.inStock);
     if (!lines.length) { navTo("#/cart"); return; }
-    const saved = store.get("ko_customer", {});
+    const A = acct();
+    if (!A) { authView(() => checkout(), "لتكمّل طلبك، سجّل حساب (مرة وحدة بس) أو ادخل على حسابك."); return; }
+    const saved = { ...(store.get("ko_customer", {}) || {}), name: A.account.name, phone: A.account.phone };
+    if (!saved.governorate) saved.governorate = A.account.governorate;
     const sub = lines.reduce((s, l) => s + l.p.price * l.qty, 0);
     const freeOver = Number(S.delivery.freeOver) || 0;
     const heavyCart = lines.some((l) => isHeavy(l.p));
@@ -1697,8 +1766,8 @@ ${trustH()}
     app.innerHTML = `<h1 class="page-title">إتمام الطلب</h1><div class="cart-wrap">
       <form class="form" data-checkout novalidate>
         <h3><span class="step">1</span> معلوماتك</h3>
-        <div class="field"><label for="f-name">الاسم الثلاثي (كما في الهوية)</label><input id="f-name" name="fullname" autocomplete="name" value="${esc(fullName)}" placeholder="مثلاً: أحمد محمد الحسن" required><small>لازم تكتب اسمك الثلاثي حصرا</small><div class="msg"></div></div>
-        <div class="field"><label for="f-phone">رقم الموبايل</label><input id="f-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx" autocomplete="tel" value="${esc(saved.phone)}" required><div class="msg"></div></div>
+        <div class="field"><label for="f-name">الاسم الثلاثي (كما في الهوية)</label><input id="f-name" name="fullname" autocomplete="name" value="${esc(fullName)}" readonly placeholder="مثلاً: أحمد محمد الحسن" required><small>من حسابك · لتغيّر الحساب روح على «حسابي»</small><div class="msg"></div></div>
+        <div class="field"><label for="f-phone">رقم الموبايل</label><input id="f-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx" autocomplete="tel" value="${esc(saved.phone)}" readonly required><div class="msg"></div></div>
         <h3><span class="step">2</span> التوصيل</h3>
         <div class="field" data-gov-field><label for="f-gov">المحافظة</label><select id="f-gov" name="governorate" required><option value="">اختار المحافظة</option>${govs.map((g) => `<option ${saved.governorate === g ? "selected" : ""}>${esc(g)}</option>`).join("")}</select><div class="msg"></div></div>
         ${heavyCart ? `<div class="note heavy-note" data-heavy-note hidden>🏋️ طلبك فيه أغراض تقيلة (أوزان، دامبل، كيس ملاكمة…)، فسعر الشحن بيتحدد عند التأكيد.</div>` : ""}
@@ -1906,8 +1975,9 @@ ${trustH()}
         items: lines.map((l) => ({ id: l.id, opt: l.opt, qty: l.qty }))
       };
       try {
-        const r = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+        const r = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + ((acct() || {}).token || "") }, body: JSON.stringify(body) });
         const j = await r.json().catch(() => ({}));
+        if (r.status === 401 && j.needLogin) { acctOut(); authView(() => checkout(), "انتهت جلستك، ادخل على حسابك من جديد لتكمّل الطلب.", "login"); return; }
         if (!r.ok) throw new Error(j.error || "صار خطأ");
         cart = []; saveCart(); store.set("ko_sid", "");
         store.set("ko_last_order", j.order);

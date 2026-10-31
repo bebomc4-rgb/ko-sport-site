@@ -532,6 +532,10 @@ async function ordersPost(request, env, ctx) {
   if (!body || !Array.isArray(body.items) || !body.items.length || !body.customer) return json({ error: "الطلب ناقص" }, 400);
   if (body.items.length > 50) return json({ error: "عدد المنتجات كبير" }, 400);
 
+  // ordering needs a customer account (three-part name, Syrian phone, governorate, password)
+  const acct = await acctFromReq(request, env);
+  if (!acct) return json({ error: "لازم تسجّل حساب أو تدخل على حسابك قبل ما تطلب", needLogin: true }, 401);
+  body.customer = { ...body.customer, name: acct.name, phone: acct.phone };
   const c = body.customer;
   const customer = {
     name: clip(c.name, 80), phone: clip(c.phone, 20), governorate: clip(c.governorate, 30),
@@ -797,6 +801,86 @@ async function cartDelete(request, env, sid) {
 }
 
 // ---------- customers: notes, tags, blocking, manual adds and imports (orders give the rest) ----------
+// ---------- customer accounts (needed to place an order) ----------
+// three-part name like the ID card, Syrian mobile (09xxxxxxxx), governorate, password (PBKDF2). The phone is the login.
+const ACCT_GOVS = ["دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "إدلب", "درعا", "السويداء", "القنيطرة", "دير الزور", "الرقة", "الحسكة"];
+function syPhone(v) {
+  let d = String(v || "").replace(/[٠-٩]/g, (x) => "٠١٢٣٤٥٦٧٨٩".indexOf(x)).replace(/\D/g, "");
+  if (d.startsWith("00963")) d = d.slice(5); else if (d.startsWith("963")) d = d.slice(3);
+  if (d.length === 9 && d[0] === "9") d = "0" + d;
+  return /^09\d{8}$/.test(d) ? d : "";
+}
+async function acctSecret(env) {
+  if (env.ACCT_SECRET) return env.ACCT_SECRET;
+  if (env.__acs) return env.__acs;
+  let k = await env.STORE.get("acct:secret");
+  if (!k) { k = b64u(crypto.getRandomValues(new Uint8Array(32))); await env.STORE.put("acct:secret", k); }
+  return (env.__acs = k);
+}
+async function passHash(pw, salt) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+  return b64u(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode(salt), iterations: 100000 }, key, 256));
+}
+async function hmac(env, msg) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(await acctSecret(env)), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return b64u(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg)));
+}
+async function acctToken(env, a) {
+  const exp = Date.now() + 365 * 864e5, body = `${a.phone}.${exp}.${a.hash.slice(0, 8)}`;
+  return `${body}.${await hmac(env, body)}`;
+}
+async function acctFromReq(request, env) {
+  const t = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const [phone, exp, pv, sig] = t.split(".");
+  if (!sig || !/^09\d{8}$/.test(phone) || !(+exp > Date.now())) return null;
+  if ((await hmac(env, `${phone}.${exp}.${pv}`)) !== sig) return null;
+  const a = await env.STORE.get("acct:" + phone, "json");
+  return a && !a.blocked && a.hash.slice(0, 8) === pv ? a : null;
+}
+const acctOut = (a) => ({ name: a.name, phone: a.phone, governorate: a.governorate, at: a.at });
+async function acctApi(request, env, path, m) {
+  if (!env.STORE) return json({ error: "الحسابات مو متاحة هلق" }, 503);
+  if (path === "/api/acct/me") {
+    const a = await acctFromReq(request, env);
+    if (!a) return json({ error: "سجّل دخول من جديد" }, 401);
+    if (m === "GET") return json({ ok: true, account: acctOut(a) });
+    if (m === "PUT") {
+      const b = await request.json().catch(() => ({}));
+      if (b.governorate) { if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة" }, 400); a.governorate = b.governorate; }
+      await env.STORE.put("acct:" + a.phone, JSON.stringify(a));
+      return json({ ok: true, account: acctOut(a) });
+    }
+    return json({ error: "Method not allowed" }, 405);
+  }
+  if (m !== "POST") return json({ error: "Method not allowed" }, 405);
+  const b = await request.json().catch(() => ({}));
+  const phone = syPhone(b.phone), pw = String(b.password || "");
+  if (!phone) return json({ error: "اكتب رقم موبايل سوري صحيح (09xxxxxxxx)", field: "phone" }, 400);
+  const failK = "acct:fail:" + phone, fails = +(await env.STORE.get(failK)) || 0;
+  if (fails >= 8) return json({ error: "محاولات كتير، جرّب بعد ربع ساعة" }, 429);
+  if (path === "/api/acct/register") {
+    const name = clip(String(b.name || "").replace(/\s+/g, " "), 80), parts = name.split(" ").filter(Boolean);
+    if (parts.length < 3 || parts.some((w) => w.length < 2) || /[0-9٠-٩@#$%^&*_=+<>{}\[\]|\\\/]/.test(name)) return json({ error: "اكتب الاسم الثلاثي متل الهوية (الاسم، اسم الأب، الكنية)", field: "name" }, 400);
+    if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة", field: "governorate" }, 400);
+    if (pw.length < 6 || pw.length > 64) return json({ error: "كلمة السر لازم تكون 6 أحرف أو أكتر", field: "password" }, 400);
+    if (await env.STORE.get("acct:" + phone)) return json({ error: "هالرقم عندو حساب، سجّل دخول", field: "phone", exists: true }, 409);
+    const salt = b64u(crypto.getRandomValues(new Uint8Array(16)));
+    const a = { name, phone, governorate: b.governorate, salt, hash: await passHash(pw, salt), at: new Date().toISOString() };
+    await env.STORE.put("acct:" + phone, JSON.stringify(a));
+    // the owner sees every new account in «العملاء»
+    try { const all = (await env.STORE.get("customers", "json")) || {}, k = custKey(phone); all[k] = { ...cleanCust({ name, phone, gov: a.governorate, tags: ["حساب بالموقع"] }), ...(all[k] || {}), name, phone, gov: a.governorate, account: true }; await env.STORE.put("customers", JSON.stringify(all)); } catch {}
+    return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
+  }
+  if (path === "/api/acct/login") {
+    const a = await env.STORE.get("acct:" + phone, "json");
+    if (!a) return json({ error: "ما في حساب على هالرقم، سجّل حساب جديد", field: "phone", missing: true }, 404);
+    if (a.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403);
+    if ((await passHash(pw, a.salt)) !== a.hash) { await env.STORE.put(failK, String(fails + 1), { expirationTtl: 900 }); return json({ error: "كلمة السر غلط", field: "password" }, 401); }
+    return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
+  }
+  return json({ error: "Not found" }, 404);
+}
+
 function custKey(phone, email) {
   const d = String(phone || "").replace(/\D/g, "").slice(-9);
   if (d.length >= 9) return "p" + d;
@@ -2784,6 +2868,7 @@ export default {
         if (m === "PUT") return settingsPut(request, env);
         return json({ error: "Method not allowed" }, 405);
       }
+      if (path.startsWith("/api/acct/")) return acctApi(request, env, path, m);
       if (path === "/api/login" && m === "POST") return env.__role ? json({ ok: true, role: env.__role, name: env.__staff }) : denied();
       if (path === "/api/products") {
         if (m === "GET") return productsGet(request, env, ctx);
