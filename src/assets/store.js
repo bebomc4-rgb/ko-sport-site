@@ -17,7 +17,7 @@
   // Resized copies made by Cloudflare (Image Transformations): the same photo, sized for the screen, a fraction of the KB.
   // onerror=redirect → if the free monthly quota ever runs out, the original photo is served instead (nothing breaks).
   const LOCAL_IMG = /^\/img\/[a-z0-9]+$/;
-  const imgW = (u, w) => LOCAL_IMG.test(u || "") ? `/cdn-cgi/image/width=${w},quality=75,format=auto,onerror=redirect${u}` : (u || NOIMG);
+  const imgW = (u, w, q) => LOCAL_IMG.test(u || "") ? `/cdn-cgi/image/width=${w},quality=${q || 75},format=auto,onerror=redirect${u}` : (u || NOIMG);
   // product page photo: same sizes as the <link rel=preload> the server puts in the page head
   const PDP_W = [640, 828, 1080], PDP_SIZES = "(max-width:900px) 100vw, 560px";
   const imgSet = (u, ws, sizes) => LOCAL_IMG.test(u || "") ? ` srcset="${ws.map((w) => imgW(u, w) + " " + w + "w").join(", ")}" sizes="${sizes}"` : "";
@@ -627,7 +627,7 @@
       // look of each collection (sec.tStyle), its texts (count word, button) and name size
       const tst = ["classic", "circle", "overlay", "chip", "btn", "card", "luxe"].includes(sec.tStyle) ? sec.tStyle : "classic";
       const btnT = String(sec.btnText || "").slice(0, 24).trim(); // no product counts anywhere in the shop (owner's choice)
-      const tileH = (c) => `<a class="cat-tile" href="${cHref(c.name)}">${tst === "btn" ? "" : `<img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(c.image, 540))}" alt="${esc(catLabel(c.name))}">`}<b>${esc(catLabel(c.name))}</b>${btnT ? `<i class="ct-btn">${esc(btnT)}</i>` : ""}</a>`;
+      const tileH = (c) => `<a class="cat-tile" href="${cHref(c.name)}">${tst === "btn" ? "" : `<img loading="lazy" decoding="async" width="360" height="360" src="${esc(imgW(c.image, 900, 90))}" alt="${esc(catLabel(c.name))}">`}<b>${esc(catLabel(c.name))}</b>${btnT ? `<i class="ct-btn">${esc(btnT)}</i>` : ""}</a>`;
       const look = ["cst-" + tst, ["s", "l"].includes(sec.nameSize) ? "cns-" + sec.nameSize : ""].filter(Boolean).join(" ");
       if (sec.layout === "spot") return secHead(sec.showTitle === false ? "" : sec.title, "#/all") + `<div class="${look}">${spot(sec, sorted.map(tileH), "spot-cats")}</div>`;
       if (sec.layout === "car") return secHead(sec.showTitle === false ? "" : sec.title, "#/all") + `<div class="${look}">${carousel(sec, sorted.map(tileH), "car-cats")}</div>`;
@@ -2219,7 +2219,7 @@ ${trustH()}
   // ---------- #/browse: a fast, app-like page with every group and section ----------
   function browse() {
     document.title = "المتجر | " + (C.name || "");
-    const cimg = (c) => { const u = c.image || ((products.find((x) => x.inStock && inCat(x, c.name)) || products.find((x) => inCat(x, c.name)) || {}).image) || ""; return u ? imgW(u, 720) : ""; };
+    const cimg = (c) => { const u = c.image || ((products.find((x) => x.inStock && inCat(x, c.name)) || products.find((x) => inCat(x, c.name)) || {}).image) || ""; return u ? imgW(u, 900, 90) : ""; };
     const seen = new Set();
     const card = (c, k) => { seen.add(c.name); const u = cimg(c); return `<a class="br-card" href="${cHref(c.name)}" style="--i:${k}">${u ? `<img loading="lazy" decoding="async" src="${esc(u)}" alt="">` : ""}<span class="br-n"><b>${esc(catLabel(c.name))}</b></span></a>`; };
     const groups = C.groups.map((g, i) => {
