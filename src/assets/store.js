@@ -977,6 +977,10 @@
       (dots ? `<div class="car-dots${o.fill ? " fill" : ""}">${items.map((_, i) => `<span data-cd="${i}"><i></i></span>`).join("")}</div>` : "") + `</div>`;
   }
   let carStops = [];
+  // after a carousel tap opened a page, the phone still sends its «click» a moment later — on the NEW page, at the same spot
+  // (it used to land on the product photo and open the zoom). Swallow that one ghost click.
+  let tapGhost = 0;
+  window.addEventListener("click", (e) => { if (Date.now() - tapGhost < 900) { tapGhost = 0; e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } }, true);
   // Carousel engine: no native scrolling at all. The finger moves one transform on the rail and every item's effect
   // (--d) is computed from the same number in the same frame, so the picture can never shake or lag behind the finger.
   function startCars() {
@@ -1084,7 +1088,7 @@
           const href = d.a.getAttribute("href") || "";
           let r = null;
           if (href.indexOf("#/") === 0) r = href; else if (d.a.origin === location.origin && (d.a.pathname === BASE || d.a.pathname.indexOf(BASE + "/") === 0)) r = d.a.pathname.slice(BASE.length) || "/";
-          if (r != null && CLEAN) { tapped = Date.now(); navTo(r); return; }
+          if (r != null && CLEAN) { tapped = Date.now(); tapGhost = Date.now(); navTo(r); return; }
         }
         if (d.axis !== "x") return;
         dragged = Date.now();
