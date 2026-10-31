@@ -528,6 +528,14 @@
     </article>`;
   }
   const sortStock = (a, b) => (b.inStock - a.inStock);
+  // the same shuffle for everyone all day (Damascus date), a different one tomorrow
+  function dailyShuffle(list, salt) {
+    const day = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+    let h = 2166136261; for (const ch of day + "|" + (salt || "")) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    const rnd = () => { h = (h + 0x6d2b79f5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
 
   function groupOf(c) { return C.groups.find((g) => g.cats.includes(c)); }
   // the order the owner drags into place in the collection editor (design.catMeta[cat].order).
@@ -982,7 +990,7 @@
       const dots = [...car.querySelectorAll(".car-dots span")], fill = !!car.querySelector(".car-dots.fill"), autoMs = (+car.dataset.car || 0) * 1000;
       const always = car.classList.contains("car-hero");
       const rtl = getComputedStyle(rail).direction === "rtl", vs = rtl ? -1 : 1; // visual sign of "next"
-      let step = 0, pos = loop ? K : 0, cur = -1, anim = null, drag = null, dragged = 0, dead = false, loopRaf = 0, frame = 0;
+      let step = 0, pos = loop ? K : 0, cur = -1, anim = null, drag = null, dragged = 0, tapped = 0, dead = false, loopRaf = 0, frame = 0;
       let seen = !("IntersectionObserver" in window), hold = 0, t0 = performance.now(), last = t0;
       const dv = new Array(its.length);
       // the look of every item is computed here and written straight to its transform/opacity (GPU only).
@@ -1048,7 +1056,7 @@
       tr.addEventListener("pointerdown", (e) => {
         if (e.button > 0 || e.target.closest(".car-nav,.car-dots")) return;
         stopAnim(); if (!step) measure();
-        drag = { x: e.clientX, y: e.clientY, p0: pos, axis: null, id: e.pointerId, v: 0, lx: e.clientX, lt: performance.now() };
+        drag = { x: e.clientX, y: e.clientY, p0: pos, axis: null, id: e.pointerId, v: 0, lx: e.clientX, lt: performance.now(), a: e.target.closest("a[href]"), t: performance.now() };
         hold = performance.now() + 1200;
       });
       tr.addEventListener("pointermove", (e) => {
@@ -1071,6 +1079,13 @@
       const end = (e) => {
         if (!drag || (e && e.pointerId !== drag.id)) return;
         const d = drag; drag = null; car.classList.remove("dragging");
+        // a plain tap on a card: open it now, on the first tap (don't wait for a «click» that phones sometimes drop mid-animation)
+        if (d.axis !== "x" && e && e.type === "pointerup" && d.a && !d.a.target && performance.now() - d.t < 700 && Math.abs(e.clientX - d.x) < 14 && Math.abs(e.clientY - d.y) < 14) {
+          const href = d.a.getAttribute("href") || "";
+          let r = null;
+          if (href.indexOf("#/") === 0) r = href; else if (d.a.origin === location.origin && (d.a.pathname === BASE || d.a.pathname.indexOf(BASE + "/") === 0)) r = d.a.pathname.slice(BASE.length) || "/";
+          if (r != null && CLEAN) { tapped = Date.now(); navTo(r); return; }
+        }
         if (d.axis !== "x") return;
         dragged = Date.now();
         const vItems = (-vs * d.v * 1) / step * 1000;            // items per second, in "next" direction
@@ -1082,7 +1097,7 @@
       tr.addEventListener("pointerup", end); tr.addEventListener("pointercancel", end);
       // phones hand the touch to the picture under the finger first; moving it to the track fires a "lost capture" on that picture — ignore those
       tr.addEventListener("lostpointercapture", (e) => { if (e.target === tr) end(e); });
-      tr.addEventListener("click", (e) => { if (Date.now() - dragged < 350) { e.preventDefault(); e.stopPropagation(); } }, true);
+      tr.addEventListener("click", (e) => { if (Date.now() - dragged < 350 || Date.now() - tapped < 800) { e.preventDefault(); e.stopPropagation(); } }, true);
       tr.addEventListener("dragstart", (e) => e.preventDefault());
       // trackpad / mouse wheel sideways
       let wheelT = 0;
@@ -1209,7 +1224,7 @@
       if (st.colors.length) list = list.filter((p) => facetsOf(p).colors.some((x) => st.colors.includes(x)));
       if (st.min !== "") list = list.filter((p) => p.price >= +st.min);
       if (st.max !== "") list = list.filter((p) => p.price <= +st.max);
-      if (st.sort === "default") list = takeTurns(list); // not all the belts together: sections take turns
+      if (st.sort === "default") list = takeTurns(dailyShuffle(list, key)); // a new random order every day (same all day long), sections take turns
       if (st.sort === "low") list.sort((a, b) => a.price - b.price);
       else if (st.sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ar"));
       else if (st.sort === "high") list.sort((a, b) => b.price - a.price);

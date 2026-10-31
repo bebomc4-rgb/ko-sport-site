@@ -1798,7 +1798,7 @@ html[data-cd-hov=shine] #app .card .pic::after{content:"";position:absolute;inse
 #app .cst-card .cat-tile b{padding:10px 12px 0}#app .cst-card .cat-tile span{padding:0 12px 10px}#app .cst-card .ct-btn{margin:0 12px 12px;text-align:center}
 #app .cst-luxe .cat-tile{position:relative;padding:0;overflow:hidden;border:1px solid color-mix(in srgb,#c9a45c 55%,transparent);background:linear-gradient(160deg,#17171c,#0b0b0e);color:#f5f1e8}
 #app .cst-luxe .cat-tile img{margin:0;border-radius:0;aspect-ratio:1;object-fit:cover;opacity:1;filter:brightness(1.08) saturate(1.1) contrast(1.03);background:#fff;transition:transform .6s}
-#app .cst-luxe .cat-tile:hover img{transform:scale(1.07)}
+@media (hover:hover){#app .cst-luxe .cat-tile:hover img{transform:scale(1.07)}}
 #app .cst-luxe .cat-tile b{padding:10px 12px 2px;color:#f5f1e8;letter-spacing:.3px}#app .cst-luxe .cat-tile span{display:block;padding:0 12px 12px;color:#c9a45c;opacity:1}
 #app .cst-luxe .ct-btn{margin:0 12px 12px;background:transparent;border:1px solid #c9a45c;color:#c9a45c}
 @media (max-width:640px){#app .cst-chip,#app .cst-btn{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}}
