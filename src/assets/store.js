@@ -2614,8 +2614,11 @@ ${trustH()}
   });
   // slow connection: the service worker answered from the copy saved on this device, then the real one arrived
   // and it is different (the owner just saved something). Show it now instead of on the next visit.
-  let freshT = 0;
+  let freshT = 0, touched = false;
+  ["touchstart", "pointerdown", "keydown", "wheel"].forEach((t) => addEventListener(t, () => { touched = true; }, { passive: true, once: true }));
   if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", (e) => {
+    // a new version of the shop was published: reload only if the visitor hasn't started using the page yet
+    if (e.data && e.data.koUpgrade) { if (!touched && window.scrollY < 30 && !/^\/(checkout|done)/.test(curRoute())) location.reload(); return; }
     if (!e.data || !e.data.koFresh) return;
     clearTimeout(freshT);
     freshT = setTimeout(async () => {
