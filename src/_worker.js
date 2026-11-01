@@ -2912,8 +2912,9 @@ export default {
       if (/iPhone|iPad|iPod/i.test(ua)) return new Response(null, { status: 302, headers: { location: "https://ko-sport.online/ar?install=ios", "cache-control": "no-store", vary: "user-agent" } });
       // أندرويد: تطبيق Google Play الأصلي (com.android.vending) مباشرة، بتحويل من السيرفر بنفس كبسة الرابط (كروم بيسمح فيه).
       // (صفحة Google Play بالمتصفح كانت تفتح نسخة الويب بلا حسابو، وصاحب المتجر بدو التطبيق الأصلي)
-      const intent = "intent://details?id=com.kosport.app#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=" + encodeURIComponent("https://play.google.com/store/apps/details?id=com.kosport.app") + ";end";
-      if (/Android/i.test(ua)) return new Response(null, { status: 302, headers: { location: intent, "cache-control": "no-store", vary: "user-agent" } });
+      const KO_PLAY_LINK = "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://play.google.com/store/apps/details%3Fid%3Dcom.kosport.app%26referrer%3Dutm_source%253Dgoogle%2526utm_medium%253Dorganic%2526utm_term%253Dko%2Bsport%2Bapk%2B%25D9%2584%25D9%2584%25D8%25A7%25D8%25AF%25D9%2588%25D8%25A7%25D8%25AA%2B%25D8%25A7%25D9%2584%25D8%25B1%25D9%258A%25D8%25A7%25D8%25B6%25D9%258A%25D8%25A9&ved=2ahUKEwiUhZrk1uaXAxWEQfEDHcBzPfwQFnoECBsQAQ&sqi=2&usg=AOvVaw0h_oyvDSLNv6Wk00GosHAb";
+      // صاحب المتجر (1 تشرين التاني 2026): الأندرويد بيروح على هالرابط بالزبط (رابط Google يلي بيفتح Google Play الأصلي عندو)
+      if (/Android/i.test(ua)) return new Response(null, { status: 302, headers: { location: KO_PLAY_LINK, "cache-control": "no-store", vary: "user-agent" } });
       return new Response(null, { status: 302, headers: { location: "https://play.google.com/store/apps/details?id=com.kosport.app", "cache-control": "no-store", vary: "user-agent" } });
     }
     // the main address ko-sport.online opens the shop at /ar (the app opens that same address)

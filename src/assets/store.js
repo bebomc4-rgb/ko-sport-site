@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   let C = {}; // flattened live settings
-  const KO_PLAY = "https://play.google.com/store/apps/details?id=com.kosport.app";
+  const KO_PLAY = "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://play.google.com/store/apps/details%3Fid%3Dcom.kosport.app%26referrer%3Dutm_source%253Dgoogle%2526utm_medium%253Dorganic%2526utm_term%253Dko%2Bsport%2Bapk%2B%25D9%2584%25D9%2584%25D8%25A7%25D8%25AF%25D9%2588%25D8%25A7%25D8%25AA%2B%25D8%25A7%25D9%2584%25D8%25B1%25D9%258A%25D8%25A7%25D8%25B6%25D9%258A%25D8%25A9&ved=2ahUKEwiUhZrk1uaXAxWEQfEDHcBzPfwQFnoECBsQAQ&sqi=2&usg=AOvVaw0h_oyvDSLNv6Wk00GosHAb";
   const KO_MAP = "https://www.google.com/maps/place/?q=place_id:ChIJvTnREgDdGBUREN7vcmrghCU";
   let S = null; // full settings object
   const $ = (s, el = document) => el.querySelector(s);
