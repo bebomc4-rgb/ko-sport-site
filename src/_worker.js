@@ -2910,7 +2910,11 @@ export default {
       // أندرويد: صفحة KO على Google Play بالمتصفح مباشرة (فيها زر «تثبيت» بينقل عالتطبيق). آيفون: الموقع
       const ua = request.headers.get("user-agent") || "";
       if (/iPhone|iPad|iPod/i.test(ua)) return new Response(null, { status: 302, headers: { location: "https://ko-sport.online/ar?install=ios", "cache-control": "no-store", vary: "user-agent" } });
-      return Response.redirect(new URL("/app/play", url).href, 302);
+      // أندرويد: تطبيق Google Play الأصلي (com.android.vending) مباشرة، بتحويل من السيرفر بنفس كبسة الرابط (كروم بيسمح فيه).
+      // (صفحة Google Play بالمتصفح كانت تفتح نسخة الويب بلا حسابو، وصاحب المتجر بدو التطبيق الأصلي)
+      const intent = "intent://details?id=com.kosport.app#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=" + encodeURIComponent("https://play.google.com/store/apps/details?id=com.kosport.app") + ";end";
+      if (/Android/i.test(ua)) return new Response(null, { status: 302, headers: { location: intent, "cache-control": "no-store", vary: "user-agent" } });
+      return new Response(null, { status: 302, headers: { location: "https://play.google.com/store/apps/details?id=com.kosport.app", "cache-control": "no-store", vary: "user-agent" } });
     }
     // the main address ko-sport.online opens the shop at /ar (the app opens that same address)
     if (url.hostname === "ko-sport.online" && path === "/" && m === "GET") {
