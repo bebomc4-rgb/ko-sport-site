@@ -1,0 +1,14 @@
+name: probe
+on:
+  push:
+    branches: [master]
+    paths: [".github/probe-request"]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for ua in "Mozilla/5.0 (Linux; Android 14; 23113RKC6G)" "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"; do
+            echo "== $ua"; curl -sS -m 20 -A "$ua" -D - "https://ko-sport.online/app?t=$(date +%s)" | grep -oE "HTTP/[0-9.]+ [0-9]+|location: .*|href=\"[^\"]+\"|تطبيق KO SPORT" | head -8
+          done
+          curl -sS -m 20 "https://ko-sport.online/assets/store.js?v=163" | grep -oE "KO_PLAY ?= ?\"[^\"]+\"" | head -2
