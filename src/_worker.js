@@ -2905,6 +2905,8 @@ export default {
       const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>KO SPORT على Google Play</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#0b0b0d;color:#fff;text-align:center}a{color:#7fd4b0}</style></head><body><div>جاري فتح Google Play…<br><br><a href="${PLAY}">إذا ما انفتح، اكبس هون</a></div><script>setTimeout(function(){location.replace(${JSON.stringify(PLAY)})},60)</script></body></html>`;
       return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
     }
+    // رابط الآيفون بالمجيب: الموقع مع خطوات «إضافة للشاشة الرئيسية»
+    if ((path === "/iphone" || path === "/iphone/") && m === "GET") return new Response(null, { status: 302, headers: { location: "https://ko-sport.online/ar?install=ios", "cache-control": "no-store" } });
     if ((path === "/app" || path === "/app/") && m === "GET") {
       // رابط التطبيق (المجيب بيبعتو) — صاحب المتجر، 1 تشرين التاني 2026: بلا أزرار.
       // أندرويد: صفحة KO على Google Play بالمتصفح مباشرة (فيها زر «تثبيت» بينقل عالتطبيق). آيفون: الموقع
