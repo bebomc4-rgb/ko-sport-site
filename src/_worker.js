@@ -2897,6 +2897,13 @@ export default {
     if (migDone && mig2Done && mig3Done && mig4Done && mig5Done && !mig6Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig6(env).catch(() => {}));
     if (!mig7Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig7(env).catch(() => {}));
     if (mig6Done && env.STORE && ctx && ctx.waitUntil && Date.now() - qdLocalAt > 10 * 60e3) ctx.waitUntil(qdSync(env).catch(() => {}));
+    // رابط التطبيق الواحد ko-sport.online/app (المجيب بيبعتو): أندرويد → Google Play مباشرة (ما بيفوت عالموقع)، آيفون → الموقع مع خطوات «إضافة للشاشة الرئيسية»
+    if ((path === "/app" || path === "/app/") && m === "GET") {
+      const ua = request.headers.get("user-agent") || "";
+      const to = /Android/i.test(ua) ? "https://play.google.com/store/apps/details?id=com.kosport.app"
+        : /iPhone|iPad|iPod|Macintosh/i.test(ua) ? "https://ko-sport.online/ar?install=ios" : "https://ko-sport.online/ar";
+      return new Response(null, { status: 302, headers: { location: to, "cache-control": "no-store", vary: "user-agent" } });
+    }
     // the main address ko-sport.online opens the shop at /ar (the app opens that same address)
     if (url.hostname === "ko-sport.online" && path === "/" && m === "GET") {
       return Response.redirect("https://ko-sport.online/ar" + url.search, 301);

@@ -2597,6 +2597,8 @@ ${trustH()}
     { const box = $("[data-app-dl]"), ua = navigator.userAgent || "";
       if (box) box.hidden = /; wv\)|appcreator/i.test(ua) || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; }
     appBanner();
+    // جاي من رابط المجيب ko-sport.online/app عالآيفون: منفتحلو خطوات التثبيت لحالها
+    try { if (new URLSearchParams(location.search).get("install") === "ios") setTimeout(iosInstall, 700); } catch {}
   }
   // شريط «حمّل تطبيقنا»: بس لزوار أندرويد من المتصفح (مو جوّا التطبيق نفسو)، وبيختفي إذا سكّرو
   function iosInstall() {
