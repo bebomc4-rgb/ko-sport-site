@@ -1,0 +1,32 @@
+name: build site
+on:
+  push:
+    branches: [master]
+    paths: ["src/**", "build.mjs", "embed-runtime.js", "critical.mjs", ".github/workflows/build.yml"]
+permissions:
+  contents: write
+concurrency: { group: build, cancel-in-progress: true }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: before — what is live now
+        run: curl -sS -m 20 -A "Mozilla/5.0 (Linux; Android 14)" https://ko-sport.online/app | head -c 300; echo
+      - name: build (minified) → dist/_worker.js
+        run: node build.mjs
+      - name: commit dist if it changed
+        run: |
+          if git diff --quiet -- dist; then echo "dist unchanged"; exit 0; fi
+          git config user.name "ko-build"; git config user.email "build@ko-sport.online"
+          git add dist && git commit -m "build dist for $(git log -1 --format=%h -- src)" && git push
+      - name: after — wait until the new copy is live
+        run: |
+          for i in $(seq 1 40); do
+            sleep 6
+            r=$(curl -sS -m 15 -A "Mozilla/5.0 (Linux; Android 14)" "https://ko-sport.online/app?t=$i" | head -c 400)
+            if echo "$r" | grep -q "intent://"; then echo "✓ live after $((i*6))s"; exit 0; fi
+          done
+          echo "$r"; echo "not live yet after 4 minutes"

@@ -16,7 +16,14 @@ try {
 const min = [...fs.readdirSync(path.join(tmp, "assets")).filter((f) => /\.(js|css)$/.test(f)).map((f) => path.join(tmp, "assets", f)), path.join(tmp, "sw.js")];
 const ESB = process.env.ESBUILD || "npx --yes esbuild@0.24.0";
 let minOk = true;
-for (const f of min) { if (!minOk) break; try { execSync(`${ESB} "${f}" --minify --charset=utf8 ${f.endsWith(".js") ? "--target=es2020" : ""} --allow-overwrite --outfile="${f}" --log-level=error`, { stdio: "inherit" }); } catch { minOk = false; console.warn("⚠️ ما قدرت صغّر الملفات (esbuild)، كمّلت بدون تصغير"); fs.rmSync(tmp, { recursive: true, force: true }); fs.cpSync(src, tmp, { recursive: true }); } }
+// كل الملفات بأمر esbuild واحد لكل نوع (بدل أمر لكل ملف): البناء على Cloudflare صار أسرع بكتير
+const groups = [min.filter((f) => f.endsWith(".js") && !f.endsWith("sw.js")), min.filter((f) => f.endsWith(".css")), min.filter((f) => f.endsWith("sw.js"))].filter((g) => g.length);
+for (const g of groups) {
+  if (!minOk) break;
+  const dir = path.dirname(g[0]), js = g[0].endsWith(".js");
+  try { execSync(`${ESB} ${g.map((f) => `"${f}"`).join(" ")} --minify --charset=utf8 ${js ? "--target=es2020" : ""} --allow-overwrite --outdir="${dir}" --log-level=error`, { stdio: "inherit" }); }
+  catch { minOk = false; console.warn("⚠️ ما قدرت صغّر الملفات (esbuild)، كمّلت بدون تصغير"); fs.rmSync(tmp, { recursive: true, force: true }); fs.cpSync(src, tmp, { recursive: true }); }
+}
 // 2) embed every static file into _worker.js
 const CT = { ".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json; charset=utf-8", ".txt": "text/plain; charset=utf-8" };
 const files = {};
