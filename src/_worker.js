@@ -2900,8 +2900,14 @@ export default {
     // رابط التطبيق الواحد ko-sport.online/app (المجيب بيبعتو): أندرويد → Google Play مباشرة (ما بيفوت عالموقع)، آيفون → الموقع مع خطوات «إضافة للشاشة الرئيسية»
     if ((path === "/app" || path === "/app/") && m === "GET") {
       const ua = request.headers.get("user-agent") || "";
-      const to = /Android/i.test(ua) ? "https://play.google.com/store/apps/details?id=com.kosport.app&pcampaignid=web_share"
-        : /iPhone|iPad|iPod|Macintosh/i.test(ua) ? "https://ko-sport.online/ar?install=ios" : "https://ko-sport.online/ar";
+      const PLAY = "https://play.google.com/store/apps/details?id=com.kosport.app&pcampaignid=web_share";
+      // أندرويد: منفتح تطبيق Google Play نفسو (مو المتصفح) بـ intent:// ، وإذا ما زبط بيروح عالرابط العادي
+      if (/Android/i.test(ua)) {
+        const intent = "intent://details?id=com.kosport.app#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=" + encodeURIComponent(PLAY) + ";end";
+        const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>تطبيق KO SPORT</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#0b0b0d;color:#fff;text-align:center}a{display:inline-block;margin-top:18px;padding:14px 26px;border-radius:14px;background:#01875f;color:#fff;font-weight:700;text-decoration:none;font-size:18px}small{display:block;margin-top:14px;opacity:.6}</style></head><body><div><b style="font-size:22px">KO SPORT</b><br><a id="go" href="${intent}">افتح Google Play ▶</a><small>إذا ما انفتح لحالو، اكبس الزر</small></div><script>location.replace(${JSON.stringify(intent)});</script></body></html>`;
+        return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", vary: "user-agent" } });
+      }
+      const to = /iPhone|iPad|iPod|Macintosh/i.test(ua) ? "https://ko-sport.online/ar?install=ios" : PLAY;
       return new Response(null, { status: 302, headers: { location: to, "cache-control": "no-store", vary: "user-agent" } });
     }
     // the main address ko-sport.online opens the shop at /ar (the app opens that same address)
