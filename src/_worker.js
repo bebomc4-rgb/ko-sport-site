@@ -2906,10 +2906,11 @@ export default {
       return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
     }
     if ((path === "/app" || path === "/app/") && m === "GET") {
-      // رابط التطبيق (المجيب بيبعتو): صفحة فيها زرين — أندرويد → رابط Google Play، آيفون → الموقع (صاحب المتجر، 1 تشرين التاني 2026)
-      const PLAY = "https://play.google.com/store/apps/details?id=com.kosport.app";
-      const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>تطبيق KO SPORT</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,-apple-system,sans-serif;background:#0b0b0d;color:#fff;text-align:center;padding:24px;box-sizing:border-box}.b{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px auto 0;padding:18px 24px;border-radius:16px;color:#fff;font-weight:800;text-decoration:none;font-size:20px;max-width:320px}.a{background:#01875f}.i{background:#2a2a2e;border:1px solid #444}p{opacity:.75;line-height:1.7;margin:8px 0 18px}</style></head><body><div><img src="/favicon.svg" width="72" height="72" alt=""><h1 style="font-size:24px;margin:10px 0 0">تطبيق KO SPORT</h1><p>كل المنتجات مع الأسعار</p><a class="b a" href="/app/play">▶ أندرويد</a><a class="b i" href="https://ko-sport.online/ar?install=ios"> آيفون</a></div></body></html>`;
-      return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+      // رابط التطبيق (المجيب بيبعتو) — صاحب المتجر، 1 تشرين التاني 2026: بلا أزرار.
+      // أندرويد: صفحة KO على Google Play بالمتصفح مباشرة (فيها زر «تثبيت» بينقل عالتطبيق). آيفون: الموقع
+      const ua = request.headers.get("user-agent") || "";
+      if (/iPhone|iPad|iPod/i.test(ua)) return new Response(null, { status: 302, headers: { location: "https://ko-sport.online/ar?install=ios", "cache-control": "no-store", vary: "user-agent" } });
+      return Response.redirect(new URL("/app/play", url).href, 302);
     }
     // the main address ko-sport.online opens the shop at /ar (the app opens that same address)
     if (url.hostname === "ko-sport.online" && path === "/" && m === "GET") {
