@@ -11,5 +11,5 @@ jobs:
           for ua in "Mozilla/5.0 (Linux; Android 14; 23113RKC6G)" "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"; do
             echo "== $ua"; curl -sS -m 20 -A "$ua" -D - "https://ko-sport.online/app?t=$(date +%s)" | grep -oE "HTTP/[0-9.]+ [0-9]+|location: .*|href=\"[^\"]+\"|تطبيق KO SPORT" | head -8
           done
-          for hl in en ar; do code=$(curl -sS -m 20 -o /tmp/p.html -w "%{http_code}" "https://play.google.com/store/apps/details?id=com.kosport.app&hl=$hl&gl=US"); echo "PLAY $hl: HTTP $code"; grep -oE "<title>[^<]*</title>" /tmp/p.html | head -1; done
+          for hl in en ar; do code=$(curl -sS -m 20 -o /tmp/p.html -w "%{http_code}" "https://play.google.com/store/apps/details?id=com.kosport.app&hl=$hl&gl=US"); echo "PLAY $hl: HTTP $code"; grep -oE "<title[^>]*>[^<]*</title>|itemprop=\"name\"[^<]*<[^>]*>[^<]*|We.re sorry|not found|غير متوفّر|not available[^<]{0,60}" /tmp/p.html | head -4; grep -oE "\"(KO[^\"]{0,40})\"" /tmp/p.html | head -3; done
           curl -sS -m 20 "https://ko-sport.online/assets/store.js?v=163" | grep -oE "KO_PLAY ?= ?\"[^\"]+\"" | head -2
