@@ -1593,11 +1593,11 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
         hasMap: mapUrl(S), geo: { "@type": "GeoCoordinates", latitude: BIZ.lat, longitude: BIZ.lng },
         openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: BIZ.days, opens: BIZ.opens, closes: BIZ.closes }],
         knowsAbout: ["قفازات ملاكمة", "معدات MMA", "كمال أجسام", "أدوات رياضية", "لياقة بدنية", "كرة قدم", "كرة سلة"],
-        sameAs: [S.facebook, S.instagram, "https://play.google.com/store/apps/details?id=com.kosport.app"].filter(Boolean),
+        sameAs: [S.facebook, S.instagram, "https://play.google.com/store/apps/details?id=com.kosport.app&pcampaignid=web_share"].filter(Boolean),
       },
       {
         "@type": "MobileApplication", "@id": origin + "/#app", name: "KO Sport", alternateName: "كو سبورت", operatingSystem: "Android",
-        applicationCategory: "ShoppingApplication", url: "https://play.google.com/store/apps/details?id=com.kosport.app", installUrl: "https://play.google.com/store/apps/details?id=com.kosport.app", inLanguage: "ar",
+        applicationCategory: "ShoppingApplication", url: "https://play.google.com/store/apps/details?id=com.kosport.app&pcampaignid=web_share", installUrl: "https://play.google.com/store/apps/details?id=com.kosport.app&pcampaignid=web_share", inLanguage: "ar",
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, publisher: { "@id": origin + "/#store" },
         description: "تطبيق KO SPORT: تسوّق كل الأدوات الرياضية بسوريا من موبايلك، مع توصيل لكل المحافظات.",
       },
@@ -2900,7 +2900,7 @@ export default {
     // رابط التطبيق الواحد ko-sport.online/app (المجيب بيبعتو): أندرويد → Google Play مباشرة (ما بيفوت عالموقع)، آيفون → الموقع مع خطوات «إضافة للشاشة الرئيسية»
     if ((path === "/app" || path === "/app/") && m === "GET") {
       const ua = request.headers.get("user-agent") || "";
-      const to = /Android/i.test(ua) ? "https://play.google.com/store/apps/details?id=com.kosport.app"
+      const to = /Android/i.test(ua) ? "https://play.google.com/store/apps/details?id=com.kosport.app&pcampaignid=web_share"
         : /iPhone|iPad|iPod|Macintosh/i.test(ua) ? "https://ko-sport.online/ar?install=ios" : "https://ko-sport.online/ar";
       return new Response(null, { status: 302, headers: { location: to, "cache-control": "no-store", vary: "user-agent" } });
     }
