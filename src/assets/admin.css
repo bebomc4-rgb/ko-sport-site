@@ -1053,4 +1053,4 @@ body:not(.in) .w-tabbar{display:none!important}
 .bk-row span{display:flex;flex-direction:column}.bk-row small{color:#667085;font-size:12px}
 
 /* ترتيب صور المنتج بالسحب (ماوس ولمس) */
-.thumb{touch-action:none;user-select:none;-webkit-user-select:none}.thumb.dragging{opacity:.55;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.25)}.thumb.drop-target{outline:3px dashed var(--ink);outline-offset:1px}.thumb img{pointer-events:none}.thumbs-hint{display:block;margin-top:4px;font-size:12px}
+.thumb{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}.thumb.dragging{cursor:grabbing}.thumb.dragging{opacity:.55;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.25)}.thumb.drop-target{outline:3px dashed var(--ink);outline-offset:1px}.thumb img{pointer-events:none}.thumbs-hint{display:block;margin-top:4px;font-size:12px}
