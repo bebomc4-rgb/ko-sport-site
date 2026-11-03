@@ -13,3 +13,5 @@ jobs:
           done
           for hl in en ar; do code=$(curl -sS -m 20 -o /tmp/p.html -w "%{http_code}" "https://play.google.com/store/apps/details?id=com.kosport.app&hl=$hl&gl=US"); echo "PLAY $hl: HTTP $code"; grep -oE "<title[^>]*>[^<]*</title>|itemprop=\"name\"[^<]*<[^>]*>[^<]*|We.re sorry|not found|غير متوفّر|not available[^<]{0,60}" /tmp/p.html | head -4; grep -oE "\"(KO[^\"]{0,40})\"" /tmp/p.html | head -3; done
           curl -sS -m 20 "https://ko-sport.online/assets/store.js?v=163" | grep -oE "KO_PLAY ?= ?\"[^\"]+\"" | head -2
+          curl -sS -m 20 "https://ko-sport.online/admin" | grep -oE "admin\.js\?v=[0-9]+|thumbs-hint" | sort -u
+          curl -sS -m 20 "https://ko-sport.online/assets/admin.js?v=166" | grep -oE "pointerdown|saveProducts\(isNew" | sort -u
