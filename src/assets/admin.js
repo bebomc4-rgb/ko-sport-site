@@ -1234,12 +1234,20 @@
     if (e.target.closest("[data-stock]")) { p.inStock = !p.inStock; mark(p.id); renderProducts(); }
     if (e.target.closest("[data-edit]")) openEdit(p);
   });
-  $("[data-save]").onclick = async () => {
+  // حفظ المنتجات عالموقع (زر «حفظ التغييرات»، ولحالو بعد «تمام» بنافذة المنتج) — حفظة وحدة بكل مرة
+  let saving = null, saveAgain = false;
+  async function saveProducts(msg = "انحفظت التغييرات وصارت ظاهرة بالموقع") {
+    if (saving) { saveAgain = true; return saving; }
     const b = $("[data-save]"); b.disabled = true;
-    try { await api("/api/products", { method: "PUT", body: JSON.stringify(products) }); saved = JSON.stringify(products); dirty.clear(); renderProducts(); toast("انحفظت التغييرات وصارت ظاهرة بالموقع"); }
-    catch (err) { toast(err.message); }
-    b.disabled = false;
-  };
+    saving = (async () => {
+      try { await api("/api/products", { method: "PUT", body: JSON.stringify(products) }); saved = JSON.stringify(products); dirty.clear(); renderProducts(); toast(msg); }
+      catch (err) { toast("ما انحفظ: " + err.message); }
+      b.disabled = false;
+    })();
+    await saving; saving = null;
+    if (saveAgain) { saveAgain = false; return saveProducts(msg); }
+  }
+  $("[data-save]").onclick = () => saveProducts();
   $("[data-discard]").onclick = () => { products = JSON.parse(saved); dirty.clear(); renderProducts(); };
   window.addEventListener("beforeunload", (e) => { if (JSON.stringify(products) !== saved && saved) { e.preventDefault(); e.returnValue = ""; } });
 
@@ -1298,7 +1306,7 @@
         let blob = await fetch(src, { mode: "cors" }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
         if (!blob) { toast("عم ننقل الصورة لمتجرك أول…"); const c = await api("/api/images/fetch", { method: "POST", body: JSON.stringify({ url: src }) }); src = c.url; blob = await fetch(src).then((r) => r.blob()); }
         const out = await studio(blob); if (!out) return;
-        toast("عم يرفع الصورة المعدّلة…"); imgs[i] = await uploadProductImage(out); renderThumbs(); toast("✓ انحفظت الصورة المعدّلة. اكبس «تمام» وبعدين «حفظ التغييرات»");
+        toast("عم يرفع الصورة المعدّلة…"); imgs[i] = await uploadProductImage(out); renderThumbs(); toast("✓ انحفظت الصورة المعدّلة. اكبس «تمام» وبينحفظ المنتج لحالو");
       } catch (err) { toast(err.message || String(err)); }
     })(); return; }
     const rm = e.target.closest("[data-trm]");
@@ -1332,7 +1340,7 @@
         toast(`جاري ضغط ورفع الصورة ${i + 1} من ${files.length}…`);
         imgs.push(await uploadProductImage(src)); renderThumbs();
       }
-      toast("انرفعت الصور. اكبس «تمام» وبعدين «حفظ التغييرات»");
+      toast("انرفعت الصور. اكبس «تمام» وبينحفظ المنتج لحالو");
     } catch (err) { toast(err.message); }
     e.target.value = "";
   });
@@ -1418,7 +1426,7 @@
   dlg.addEventListener("close", () => {
     const v = dlg.returnValue;
     if (v === "delete" && editing && confirm(`حذف «${editing.name}» نهائياً؟ (إذا بدك ترجعه بعدين، خليه مخفي بدل الحذف)`)) {
-      products = products.filter((p) => p !== editing); dirty.add(editing.id); renderProducts(); return;
+      products = products.filter((p) => p !== editing); dirty.add(editing.id); renderProducts(); saveProducts("✓ انحذف المنتج من الموقع"); return;
     }
     if (v !== "ok") return;
     const name = ef.name.value.trim(), price = parseFloat(ef.price.value), category = ef.category.value.trim();
@@ -1434,11 +1442,12 @@
       editing.id = id; products.unshift(editing);
     }
     mark(editing.id); renderProducts();
+    saveProducts(isNew ? "✓ انضاف المنتج وصار ظاهر بالموقع" : "✓ انحفظ المنتج بالموقع"); // لحالو، بلا «حفظ التغييرات»
     // new product without a description → AI writes it automatically
     if (!editing.description) {
       const p = editing;
       toast("✨ عم يكتب الذكاء الاصطناعي الوصف…");
-      aiFor(p).then((r) => { Object.assign(p, r); mark(p.id); renderProducts(); toast("✨ انكتب الوصف. اكبس «حفظ التغييرات»"); }).catch((e) => toast(e.message));
+      aiFor(p).then((r) => { Object.assign(p, r); mark(p.id); renderProducts(); saveProducts("✨ انكتب الوصف وانحفظ بالموقع"); }).catch((e) => toast(e.message));
     }
   });
 
