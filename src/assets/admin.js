@@ -1263,6 +1263,33 @@
     const bmp = await decode(blob);
     const url = await uploadBlob(await squareFull(bmp)); thumbOf[url] = await uploadBlob(await squareThumb(bmp)); return url;
   }
+  // ترتيب صور المنتج بالسحب (ماوس ولمس): اسحب الصورة لمكانها الجديد
+  { const box = $("[data-edit-thumbs]"); let drag = null, skipClick = false;
+    const clear = () => box.querySelectorAll(".drop-target").forEach((x) => x.classList.remove("drop-target"));
+    const under = (x, y) => { drag.el.style.visibility = "hidden"; const t = document.elementFromPoint(x, y); drag.el.style.visibility = ""; return t && t.closest && t.closest("[data-ti]"); };
+    box.addEventListener("pointerdown", (e) => {
+      const t = e.target.closest("[data-ti]"); if (!t || e.target.closest("[data-trm],[data-tst]") || imgs.length < 2) return;
+      drag = { from: +t.dataset.ti, x: e.clientX, y: e.clientY, moved: false, el: t, id: e.pointerId };
+    });
+    box.addEventListener("pointermove", (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.moved) { if (Math.hypot(dx, dy) < 8) return; drag.moved = true; drag.el.classList.add("dragging"); try { drag.el.setPointerCapture(e.pointerId); } catch {} }
+      e.preventDefault();
+      drag.el.style.transform = `translate(${dx}px,${dy}px)`;
+      clear(); const t = under(e.clientX, e.clientY); if (t && t !== drag.el) t.classList.add("drop-target");
+    });
+    const end = (e) => {
+      if (!drag || (e && e.pointerId !== drag.id)) return;
+      const d = drag; drag = null; clear(); d.el.classList.remove("dragging"); d.el.style.transform = "";
+      if (!d.moved) return;
+      skipClick = true; setTimeout(() => (skipClick = false), 0);
+      const t = e && under(e.clientX, e.clientY);
+      if (t && t.dataset.ti != null) { const to = +t.dataset.ti; if (to !== d.from) { const [x] = imgs.splice(d.from, 1); imgs.splice(to, 0, x); renderThumbs(); } }
+    };
+    box.addEventListener("pointerup", end); box.addEventListener("pointercancel", () => { if (drag) { drag.el.classList.remove("dragging"); drag.el.style.transform = ""; clear(); drag = null; } });
+    box.addEventListener("click", (e) => { if (skipClick) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  }
   $("[data-edit-thumbs]").addEventListener("click", (e) => {
     const ts = e.target.closest("[data-tst]");
     if (ts) { e.stopPropagation(); (async () => {
