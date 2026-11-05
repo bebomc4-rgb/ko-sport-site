@@ -1079,6 +1079,9 @@ async function statusApi(request, env) {
 // «ابعت رسالة تجربة»: tells the owner in plain words why Telegram refuses (bad token, chat not found, …)
 async function telegramTest(request, env) {
   if (!isAdmin(request, env, "owner")) return denied();
+  // نفس زر التجربة بيبعت كمان رسالة واتساب لأرقام الإشعار
+  const settings = await getSettings(env, request);
+  for (const to of ((settings.notify && settings.notify.whatsapp) || ["963938986875"]).slice(0, 5)) await botSign(env, "notify", to, "✅ تجربة من متجرك KO SPORT: إشعارات الطلبات عالواتس شغّالة.").catch(() => false);
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return json({ ok: false, why: "missing" });
   try {
     const r = await fetch(`https://api.telegram.org/bot${String(env.TELEGRAM_BOT_TOKEN).trim()}/sendMessage`, {
