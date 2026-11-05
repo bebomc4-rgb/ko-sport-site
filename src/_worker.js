@@ -555,7 +555,7 @@ async function ordersPost(request, env, ctx) {
   if (!customer.governorate) return json({ error: "اختار المحافظة" }, 400);
 
   // shipping: governorate → company → branch (or home address) → allowed payment
-  let zone, carrier = null, branch = null;
+  let zone, carrier = null, branch = null; let ygInfo = null;
   const carriers = ((settings.shipping && settings.shipping.carriers) || []).filter((c) => c.on !== false);
   if (carriers.length) {
     carrier = carriers.find((c) => c.id === body.carrier);
@@ -570,6 +570,14 @@ async function ordersPost(request, env, ctx) {
     } else customer.center = ""; // home delivery: the address is optional, the shop confirms it on WhatsApp
     const flat = carrier.flatFee === "" || carrier.flatFee == null || isNaN(+carrier.flatFee) ? null : +carrier.flatFee;
     zone = { method: carrier.type === "branch" ? "qadmous" : "door", fee: g.fee ?? flat };
+    // يلا غو: الأجرة من موقع الزبون (منطقة أو لوكيشن)، بالليرة الجديدة ← دولار بسعر اليوم
+    if (carrier.type === "door" && /yalla|يلا/i.test(carrier.id + " " + carrier.name)) {
+      const q = ygQuote(body.yg);
+      if (q.error) return json({ error: q.error }, 400);
+      const r = await fxRate(env, ctx, settings).catch(() => 0);
+      zone.fee = r > 0 ? Math.round((q.syp / r) * 100) / 100 : null;
+      ygInfo = { area: q.area, km: q.km, syp: q.syp, max: q.max, ...(q.gps ? { lat: q.lat, lng: q.lng } : {}) };
+    }
   } else {
     zone = settings.delivery.zones.find((z) => z.gov === customer.governorate);
     if (!zone || zone.method === "off") return json({ error: "ما في توصيل لهالمحافظة حالياً" }, 400);
@@ -625,7 +633,7 @@ async function ordersPost(request, env, ctx) {
   const order = {
     id, createdAt: new Date(ts).toISOString(), status: pay.manual ? "pending_payment" : "new", customer, items, subtotal, total,
     discount: disc ? { name: disc.name, code: disc.code, amount: disc.amount, freeShip: disc.freeShip } : null, tax,
-    delivery: { method: zone.method, fee, carrier: carrier ? carrier.name : "", carrierId: carrier ? carrier.id : "", branch: branch ? branch.name : "", branchAddress: branch ? branch.address : "" },
+    delivery: { method: zone.method, fee, carrier: carrier ? carrier.name : "", carrierId: carrier ? carrier.id : "", branch: branch ? branch.name : "", branchAddress: branch ? branch.address : "", ...(ygInfo ? { yg: ygInfo } : {}) },
     payment: { id: pay.id, name: pay.name, details: pay.details || "", qr: "", manual: !!pay.manual }, display,
   };
   await env.STORE.put(orderKey(ts, id), JSON.stringify(order));
@@ -2130,8 +2138,9 @@ function orderText(o, origin, syp) {
   if (syp > 0) tot.push(`سوري: ${Math.round(Number(final) * syp).toLocaleString("en-US")}${isSyp ? " 🔴" : ""}`);
   if (o.discount && o.discount.amount > 0) tot.push(`(بعد الحسم${o.discount.name ? ": " + o.discount.name : ""})`);
   if (o.delivery.fee == null) tot.push("التوصيل: بيتحدد عند التأكيد");
+  else if (dl.yg) tot.push(`التوصيل (يلا غو): ${dl.yg.syp.toLocaleString("en-US")} ل.س تقريباً (لحد ${dl.yg.max.toLocaleString("en-US")} بالذروة)${o.delivery.fee === 0 ? " — عالمتجر (مجاني للزبون)" : ""}`);
   else if (o.delivery.fee > 0) tot.push(`التوصيل: ${sy(o.delivery.fee) || usd(o.delivery.fee)}`);
-  const head = [c.notes ? `📝 ${c.notes}` : "", c.name, whereLine, c.phone, c.address ? "📍 " + c.address : "", `الكود: ${o.id}`, `الطلب: ${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
+  const head = [c.notes ? `📝 ${c.notes}` : "", c.name, whereLine, c.phone, c.address ? "📍 " + c.address : "", dl.yg ? `🛵 ${dl.yg.area} · ~${dl.yg.km} كم من قدسيا` : "", dl.yg && dl.yg.lat ? `اللوكيشن: https://maps.google.com/?q=${dl.yg.lat},${dl.yg.lng}` : "", `الكود: ${o.id}`, `الطلب: ${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
   const at = orderTime(o.createdAt);
   if (at) tot.push(`الوقت: ${at}`);
   const body = tot;
@@ -2143,6 +2152,116 @@ function orderTime(iso) {
     const p = {}; for (const x of new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Damascus", day: "numeric", month: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(new Date(iso))) p[x.type] = x.value;
     return `${+p.day}/${+p.month} - ${+p.hour}:${p.minute} ${/p/i.test(p.dayPeriod || "") ? "م" : "ص"}`;
   } catch { return ""; }
+}
+// ---------- يلا غو: أجرة التوصيل التقريبية من ساحة قدسيا (صاحب المتجر، 6 تشرين التاني 2026) ----------
+// فتحة العداد 80 ل.س جديدة + 32 للكيلو. المناطق المرجعية أسعارها ثابتة من جدول صاحب المتجر (طبيعي / أعلى).
+// المسافة بالطريق = المسافة المباشرة × عامل الطريق (محسوب من المناطق المرجعية القريبة).
+const YG_HOME = [33.5405, 36.219]; // ساحة قدسيا (KO SPORT)
+const YG_OPEN = 80, YG_KM = 32, YG_MAX_KM = 35;
+// [الاسم، lat، lng، كم بالطريق (للمرجعية)، طبيعي، أعلى، إضافة%، أسماء تانية]
+const YG_AREAS = [
+  ["مشروع دمر", 33.53, 36.238, 3.7, 230, 280, 0, "ضاحية دمر|دمر مشروع|الورود"],
+  ["كازية دمر", 33.5355, 36.228, 3.8, 190, 240, 0, "دمر|دمر البلد|جسر دمر"],
+  ["المهاجرين", 33.526, 36.28, 8.2, 390, 460, 7, "مهاجرين|الشطا|المصطبة|الجادات"],
+  ["جسر الحرية", 33.5135, 36.2885, 9.9, 400, 470, 0, "جسر الرئيس|جسر الحريه|تحت الجسر"],
+  ["البحصة", 33.515, 36.2975, 10.5, 420, 500, 0, "بحصة|البحصه|ساحة يوسف العظمة|يوسف العظمة"],
+  ["القيمرية", 33.5115, 36.311, 11.5, 470, 560, 12, "قيمرية|القيمريه"],
+  ["القصاع", 33.518, 36.32, 12.5, 500, 580, 0, "قصاع|القصاع"],
+  ["باب توما", 33.513, 36.316, 12.8, 540, 650, 12, "باب تومه|باب توما"],
+  ["القصور", 33.5225, 36.313, 13, 500, 580, 0, "قصور"],
+  ["ركن الدين", 33.533, 36.3, 14.5, 480, 580, 7, "ركن الدين|الأكراد|حي الأكراد|ابن العميد|شيخ خالد"],
+  ["مساكن برزة", 33.545, 36.313, 15.5, 600, 710, 0, "برزة مساكن|مساكن برزه"],
+  ["جديدة عرطوز", 33.444, 36.16, 17.3, 635, 740, 0, "جديدة عرطوز|عرطوز|جديدة"],
+  ["قدسيا", 33.5405, 36.219, 0, 0, 0, 0, "ساحة قدسيا|قدسيا البلد"],
+  ["ضاحية قدسيا", 33.539, 36.193, 0, 0, 0, 0, "الضاحية|ضاحيه قدسيا"],
+  ["الهامة", 33.56, 36.215, 0, 0, 0, 0, "هامة|الهامه"],
+  ["المزة", 33.502, 36.253, 0, 0, 0, 0, "مزة|المزه|المزة فيلات|فيلات غربية|فيلات شرقية|اوتستراد المزة"],
+  ["مزة 86", 33.508, 36.244, 0, 0, 0, 0, "المزة 86|مزه 86|86"],
+  ["مزة جبل", 33.508, 36.258, 0, 0, 0, 0, "المزة جبل|الشيخ سعد|مزة شيخ سعد"],
+  ["كفرسوسة", 33.496, 36.275, 0, 0, 0, 0, "كفر سوسة|كفرسوسه|اللوان"],
+  ["المالكي", 33.521, 36.278, 0, 0, 0, 0, "مالكي"],
+  ["أبو رمانة", 33.517, 36.285, 0, 0, 0, 0, "ابو رمانة|ابو رمانه|الجسر الأبيض|الجسر الابيض"],
+  ["الشعلان", 33.516, 36.29, 0, 0, 0, 0, "شعلان|الحمرا|شارع الحمرا"],
+  ["الصالحية", 33.52, 36.293, 0, 0, 0, 0, "صالحية|الصالحيه|عرنوس|ساحة عرنوس"],
+  ["ساحة الأمويين", 33.513, 36.277, 0, 0, 0, 0, "الامويين|الأمويين"],
+  ["البرامكة", 33.5075, 36.29, 0, 0, 0, 0, "برامكة|البرامكه|كراجات البرامكة"],
+  ["المرجة", 33.5115, 36.3, 0, 0, 0, 0, "مرجة|المرجه|ساحة المرجة"],
+  ["الحميدية", 33.5105, 36.304, 0, 0, 0, 12, "سوق الحميدية|الحريقة|الحريقه|البزورية"],
+  ["الشاغور", 33.505, 36.312, 0, 0, 0, 12, "شاغور"],
+  ["باب شرقي", 33.51, 36.318, 0, 0, 0, 12, "باب شرقي"],
+  ["باب مصلى", 33.5, 36.303, 0, 0, 0, 0, "باب مصلّى"],
+  ["الميدان", 33.495, 36.302, 0, 0, 0, 0, "ميدان|الميدان"],
+  ["الزاهرة", 33.49, 36.308, 0, 0, 0, 0, "زاهرة|الزاهره"],
+  ["نهر عيشة", 33.48, 36.295, 0, 0, 0, 0, "نهر عيشه"],
+  ["القدم", 33.47, 36.295, 0, 0, 0, 0, "قدم"],
+  ["دف الشوك", 33.488, 36.315, 0, 0, 0, 0, "دف شوك"],
+  ["الدويلعة", 33.501, 36.33, 0, 0, 0, 0, "دويلعة|الدويلعه"],
+  ["جرمانا", 33.487, 36.348, 0, 0, 0, 0, "جرمانه"],
+  ["العباسيين", 33.52, 36.325, 0, 0, 0, 0, "عباسيين|ساحة العباسيين"],
+  ["الزبلطاني", 33.516, 36.333, 0, 0, 0, 0, "زبلطاني"],
+  ["التجارة", 33.524, 36.317, 0, 0, 0, 0, "تجارة|التجاره"],
+  ["العدوي", 33.524, 36.306, 0, 0, 0, 0, "عدوي"],
+  ["جوبر", 33.525, 36.34, 0, 0, 0, 0, "جوبر"],
+  ["القابون", 33.539, 36.333, 0, 0, 0, 0, "قابون"],
+  ["برزة البلد", 33.555, 36.32, 0, 0, 0, 0, "برزة|برزه"],
+  ["عش الورور", 33.545, 36.3, 0, 0, 0, 7, "عش الورور"],
+  ["داريا", 33.458, 36.235, 0, 0, 0, 0, "داريّا"],
+  ["معضمية الشام", 33.46, 36.195, 0, 0, 0, 0, "المعضمية|معضميه"],
+  ["صحنايا", 33.432, 36.23, 0, 0, 0, 0, "صحنايه"],
+  ["أشرفية صحنايا", 33.43, 36.205, 0, 0, 0, 0, "اشرفية صحنايا|الاشرفية"],
+  ["يعفور", 33.525, 36.15, 0, 0, 0, 0, "يعفور"],
+  ["الصبورة", 33.52, 36.145, 0, 0, 0, 0, "صبورة|الصبوره"],
+];
+const ygNorm = (s) => String(s || "").toLowerCase().replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/\s+/g, " ").trim();
+function ygDist(a, b) { // كم، خط مباشر
+  const R = 6371, r = Math.PI / 180, dLa = (b[0] - a[0]) * r, dLo = (b[1] - a[1]) * r;
+  const h = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const YG_REF = YG_AREAS.filter((a) => a[3] > 0).map((a) => ({ p: [a[1], a[2]], f: a[3] / Math.max(0.5, ygDist(YG_HOME, [a[1], a[2]])) }));
+function ygRoadKm(p) {
+  const d = ygDist(YG_HOME, p); if (d < 0.3) return d * 1.3;
+  let w = 0, s = 0; for (const r of YG_REF) { const k = 1 / Math.max(0.2, ygDist(p, r.p)) ** 2; w += k; s += k * r.f; }
+  return d * Math.min(2.2, Math.max(1.25, s / w));
+}
+const yg10 = (n) => Math.ceil(n / 10) * 10;
+function ygPrice(km, adj) { const n = yg10((YG_OPEN + YG_KM * km) * (1 + (adj || 0) / 100)); return { syp: n, max: yg10(n * 1.17) }; }
+function ygFind(q) {
+  const t = ygNorm(q); if (!t) return null;
+  let best = null, bs = 0;
+  for (const a of YG_AREAS) for (const n of [a[0], ...String(a[7] || "").split("|")]) {
+    const x = ygNorm(n); if (!x) continue;
+    const sc = t === x ? 100 + x.length : t.includes(x) ? 50 + x.length : x.includes(t) && t.length >= 3 ? 20 + t.length : 0;
+    if (sc > bs) { bs = sc; best = a; }
+  }
+  return best;
+}
+// {area} أو {lat,lng} ← {area, km, syp, max, lat?, lng?} أو {error}
+function ygQuote(input) {
+  const i = input || {};
+  const lat = +i.lat, lng = +i.lng;
+  if (isFinite(lat) && isFinite(lng) && lat && lng) {
+    const p = [lat, lng], km = ygRoadKm(p);
+    if (km > YG_MAX_KM) return { error: "موقعك برّا منطقة التوصيل السريع (دمشق وريفها القريب)" };
+    let near = null, nd = 9; for (const a of YG_AREAS) { const d = ygDist(p, [a[1], a[2]]); if (d < nd) { nd = d; near = a; } }
+    if (near && near[3] > 0 && nd < 0.6) return { area: near[0], km: near[3], syp: near[4], max: near[5], lat: +lat.toFixed(5), lng: +lng.toFixed(5), gps: true };
+    const pr = ygPrice(km, near && nd < 1.2 ? near[6] : 0);
+    return { area: near && nd < 1.5 ? "قرب " + near[0] : "موقع على الخريطة", km: Math.round(km * 10) / 10, ...pr, lat: +lat.toFixed(5), lng: +lng.toFixed(5), gps: true };
+  }
+  const a = ygFind(i.area);
+  if (!a) return { error: "ما عرفنا هالمنطقة، اختار من القائمة أو حدد موقعك عالخريطة" };
+  if (a[3] > 0) return { area: a[0], km: a[3], syp: a[4], max: a[5] };
+  const km = ygRoadKm([a[1], a[2]]);
+  return { area: a[0], km: Math.round(km * 10) / 10, ...ygPrice(km, a[6]) };
+}
+async function ygApi(request, env, ctx) {
+  if (request.method === "GET") return new Response(JSON.stringify({ areas: YG_AREAS.map((a) => [a[0], String(a[7] || "")]) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600" } });
+  const b = await request.json().catch(() => ({}));
+  const q = ygQuote(b);
+  if (q.error) return json(q, 400);
+  const settings = await getSettings(env, request);
+  const rate = await fxRate(env, ctx, settings).catch(() => 0);
+  return json({ ...q, usd: rate > 0 ? Math.round((q.syp / rate) * 100) / 100 : null, rate });
 }
 async function fxRate(env, ctx, settings) {
   const f = settings.fx || {}, margin = f.margin === "" || f.margin == null || isNaN(+f.margin) ? 2 : +f.margin;
@@ -3021,6 +3140,7 @@ export default {
         return Response.redirect(new URL("/ar" + path + url.search, request.url).href, 302);
       }
       if (path === "/api/rate" && (m === "GET" || m === "POST")) return fxApi(request, env, ctx);
+      if (path === "/api/yg" && (m === "GET" || m === "POST")) return ygApi(request, env, ctx);
       if (path === "/api/order-items" && m === "GET") return orderItemsGet(request, env);
       if (path === "/api/order-thumb" && m === "GET") return orderThumb(request, env);
       // the dashboard reads through its own addresses: the shop's service worker never touches them,

@@ -1914,6 +1914,7 @@ ${trustH()}
         ${useCarriers ? `<div class="field" data-carrier-field hidden><label>شركة الشحن</label><div class="pay-opts" data-carriers></div><div class="msg"></div><div class="note ship-note" data-ship-note><b>⏱ مدة الشحن من 2 لـ 4 أيام</b> حسب الفرع. منشحن الطلب فور استلامه، والتأخير بيكون من شركة الشحن حسب المحافظة والفرع.</div></div>
         <div class="field" data-branch-field hidden><label data-branch-label>فرع القدموس للشحن</label><select id="f-branch" name="branch" hidden tabindex="-1" aria-hidden="true"></select><button type="button" class="qb-pick" data-branch-pick></button><div class="msg"></div></div>` : ""}
         ${YG ? `<div class="note ship-note" data-yg-note hidden>🚀 <b>يلا غو داخل دمشق:</b> التوصيل فوري بنفس اليوم.</div>` : ""}
+        ${YG ? `<div class="field yg-loc" data-yg-loc hidden><label for="f-yga">وين بدك ياه يوصل؟</label><div class="yg-in"><input id="f-yga" data-yg-area autocomplete="off" placeholder="اكتب منطقتك، مثلاً: المزة، باب توما…"><div class="yg-sug" data-yg-sug hidden></div></div><div class="yg-btns"><button type="button" class="btn btn-dark sm" data-yg-gps>📍 موقعي الحالي</button><button type="button" class="btn btn-dark sm" data-yg-map>🗺 حدد عالخريطة</button></div><div class="yg-res" data-yg-res hidden></div><div class="msg"></div></div>` : ""}
         ${YG ? `<label class="yg-opt" data-yg-card hidden><input type="checkbox" name="yalla" ${saved.yalla ? "checked" : ""}><span class="yg-ic">⚡</span><span><small class="yg-or">أو بدل الشحن بالقدموس:</small><b>توصيل سريع لباب البيت عن طريق يلا غو (ضمن دمشق)</b><small>${esc(YG.note || "اختاره إذا كنت بدمشق، والطلب بيوصل لعندك عالبيت")}</small></span></label>` : ""}
         <div class="field" data-door><label for="f-addr">العنوان (اختياري)</label><input id="f-addr" name="address" placeholder="المنطقة، الشارع، البناء، أقرب نقطة دالة" value="${esc(saved.address)}"><small>إذا بتحب اكتب العنوان أو أقرب نقطة دالة، وإلا منتواصل معك</small><div class="msg"></div></div>
         ${useCarriers ? "" : `<div class="field" data-qadmous><label for="f-center">اسم مركز القدموس</label><input id="f-center" name="center" value="${esc(saved.center)}"><div class="msg"></div></div>`}
@@ -2008,6 +2009,71 @@ ${trustH()}
       });
     };
     f.addEventListener("click", (e) => { if (e.target.closest("[data-branch-pick]")) openBranches(); });
+    // يلا غو: الأجرة التقريبية حسب منطقة الزبون أو موقعو (الحساب عالسيرفر من ساحة قدسيا)
+    let ygQ = null, ygAreas = null, ygBusy = 0;
+    const ygBox = () => f.querySelector("[data-yg-loc]");
+    const ygShow = (msg) => {
+      const r = f.querySelector("[data-yg-res]"); if (!r) return;
+      if (msg) { r.hidden = false; r.className = "yg-res bad"; r.textContent = msg; return; }
+      if (!ygQ) { r.hidden = true; return; }
+      r.hidden = false; r.className = "yg-res ok";
+      r.innerHTML = `🛵 <b>${esc(ygQ.area)}</b> · حوالي ${ygQ.km} كم<br>أجرة التوصيل تقريباً: <b>${ygQ.syp.toLocaleString("en-US")} ل.س جديدة</b><small>بأوقات الازدحام ممكن توصل لـ ${ygQ.max.toLocaleString("en-US")} ل.س</small>`;
+    };
+    const ygAsk = async (q) => {
+      const n = ++ygBusy, r = f.querySelector("[data-yg-res]");
+      if (r) { r.hidden = false; r.className = "yg-res"; r.textContent = "عم نحسب أجرة التوصيل…"; }
+      try {
+        const x = await fetch("/api/yg", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q) });
+        const j = await x.json().catch(() => ({}));
+        if (n !== ygBusy) return;
+        if (!x.ok) { ygQ = null; ygShow(j.error || "ما قدرنا نحسب الأجرة"); sync(); return; }
+        ygQ = { ...j, q }; store.set("ko_yg", q); const b = ygBox(); if (b) { b.classList.remove("err"); b.querySelector(".msg").textContent = ""; }
+        if (j.gps) f.querySelector("[data-yg-area]").value = j.area;
+        ygShow(); sync();
+      } catch { if (n === ygBusy) { ygQ = null; ygShow("ما في نت، جرّب كمان مرة"); } }
+    };
+    const ygSug = () => {
+      const inp = f.querySelector("[data-yg-area]"), box = f.querySelector("[data-yg-sug]"); if (!inp || !box) return;
+      const t = norm(inp.value).trim();
+      if (!ygAreas || !t) { box.hidden = true; return; }
+      const L = ygAreas.filter(([a, al]) => norm(a + "|" + al).includes(t)).slice(0, 8);
+      box.hidden = !L.length;
+      box.innerHTML = L.map(([a]) => `<button type="button" data-yg-pick="${esc(a)}">${esc(a)}</button>`).join("");
+    };
+    const ygLoadAreas = () => { if (ygAreas) return; ygAreas = []; fetch("/api/yg").then((r) => r.json()).then((j) => { ygAreas = j.areas || []; ygSug(); }).catch(() => { ygAreas = null; }); };
+    const ygMap = () => {
+      const start = ygQ && ygQ.lat ? [ygQ.lat, ygQ.lng] : [33.513, 36.29];
+      openSheet("حدد موقعك عالخريطة", `<p class="sh-sub">كبسة عالمكان يلي بدك يوصل الطلب لعندو</p><div class="yg-map" data-yg-mapbox>عم تحمل الخريطة…</div><button type="button" class="btn btn-red" data-yg-ok disabled style="width:100%;margin-top:10px">اعتمد هالموقع</button>`, (body) => {
+        const go = () => {
+          const el = body.querySelector("[data-yg-mapbox]"); el.textContent = "";
+          const L = window.L, m = L.map(el, { zoomControl: true }).setView(start, ygQ && ygQ.lat ? 15 : 12);
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(m);
+          let mk = ygQ && ygQ.lat ? L.marker(start).addTo(m) : null, pt = ygQ && ygQ.lat ? start : null;
+          const ok = body.querySelector("[data-yg-ok]"); ok.disabled = !pt;
+          m.on("click", (e) => { pt = [e.latlng.lat, e.latlng.lng]; if (mk) mk.setLatLng(e.latlng); else mk = L.marker(e.latlng).addTo(m); ok.disabled = false; });
+          ok.addEventListener("click", () => { if (!pt) return; closeSheet(); ygAsk({ lat: pt[0], lng: pt[1] }); });
+          setTimeout(() => m.invalidateSize(), 250);
+        };
+        if (window.L && window.L.map) return go();
+        const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "/assets/leaflet/leaflet.css"; document.head.appendChild(css);
+        const sc = document.createElement("script"); sc.src = "/assets/leaflet/leaflet.js";
+        sc.onload = go; sc.onerror = () => { body.querySelector("[data-yg-mapbox]").textContent = "ما قدرنا نحمّل الخريطة، اكتب منطقتك أو استعمل «موقعي الحالي»"; };
+        document.head.appendChild(sc);
+      });
+    };
+    f.addEventListener("input", (e) => { if (e.target.matches("[data-yg-area]")) { ygLoadAreas(); ygSug(); if (ygQ && e.target.value.trim() !== ygQ.area) { ygQ = null; ygShow(); sync(); } } });
+    f.addEventListener("focusin", (e) => { if (e.target.matches("[data-yg-area]")) ygLoadAreas(); });
+    f.addEventListener("click", (e) => {
+      const pk = e.target.closest("[data-yg-pick]");
+      if (pk) { f.querySelector("[data-yg-area]").value = pk.dataset.ygPick; f.querySelector("[data-yg-sug]").hidden = true; ygAsk({ area: pk.dataset.ygPick }); return; }
+      if (e.target.closest("[data-yg-map]")) { ygMap(); return; }
+      if (e.target.closest("[data-yg-gps]")) {
+        if (!navigator.geolocation) { ygShow("جهازك ما بيدعم تحديد الموقع، حدد عالخريطة"); return; }
+        ygShow(); const r = f.querySelector("[data-yg-res]"); r.hidden = false; r.className = "yg-res"; r.textContent = "عم نحدد موقعك…";
+        navigator.geolocation.getCurrentPosition((p) => ygAsk({ lat: p.coords.latitude, lng: p.coords.longitude }), () => ygShow("ما قدرنا نعرف موقعك (اسمح بالموقع)، أو حدد عالخريطة"), { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+      }
+    });
+    f.addEventListener("change", (e) => { if (e.target.matches("[data-yg-area]")) { const v = e.target.value.trim(); if (v && (!ygQ || ygQ.area !== v)) setTimeout(() => { const b = f.querySelector("[data-yg-sug]"); if (b) b.hidden = true; if (!ygQ || ygQ.area !== f.querySelector("[data-yg-area]").value.trim()) ygAsk({ area: f.querySelector("[data-yg-area]").value.trim() }); }, 250); } });
     let lastGov;
     const sync = () => {
       let yg = ygOn(), g = govVal();
@@ -2054,6 +2120,15 @@ ${trustH()}
         f.querySelector("[data-qadmous]").hidden = !z || z.method !== "qadmous";
         if (z) { if (freeOver > 0 && sub >= freeOver) feeTxt = "مجاني"; else if (z.fee == null) feeTxt = "بيتحدد عند التأكيد"; else { fee = z.fee; feeTxt = z.fee ? money(z.fee) : "مجاني"; } }
       }
+      { const yb = ygBox(); if (yb) yb.hidden = !yg; }
+      if (yg && !ygQ && !ygBusy) { const lq = store.get("ko_yg", null); if (lq && (lq.area || lq.lat)) { if (lq.area) f.querySelector("[data-yg-area]").value = lq.area; ygAsk(lq); } }
+      if (yg && ready) {
+        if (heavyCart) feeTxt = "بيتحدد عند التأكيد";
+        else if (freeOver > 0 && sub >= freeOver) { fee = 0; feeTxt = "مجاني"; }
+        else if (!ygQ) { fee = 0; feeTxt = "حدد منطقتك"; }
+        else if (FXR > 0) { fee = Math.round((ygQ.syp / FXR) * 100) / 100; feeTxt = curMode() === "syp" ? `${ygQ.syp.toLocaleString("en-US")} ${cuUnit()} تقريباً` : `${money(fee)} (${ygQ.syp.toLocaleString("en-US")} ل.س) تقريباً`; }
+        else { fee = 0; feeTxt = `${ygQ.syp.toLocaleString("en-US")} ل.س تقريباً`; }
+      }
       f.querySelector("[data-door]").hidden = !g || !door;
       if (ready) renderPays();
       const pf = f.querySelector("[data-pay-field]"), many = +(pf.dataset.n || 0) > 1;
@@ -2097,9 +2172,10 @@ ${trustH()}
       else if (useCarriers && !c) errs.carrier = "اختار طريقة الشحن";
       else if (useCarriers && c.type === "branch" && !v.branch && ((c.govs || []).find((x) => x.name === v.governorate) || {}).branches?.length) errs.branch = isArea(((c.govs || []).find((x) => x.name === v.governorate) || {}).branches) ? "اختار المنطقة" : "اختار الفرع";
       if (!useCarriers && v.governorate && !door && (v.center || "").trim().length < 3) errs.center = "اكتب اسم مركز القدموس";
+      if (ygOn() && !ygQ) errs.yg = "اكتب منطقتك واختارها من القائمة، أو حدد موقعك";
       if (Object.keys(errs).length) {
         for (const [k, m] of Object.entries(errs)) {
-          const el = k === "payment" ? f.querySelector("[data-pays]") : k === "carrier" ? f.querySelector("[data-carriers]") : f[k];
+          const el = k === "payment" ? f.querySelector("[data-pays]") : k === "carrier" ? f.querySelector("[data-carriers]") : k === "yg" ? f.querySelector("[data-yg-area]") : f[k];
           const fl = el && el.closest && el.closest(".field"); if (fl) { fl.classList.add("err"); fl.querySelector(".msg").textContent = m; }
         }
         const first = f.querySelector(".field.err input:not([hidden]), .field.err select:not([hidden])");
@@ -2110,7 +2186,7 @@ ${trustH()}
       const btn = $("[data-submit]"); btn.disabled = true; btn.textContent = "جاري الإرسال…";
       const body = {
         customer: { name: v.name.trim(), phone: (v.phone || "").trim(), email: em, altPhone: (v.altPhone || "").trim(), postal: (v.postal || "").trim(), governorate: v.governorate, address: door ? (v.address || "").trim() : "", center: door ? "" : (v.center || "").trim(), notes: (v.notes || "").trim() },
-        carrier: v.carrier || "", branch: v.branch || "", payment: v.payment, sid, cur: FXR > 0 ? curMode() : "usd",
+        carrier: v.carrier || "", branch: v.branch || "", payment: v.payment, sid, yg: ygOn() && ygQ ? (ygQ.gps ? { lat: ygQ.lat, lng: ygQ.lng } : { area: ygQ.area }) : undefined, cur: FXR > 0 ? curMode() : "usd",
         coupon: coupon && curDisc() === coupon.discount ? coupon.code : "",
         items: lines.map((l) => ({ id: l.id, opt: l.opt, qty: l.qty }))
       };
