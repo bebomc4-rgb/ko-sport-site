@@ -2228,15 +2228,15 @@ const yg10 = (n) => Math.ceil(n / 10) * 10;
 function ygPrice(km, adj) { const n = yg10((YG_OPEN + YG_KM * km) * (1 + (adj || 0) / 100)); return { syp: n, max: yg10(n * 1.17) }; }
 // كل مناطق دمشق وريف دمشق (أحياء، بلدات، قرى) من OpenStreetMap، بتنحفظ بـ KV وبتتحدّث كل 30 يوم.
 // القائمة المكتوبة فوق ليها الأولوية (أسعار جدول صاحب المتجر + أسماء الناس الدارجة).
-const YG_OVERPASS = ["https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.openstreetmap.ru/api/interpreter", "https://overpass-api.de/api/interpreter", "https://lz4.overpass-api.de/api/interpreter", "https://z.overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
-const YG_Q = `[out:json][timeout:90];(area["ISO3166-2"="SY-DI"];area["ISO3166-2"="SY-RD"];)->.a;nwr["place"~"^(city|town|village|hamlet|suburb|quarter|neighbourhood|city_block|locality|isolated_dwelling)$"](area.a);out tags center;`;
+const YG_OVERPASS = ["https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+const YG_Q = `[out:json][timeout:60];nwr["place"~"^(city|town|village|hamlet|suburb|quarter|neighbourhood|city_block|locality)$"](32.95,35.75,34.25,37.3);out tags center;`;
 const ygClean = (n) => String(n || "").replace(/\s+/g, " ").trim();
 let YG_ERR = [];
 async function ygOsm() {
   YG_ERR = [];
   for (const u of YG_OVERPASS) {
     try {
-      const r = await fetch(u + "?data=" + encodeURIComponent(YG_Q), { headers: { "user-agent": "KO-SPORT-delivery/1.0 (ko-sport.online)", accept: "application/json" }, signal: AbortSignal.timeout(25000) });
+      const r = await fetch(u + "?data=" + encodeURIComponent(YG_Q), { headers: { "user-agent": "KO-SPORT-delivery/1.0 (ko-sport.online)", accept: "application/json" }, signal: AbortSignal.timeout(70000) });
       if (!r.ok) { YG_ERR.push(u.split("/")[2] + " " + r.status + " " + (await r.text().catch(() => "")).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 160)); continue; }
       const j = await r.json(), out = [];
       for (const e of j.elements || []) {
