@@ -658,6 +658,13 @@ async function ordersPost(request, env, ctx) {
       if (mid) await tgMidSet(env, id, mid);
     })().catch(() => {}));
   }
+  // نفس رسالة التلغرام بتروح كمان عالواتس (من رقم المجيب) — صاحب المتجر، 5 تشرين التاني 2026
+  ctx.waitUntil((async () => {
+    const syp = await fxRate(env, ctx, settings).catch(() => 0);
+    const text = orderText(order, new URL(request.url).origin, syp);
+    const nums = ((settings.notify && settings.notify.whatsapp) || ["963938986875"]).slice(0, 5);
+    for (const to of nums) await botSign(env, "notify", to, text);
+  })().catch(() => {}));
   ctx.waitUntil(pushToAdmins(env, { title: `🛒 طلب جديد ${id}`, body: `${customer.name} — ${customer.governorate || ""} — ${moneyOf(order)(total)}`, url: "/admin", tag: "order-" + id }));
   const mails = ((settings.notify && settings.notify.emails) || []).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).slice(0, 5);
   if (env.RESEND_API_KEY && mails.length) {
@@ -868,6 +875,14 @@ async function sendOtp(env, phone, code) {
   } catch { return false; }
 }
 const otpHash = async (env, phone, code) => hmac(env, "otp|" + phone + "|" + code);
+// رسالة واتساب موقّعة لصاحب المتجر (طلب جديد): K FAST AI بيتأكد من التوقيع وبيبعتها من رقم المجيب
+async function botSign(env, kind, to, text) {
+  const k = await otpKeys(env), ts = Date.now(), nonce = b64u(crypto.getRandomValues(new Uint8Array(12)));
+  const key = await crypto.subtle.importKey("jwk", k.priv, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const n = String(to).replace(/\D/g, "");
+  const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`${kind}|${n}|${text}|${ts}|${nonce}`)));
+  try { const r = await botPost("/api/otp/ko-" + kind, JSON.stringify({ to: n, text, ts, nonce, sig }), 8000); return !!(r && r.ok); } catch { return false; }
+}
 // signed call to K FAST AI (open / claim a «سجّل بالواتساب» code)
 async function botCall(env, kind, t) {
   const k = await otpKeys(env), ts = Date.now(), nonce = b64u(crypto.getRandomValues(new Uint8Array(12)));
