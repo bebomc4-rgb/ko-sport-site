@@ -35,7 +35,7 @@ function __embAssets(real) {
 //   Optional      TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (instant order alerts)
 
 // Replaced by build.mjs with the moment this copy was built — so we can tell which deploy is live.
-const BUILD_AT = "2026-11-05 23:46Z";
+const BUILD_AT = "2026-11-05 23:50Z";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -2260,11 +2260,13 @@ function ygPrice(km, adj) { const n = yg10((YG_OPEN + YG_KM * km) * (1 + (adj ||
 const YG_OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
 const YG_Q = `[out:json][timeout:90];(area["ISO3166-2"="SY-DI"];area["ISO3166-2"="SY-RD"];)->.a;nwr["place"~"^(city|town|village|hamlet|suburb|quarter|neighbourhood|city_block|locality|isolated_dwelling)$"](area.a);out tags center;`;
 const ygClean = (n) => String(n || "").replace(/\s+/g, " ").trim();
+let YG_ERR = [];
 async function ygOsm() {
+  YG_ERR = [];
   for (const u of YG_OVERPASS) {
     try {
       const r = await fetch(u, { method: "POST", body: "data=" + encodeURIComponent(YG_Q), headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": "KO-SPORT-delivery/1.0 (ko-sport.online)" }, signal: AbortSignal.timeout(40000) });
-      if (!r.ok) continue;
+      if (!r.ok) { YG_ERR.push(u.split("/")[2] + " " + r.status + " " + (await r.text().catch(() => "")).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 160)); continue; }
       const j = await r.json(), out = [];
       for (const e of j.elements || []) {
         const t = e.tags || {}, lat = e.lat ?? (e.center && e.center.lat), lng = e.lon ?? (e.center && e.center.lon);
@@ -2274,7 +2276,8 @@ async function ygOsm() {
         out.push([ar, +(+lat).toFixed(5), +(+lng).toFixed(5), al]);
       }
       if (out.length > 200) return out;
-    } catch {}
+      YG_ERR.push(u.split("/")[2] + " قليل: " + out.length + " / " + (j.elements || []).length + " " + String(j.remark || "").slice(0, 120));
+    } catch (e) { YG_ERR.push(u.split("/")[2] + " " + String((e && e.message) || e).slice(0, 120)); }
   }
   return null;
 }
@@ -2282,7 +2285,7 @@ async function ygPlaces(env, ctx, force) {
   let c = null; try { c = await env.STORE.get("yg:osm", "json"); } catch {}
   const old = !c || !c.at || Date.now() - c.at > 30 * 864e5;
   const load = async () => {
-    const l = await ygOsm(), n = l ? { at: Date.now(), list: l } : { at: Date.now() - 29 * 864e5, list: (c && c.list) || [] }; // فشل: منرجع نجرّب بعد يوم
+    const l = await ygOsm(), n = l ? { at: Date.now(), list: l } : { at: Date.now() - 29 * 864e5, list: (c && c.list) || [], err: YG_ERR.join(" || ") }; // فشل: منرجع نجرّب بعد يوم
     try { await env.STORE.put("yg:osm", JSON.stringify(n)); } catch {}
     return n;
   };
@@ -2349,10 +2352,10 @@ async function ygApi(request, env, ctx) {
 // للفحص: كم منطقة محفوظة (بدون أسعار)
 async function ygList(request, env, ctx) {
   let c0 = null; try { c0 = await env.STORE.get("yg:osm", "json"); } catch {}
-  const force = (new URL(request.url).searchParams.get("refresh") === "1" && isAdmin(request, env)) || !(c0 && c0.list && c0.list.length && c0.at > Date.now() - 30 * 864e5);
+  const force = new URL(request.url).searchParams.get("refresh") === "1" && (isAdmin(request, env) || !(c0 && c0.list && c0.list.length));
   const p = await ygPlaces(env, ctx, force);
   let c = null; try { c = await env.STORE.get("yg:osm", "json"); } catch {}
-  return new Response(`مناطق التوصيل بدمشق وريفها: ${p.length}\nمن OpenStreetMap: ${(c && c.list && c.list.length) || 0} (آخر تحديث ${c && c.at ? new Date(c.at).toISOString().slice(0, 10) : "—"})\n\n` + p.map((a) => a[0]).join("\n"), { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+  return new Response(`مناطق التوصيل بدمشق وريفها: ${p.length}\nمن OpenStreetMap: ${(c && c.list && c.list.length) || 0} (آخر تحديث ${c && c.at ? new Date(c.at).toISOString().slice(0, 16) : "—"})${c && c.err ? "\nخطأ: " + c.err : ""}\n\n` + p.map((a) => a[0]).join("\n"), { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
 }
 async function fxRate(env, ctx, settings) {
   const f = settings.fx || {}, margin = f.margin === "" || f.margin == null || isNaN(+f.margin) ? 2 : +f.margin;
