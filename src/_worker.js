@@ -2124,14 +2124,25 @@ function orderText(o, origin, syp) {
   const after = Math.max(0, o.subtotal - (o.discount ? o.discount.amount : 0));
   // صاحب المتجر (5 تشرين التاني 2026): الملاحظة أول شي، كود الطلب بسطر لحالو وتحتو الرابط، والسعر النهائي: «دولار:» و«سوري:» بس
   const final = o.discount && o.discount.amount > 0 ? after : o.subtotal;
-  const tot = [`دولار: ${Math.round(Number(final) * 100) / 100}$`];
-  if (syp > 0) tot.push(`سوري: ${Math.round(Number(final) * syp).toLocaleString("en-US")}`);
+  // صاحب المتجر (6 تشرين التاني 2026): 🔴 جنب العملة يلي كان الزبون مختارها بالموقع، ووقت الطلب تحت السعر
+  const isSyp = o.display && o.display.cur === "syp" && syp > 0;
+  const tot = [`دولار: ${Math.round(Number(final) * 100) / 100}$${isSyp ? "" : " 🔴"}`];
+  if (syp > 0) tot.push(`سوري: ${Math.round(Number(final) * syp).toLocaleString("en-US")}${isSyp ? " 🔴" : ""}`);
   if (o.discount && o.discount.amount > 0) tot.push(`(بعد الحسم${o.discount.name ? ": " + o.discount.name : ""})`);
   if (o.delivery.fee == null) tot.push("التوصيل: بيتحدد عند التأكيد");
   else if (o.delivery.fee > 0) tot.push(`التوصيل: ${sy(o.delivery.fee) || usd(o.delivery.fee)}`);
   const head = [c.notes ? `📝 ${c.notes}` : "", c.name, whereLine, c.phone, c.address ? "📍 " + c.address : "", `الكود: ${o.id}`, `الطلب: ${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
+  const at = orderTime(o.createdAt);
+  if (at) tot.push(`الوقت: ${at}`);
   const body = tot;
   return [head.join("\n"), body.join("\n")].join("\n\n");
+}
+// «6/11 - 1:52 ص» بتوقيت دمشق
+function orderTime(iso) {
+  try {
+    const p = {}; for (const x of new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Damascus", day: "numeric", month: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(new Date(iso))) p[x.type] = x.value;
+    return `${+p.day}/${+p.month} - ${+p.hour}:${p.minute} ${/p/i.test(p.dayPeriod || "") ? "م" : "ص"}`;
+  } catch { return ""; }
 }
 async function fxRate(env, ctx, settings) {
   const f = settings.fx || {}, margin = f.margin === "" || f.margin == null || isNaN(+f.margin) ? 2 : +f.margin;
