@@ -2118,6 +2118,9 @@ function orderText(o, origin, syp) {
   const company = String(dl.carrier || "").replace(/^شركة\s+/, "").replace(/\s+للشحن$/, "");
   const branch = String(dl.branch || "").replace(/^فرع\s+/, "");
   const where = yg ? [dl.carrier || "يلا غو", c.governorate] : [company, c.governorate, branch];
+  // «القدموس: المحافظة - الفرع» (صاحب المتجر، 5 تشرين التاني 2026)
+  const co = yg ? dl.carrier || "يلا غو" : company, place = [c.governorate, yg ? "" : branch].filter(Boolean).join(" - ");
+  const whereLine = co ? `${co}${place ? ": " + place : ""}` : place;
   const after = Math.max(0, o.subtotal - (o.discount ? o.discount.amount : 0));
   // صاحب المتجر (5 تشرين التاني 2026): الملاحظة أول شي، كود الطلب بسطر لحالو وتحتو الرابط، والسعر النهائي: «دولار:» و«سوري:» بس
   const final = o.discount && o.discount.amount > 0 ? after : o.subtotal;
@@ -2126,7 +2129,7 @@ function orderText(o, origin, syp) {
   if (o.discount && o.discount.amount > 0) tot.push(`(بعد الحسم${o.discount.name ? ": " + o.discount.name : ""})`);
   if (o.delivery.fee == null) tot.push("التوصيل: بيتحدد عند التأكيد");
   else if (o.delivery.fee > 0) tot.push(`التوصيل: ${sy(o.delivery.fee) || usd(o.delivery.fee)}`);
-  const head = [c.notes ? `📝 ${c.notes}` : "", c.name, where.filter(Boolean).join(" "), c.phone, c.address ? "📍 " + c.address : "", `الكود: ${o.id}`, `الطلب: ${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
+  const head = [c.notes ? `📝 ${c.notes}` : "", c.name, whereLine, c.phone, c.address ? "📍 " + c.address : "", `الكود: ${o.id}`, `الطلب: ${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
   const body = tot;
   return [head.join("\n"), body.join("\n")].join("\n\n");
 }
