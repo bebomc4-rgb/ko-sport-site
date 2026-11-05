@@ -2036,9 +2036,17 @@ ${trustH()}
       const inp = f.querySelector("[data-yg-area]"), box = f.querySelector("[data-yg-sug]"); if (!inp || !box) return;
       const t = norm(inp.value).trim();
       if (!ygAreas || !t) { box.hidden = true; return; }
-      const L = ygAreas.filter(([a, al]) => norm(a + "|" + al).includes(t)).slice(0, 8);
+      const strip = (x) => x.replace(/^(حي|منطقه|بلده|قريه|مدينه|مخيم|ساحه)\s+/, "");
+      const R = [];
+      ygAreas.forEach((a, i) => {
+        const names = [a[0], ...String(a[1] || "").split("|")].map((x) => strip(norm(x)));
+        let sc = 0; for (const x of names) { if (!x) continue; const v = x === t ? 4 : x.startsWith(t) ? 3 : x.split(" ").some((w) => w.startsWith(t)) ? 2 : t.length >= 2 && x.includes(t) ? 1 : 0; if (v > sc) sc = v; }
+        if (sc) R.push([sc, a[2], i]);
+      });
+      R.sort((x, y) => y[0] - x[0] || x[1] - y[1]);
+      const L = R.slice(0, 10);
       box.hidden = !L.length;
-      box.innerHTML = L.map(([a]) => `<button type="button" data-yg-pick="${esc(a)}">${esc(a)}</button>`).join("");
+      box.innerHTML = L.map(([, , i]) => `<button type="button" data-yg-pick="${i}">${esc(ygAreas[i][0])}<small> · ${ygAreas[i][2]} كم</small></button>`).join("");
     };
     const ygLoadAreas = () => { if (ygAreas) return; ygAreas = []; fetch("/api/yg").then((r) => r.json()).then((j) => { ygAreas = j.areas || []; ygSug(); }).catch(() => { ygAreas = null; }); };
     const ygMap = () => {
@@ -2065,7 +2073,7 @@ ${trustH()}
     f.addEventListener("focusin", (e) => { if (e.target.matches("[data-yg-area]")) ygLoadAreas(); });
     f.addEventListener("click", (e) => {
       const pk = e.target.closest("[data-yg-pick]");
-      if (pk) { f.querySelector("[data-yg-area]").value = pk.dataset.ygPick; f.querySelector("[data-yg-sug]").hidden = true; ygAsk({ area: pk.dataset.ygPick }); return; }
+      if (pk) { const a = ygAreas[+pk.dataset.ygPick]; if (!a) return; f.querySelector("[data-yg-area]").value = a[0]; f.querySelector("[data-yg-sug]").hidden = true; ygAsk({ area: a[0], at: [a[3], a[4]] }); return; }
       if (e.target.closest("[data-yg-map]")) { ygMap(); return; }
       if (e.target.closest("[data-yg-gps]")) {
         if (!navigator.geolocation) { ygShow("جهازك ما بيدعم تحديد الموقع، حدد عالخريطة"); return; }
@@ -2120,7 +2128,7 @@ ${trustH()}
         f.querySelector("[data-qadmous]").hidden = !z || z.method !== "qadmous";
         if (z) { if (freeOver > 0 && sub >= freeOver) feeTxt = "مجاني"; else if (z.fee == null) feeTxt = "بيتحدد عند التأكيد"; else { fee = z.fee; feeTxt = z.fee ? money(z.fee) : "مجاني"; } }
       }
-      { const yb = ygBox(); if (yb) yb.hidden = !yg; }
+      { const yb = ygBox(); if (yb) yb.hidden = !yg; if (yg) ygLoadAreas(); }
       if (yg && !ygQ && !ygBusy) { const lq = store.get("ko_yg", null); if (lq && (lq.area || lq.lat)) { if (lq.area) f.querySelector("[data-yg-area]").value = lq.area; ygAsk(lq); } }
       if (yg && ready) {
         if (heavyCart) feeTxt = "بيتحدد عند التأكيد";
@@ -2186,7 +2194,7 @@ ${trustH()}
       const btn = $("[data-submit]"); btn.disabled = true; btn.textContent = "جاري الإرسال…";
       const body = {
         customer: { name: v.name.trim(), phone: (v.phone || "").trim(), email: em, altPhone: (v.altPhone || "").trim(), postal: (v.postal || "").trim(), governorate: v.governorate, address: door ? (v.address || "").trim() : "", center: door ? "" : (v.center || "").trim(), notes: (v.notes || "").trim() },
-        carrier: v.carrier || "", branch: v.branch || "", payment: v.payment, sid, yg: ygOn() && ygQ ? (ygQ.gps ? { lat: ygQ.lat, lng: ygQ.lng } : { area: ygQ.area }) : undefined, cur: FXR > 0 ? curMode() : "usd",
+        carrier: v.carrier || "", branch: v.branch || "", payment: v.payment, sid, yg: ygOn() && ygQ ? (ygQ.gps ? { lat: ygQ.lat, lng: ygQ.lng } : { area: ygQ.area, at: ygQ.at }) : undefined, cur: FXR > 0 ? curMode() : "usd",
         coupon: coupon && curDisc() === coupon.discount ? coupon.code : "",
         items: lines.map((l) => ({ id: l.id, opt: l.opt, qty: l.qty }))
       };

@@ -572,7 +572,7 @@ async function ordersPost(request, env, ctx) {
     zone = { method: carrier.type === "branch" ? "qadmous" : "door", fee: g.fee ?? flat };
     // يلا غو: الأجرة من موقع الزبون (منطقة أو لوكيشن)، بالليرة الجديدة ← دولار بسعر اليوم
     if (carrier.type === "door" && /yalla|يلا/i.test(carrier.id + " " + carrier.name)) {
-      const q = ygQuote(body.yg);
+      const q = ygQuote(body.yg, await ygPlaces(env, ctx, false));
       if (q.error) return json({ error: q.error }, 400);
       const r = await fxRate(env, ctx, settings).catch(() => 0);
       zone.fee = r > 0 ? Math.round((q.syp / r) * 100) / 100 : null;
@@ -2157,7 +2157,7 @@ function orderTime(iso) {
 // فتحة العداد 80 ل.س جديدة + 32 للكيلو. المناطق المرجعية أسعارها ثابتة من جدول صاحب المتجر (طبيعي / أعلى).
 // المسافة بالطريق = المسافة المباشرة × عامل الطريق (محسوب من المناطق المرجعية القريبة).
 const YG_HOME = [33.5405, 36.219]; // ساحة قدسيا (KO SPORT)
-const YG_OPEN = 80, YG_KM = 32, YG_MAX_KM = 35;
+const YG_OPEN = 80, YG_KM = 32, YG_MAX_KM = 150;
 // [الاسم، lat، lng، كم بالطريق (للمرجعية)، طبيعي، أعلى، إضافة%، أسماء تانية]
 const YG_AREAS = [
   ["مشروع دمر", 33.53, 36.238, 3.7, 230, 280, 0, "ضاحية دمر|دمر مشروع|الورود"],
@@ -2226,42 +2226,104 @@ function ygRoadKm(p) {
 }
 const yg10 = (n) => Math.ceil(n / 10) * 10;
 function ygPrice(km, adj) { const n = yg10((YG_OPEN + YG_KM * km) * (1 + (adj || 0) / 100)); return { syp: n, max: yg10(n * 1.17) }; }
-function ygFind(q) {
-  const t = ygNorm(q); if (!t) return null;
+// كل مناطق دمشق وريف دمشق (أحياء، بلدات، قرى) من OpenStreetMap، بتنحفظ بـ KV وبتتحدّث كل 30 يوم.
+// القائمة المكتوبة فوق ليها الأولوية (أسعار جدول صاحب المتجر + أسماء الناس الدارجة).
+const YG_OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+const YG_Q = `[out:json][timeout:90];(area["ISO3166-2"="SY-DI"];area["ISO3166-2"="SY-RD"];)->.a;nwr["place"~"^(city|town|village|hamlet|suburb|quarter|neighbourhood|city_block|locality|isolated_dwelling)$"](area.a);out tags center;`;
+const ygClean = (n) => String(n || "").replace(/\s+/g, " ").trim();
+async function ygOsm() {
+  for (const u of YG_OVERPASS) {
+    try {
+      const r = await fetch(u, { method: "POST", body: "data=" + encodeURIComponent(YG_Q), headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": "KO-SPORT-delivery/1.0 (ko-sport.online)" }, signal: AbortSignal.timeout(40000) });
+      if (!r.ok) continue;
+      const j = await r.json(), out = [];
+      for (const e of j.elements || []) {
+        const t = e.tags || {}, lat = e.lat ?? (e.center && e.center.lat), lng = e.lon ?? (e.center && e.center.lon);
+        const ar = ygClean(t["name:ar"] || (/[؀-ۿ]/.test(t.name || "") ? t.name : ""));
+        if (!ar || !lat) continue;
+        const al = [t.name, t.alt_name, t["alt_name:ar"], t["old_name:ar"], t["short_name:ar"], t["name:en"]].map(ygClean).filter((x) => x && x !== ar).join("|").replace(/;/g, "|");
+        out.push([ar, +(+lat).toFixed(5), +(+lng).toFixed(5), al]);
+      }
+      if (out.length > 200) return out;
+    } catch {}
+  }
+  return null;
+}
+async function ygPlaces(env, ctx, force) {
+  let c = null; try { c = await env.STORE.get("yg:osm", "json"); } catch {}
+  const old = !c || !c.at || Date.now() - c.at > 30 * 864e5;
+  const load = async () => {
+    const l = await ygOsm(), n = l ? { at: Date.now(), list: l } : { at: Date.now() - 29 * 864e5, list: (c && c.list) || [] }; // فشل: منرجع نجرّب بعد يوم
+    try { await env.STORE.put("yg:osm", JSON.stringify(n)); } catch {}
+    return n;
+  };
+  // الزبون ما بيستنّى أبداً: التحديث بالخلفية، وبالأثناء القائمة المحفوظة (أو المكتوبة)
+  if (force || (old && !ctx)) c = await load();
+  else if (old) ctx.waitUntil(load().catch(() => {}));
+  // [الاسم، lat، lng، كم ثابت، طبيعي، أعلى، إضافة%، أسماء تانية]
+  const all = YG_AREAS.slice(), seen = new Map(YG_AREAS.map((a) => [ygNorm(a[0]), a]));
+  for (const [n, lat, lng, al] of (c && c.list) || []) {
+    const k = ygNorm(n), prev = seen.get(k);
+    if (prev && ygDist([prev[1], prev[2]], [lat, lng]) < 2.5) continue; // نفس المكان
+    const a = [n, lat, lng, 0, 0, 0, /قديمة|القيمرية|باب توما|الشاغور|الحميدية/.test(n) ? 12 : 0, al || ""];
+    all.push(a); if (!prev) seen.set(k, a);
+  }
+  return all;
+}
+const ygKey = (s) => ygNorm(s).replace(/^(حي|منطقه|بلده|قريه|مدينه|مخيم|ضاحيه|مزرعه|ساحه)\s+/, "");
+function ygFind(q, places) {
+  const t = ygNorm(q), tk = ygKey(q); if (!t) return null;
   let best = null, bs = 0;
-  for (const a of YG_AREAS) for (const n of [a[0], ...String(a[7] || "").split("|")]) {
-    const x = ygNorm(n); if (!x) continue;
-    const sc = t === x ? 100 + x.length : t.includes(x) ? 50 + x.length : x.includes(t) && t.length >= 3 ? 20 + t.length : 0;
-    if (sc > bs) { bs = sc; best = a; }
+  for (const a of places) for (const n of [a[0], ...String(a[7] || "").split("|")]) {
+    const x = ygNorm(n), xk = ygKey(n); if (!x) continue;
+    let sc = t === x || tk === xk ? 1000 : t.includes(x) && x.length >= 3 ? 500 + x.length : x.startsWith(t) && t.length >= 2 ? 200 + t.length : x.includes(t) && t.length >= 3 ? 100 + t.length : 0;
+    if (sc && a[3] > 0) sc += 5; // جدول صاحب المتجر أول شي
+    if (sc && sc === bs && best && ygDist(YG_HOME, [a[1], a[2]]) < ygDist(YG_HOME, [best[1], best[2]])) best = a; // نفس الاسم بمكانين: الأقرب
+    else if (sc > bs) { bs = sc; best = a; }
   }
   return best;
 }
-// {area} أو {lat,lng} ← {area, km, syp, max, lat?, lng?} أو {error}
-function ygQuote(input) {
+// {area, at?:[lat,lng]} أو {lat,lng} ← {area, km, syp, max, lat?, lng?} أو {error}
+function ygQuote(input, places) {
   const i = input || {};
   const lat = +i.lat, lng = +i.lng;
   if (isFinite(lat) && isFinite(lng) && lat && lng) {
     const p = [lat, lng], km = ygRoadKm(p);
-    if (km > YG_MAX_KM) return { error: "موقعك برّا منطقة التوصيل السريع (دمشق وريفها القريب)" };
-    let near = null, nd = 9; for (const a of YG_AREAS) { const d = ygDist(p, [a[1], a[2]]); if (d < nd) { nd = d; near = a; } }
+    if (km > YG_MAX_KM) return { error: "موقعك برّا منطقة التوصيل (دمشق وريفها)" };
+    let near = null, nd = 99; for (const a of places) { const d = ygDist(p, [a[1], a[2]]); if (d < nd) { nd = d; near = a; } }
     if (near && near[3] > 0 && nd < 0.6) return { area: near[0], km: near[3], syp: near[4], max: near[5], lat: +lat.toFixed(5), lng: +lng.toFixed(5), gps: true };
     const pr = ygPrice(km, near && nd < 1.2 ? near[6] : 0);
-    return { area: near && nd < 1.5 ? "قرب " + near[0] : "موقع على الخريطة", km: Math.round(km * 10) / 10, ...pr, lat: +lat.toFixed(5), lng: +lng.toFixed(5), gps: true };
+    return { area: near && nd < 0.4 ? near[0] : near && nd < 2.5 ? "قرب " + near[0] : "موقع على الخريطة", km: Math.round(km * 10) / 10, ...pr, lat: +lat.toFixed(5), lng: +lng.toFixed(5), gps: true };
   }
-  const a = ygFind(i.area);
+  let a = null;
+  if (Array.isArray(i.at) && i.at.length === 2) { const n = ygNorm(i.area); a = places.find((x) => ygNorm(x[0]) === n && Math.abs(x[1] - i.at[0]) < 1e-3 && Math.abs(x[2] - i.at[1]) < 1e-3) || null; }
+  a = a || ygFind(i.area, places);
   if (!a) return { error: "ما عرفنا هالمنطقة، اختار من القائمة أو حدد موقعك عالخريطة" };
-  if (a[3] > 0) return { area: a[0], km: a[3], syp: a[4], max: a[5] };
+  if (a[3] > 0) return { area: a[0], km: a[3], syp: a[4], max: a[5], at: [a[1], a[2]] };
   const km = ygRoadKm([a[1], a[2]]);
-  return { area: a[0], km: Math.round(km * 10) / 10, ...ygPrice(km, a[6]) };
+  if (km > YG_MAX_KM) return { error: `«${a[0]}» برّا منطقة التوصيل` };
+  return { area: a[0], km: Math.round(km * 10) / 10, ...ygPrice(km, a[6]), at: [a[1], a[2]] };
 }
 async function ygApi(request, env, ctx) {
-  if (request.method === "GET") return new Response(JSON.stringify({ areas: YG_AREAS.map((a) => [a[0], String(a[7] || "")]) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600" } });
+  const places = await ygPlaces(env, ctx, false);
+  if (request.method === "GET") {
+    const areas = places.map((a) => [a[0], String(a[7] || ""), a[3] > 0 ? a[3] : Math.round(ygRoadKm([a[1], a[2]])), a[1], a[2]]).filter((x) => x[2] <= YG_MAX_KM);
+    return new Response(JSON.stringify({ n: areas.length, areas }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600" } });
+  }
   const b = await request.json().catch(() => ({}));
-  const q = ygQuote(b);
+  const q = ygQuote(b, places);
   if (q.error) return json(q, 400);
   const settings = await getSettings(env, request);
   const rate = await fxRate(env, ctx, settings).catch(() => 0);
   return json({ ...q, usd: rate > 0 ? Math.round((q.syp / rate) * 100) / 100 : null, rate });
+}
+// للفحص: كم منطقة محفوظة (بدون أسعار)
+async function ygList(request, env, ctx) {
+  let c0 = null; try { c0 = await env.STORE.get("yg:osm", "json"); } catch {}
+  const force = (new URL(request.url).searchParams.get("refresh") === "1" && isAdmin(request, env)) || !(c0 && c0.list && c0.list.length && c0.at > Date.now() - 30 * 864e5);
+  const p = await ygPlaces(env, ctx, force);
+  let c = null; try { c = await env.STORE.get("yg:osm", "json"); } catch {}
+  return new Response(`مناطق التوصيل بدمشق وريفها: ${p.length}\nمن OpenStreetMap: ${(c && c.list && c.list.length) || 0} (آخر تحديث ${c && c.at ? new Date(c.at).toISOString().slice(0, 10) : "—"})\n\n` + p.map((a) => a[0]).join("\n"), { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
 }
 async function fxRate(env, ctx, settings) {
   const f = settings.fx || {}, margin = f.margin === "" || f.margin == null || isNaN(+f.margin) ? 2 : +f.margin;
@@ -3141,6 +3203,7 @@ export default {
       }
       if (path === "/api/rate" && (m === "GET" || m === "POST")) return fxApi(request, env, ctx);
       if (path === "/api/yg" && (m === "GET" || m === "POST")) return ygApi(request, env, ctx);
+      if (path === "/yg-areas.txt") return ygList(request, env, ctx);
       if (path === "/api/order-items" && m === "GET") return orderItemsGet(request, env);
       if (path === "/api/order-thumb" && m === "GET") return orderThumb(request, env);
       // the dashboard reads through its own addresses: the shop's service worker never touches them,
