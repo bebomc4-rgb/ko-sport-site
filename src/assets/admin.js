@@ -742,7 +742,7 @@
     const b = e.target.closest("[data-tg-test]"); if (!b) return;
     const out = b.parentElement.querySelector("[data-tg-res]"); b.disabled = true; if (out) out.textContent = "عم ابعت…";
     const WHY = { token: "الـ Token غلط. خود Token جديد من @BotFather وحطّه بقيمة TELEGRAM_BOT_TOKEN، وارفع الموقع.", chat: "رقم الـ Chat ID غلط، أو ما بعتت ولا رسالة للبوت تبعك. افتح البوت بتلغرام واكبس Start، وتأكّد من الرقم من @userinfobot.", blocked: "إنت حاظر البوت. افتحه بتلغرام واكبس Start.", missing: "المتغيّرين مو موجودين بهالنسخة. ارفع الموقع من جديد.", net: "ما قدرنا نوصل لتلغرام هلّق، جرّب كمان شوي." };
-    try { const r = await api("/api/telegram-test", { method: "POST" }); if (out) out.textContent = r.ok ? "✓ انبعتت. شوف تلغرام." : (WHY[r.why] || "تلغرام رفض: " + (r.desc || "")); }
+    try { const r = await api("/api/telegram-test", { method: "POST" }); if (out) out.textContent = r.ok ? "✓ انبعتت. شوف تلغرام والواتس." : (WHY[r.why] || "تلغرام رفض: " + (r.desc || "")); }
     catch { if (out) out.textContent = "ما زبط، جرّب كمان مرة."; }
     b.disabled = false;
   });
