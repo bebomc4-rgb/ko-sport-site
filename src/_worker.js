@@ -2119,12 +2119,14 @@ function orderText(o, origin, syp) {
   const branch = String(dl.branch || "").replace(/^فرع\s+/, "");
   const where = yg ? [dl.carrier || "يلا غو", c.governorate] : [company, c.governorate, branch];
   const after = Math.max(0, o.subtotal - (o.discount ? o.discount.amount : 0));
+  // صاحب المتجر (5 تشرين التاني 2026): السعر النهائي واضح — بلا حسم: سطر وحدة. مع حسم: قبل الحسم، الحسم، وبعد الحسم
+  const both = (n) => (syp > 0 ? `${sy(n)} (${usd(n)})` : usd(n));
   const tot = [];
-  if (syp > 0) {
-    tot.push(`المجموع قبل الحسم: ${sy(o.subtotal)}`);
-    if (o.discount) tot.push(`المجموع بعد الحسم: ${sy(after)}`);
-  }
-  tot.push(`بالدولار: ${usd(o.subtotal)}${o.discount ? " قبل الحسم، " + usd(after) + " بعد الحسم" : ""}`);
+  if (o.discount && o.discount.amount > 0) {
+    tot.push(`السعر قبل الحسم: ${both(o.subtotal)}`);
+    tot.push(`الحسم${o.discount.name ? " (" + o.discount.name + ")" : ""}: −${both(o.discount.amount)}`);
+    tot.push(`✅ السعر النهائي بعد الحسم: ${both(after)}`);
+  } else tot.push(`✅ السعر النهائي (بدون حسم): ${both(o.subtotal)}`);
   if (o.delivery.fee == null) tot.push("التوصيل: بيتحدد عند التأكيد");
   else if (o.delivery.fee > 0) tot.push(`التوصيل: ${sy(o.delivery.fee) || usd(o.delivery.fee)}`);
   const head = [c.name, where.filter(Boolean).join(" "), c.phone, c.address ? "📍 " + c.address : "", `🛒 الطلب ${o.id}: ${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
