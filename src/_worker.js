@@ -2119,18 +2119,15 @@ function orderText(o, origin, syp) {
   const branch = String(dl.branch || "").replace(/^فرع\s+/, "");
   const where = yg ? [dl.carrier || "يلا غو", c.governorate] : [company, c.governorate, branch];
   const after = Math.max(0, o.subtotal - (o.discount ? o.discount.amount : 0));
-  // صاحب المتجر (5 تشرين التاني 2026): السعر النهائي واضح — بلا حسم: سطر وحدة. مع حسم: قبل الحسم، الحسم، وبعد الحسم
-  const both = (n) => (syp > 0 ? `${sy(n)} (${usd(n)})` : usd(n));
-  const tot = [];
-  if (o.discount && o.discount.amount > 0) {
-    tot.push(`السعر قبل الحسم: ${both(o.subtotal)}`);
-    tot.push(`الحسم${o.discount.name ? " (" + o.discount.name + ")" : ""}: −${both(o.discount.amount)}`);
-    tot.push(`✅ السعر النهائي بعد الحسم: ${both(after)}`);
-  } else tot.push(`✅ السعر النهائي (بدون حسم): ${both(o.subtotal)}`);
+  // صاحب المتجر (5 تشرين التاني 2026): الملاحظة أول شي، كود الطلب بسطر لحالو وتحتو الرابط، والسعر النهائي: «دولار:» و«سوري:» بس
+  const final = o.discount && o.discount.amount > 0 ? after : o.subtotal;
+  const tot = [`دولار: ${Math.round(Number(final) * 100) / 100}$`];
+  if (syp > 0) tot.push(`سوري: ${Math.round(Number(final) * syp).toLocaleString("en-US")}`);
+  if (o.discount && o.discount.amount > 0) tot.push(`(بعد الحسم${o.discount.name ? ": " + o.discount.name : ""})`);
   if (o.delivery.fee == null) tot.push("التوصيل: بيتحدد عند التأكيد");
   else if (o.delivery.fee > 0) tot.push(`التوصيل: ${sy(o.delivery.fee) || usd(o.delivery.fee)}`);
-  const head = [c.name, where.filter(Boolean).join(" "), c.phone, c.address ? "📍 " + c.address : "", `🛒 الطلب ${o.id}: ${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
-  const body = [...tot, c.notes ? `📝 ${c.notes}` : ""].filter((x, k, a) => x !== "" || (a[k - 1] !== "" && k < a.length - 1));
+  const head = [c.notes ? `📝 ${c.notes}` : "", c.name, where.filter(Boolean).join(" "), c.phone, c.address ? "📍 " + c.address : "", o.id, `${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
+  const body = tot;
   return [head.join("\n"), body.join("\n")].join("\n\n");
 }
 async function fxRate(env, ctx, settings) {
