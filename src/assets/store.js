@@ -1810,17 +1810,53 @@
   function account() {
     const A = acct();
     if (!A) { authView(() => account(), "سجّل حساب أو ادخل على حسابك لتطلب وتتابع طلباتك.", "login"); return; }
-    const list = store.get("ko_orders", []);
-    const me = { ...(store.get("ko_customer", {}) || {}), phone: A.account.phone };
     app.innerHTML = `<h1 class="page-title">حسابي</h1>
       <section class="acc-card acc-me"><div><b>${esc(A.account.name)}</b><small dir="ltr">${esc(A.account.phone)}</small><small>${esc(A.account.governorate || "")}</small></div><button type="button" class="btn btn-ghost sm" data-logout>تسجيل خروج</button></section>
       <a class="qd-tg" target="_blank" rel="noopener" href="https://t.me/KadmousTransport_bot"><span class="qd-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M21.9 4.3 18.6 19.8c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.2-8.3c.4-.4-.1-.6-.6-.2L6 13.4 1.1 11.9c-1.1-.3-1.1-1.1.2-1.6L20.5 2.9c.9-.3 1.7.2 1.4 1.4z"/></svg></span><span class="qd-t"><b>تتبّع شحنتك بالقدموس</b><small>بوت القدموس عالتلغرام · بنفس الرقم المسجّل على الوصل</small></span><span class="qd-go" aria-hidden="true">‹</span></a>
-      <section class="acc-card"><h2>طلباتي</h2>${list.length ? list.map((o) => `<div class="acc-order"><div><b dir="ltr">${esc(o.id)}</b><small>${new Date(o.at).toLocaleDateString("ar-SY")} · ${o.n} منتج · ${money(o.total)}</small></div></div>`).join("") : `<p class="acc-empty">ما في طلبات من هالجهاز لهلق. <a href="#/all">ابدأ التسوق</a></p>`}</section>
+      <section class="acc-card"><h2>طلباتي</h2><div data-myorders>${(myOrdOwner(), myOrdersHtml(myOrdCache))}</div></section>
       <section class="acc-card acc-links"><a href="#/cart">🛒 السلة</a><a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">💬 تواصل معنا على واتساب</a></section>`;
     app.onclick = (e) => {
       if (e.target.closest("[data-logout]")) { askConfirm("بدك تسجّل خروج من حسابك؟", "نعم، اطلع").then((y) => { if (y) { acctOut(); account(); } }); return; }
     };
     app.onchange = null;
+    myOrdersLoad().then(() => { const box = app.querySelector("[data-myorders]"); if (box) box.innerHTML = myOrdersHtml(myOrdCache); });
+  }
+  // طلباتي: من الحساب نفسو (بتبيّن من أي جهاز)، وكل طلب بينفتح لحالو
+  let myOrdCache = null, myOrdFor = "";
+  const myOrdOwner = () => { const p = ((acct() || {}).account || {}).phone || ""; if (p !== myOrdFor) { myOrdFor = p; myOrdCache = null; } };
+  const ordDate = (t) => { try { return new Date(t).toLocaleDateString("ar-SY", { year: "numeric", month: "long", day: "numeric" }); } catch { return ""; } };
+  const ordSt = (o) => `<span class="ord-st st-${esc(o.status || "new")}">${esc(ST_NAMES[o.status] || "استلمنا طلبك")}</span>`;
+  async function myOrdersLoad() {
+    myOrdOwner();
+    try {
+      const r = await fetch("/api/acct/orders", { headers: { authorization: "Bearer " + ((acct() || {}).token || "") }, cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && Array.isArray(j.orders)) myOrdCache = j.orders;
+      else if (!myOrdCache) myOrdCache = [];
+    } catch { if (!myOrdCache) myOrdCache = []; }
+    return myOrdCache;
+  }
+  function myOrdersHtml(L) {
+    if (!L) return `<div class="loading" style="padding:14px">جاري تحميل طلباتك…</div>`;
+    if (!L.length) return `<p class="acc-empty">ما عندك طلبات لهلق. <a href="#/all">ابدأ التسوق</a></p>`;
+    return `<div class="ord-list">${L.map((o) => { const n = o.items.reduce((a, i) => a + i.qty, 0), th = o.items.slice(0, 3);
+      return `<a class="ord-row" href="#/account/${encodeURIComponent(o.id)}"><span class="ord-th">${th.map((i) => `<img src="${esc(imgW(img(i.image), 120))}" alt="" loading="lazy">`).join("")}</span>
+        <span class="ord-mid"><b dir="ltr">${esc(o.id)}</b><small>${ordDate(o.createdAt)} · ${n} ${n === 1 ? "قطعة" : "قطع"}</small>${ordSt(o)}</span>
+        <span class="ord-tot">${oMoney(o)(o.total)}<i aria-hidden="true">‹</i></span></a>`; }).join("")}</div>`;
+  }
+  async function myOrder(id) {
+    const A = acct();
+    if (!A) { authView(() => myOrder(id), "ادخل على حسابك لتشوف طلبك.", "login"); return; }
+    myOrdOwner(); let o = (myOrdCache || []).find((x) => x.id === id);
+    if (!o) { app.innerHTML = '<div class="loading">جاري التحميل…</div>'; await myOrdersLoad(); o = (myOrdCache || []).find((x) => x.id === id); }
+    if (!o) { app.innerHTML = `<div class="empty"><b>ما لقينا هالطلب بحسابك</b><a class="btn btn-dark" href="#/account">طلباتي</a></div>`; return; }
+    const d = o.delivery || {}, ship = d.yg ? `${esc(d.carrier || "يلا غو")} · ${esc(d.yg.area)}` : `${esc(d.carrier || "")}${d.branch ? " · " + esc(d.branch) : ""}`;
+    app.innerHTML = `<div class="ord-page"><a class="ord-back" href="#/account">› طلباتي</a>
+      <div class="ord-head"><div><h1 dir="ltr">${esc(o.id)}</h1><small>${ordDate(o.createdAt)}</small></div>${ordSt(o)}</div>
+      ${orderBox(o)}
+      ${ship.trim() ? `<div class="pay-info"><b>الشحن:</b> ${ship}${o.governorate && !d.yg ? `<br><small>${esc(o.governorate)}</small>` : ""}</div>` : ""}
+      <div class="buy-row" style="justify-content:center;margin-top:14px"><a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent("مرحبا، بسأل عن طلبي رقم " + o.id)}">اسأل عن هالطلب على واتساب</a></div></div>`;
+    app.onclick = null; app.onchange = null;
   }
 
   // small confirmation box (instead of the browser's plain confirm)
@@ -2496,7 +2532,7 @@ ${trustH()}
     else if (a === "checkout") checkout();
     else if (a === "done") done(b);
     else if (a === "search") search(b || "");
-    else if (a === "account") account();
+    else if (a === "account") (b ? myOrder(b) : account());
     else if (a === "page") page(b || "");
     else if (a === "games" && gamesOn()) gamesPage();
     else if (a === "o" && b) orderPage(b);

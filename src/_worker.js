@@ -638,6 +638,8 @@ async function ordersPost(request, env, ctx) {
   };
   await env.STORE.put(orderKey(ts, id), JSON.stringify(order));
   await env.STORE.put(`orderid:${id}`, orderKey(ts, id));
+  // طلبات الزبون بحسابو (متل المواقع العالمية): بتبيّن من أي جهاز
+  ctx.waitUntil(acctOrdAdd(env, customer.phone, orderKey(ts, id)).catch(() => {}));
   const tgOn = !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID);
   const shot = tgOn ? newKey() : "";
   // discount usage + the abandoned cart of this visitor is now an order
@@ -902,8 +904,48 @@ async function botCall(env, kind, t) {
   } catch { return null; }
 }
 
+// ---------- طلباتي: قائمة طلبات الزبون محفوظة بحسابو (acctord:<phone> = مفاتيح الطلبات، الأحدث أول) ----------
+const ordPhone = (p) => { const d = String(p || "").replace(/\D/g, ""); return d.length >= 9 ? "0" + d.slice(-9) : ""; };
+async function acctOrdAdd(env, phone, key) {
+  const ph = ordPhone(phone); if (!ph) return;
+  const L = (await env.STORE.get("acctord:" + ph, "json")) || null;
+  if (!L) return; // ما في قائمة لسا: بتنبنى كاملة أول ما يفتح «طلباتي»
+  if (!L.keys.includes(key)) L.keys.unshift(key);
+  L.keys = L.keys.slice(0, 200);
+  await env.STORE.put("acctord:" + ph, JSON.stringify(L));
+}
+async function acctOrdKeys(env, ph) {
+  const c = await env.STORE.get("acctord:" + ph, "json");
+  if (c && Array.isArray(c.keys)) return c.keys;
+  // أول مرة: منفتّش آخر الطلبات (الأحدث أول) ومنلقط طلبات هالرقم
+  const keys = []; let cursor, seen = 0;
+  do {
+    const r = await env.STORE.list({ prefix: "order:", limit: 1000, cursor });
+    const vals = await Promise.all(r.keys.map((k) => env.STORE.get(k.name, "json").then((o) => [k.name, o]).catch(() => [k.name, null])));
+    for (const [k, o] of vals) if (o && o.customer && ordPhone(o.customer.phone) === ph) keys.push(k);
+    seen += r.keys.length; cursor = r.list_complete ? null : r.cursor;
+  } while (cursor && seen < 3000);
+  await env.STORE.put("acctord:" + ph, JSON.stringify({ keys: keys.slice(0, 200), at: Date.now() })).catch(() => {});
+  return keys;
+}
+const ordPublic = (o) => ({
+  id: o.id, createdAt: o.createdAt, status: o.status, total: o.total, subtotal: o.subtotal, display: o.display || null,
+  items: (o.items || []).map(({ id, name, opt, qty, price, image }) => ({ id, name, opt, qty, price, image })),
+  discount: o.discount ? { name: o.discount.name, amount: o.discount.amount } : null,
+  delivery: o.delivery ? { carrier: o.delivery.carrier, carrierId: o.delivery.carrierId, branch: o.delivery.branch, fee: o.delivery.fee, yg: o.delivery.yg ? { area: o.delivery.yg.area, syp: o.delivery.yg.syp } : undefined } : null,
+  address: (o.customer && o.customer.address) || "", governorate: (o.customer && o.customer.governorate) || "",
+});
+async function acctOrders(request, env) {
+  const a = await acctFromReq(request, env);
+  if (!a) return json({ error: "سجّل دخول من جديد", needLogin: true }, 401);
+  const ph = ordPhone(a.phone), keys = (await acctOrdKeys(env, ph)).slice(0, 60);
+  const list = (await Promise.all(keys.map((k) => env.STORE.get(k, "json").catch(() => null))))
+    .filter((o) => o && o.customer && ordPhone(o.customer.phone) === ph).map(ordPublic);
+  const r = json({ orders: list }); r.headers.set("cache-control", "no-store"); return r;
+}
 async function acctApi(request, env, path, m) {
   if (!env.STORE) return json({ error: "الحسابات مو متاحة هلق" }, 503);
+  if (path === "/api/acct/orders" && m === "GET") return acctOrders(request, env);
   if (path === "/api/acct/me") {
     const a = await acctFromReq(request, env);
     if (!a) return json({ error: "سجّل دخول من جديد" }, 401);
