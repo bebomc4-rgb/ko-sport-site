@@ -2315,7 +2315,7 @@ function ygQuote(input, places) {
   let a = null;
   if (Array.isArray(i.at) && i.at.length === 2) { const n = ygNorm(i.area); a = places.find((x) => ygNorm(x[0]) === n && Math.abs(x[1] - i.at[0]) < 1e-3 && Math.abs(x[2] - i.at[1]) < 1e-3) || null; }
   a = a || ygFind(i.area, places);
-  if (!a) return { error: "ما عرفنا هالمنطقة، اختار من القائمة أو حدد موقعك عالخريطة" };
+  if (!a) return { error: "ما عرفنا هالمنطقة، اختارها من القائمة أو كبسة «موقعي الحالي»" };
   if (a[3] > 0) return { area: a[0], km: a[3], syp: a[4], max: a[5], at: [a[1], a[2]] };
   const km = ygRoadKm([a[1], a[2]]);
   if (km > YG_MAX_KM) return { error: `«${a[0]}» برّا منطقة التوصيل` };
