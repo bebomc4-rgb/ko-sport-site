@@ -2017,7 +2017,7 @@ ${trustH()}
       if (msg) { r.hidden = false; r.className = "yg-res bad"; r.textContent = msg; return; }
       if (!ygQ) { r.hidden = true; return; }
       r.hidden = false; r.className = "yg-res ok";
-      r.innerHTML = `🛵 <b>${esc(ygQ.area)}</b> · حوالي ${ygQ.km} كم<br>أجرة التوصيل تقريباً: <b>${ygQ.syp.toLocaleString("en-US")} ل.س جديدة</b><small>بأوقات الازدحام ممكن توصل لـ ${ygQ.max.toLocaleString("en-US")} ل.س</small>`;
+      r.innerHTML = `🛵 <b>${esc(ygQ.area)}</b> · حوالي ${ygQ.km} كم<br>أجرة التوصيل تقريباً: <b>${ygQ.syp.toLocaleString("en-US")} ل.س جديدة</b><small>التوصيل ممكن يوصل إلى ${ygQ.max.toLocaleString("en-US")} ل.س حسب المكان</small>`;
     };
     const ygAsk = async (q) => {
       const n = ++ygBusy, r = f.querySelector("[data-yg-res]");
