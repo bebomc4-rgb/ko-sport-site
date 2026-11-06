@@ -1187,22 +1187,6 @@
     requestAnimationFrame(() => requestAnimationFrame(chk));
     if (bind) bind(w.querySelector(".sheet-body"));
   }
-  // صاحب المتجر (6 تشرين التاني 2026): زر إشعار عائم فوق عاليسار، فيه ملاحظة بوت القدموس
-  function qdFloat() {
-    if (document.querySelector("[data-qd-fab]") || /^\/admin/.test(location.pathname)) return;
-    // بس للزبون يلي طلب طلب بالقدموس من هالجهاز (مو لكل الزوار)
-    const lo = store.get("ko_last_order", null), d = (lo && lo.delivery) || {};
-    if (!store.get("ko_qd_order", false) && !(/qadmous/i.test(d.carrierId || "") || /القدموس/.test(d.carrier || ""))) return;
-    const seen = store.get("ko_qd_seen", false), bt = document.createElement("button");
-    bt.type = "button"; bt.className = "qd-fab" + (seen ? "" : " new"); bt.setAttribute("data-qd-fab", ""); bt.setAttribute("aria-label", "إشعار");
-    bt.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2z"/></svg>';
-    bt.addEventListener("click", () => {
-      store.set("ko_qd_seen", true); bt.classList.remove("new");
-      openSheet("🔔 إشعار", `<div class="qd-note"><b>⚠️ مشان ما تعذّب حالك وتنزل عالفاضي</b><p>إذا بدك تعرف إذا الطرد وصل عالمركز المطلوب أو لأ، حط كود القدموس على بوت تلغرام تبع شركة القدموس:</p><a class="btn btn-dark qd-bot" target="_blank" rel="noopener" href="https://t.me/KadmousTransport_bot" dir="ltr">@KadmousTransport_bot</a><small>ملاحظة: لازم يكون التلغرام على نفس الرقم المسجّل على الوصل.</small></div>`);
-    });
-    document.body.appendChild(bt);
-  }
-  setTimeout(qdFloat, 1200);
   function closeSheet() { document.querySelectorAll("[data-sheet]").forEach((x) => x.remove()); document.documentElement.classList.remove("sheet-lock"); }
 
 
@@ -1829,6 +1813,10 @@
     const list = store.get("ko_orders", []);
     const me = { ...(store.get("ko_customer", {}) || {}), phone: A.account.phone };
     app.innerHTML = `<h1 class="page-title">حسابي</h1>
+      <section class="acc-card qd-card"><div class="qd-head"><span class="qd-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M21.9 4.3 18.6 19.8c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.2-8.3c.4-.4-.1-.6-.6-.2L6 13.4 1.1 11.9c-1.1-.3-1.1-1.1.2-1.6L20.5 2.9c.9-.3 1.7.2 1.4 1.4z"/></svg></span><div><b>تتبّع طردك بالقدموس</b><small>مشان ما تعذّب حالك وتنزل عالفاضي</small></div></div>
+        <p>إذا بدك تعرف إذا الطرد وصل عالمركز المطلوب أو لأ، حط كود القدموس على بوت تلغرام تبع شركة القدموس.</p>
+        <a class="qd-tg" target="_blank" rel="noopener" href="https://t.me/KadmousTransport_bot"><span>افتح بوت القدموس</span><span dir="ltr">@KadmousTransport_bot</span></a>
+        <small class="qd-warn">ملاحظة: لازم يكون التلغرام على نفس الرقم المسجّل على الوصل.</small></section>
       <section class="acc-card acc-me"><div><b>${esc(A.account.name)}</b><small dir="ltr">${esc(A.account.phone)}</small><small>${esc(A.account.governorate || "")}</small></div><button type="button" class="btn btn-ghost sm" data-logout>تسجيل خروج</button></section>
       <section class="acc-card"><h2>طلباتي</h2>${list.length ? list.map((o) => `<div class="acc-order"><div><b dir="ltr">${esc(o.id)}</b><small>${new Date(o.at).toLocaleDateString("ar-SY")} · ${o.n} منتج · ${money(o.total)}</small></div>
         <button type="button" class="btn btn-ghost sm" data-track="${esc(o.id)}" data-phone="${esc(o.phone)}">تتبّع</button></div><div class="acc-st" data-st="${esc(o.id)}" hidden></div>`).join("") : `<p class="acc-empty">ما في طلبات من هالجهاز لهلق. <a href="#/all">ابدأ التسوق</a></p>`}</section>
@@ -2222,7 +2210,6 @@ ${trustH()}
         if (!r.ok) throw new Error(j.error || "صار خطأ");
         cart = []; saveCart(); store.set("ko_sid", "");
         store.set("ko_last_order", j.order);
-        { const d = j.order.delivery || {}; if (/qadmous/i.test(d.carrierId || "") || /القدموس/.test(d.carrier || "")) store.set("ko_qd_order", true); }
         if (j.shot) cartShot(j.order, j.shot).catch(() => {});
         pixel("Purchase", { value: j.order.total, currency: "USD" });
         store.set("ko_orders", [{ id: j.order.id, phone: body.customer.phone, at: j.order.createdAt, total: j.order.total, n: j.order.items.reduce((a, i) => a + i.qty, 0) }, ...store.get("ko_orders", [])].slice(0, 20));
@@ -2332,7 +2319,6 @@ ${trustH()}
       <div class="buy-row" style="justify-content:center"><a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent(msg)}">أرسل الطلب على واتساب</a></div>
       <p class="hint" style="margin-top:16px">بعد ما يوصلك طلبك، رأيك بيفرق معنا كتير: <a href="/review" target="_blank" rel="noopener"><b>قيّمنا على جوجل ⭐</b></a></p></div>`;
     app.onclick = null; app.onchange = null;
-    qdFloat();
   }
   // #/o/ID — what was ordered (the link inside the Telegram message); no personal data
   function orderPage(id) {

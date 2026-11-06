@@ -2006,8 +2006,13 @@ html.sheet-lock,html.sheet-lock body{overflow:hidden}
 .qd-note{margin:4px auto 8px;max-width:520px;padding:14px 16px;border-radius:14px;text-align:start;line-height:1.7;background:color-mix(in srgb,#f59e0b 12%,transparent);border:1px solid color-mix(in srgb,#f59e0b 45%,transparent)}
 .qd-note b{display:block;font-size:1.05em}.qd-note p{margin:6px 0 10px}.qd-note small{display:block;margin-top:10px;color:var(--muted)}
 .qd-note .qd-bot{display:flex;justify-content:center;width:100%}
-.qd-fab{position:fixed;top:120px;left:14px;z-index:60;width:48px;height:48px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;color:#fff;background:var(--red,#d32f2f);box-shadow:0 6px 18px rgba(0,0,0,.25)}
-.qd-fab.new::after{content:"";position:absolute;top:6px;right:6px;width:11px;height:11px;border-radius:50%;background:#facc15;border:2px solid #fff}
-.qd-fab.new svg{animation:qdRing 2.4s ease-in-out infinite;transform-origin:50% 10%}
-@keyframes qdRing{0%,70%,100%{transform:rotate(0)}75%{transform:rotate(14deg)}80%{transform:rotate(-12deg)}85%{transform:rotate(8deg)}90%{transform:rotate(-5deg)}}
 html.sheet-lock .pwa-bar{visibility:hidden}
+.qd-card{background:linear-gradient(135deg,color-mix(in srgb,#229ED9 14%,var(--card,#fff)),var(--card,#fff));border:1px solid color-mix(in srgb,#229ED9 35%,transparent)}
+.qd-card .qd-head{display:flex;align-items:center;gap:12px}
+.qd-card .qd-ic{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;background:#229ED9;box-shadow:0 6px 16px color-mix(in srgb,#229ED9 40%,transparent)}
+.qd-card .qd-head b{display:block;font-size:1.08em}.qd-card .qd-head small{color:var(--muted)}
+.qd-card p{margin:12px 0;line-height:1.7}
+.qd-tg{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 16px;border-radius:12px;background:#229ED9;color:#fff!important;font-weight:700;text-decoration:none}
+.qd-tg span[dir]{font-weight:600;opacity:.9;font-size:.92em}
+.qd-tg:hover{filter:brightness(1.07)}
+.qd-card .qd-warn{display:block;margin-top:10px;color:var(--muted)}
