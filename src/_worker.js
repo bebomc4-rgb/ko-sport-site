@@ -3227,7 +3227,15 @@ export default {
       return Response.redirect("https://ko-sport.online/ar" + url.search, 301);
     }
     // ko-sport.pages.dev → ko-sport.online (pages only; /api and /media stay reachable for the bot and the app)
-    if (url.hostname === "ko-sport.pages.dev" && m === "GET" && !path.startsWith("/api/") && !path.startsWith("/media/") && !/; wv\)|appcreator/i.test(request.headers.get("user-agent") || "")) { // the Android app (WebView) stays on its own address so it never jumps to the browser
+    // تطبيق الأندرويد (WebView) لازم يضل جوّا التطبيق: منتعرّف عليه من أكتر من إشارة (مو بس "; wv)" بالـ user-agent)
+    const inAppReq = (rq) => { const h = rq.headers, ua = h.get("user-agent") || "";
+      return /; wv\)|appcreator|Version\/4\.0 Chrome/i.test(ua) || /WebView/i.test(h.get("sec-ch-ua") || "") || /kosport|appcreator/i.test(h.get("x-requested-with") || "") || (h.get("sec-fetch-mode") && h.get("sec-fetch-mode") !== "navigate"); };
+    if (url.hostname === "ko-sport.pages.dev" && m === "GET" && !path.startsWith("/api/") && !path.startsWith("/media/") && path !== "/app-diag.txt" && env.STORE && !path.includes(".")) {
+      // سجل صغير (آخر 30 فتحة) لنعرف شو بيبعت التطبيق بالزبط
+      ctx.waitUntil((async () => { try { const L = (await env.STORE.get("appdiag", "json")) || []; L.unshift({ t: new Date().toISOString(), p: path, ua: (request.headers.get("user-agent") || "").slice(0, 220), xrw: request.headers.get("x-requested-with") || "", sfm: request.headers.get("sec-fetch-mode") || "", ch: (request.headers.get("sec-ch-ua") || "").slice(0, 120), stay: inAppReq(request) }); await env.STORE.put("appdiag", JSON.stringify(L.slice(0, 30))); } catch {} })());
+    }
+    if (path === "/app-diag.txt" && env.STORE) { const L = (await env.STORE.get("appdiag", "json")) || []; return new Response(L.map((x) => `${x.t} ${x.p} stay=${x.stay} sfm=${x.sfm} xrw=${x.xrw}\n  ua=${x.ua}\n  ch=${x.ch}`).join("\n"), { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } }); }
+    if (url.hostname === "ko-sport.pages.dev" && m === "GET" && !path.startsWith("/api/") && !path.startsWith("/media/") && !inAppReq(request)) { // the Android app (WebView) stays on its own address so it never jumps to the browser
       return Response.redirect("https://ko-sport.online" + path + url.search, 301);
     }
     try {

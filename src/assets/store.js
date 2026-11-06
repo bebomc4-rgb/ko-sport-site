@@ -5,6 +5,14 @@
   // تحميل التطبيق بالإعلانات (صاحب المتجر، 6 تشرين التاني 2026: متل رسائل الواتس): كل جهاز بيشوف تبعو بس
   const APP_AND = "https://play.google.com/store/apps/details?id=com.kosport.app", APP_IPH = "https://ko-sport.online/iphone";
   const DEV = (() => { const ua = navigator.userAgent || ""; return /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? "ios" : /android/i.test(ua) ? "android" : "pc"; })();
+  // جوّا تطبيق الأندرويد (أو على ko-sport.pages.dev): أي رابط لـ ko-sport.online بيضل جوّا التطبيق، ما بيفتح المتصفح
+  const IN_APP = /; wv\)|appcreator/i.test(navigator.userAgent || "") || location.hostname === "ko-sport.pages.dev";
+  if (IN_APP && location.hostname !== "ko-sport.online") document.addEventListener("click", (e) => {
+    const a = e.target.closest && e.target.closest('a[href^="https://ko-sport.online"]'); if (!a) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const u = new URL(a.href); if (u.pathname === "/iphone" || u.pathname === "/iphone/") { if (window.KOIos) window.KOIos(); return; }
+    location.href = location.origin + u.pathname + u.search + u.hash;
+  }, true);
   const KO_MAP = "https://www.google.com/maps/place/?q=place_id:ChIJvTnREgDdGBUREN7vcmrghCU";
   let S = null; // full settings object
   const $ = (s, el = document) => el.querySelector(s);
