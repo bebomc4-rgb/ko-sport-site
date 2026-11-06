@@ -1813,21 +1813,14 @@
     const list = store.get("ko_orders", []);
     const me = { ...(store.get("ko_customer", {}) || {}), phone: A.account.phone };
     app.innerHTML = `<h1 class="page-title">حسابي</h1>
-      <section class="acc-card qd-card"><div class="qd-head"><span class="qd-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M21.9 4.3 18.6 19.8c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.2-8.3c.4-.4-.1-.6-.6-.2L6 13.4 1.1 11.9c-1.1-.3-1.1-1.1.2-1.6L20.5 2.9c.9-.3 1.7.2 1.4 1.4z"/></svg></span><div><b>تتبّع طردك بالقدموس</b><small>مشان ما تعذّب حالك وتنزل عالفاضي</small></div></div>
-        <p>إذا بدك تعرف إذا الطرد وصل عالمركز المطلوب أو لأ، حط كود القدموس على بوت تلغرام تبع شركة القدموس.</p>
-        <a class="qd-tg" target="_blank" rel="noopener" href="https://t.me/KadmousTransport_bot"><span>افتح بوت القدموس</span><span dir="ltr">@KadmousTransport_bot</span></a>
-        <small class="qd-warn">ملاحظة: لازم يكون التلغرام على نفس الرقم المسجّل على الوصل.</small></section>
       <section class="acc-card acc-me"><div><b>${esc(A.account.name)}</b><small dir="ltr">${esc(A.account.phone)}</small><small>${esc(A.account.governorate || "")}</small></div><button type="button" class="btn btn-ghost sm" data-logout>تسجيل خروج</button></section>
-      <section class="acc-card"><h2>طلباتي</h2>${list.length ? list.map((o) => `<div class="acc-order"><div><b dir="ltr">${esc(o.id)}</b><small>${new Date(o.at).toLocaleDateString("ar-SY")} · ${o.n} منتج · ${money(o.total)}</small></div>
-        <button type="button" class="btn btn-ghost sm" data-track="${esc(o.id)}" data-phone="${esc(o.phone)}">تتبّع</button></div><div class="acc-st" data-st="${esc(o.id)}" hidden></div>`).join("") : `<p class="acc-empty">ما في طلبات من هالجهاز لهلق. <a href="#/all">ابدأ التسوق</a></p>`}</section>
-      <section class="acc-card"><h2>تتبّع طلب</h2><form class="acc-form" data-track-form><input name="no" placeholder="رقم الطلب (KO-…)" dir="ltr" required><input name="phone" placeholder="رقم الموبايل يلي طلبت فيه" inputmode="tel" dir="ltr" value="${esc(me.phone || "")}" required><button class="btn btn-dark">تتبّع</button></form><div data-track-out hidden></div></section>
+      <a class="qd-tg" target="_blank" rel="noopener" href="https://t.me/KadmousTransport_bot"><span class="qd-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M21.9 4.3 18.6 19.8c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.2-8.3c.4-.4-.1-.6-.6-.2L6 13.4 1.1 11.9c-1.1-.3-1.1-1.1.2-1.6L20.5 2.9c.9-.3 1.7.2 1.4 1.4z"/></svg></span><span class="qd-t"><b>تتبّع شحنتك بالقدموس</b><small>بوت القدموس عالتلغرام · بنفس الرقم المسجّل على الوصل</small></span><span class="qd-go" aria-hidden="true">‹</span></a>
+      <section class="acc-card"><h2>طلباتي</h2>${list.length ? list.map((o) => `<div class="acc-order"><div><b dir="ltr">${esc(o.id)}</b><small>${new Date(o.at).toLocaleDateString("ar-SY")} · ${o.n} منتج · ${money(o.total)}</small></div></div>`).join("") : `<p class="acc-empty">ما في طلبات من هالجهاز لهلق. <a href="#/all">ابدأ التسوق</a></p>`}</section>
       <section class="acc-card acc-links"><a href="#/cart">🛒 السلة</a><a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">💬 تواصل معنا على واتساب</a></section>`;
     app.onclick = (e) => {
       if (e.target.closest("[data-logout]")) { askConfirm("بدك تسجّل خروج من حسابك؟", "نعم، اطلع").then((y) => { if (y) { acctOut(); account(); } }); return; }
-      const b = e.target.closest("[data-track]"); if (b) track(b.dataset.track, b.dataset.phone, app.querySelector(`[data-st="${CSS.escape(b.dataset.track)}"]`));
     };
     app.onchange = null;
-    app.querySelector("[data-track-form]").addEventListener("submit", (e) => { e.preventDefault(); const f = e.target; track(f.no.value.trim(), f.phone.value.trim(), app.querySelector("[data-track-out]")); });
   }
 
   // small confirmation box (instead of the browser's plain confirm)
