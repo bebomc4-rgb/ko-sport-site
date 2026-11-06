@@ -1812,7 +1812,13 @@
     if (!A) { authView(() => account(), "سجّل حساب أو ادخل على حسابك لتطلب وتتابع طلباتك.", "login"); return; }
     app.innerHTML = `<h1 class="page-title">حسابي</h1>
       <section class="acc-card acc-me"><div><b>${esc(A.account.name)}</b><small dir="ltr">${esc(A.account.phone)}</small><small>${esc(A.account.governorate || "")}</small></div><button type="button" class="btn btn-ghost sm" data-logout>تسجيل خروج</button></section>
-      <a class="qd-tg" target="_blank" rel="noopener" href="https://t.me/KadmousTransport_bot"><span class="qd-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M21.9 4.3 18.6 19.8c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.2-8.3c.4-.4-.1-.6-.6-.2L6 13.4 1.1 11.9c-1.1-.3-1.1-1.1.2-1.6L20.5 2.9c.9-.3 1.7.2 1.4 1.4z"/></svg></span><span class="qd-t"><b>🚚 مشان ما تعذّب حالك وتنزل عالفاضي</b><span class="qd-l">📦 شوف إذا وصل الطرد على مركز القدموس أو لأ</span><small>📱 التلغرام لازم يكون على نفس الرقم المسجّل على الوصل</small></span><span class="qd-go" aria-hidden="true">‹</span></a>
+      <a class="qd-lux" target="_blank" rel="noopener" href="https://t.me/KadmousTransport_bot">
+        <span class="qd-top"><span class="qd-ic"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M21.9 4.3 18.6 19.8c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.2-8.3c.4-.4-.1-.6-.6-.2L6 13.4 1.1 11.9c-1.1-.3-1.1-1.1.2-1.6L20.5 2.9c.9-.3 1.7.2 1.4 1.4z"/></svg></span><span class="qd-eye">بوت القدموس على تلغرام</span></span>
+        <b class="qd-h">مشان ما تعذّب حالك وتنزل عالفاضي</b>
+        <span class="qd-p">شوف إذا وصل الطرد على مركز القدموس أو لأ</span>
+        <span class="qd-note"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 10.5v6M12 7.4v.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>لازم يكون التلغرام على نفس الرقم المسجّل على الوصل</span>
+        <span class="qd-cta"><span>افتح البوت</span><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
       <section class="acc-card"><h2>طلباتي</h2><div data-myorders>${(myOrdOwner(), myOrdersHtml(myOrdCache))}</div></section>
       <section class="acc-card acc-links"><a href="#/cart">🛒 السلة</a><a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">💬 تواصل معنا على واتساب</a></section>`;
     app.onclick = (e) => {

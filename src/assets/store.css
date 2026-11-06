@@ -2007,11 +2007,6 @@ html.sheet-lock,html.sheet-lock body{overflow:hidden}
 .qd-note b{display:block;font-size:1.05em}.qd-note p{margin:6px 0 10px}.qd-note small{display:block;margin-top:10px;color:var(--muted)}
 .qd-note .qd-bot{display:flex;justify-content:center;width:100%}
 html.sheet-lock .pwa-bar{visibility:hidden}
-.qd-tg{display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:12px 14px;border-radius:14px;background:#229ED9;color:#fff!important;text-decoration:none;box-shadow:0 6px 18px color-mix(in srgb,#229ED9 35%,transparent)}
-.qd-tg .qd-ic{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.18)}
-.qd-tg .qd-t{flex:1;min-width:0}.qd-tg b{display:block;font-size:1.02em}.qd-tg small{display:block;opacity:.88;font-size:.82em}
-.qd-tg .qd-go{font-size:1.6em;line-height:1;opacity:.85}
-.qd-tg:hover{filter:brightness(1.06)}
 .ord-list{display:flex;flex-direction:column;gap:10px}
 .ord-row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:14px;color:inherit!important;text-decoration:none;background:var(--card,#fff);transition:border-color .2s,transform .2s}
 .ord-row:hover{border-color:var(--red);transform:translateY(-1px)}
@@ -2025,5 +2020,18 @@ html.sheet-lock .pwa-bar{visibility:hidden}
 .ord-st.st-cancelled{background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red)}
 .ord-page{max-width:640px;margin:0 auto}.ord-back{display:inline-block;margin:6px 0 12px;font-weight:700;color:var(--muted)!important;text-decoration:none}
 .ord-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.ord-head h1{margin:0;font-size:1.35em}.ord-head small{color:var(--muted)}
-.qd-tg .qd-l{display:block;font-size:.92em;margin-top:2px}.qd-tg small{margin-top:3px}.qd-tg .qd-t small{font-size:.92em;opacity:1}
 .acc-relog{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,#f59e0b 12%,transparent)}
+.qd-lux{position:relative;display:block;overflow:hidden;margin:0 0 14px;padding:20px 20px 18px;border-radius:20px;color:#f5f5f4!important;text-decoration:none;isolation:isolate;
+  background:radial-gradient(120% 140% at 0% 0%,rgba(34,158,217,.28) 0%,rgba(34,158,217,0) 55%),radial-gradient(90% 120% at 100% 100%,color-mix(in srgb,var(--red,#d9232d) 30%,transparent) 0%,transparent 60%),linear-gradient(160deg,#17181b,#0b0b0d);
+  border:1px solid rgba(255,255,255,.08);box-shadow:0 18px 40px -18px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06);transition:transform .25s ease,box-shadow .25s ease}
+.qd-lux::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.06) 50%,transparent 65%);transform:translateX(-100%);transition:transform .9s ease}
+.qd-lux:hover{transform:translateY(-2px);box-shadow:0 24px 48px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08)}.qd-lux:hover::after{transform:translateX(100%)}
+.qd-lux .qd-top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.qd-lux .qd-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;background:linear-gradient(145deg,#37aee2,#1e88c7);box-shadow:0 8px 18px -6px rgba(34,158,217,.7)}
+.qd-lux .qd-eye{font-size:.78em;font-weight:700;letter-spacing:.02em;color:rgba(255,255,255,.62)}
+.qd-lux .qd-h{display:block;font-size:1.18em;line-height:1.45;font-weight:800;color:#fff}
+.qd-lux .qd-p{display:block;margin-top:6px;font-size:.98em;line-height:1.6;color:rgba(255,255,255,.82)}
+.qd-lux .qd-note{display:flex;align-items:center;gap:8px;margin-top:14px;padding:9px 12px;border-radius:12px;font-size:.88em;line-height:1.5;color:#fde68a;background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.22)}
+.qd-lux .qd-note svg{flex:none}
+.qd-lux .qd-cta{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;padding:12px 16px;border-radius:14px;font-weight:800;color:#0b0b0d;background:linear-gradient(180deg,#fff,#e9e9e7);box-shadow:0 6px 16px -8px rgba(255,255,255,.4)}
+.qd-lux:hover .qd-cta svg{transform:translateX(-3px)}.qd-lux .qd-cta svg{transition:transform .25s ease}
