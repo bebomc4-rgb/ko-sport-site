@@ -2003,3 +2003,6 @@ html.sheet-lock,html.sheet-lock body{overflow:hidden}
 .yg-res small{display:block;color:var(--muted)}
 .yg-map{height:58vh;min-height:300px;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:var(--line)}
 .yg-sug small{color:var(--muted)}
+.qd-note{margin:14px auto;max-width:520px;padding:14px 16px;border-radius:14px;text-align:start;line-height:1.7;background:color-mix(in srgb,#f59e0b 12%,transparent);border:1px solid color-mix(in srgb,#f59e0b 45%,transparent)}
+.qd-note b{display:block;font-size:1.05em}.qd-note p{margin:6px 0 10px}.qd-note small{display:block;margin-top:10px;color:var(--muted)}
+.qd-note .qd-bot{display:flex;justify-content:center;width:100%}

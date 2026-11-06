@@ -2311,6 +2311,12 @@ ${trustH()}
       <div class="ok">✓</div><h1>تم إرسال طلبك</h1><p class="done-msg">سوف نتواصل معك في أسرع وقت ممكن على واتساب</p>
       <div>رقم الطلب</div><div class="order-no">${esc(id)}</div>
       ${o && o.delivery && o.delivery.carrier ? `<div class="pay-info"><b>الشحن: ${esc(o.delivery.carrier)}</b>${o.delivery.branch ? `\nالفرع: ${esc(o.delivery.branch)}${o.delivery.branchAddress ? " — " + telLtr(o.delivery.branchAddress) : ""}` : ""}</div>` : ""}
+      ${o && o.delivery && (/qadmous/i.test(o.delivery.carrierId || "") || /القدموس/.test(o.delivery.carrier || "")) ? `<div class="qd-note">
+        <b>⚠️ مشان ما تعذّب حالك وتنزل عالفاضي</b>
+        <p>إذا بدك تعرف إذا الطرد وصل عالمركز المطلوب أو لأ، حط كود القدموس على بوت تلغرام تبع شركة القدموس:</p>
+        <a class="btn btn-dark qd-bot" target="_blank" rel="noopener" href="https://t.me/KadmousTransport_bot" dir="ltr">@KadmousTransport_bot</a>
+        <small>ملاحظة: لازم يكون التلغرام على نفس الرقم المسجّل على الوصل.</small>
+      </div>` : ""}
       <div class="pay-info"><b>طريقة الدفع: لم يتم التحديد بعد</b></div>
       <div class="buy-row" style="justify-content:center"><a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent(msg)}">أرسل الطلب على واتساب</a></div>
       <p class="hint" style="margin-top:16px">بعد ما يوصلك طلبك، رأيك بيفرق معنا كتير: <a href="/review" target="_blank" rel="noopener"><b>قيّمنا على جوجل ⭐</b></a></p></div>`;
