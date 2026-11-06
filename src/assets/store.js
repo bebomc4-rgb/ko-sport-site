@@ -5,6 +5,15 @@
   // تحميل التطبيق بالإعلانات (صاحب المتجر، 6 تشرين التاني 2026: متل رسائل الواتس): كل جهاز بيشوف تبعو بس
   const APP_AND = "https://play.google.com/store/apps/details?id=com.kosport.app", APP_IPH = "https://ko-sport.online/iphone";
   const DEV = (() => { const ua = navigator.userAgent || ""; return /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? "ios" : /android/i.test(ua) ? "android" : "pc"; })();
+  // مؤقت: جوّا التطبيق منسجّل شو بيصير لحظة الفتح (لنلاقي ليش بيطلع عالمتصفح)
+  if (/; wv\)|appcreator|Version\/4\.0/i.test(navigator.userAgent || "")) {
+    const ev = (x) => { try { navigator.sendBeacon("/app-ev", x + " | " + location.href + " | acct=" + (localStorage.getItem("ko_acct") ? 1 : 0)); } catch {} };
+    ev("start");
+    addEventListener("pagehide", () => ev("pagehide")); addEventListener("beforeunload", () => ev("beforeunload"));
+    document.addEventListener("visibilitychange", () => ev("vis-" + document.visibilityState));
+    const oo = window.open; window.open = function (u) { ev("window.open " + u); return oo.apply(this, arguments); };
+    document.addEventListener("click", (e) => { const a = e.target.closest && e.target.closest("a"); if (a) ev("click " + a.href + " target=" + a.target); }, true);
+  }
   // جوّا تطبيق الأندرويد (أو على ko-sport.pages.dev): أي رابط لـ ko-sport.online بيضل جوّا التطبيق، ما بيفتح المتصفح
   const IN_APP = /; wv\)|appcreator/i.test(navigator.userAgent || "") || location.hostname === "ko-sport.pages.dev";
   if (IN_APP && location.hostname !== "ko-sport.online") document.addEventListener("click", (e) => {
