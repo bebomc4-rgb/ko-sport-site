@@ -2037,7 +2037,20 @@ html.sheet-lock .pwa-bar{visibility:hidden}
 .qd-lux:hover .qd-cta svg{transform:translateX(-3px)}.qd-lux .qd-cta svg{transition:transform .25s ease}
 a.pwa-go{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}.pb-android .app-bar{display:none!important}
 body.gated [data-bnav],body.gated .pwa-bar,body.gated .app-bar,body.gated .sticky-buy{display:none!important}
-.gate-hero{text-align:center;max-width:480px;margin:10px auto 6px;padding:26px 20px 8px}
-.gate-hero .gate-logo{display:inline-flex;transform:scale(1.25);margin-bottom:16px}
-.gate-hero h2{margin:0 0 8px;font-size:1.5em}.gate-hero p{margin:0;color:var(--muted);line-height:1.7}
-body.gated .auth .page-title{display:none}
+
+
+/* شاشة الدخول (متل المواقع العالمية): بطاقة وحدة بالنص، لوغو صغير واضح، عنوان، والفورم */
+body.gated .top [data-search],body.gated .top .search,body.gated .top .search-btn,body.gated .top .cart-btn{display:none!important}
+body.gated main,body.gated #app{background:radial-gradient(120% 60% at 50% 0%,color-mix(in srgb,var(--red,#d9232d) 7%,transparent),transparent 70%)}
+.auth.gate-card{max-width:440px;margin:18px auto 30px;padding:30px 22px 22px;border-radius:26px;background:var(--card,#fff);border:1px solid color-mix(in srgb,var(--line,#e5e5e5) 80%,transparent);box-shadow:0 1px 2px rgba(0,0,0,.04),0 18px 50px -24px rgba(0,0,0,.25)}
+.gate-card .page-title,.gate-card .auth-why{display:none}
+.gate-hero{text-align:center;margin-bottom:20px}
+.gate-logo{display:inline-grid;place-items:center;margin-bottom:14px}
+.gate-logo.img img{width:76px;height:76px;border-radius:50%;object-fit:cover;display:block;box-shadow:0 0 0 4px var(--card,#fff),0 0 0 5px color-mix(in srgb,var(--line,#ddd) 90%,transparent),0 10px 24px -10px rgba(0,0,0,.35)}
+.gate-logo .logo{font-size:1.25em}
+.gate-hero h2{margin:0;font-size:1.45em;line-height:1.35;font-weight:800;letter-spacing:-.01em}
+.gate-hero p{margin:8px auto 0;max-width:320px;color:var(--muted);font-size:.95em;line-height:1.65}
+.gate-card .auth-tabs{margin-bottom:16px}
+.gate-card .auth-form{border:0!important;box-shadow:none!important;padding:0!important;background:none!important;margin:0}
+.gate-trust{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--line,#eee);color:var(--muted);font-size:.82em}
+.gate-trust span{display:inline-flex;align-items:center;gap:6px}
