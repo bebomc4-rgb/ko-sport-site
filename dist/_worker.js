@@ -35,7 +35,7 @@ function __embAssets(real) {
 //   Optional      TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (instant order alerts)
 
 // Replaced by build.mjs with the moment this copy was built — so we can tell which deploy is live.
-const BUILD_AT = "2026-11-06 01:27Z";
+const BUILD_AT = "2026-11-06 01:29Z";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -3308,14 +3308,7 @@ export default {
       if (path === "/api/rate" && (m === "GET" || m === "POST")) return fxApi(request, env, ctx);
       if (path === "/api/yg" && (m === "GET" || m === "POST")) return ygApi(request, env, ctx);
       if (path === "/yg-areas.txt") return ygList(request, env, ctx);
-      if (path === "/ord-diag.txt") { // مؤقت للفحص: أعداد بس، بلا أي معلومة شخصية
-        const p4 = String(url.searchParams.get("p") || "").replace(/\D/g, "").slice(-4); if (p4.length !== 4) return new Response("?", { status: 400 });
-        const r = await env.STORE.list({ prefix: "order:", limit: 1000 }); let m = 0, bad = 0, fmt = {};
-        const vals = await Promise.all(r.keys.slice(0, 400).map((k) => env.STORE.get(k.name, "json").catch(() => "ERR")));
-        for (const o of vals) { if (o === "ERR" || !o) { bad++; continue; } const ph = String((o.customer || {}).phone || ""); if (ph.replace(/\D/g, "").endsWith(p4)) { m++; const f = ph.replace(/\d/g, "9"); fmt[f] = (fmt[f] || 0) + 1; } }
-        const idx = await env.STORE.list({ prefix: "acctord2:" });
-        return new Response(`orders listed: ${r.keys.length} complete:${r.list_complete}\nread: ${vals.length} bad:${bad}\nmatching ...${p4}: ${m}\nformats: ${JSON.stringify(fmt)}\nindexes: ${idx.keys.length}`, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
-      }
+      if (path === "/ord-diag.txt") { const idx = await env.STORE.list({ prefix: "acctord2:" }); return new Response(`indexes: ${idx.keys.length}`, { headers: { "content-type": "text/plain", "cache-control": "no-store" } }); }
       if (path === "/api/order-items" && m === "GET") return orderItemsGet(request, env);
       if (path === "/api/order-thumb" && m === "GET") return orderThumb(request, env);
       // the dashboard reads through its own addresses: the shop's service worker never touches them,
