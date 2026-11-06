@@ -908,24 +908,29 @@ async function botCall(env, kind, t) {
 const ordPhone = (p) => { const d = String(p || "").replace(/\D/g, ""); return d.length >= 9 ? "0" + d.slice(-9) : ""; };
 async function acctOrdAdd(env, phone, key) {
   const ph = ordPhone(phone); if (!ph) return;
-  const L = (await env.STORE.get("acctord:" + ph, "json")) || null;
+  const L = (await env.STORE.get("acctord2:" + ph, "json")) || null;
   if (!L) return; // ما في قائمة لسا: بتنبنى كاملة أول ما يفتح «طلباتي»
   if (!L.keys.includes(key)) L.keys.unshift(key);
-  L.keys = L.keys.slice(0, 200);
-  await env.STORE.put("acctord:" + ph, JSON.stringify(L));
+  L.keys = L.keys.slice(0, 300);
+  await env.STORE.put("acctord2:" + ph, JSON.stringify(L));
 }
 async function acctOrdKeys(env, ph) {
-  const c = await env.STORE.get("acctord:" + ph, "json");
+  const c = await env.STORE.get("acctord2:" + ph, "json");
   if (c && Array.isArray(c.keys)) return c.keys;
-  // أول مرة: منفتّش آخر الطلبات (الأحدث أول) ومنلقط طلبات هالرقم
-  const keys = []; let cursor, seen = 0;
+  // أول مرة: منفتّش كل الطلبات (الأحدث أول) ومنلقط طلبات هالرقم.
+  // القائمة بتنحفظ بس إذا الفحص كمل كلو بلا أي غلطة (وإلا منرجع نفحص المرة الجاية)
+  const keys = []; let cursor, reads = 0, ok = true;
   do {
     const r = await env.STORE.list({ prefix: "order:", limit: 1000, cursor });
-    const vals = await Promise.all(r.keys.map((k) => env.STORE.get(k.name, "json").then((o) => [k.name, o]).catch(() => [k.name, null])));
-    for (const [k, o] of vals) if (o && o.customer && ordPhone(o.customer.phone) === ph) keys.push(k);
-    seen += r.keys.length; cursor = r.list_complete ? null : r.cursor;
-  } while (cursor && seen < 3000);
-  await env.STORE.put("acctord:" + ph, JSON.stringify({ keys: keys.slice(0, 200), at: Date.now() })).catch(() => {});
+    for (let i = 0; i < r.keys.length; i += 50) {
+      if (reads > 850) { ok = false; break; }
+      const part = r.keys.slice(i, i + 50); reads += part.length;
+      const vals = await Promise.all(part.map((k) => env.STORE.get(k.name, "json").then((o) => [k.name, o, true]).catch(() => [k.name, null, false])));
+      for (const [k, o, good] of vals) { if (!good) ok = false; else if (o && o.customer && ordPhone(o.customer.phone) === ph) keys.push(k); }
+    }
+    cursor = r.list_complete ? null : r.cursor;
+  } while (cursor && ok);
+  if (ok) await env.STORE.put("acctord2:" + ph, JSON.stringify({ keys: keys.slice(0, 300), at: Date.now() })).catch(() => {});
   return keys;
 }
 const ordPublic = (o) => ({
@@ -938,9 +943,13 @@ const ordPublic = (o) => ({
 async function acctOrders(request, env) {
   const a = await acctFromReq(request, env);
   if (!a) return json({ error: "سجّل دخول من جديد", needLogin: true }, 401);
-  const ph = ordPhone(a.phone), keys = (await acctOrdKeys(env, ph)).slice(0, 60);
-  const list = (await Promise.all(keys.map((k) => env.STORE.get(k, "json").catch(() => null))))
-    .filter((o) => o && o.customer && ordPhone(o.customer.phone) === ph).map(ordPublic);
+  const ph = ordPhone(a.phone), keys = (await acctOrdKeys(env, ph)).slice(0, 80);
+  // + الطلبات يلي انعملت من هالجهاز (حتى لو قبل الحسابات أو برقم تاني): متل ما كانت «طلباتي» قبل
+  const ids = String(new URL(request.url).searchParams.get("ids") || "").split(",").filter((x) => /^KO-\d{4}-[A-Z0-9]{4}$/.test(x)).slice(0, 40);
+  const extra = (await Promise.all(ids.map((id) => env.STORE.get("orderid:" + id).catch(() => null)))).filter(Boolean);
+  const all = [...new Set([...keys, ...extra])];
+  const list = (await Promise.all(all.map((k) => env.STORE.get(k, "json").catch(() => null))))
+    .filter((o) => o && o.id).sort((x, y) => String(y.createdAt).localeCompare(String(x.createdAt))).map(ordPublic);
   const r = json({ orders: list }); r.headers.set("cache-control", "no-store"); return r;
 }
 async function acctApi(request, env, path, m) {

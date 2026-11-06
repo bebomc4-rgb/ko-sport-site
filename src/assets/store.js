@@ -1830,7 +1830,8 @@
   async function myOrdersLoad() {
     myOrdOwner();
     try {
-      const r = await fetch("/api/acct/orders", { headers: { authorization: "Bearer " + ((acct() || {}).token || "") }, cache: "no-store" });
+      const mine = [...new Set([...(store.get("ko_orders", []) || []).map((o) => o && o.id), (store.get("ko_last_order", null) || {}).id].filter(Boolean))].slice(0, 40);
+      const r = await fetch("/api/acct/orders?ids=" + encodeURIComponent(mine.join(",")), { headers: { authorization: "Bearer " + ((acct() || {}).token || "") }, cache: "no-store" });
       const j = await r.json().catch(() => ({}));
       if (r.ok && Array.isArray(j.orders)) myOrdCache = j.orders;
       else if (!myOrdCache) myOrdCache = [];

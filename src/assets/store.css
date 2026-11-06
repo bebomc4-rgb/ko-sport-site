@@ -2025,4 +2025,4 @@ html.sheet-lock .pwa-bar{visibility:hidden}
 .ord-st.st-cancelled{background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red)}
 .ord-page{max-width:640px;margin:0 auto}.ord-back{display:inline-block;margin:6px 0 12px;font-weight:700;color:var(--muted)!important;text-decoration:none}
 .ord-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.ord-head h1{margin:0;font-size:1.35em}.ord-head small{color:var(--muted)}
-.qd-tg .qd-l{display:block;font-size:.92em;margin-top:2px}.qd-tg small{margin-top:3px}
+.qd-tg .qd-l{display:block;font-size:.92em;margin-top:2px}.qd-tg small{margin-top:3px}.qd-tg .qd-t small{font-size:.92em;opacity:1}
