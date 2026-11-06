@@ -1187,6 +1187,19 @@
     requestAnimationFrame(() => requestAnimationFrame(chk));
     if (bind) bind(w.querySelector(".sheet-body"));
   }
+  // صاحب المتجر (6 تشرين التاني 2026): زر إشعار عائم فوق عاليسار، فيه ملاحظة بوت القدموس
+  function qdFloat() {
+    if (document.querySelector("[data-qd-fab]") || /^\/admin/.test(location.pathname)) return;
+    const seen = store.get("ko_qd_seen", false), bt = document.createElement("button");
+    bt.type = "button"; bt.className = "qd-fab" + (seen ? "" : " new"); bt.setAttribute("data-qd-fab", ""); bt.setAttribute("aria-label", "إشعار");
+    bt.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2z"/></svg>';
+    bt.addEventListener("click", () => {
+      store.set("ko_qd_seen", true); bt.classList.remove("new");
+      openSheet("🔔 إشعار", `<div class="qd-note"><b>⚠️ مشان ما تعذّب حالك وتنزل عالفاضي</b><p>إذا بدك تعرف إذا الطرد وصل عالمركز المطلوب أو لأ، حط كود القدموس على بوت تلغرام تبع شركة القدموس:</p><a class="btn btn-dark qd-bot" target="_blank" rel="noopener" href="https://t.me/KadmousTransport_bot" dir="ltr">@KadmousTransport_bot</a><small>ملاحظة: لازم يكون التلغرام على نفس الرقم المسجّل على الوصل.</small></div>`);
+    });
+    document.body.appendChild(bt);
+  }
+  setTimeout(qdFloat, 1200);
   function closeSheet() { document.querySelectorAll("[data-sheet]").forEach((x) => x.remove()); document.documentElement.classList.remove("sheet-lock"); }
 
 
@@ -2311,12 +2324,6 @@ ${trustH()}
       <div class="ok">✓</div><h1>تم إرسال طلبك</h1><p class="done-msg">سوف نتواصل معك في أسرع وقت ممكن على واتساب</p>
       <div>رقم الطلب</div><div class="order-no">${esc(id)}</div>
       ${o && o.delivery && o.delivery.carrier ? `<div class="pay-info"><b>الشحن: ${esc(o.delivery.carrier)}</b>${o.delivery.branch ? `\nالفرع: ${esc(o.delivery.branch)}${o.delivery.branchAddress ? " — " + telLtr(o.delivery.branchAddress) : ""}` : ""}</div>` : ""}
-      ${o && o.delivery && (/qadmous/i.test(o.delivery.carrierId || "") || /القدموس/.test(o.delivery.carrier || "")) ? `<div class="qd-note">
-        <b>⚠️ مشان ما تعذّب حالك وتنزل عالفاضي</b>
-        <p>إذا بدك تعرف إذا الطرد وصل عالمركز المطلوب أو لأ، حط كود القدموس على بوت تلغرام تبع شركة القدموس:</p>
-        <a class="btn btn-dark qd-bot" target="_blank" rel="noopener" href="https://t.me/KadmousTransport_bot" dir="ltr">@KadmousTransport_bot</a>
-        <small>ملاحظة: لازم يكون التلغرام على نفس الرقم المسجّل على الوصل.</small>
-      </div>` : ""}
       <div class="pay-info"><b>طريقة الدفع: لم يتم التحديد بعد</b></div>
       <div class="buy-row" style="justify-content:center"><a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent(msg)}">أرسل الطلب على واتساب</a></div>
       <p class="hint" style="margin-top:16px">بعد ما يوصلك طلبك، رأيك بيفرق معنا كتير: <a href="/review" target="_blank" rel="noopener"><b>قيّمنا على جوجل ⭐</b></a></p></div>`;
