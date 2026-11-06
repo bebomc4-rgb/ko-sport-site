@@ -2036,11 +2036,12 @@ ${trustH()}
       const inp = f.querySelector("[data-yg-area]"), box = f.querySelector("[data-yg-sug]"); if (!inp || !box) return;
       const t = norm(inp.value).trim();
       if (!ygAreas || !t) { box.hidden = true; return; }
-      const strip = (x) => x.replace(/^(حي|منطقه|بلده|قريه|مدينه|مخيم|ساحه)\s+/, "");
+      const strip = (x) => x.replace(/^(حي|منطقه|بلده|قريه|مدينه|مخيم|ساحه)\s+/, "").split(" ").map((w) => w.replace(/^ال(?=..)/, "")).join("");
+      const tt = strip(t);
       const R = [];
       ygAreas.forEach((a, i) => {
-        const names = [a[0], ...String(a[1] || "").split("|")].map((x) => strip(norm(x)));
-        let sc = 0; for (const x of names) { if (!x) continue; const v = x === t ? 4 : x.startsWith(t) ? 3 : x.split(" ").some((w) => w.startsWith(t)) ? 2 : t.length >= 2 && x.includes(t) ? 1 : 0; if (v > sc) sc = v; }
+        const names = [a[0], ...String(a[1] || "").split("|")].map((x) => strip(norm(x).trim()));
+        let sc = 0; for (const x of names) { if (!x) continue; const v = x === tt ? 4 : x.startsWith(tt) ? 3 : tt.length >= 2 && x.includes(tt) ? 1 : 0; if (v > sc) sc = v; }
         if (sc) R.push([sc, a[2], i]);
       });
       R.sort((x, y) => y[0] - x[0] || x[1] - y[1]);
