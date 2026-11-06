@@ -1190,6 +1190,9 @@
   // صاحب المتجر (6 تشرين التاني 2026): زر إشعار عائم فوق عاليسار، فيه ملاحظة بوت القدموس
   function qdFloat() {
     if (document.querySelector("[data-qd-fab]") || /^\/admin/.test(location.pathname)) return;
+    // بس للزبون يلي طلب طلب بالقدموس من هالجهاز (مو لكل الزوار)
+    const lo = store.get("ko_last_order", null), d = (lo && lo.delivery) || {};
+    if (!store.get("ko_qd_order", false) && !(/qadmous/i.test(d.carrierId || "") || /القدموس/.test(d.carrier || ""))) return;
     const seen = store.get("ko_qd_seen", false), bt = document.createElement("button");
     bt.type = "button"; bt.className = "qd-fab" + (seen ? "" : " new"); bt.setAttribute("data-qd-fab", ""); bt.setAttribute("aria-label", "إشعار");
     bt.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2z"/></svg>';
@@ -2219,6 +2222,7 @@ ${trustH()}
         if (!r.ok) throw new Error(j.error || "صار خطأ");
         cart = []; saveCart(); store.set("ko_sid", "");
         store.set("ko_last_order", j.order);
+        { const d = j.order.delivery || {}; if (/qadmous/i.test(d.carrierId || "") || /القدموس/.test(d.carrier || "")) store.set("ko_qd_order", true); }
         if (j.shot) cartShot(j.order, j.shot).catch(() => {});
         pixel("Purchase", { value: j.order.total, currency: "USD" });
         store.set("ko_orders", [{ id: j.order.id, phone: body.customer.phone, at: j.order.createdAt, total: j.order.total, n: j.order.items.reduce((a, i) => a + i.qty, 0) }, ...store.get("ko_orders", [])].slice(0, 20));
@@ -2328,6 +2332,7 @@ ${trustH()}
       <div class="buy-row" style="justify-content:center"><a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent(msg)}">أرسل الطلب على واتساب</a></div>
       <p class="hint" style="margin-top:16px">بعد ما يوصلك طلبك، رأيك بيفرق معنا كتير: <a href="/review" target="_blank" rel="noopener"><b>قيّمنا على جوجل ⭐</b></a></p></div>`;
     app.onclick = null; app.onchange = null;
+    qdFloat();
   }
   // #/o/ID — what was ordered (the link inside the Telegram message); no personal data
   function orderPage(id) {
