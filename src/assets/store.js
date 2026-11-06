@@ -13,7 +13,7 @@
     const u = new URL(a.href); if (u.pathname === "/iphone" || u.pathname === "/iphone/") { if (window.KOIos) window.KOIos(); return; }
     location.href = location.origin + u.pathname + u.search + u.hash;
   }, true);
-  const KO_MAP = "https://www.google.com/maps/place/?q=place_id:ChIJvTnREgDdGBUREN7vcmrghCU";
+  const KO_MAP = "https://www.google.com/maps/search/?api=1&query=33.5468787%2C36.212863&query_place_id=ChIJvTnREgDdGBUREN7vcmrghCU";
   let S = null; // full settings object
   const $ = (s, el = document) => el.querySelector(s);
   const app = $("#app");
@@ -2766,6 +2766,8 @@ ${trustH()}
     document.querySelectorAll("[data-play]").forEach((pl) => (pl.href = KO_PLAY));
     // «حمّل التطبيق»: Google Play لأندرويد، وللآيفون خطوات «إضافة إلى الشاشة الرئيسية» (بيفتح الموقع متل تطبيق)
     { const box = $("[data-app-dl]"), ua = navigator.userAgent || "";
+      document.querySelectorAll(".foot-soc [data-app-only]").forEach((x) => { x.hidden = /; wv\)|appcreator/i.test(ua) || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; });
+      document.querySelectorAll(".foot-soc [data-play]").forEach((x) => { x.href = APP_AND; });
       if (box) {
         box.hidden = /; wv\)|appcreator/i.test(ua) || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
         const pl = box.querySelector("[data-play]"), ib = box.querySelector("[data-ios-install]");

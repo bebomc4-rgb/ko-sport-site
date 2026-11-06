@@ -2065,3 +2065,5 @@ body.gated main,body.gated #app{background:radial-gradient(120% 60% at 50% 0%,co
 .fs-wa i{background:#25D366}.fs-fb i{background:#1877F2}.fs-ig i{background:radial-gradient(circle at 30% 107%,#fdf497 0%,#fd5949 45%,#d6249f 60%,#285AEB 90%)}
 .fs-map i{background:#EA4335}.fs-play i{background:#01875f}.fs-rev i{background:#FBBC05;color:#222}
 .foot-soc a[hidden]{display:none!important}
+.fs-ios i{background:#111;border:1px solid rgba(255,255,255,.25)}
+.foot-soc .fs-rev{grid-column:1/-1;justify-content:center}

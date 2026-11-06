@@ -2603,7 +2603,8 @@ const BIZ = {
   lat: 33.5468787, lng: 36.212863,
   days: ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"], opens: "11:00", closes: "20:00",
 };
-const mapUrl = (S) => "https://www.google.com/maps/place/?q=place_id:" + ((S && S.placeId) || BIZ.placeId);
+// رابط خرائط جوجل الرسمي (بيفتح تطبيق الخرائط عالموبايل وبالمتصفح عالكمبيوتر). إذا المعرّف ما زبط بيوقف عالإحداثيات
+const mapUrl = (S) => `https://www.google.com/maps/search/?api=1&query=${BIZ.lat}%2C${BIZ.lng}&query_place_id=${(S && S.placeId) || BIZ.placeId}`;
 const reviewUrl = (S) => "https://search.google.com/local/writereview?placeid=" + ((S && S.placeId) || BIZ.placeId);
 
 // ---------- SEO: every product / category page gets its own title, description, link and structured data ----------
