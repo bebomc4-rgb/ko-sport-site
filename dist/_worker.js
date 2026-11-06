@@ -35,7 +35,7 @@ function __embAssets(real) {
 //   Optional      TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (instant order alerts)
 
 // Replaced by build.mjs with the moment this copy was built — so we can tell which deploy is live.
-const BUILD_AT = "2026-11-06 13:51Z";
+const BUILD_AT = "2026-11-06 13:56Z";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -981,13 +981,29 @@ async function acctOrders(request, env) {
     .filter((o) => o && o.id).sort((x, y) => String(y.createdAt).localeCompare(String(x.createdAt))).map(ordPublic);
   const r = json({ orders: list, needLogin: !a }); r.headers.set("cache-control", "no-store"); return r;
 }
+// جهاز الزبون (للوحة التحكم): آيفون / أندرويد / تطبيق الأندرويد / كمبيوتر
+const devOf = (request) => { const ua = request.headers.get("user-agent") || ""; return /; wv\)|appcreator/i.test(ua) ? "app" : /iphone|ipad|ipod/i.test(ua) ? "ios" : /android/i.test(ua) ? "android" : /macintosh/i.test(ua) && /mobile/i.test(ua) ? "ios" : "pc"; };
+async function acctTouch(env, request, a) { const d = devOf(request); if (a.dev === d && a.seen && Date.now() - Date.parse(a.seen) < 864e5) return; a.dev = d; if (!a.dev0) a.dev0 = d; a.seen = new Date().toISOString(); await env.STORE.put("acct:" + a.phone, JSON.stringify(a)).catch(() => {}); }
+// لوحة التحكم: كل الحسابات المسجّلة بالموقع
+async function accountsList(request, env) {
+  if (!isAdmin(request, env, "orders")) return denied();
+  const keys = []; let cursor;
+  do { const r = await env.STORE.list({ prefix: "acct:09", limit: 1000, cursor }); for (const k of r.keys) if (/^acct:09\d{8}$/.test(k.name)) keys.push(k.name); cursor = r.list_complete ? null : r.cursor; } while (cursor && keys.length < 5000);
+  const out = [];
+  for (let i = 0; i < keys.length && i < 900; i += 50) {
+    const vals = await Promise.all(keys.slice(i, i + 50).map((k) => env.STORE.get(k, "json").catch(() => null)));
+    for (const a of vals) if (a && a.phone) out.push({ name: a.name, phone: a.phone, gov: a.governorate, at: a.at, dev: a.dev || "", dev0: a.dev0 || "", seen: a.seen || "", verified: !!a.verified, blocked: !!a.blocked });
+  }
+  out.sort((x, y) => String(y.at || "").localeCompare(String(x.at || "")));
+  return json({ total: keys.length, accounts: out });
+}
 async function acctApi(request, env, path, m) {
   if (!env.STORE) return json({ error: "الحسابات مو متاحة هلق" }, 503);
   if (path === "/api/acct/orders" && m === "GET") return acctOrders(request, env);
   if (path === "/api/acct/me") {
     const a = await acctFromReq(request, env);
     if (!a) return json({ error: "سجّل دخول من جديد" }, 401);
-    if (m === "GET") return json({ ok: true, account: acctOut(a) });
+    if (m === "GET") { await acctTouch(env, request, a); return json({ ok: true, account: acctOut(a) }); }
     if (m === "PUT") {
       const b = await request.json().catch(() => ({}));
       if (b.governorate) { if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة" }, 400); a.governorate = b.governorate; }
@@ -1033,9 +1049,9 @@ async function acctApi(request, env, path, m) {
     if (!phone) return json({ ok: true, waiting: true });
     await env.STORE.delete("acct:wapend:" + t);
     const ex = await env.STORE.get("acct:" + phone, "json");
-    if (ex) { if (ex.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403); return json({ ok: true, token: await acctToken(env, ex), account: acctOut(ex), existed: true }); }
+    if (ex) { if (ex.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403); await acctTouch(env, request, ex); return json({ ok: true, token: await acctToken(env, ex), account: acctOut(ex), existed: true }); }
     if (pend.login) return json({ error: "ما في حساب على رقمك لهلق، سجّل حساب جديد", missing: true, phone }, 404);
-    const a = { name: pend.name, phone, governorate: pend.governorate, salt: pend.salt, hash: pend.hash, verified: true, via: "whatsapp", at: new Date().toISOString() };
+    const a = { name: pend.name, phone, governorate: pend.governorate, salt: pend.salt, hash: pend.hash, verified: true, via: "whatsapp", at: new Date().toISOString(), dev: devOf(request), dev0: devOf(request), seen: new Date().toISOString() };
     await env.STORE.put("acct:" + phone, JSON.stringify(a));
     try { const all = (await env.STORE.get("customers", "json")) || {}, k = custKey(phone); all[k] = { ...cleanCust({ name: a.name, phone, gov: a.governorate, tags: ["حساب بالموقع"] }), ...(all[k] || {}), name: a.name, phone, gov: a.governorate, account: true }; await env.STORE.put("customers", JSON.stringify(all)); } catch {}
     return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
@@ -1046,7 +1062,7 @@ async function acctApi(request, env, path, m) {
   if (fails >= 8) return json({ error: "محاولات كتير، جرّب بعد ربع ساعة" }, 429);
   // the account is created only after the WhatsApp code is typed (proves the number is really theirs)
   const makeAcct = async (pend, verified) => {
-    const a = { name: pend.name, phone, governorate: pend.governorate, salt: pend.salt, hash: pend.hash, verified, at: new Date().toISOString() };
+    const a = { name: pend.name, phone, governorate: pend.governorate, salt: pend.salt, hash: pend.hash, verified, at: new Date().toISOString(), dev: devOf(request), dev0: devOf(request), seen: new Date().toISOString() };
     await env.STORE.put("acct:" + phone, JSON.stringify(a));
     try { const all = (await env.STORE.get("customers", "json")) || {}, k = custKey(phone); all[k] = { ...cleanCust({ name: a.name, phone, gov: a.governorate, tags: ["حساب بالموقع"] }), ...(all[k] || {}), name: a.name, phone, gov: a.governorate, account: true }; await env.STORE.put("customers", JSON.stringify(all)); } catch {}
     return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
@@ -1091,6 +1107,7 @@ async function acctApi(request, env, path, m) {
     if (!a) return json({ error: "ما في حساب على هالرقم، سجّل حساب جديد", field: "phone", missing: true }, 404);
     if (a.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403);
     if ((await passHash(pw, a.salt)) !== a.hash) { await env.STORE.put(failK, String(fails + 1), { expirationTtl: 900 }); return json({ error: "كلمة السر غلط", field: "password" }, 401); }
+    await acctTouch(env, request, a);
     return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
   }
   return json({ error: "Not found" }, 404);
@@ -3308,6 +3325,10 @@ export default {
       if (path === "/api/rate" && (m === "GET" || m === "POST")) return fxApi(request, env, ctx);
       if (path === "/api/yg" && (m === "GET" || m === "POST")) return ygApi(request, env, ctx);
       if (path === "/yg-areas.txt") return ygList(request, env, ctx);
+      if (path === "/promo-check.txt") { // مؤقت: الإعلانات (هي أصلاً عامة بإعدادات الموقع)
+        const st = await getSettings(env, request);
+        return new Response(JSON.stringify(st.promos || null, null, 1), { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+      }
       if (path === "/ord-diag.txt") { const idx = await env.STORE.list({ prefix: "acctord2:" }); return new Response(`indexes: ${idx.keys.length}`, { headers: { "content-type": "text/plain", "cache-control": "no-store" } }); }
       if (path === "/api/order-items" && m === "GET") return orderItemsGet(request, env);
       if (path === "/api/order-thumb" && m === "GET") return orderThumb(request, env);
@@ -3322,6 +3343,7 @@ export default {
         return json({ error: "Method not allowed" }, 405);
       }
       if (path.startsWith("/api/acct/")) return acctApi(request, env, path, m);
+      if (path === "/api/accounts" && m === "GET") return accountsList(request, env);
       if (path === "/api/login" && m === "POST") return env.__role ? json({ ok: true, role: env.__role, name: env.__staff }) : denied();
       if (path === "/api/products") {
         if (m === "GET") return productsGet(request, env, ctx);
