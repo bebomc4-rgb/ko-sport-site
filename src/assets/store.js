@@ -2583,7 +2583,7 @@ ${trustH()}
     const logo = src ? `<img src="${esc(src)}" alt="${esc(C.name || "KO SPORT")}" width="76" height="76" decoding="async">` : `<span class="logo" dir="ltr"><span class="logo-ko">KO</span><span class="logo-sport">SPORT</span></span>`;
     const auth = app.querySelector(".auth"); if (!auth) return;
     auth.classList.add("gate-card");
-    auth.insertAdjacentHTML("afterbegin", `<div class="gate-hero"><div class="gate-logo${src ? " img" : ""}">${logo}</div><h2>أهلاً فيك بـ KO SPORT</h2><p>سجّل حساب أو ادخل على حسابك لتشوف المنتجات والأسعار وتطلب</p></div>`);
+    auth.insertAdjacentHTML("afterbegin", `<div class="gate-hero"><div class="gate-logo${src ? " img" : ""}">${logo}</div><h2>أهلاً فيك بمتجر <span dir="ltr">KO SPORT</span></h2><p>تسجيل الدخول بياخد ثواني بس</p></div>`);
     auth.insertAdjacentHTML("beforeend", `<div class="gate-trust"><span><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v10H6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>بياناتك محمية</span><span><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7" cy="17.5" r="1.6" fill="currentColor"/><circle cx="17" cy="17.5" r="1.6" fill="currentColor"/></svg>توصيل لكل المحافظات</span></div>`);
   }
   // الجلسة: مرة بالجلسة منتأكد إنو الدخول لسا صالح (وبيتسجّل جهاز الزبون للوحة التحكم)
