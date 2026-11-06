@@ -35,7 +35,7 @@ function __embAssets(real) {
 //   Optional      TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (instant order alerts)
 
 // Replaced by build.mjs with the moment this copy was built — so we can tell which deploy is live.
-const BUILD_AT = "2026-11-05 23:59Z";
+const BUILD_AT = "2026-11-06 00:05Z";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -2257,27 +2257,19 @@ const yg10 = (n) => Math.ceil(n / 10) * 10;
 function ygPrice(km, adj) { const n = yg10((YG_OPEN + YG_KM * km) * (1 + (adj || 0) / 100)); return { syp: n, max: yg10(n * 1.17) }; }
 // كل مناطق دمشق وريف دمشق (أحياء، بلدات، قرى) من OpenStreetMap، بتنحفظ بـ KV وبتتحدّث كل 30 يوم.
 // القائمة المكتوبة فوق ليها الأولوية (أسعار جدول صاحب المتجر + أسماء الناس الدارجة).
-const YG_OVERPASS = ["https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
-const YG_Q = `[out:json][timeout:60];nwr["place"~"^(city|town|village|hamlet|suburb|quarter|neighbourhood|city_block|locality)$"](32.95,35.75,34.25,37.3);out tags center;`;
 const ygClean = (n) => String(n || "").replace(/\s+/g, " ").trim();
 let YG_ERR = [];
+// Cloudflare ممنوع من Overpass، فسيرفر المجيب (K FAST AI) بيجيب القائمة وبيحفظها، ونحنا منقراها منو
 async function ygOsm() {
   YG_ERR = [];
-  for (const u of YG_OVERPASS) {
+  for (const h of OTP_HOSTS) {
     try {
-      const r = await fetch(u + "?data=" + encodeURIComponent(YG_Q), { headers: { "user-agent": "KO-SPORT-delivery/1.0 (ko-sport.online)", accept: "application/json" }, signal: AbortSignal.timeout(70000) });
-      if (!r.ok) { YG_ERR.push(u.split("/")[2] + " " + r.status + " " + (await r.text().catch(() => "")).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 160)); continue; }
-      const j = await r.json(), out = [];
-      for (const e of j.elements || []) {
-        const t = e.tags || {}, lat = e.lat ?? (e.center && e.center.lat), lng = e.lon ?? (e.center && e.center.lon);
-        const ar = ygClean(t["name:ar"] || (/[؀-ۿ]/.test(t.name || "") ? t.name : ""));
-        if (!ar || !lat) continue;
-        const al = [t.name, t.alt_name, t["alt_name:ar"], t["old_name:ar"], t["short_name:ar"], t["name:en"]].map(ygClean).filter((x) => x && x !== ar).join("|").replace(/;/g, "|");
-        out.push([ar, +(+lat).toFixed(5), +(+lng).toFixed(5), al]);
-      }
-      if (out.length > 200) return out;
-      YG_ERR.push(u.split("/")[2] + " قليل: " + out.length + " / " + (j.elements || []).length + " " + String(j.remark || "").slice(0, 120));
-    } catch (e) { YG_ERR.push(u.split("/")[2] + " " + String((e && e.message) || e).slice(0, 120)); }
+      const r = await fetch(h + "/api/ko-places", { headers: { accept: "application/json" }, signal: AbortSignal.timeout(20000) });
+      if (!r.ok) { YG_ERR.push(h.split("/")[2] + " " + r.status); continue; }
+      const j = await r.json();
+      if (j.list && j.list.length > 200) return j.list.map((x) => [x[0], x[1], x[2], x[3] || ""]);
+      YG_ERR.push(h.split("/")[2] + " قليل " + (j.n || 0) + (j.busy ? " (عم يجيبها)" : "") + (j.err ? " " + String(j.err).slice(0, 200) : ""));
+    } catch (e) { YG_ERR.push(h.split("/")[2] + " " + String((e && e.message) || e).slice(0, 120)); }
   }
   return null;
 }
@@ -2285,7 +2277,7 @@ async function ygPlaces(env, ctx, force) {
   let c = null; try { c = await env.STORE.get("yg:osm", "json"); } catch {}
   const old = !c || !c.at || Date.now() - c.at > 30 * 864e5;
   const load = async () => {
-    const l = await ygOsm(), n = l ? { at: Date.now(), list: l } : { at: Date.now() - 29 * 864e5, list: (c && c.list) || [], err: YG_ERR.join(" || ") }; // فشل: منرجع نجرّب بعد يوم
+    const l = await ygOsm(), n = l ? { at: Date.now(), list: l } : { at: Date.now() - 30 * 864e5 + 30 * 60e3, list: (c && c.list) || [], err: YG_ERR.join(" || ") }; // فشل: منرجع نجرّب بعد نص ساعة
     try { await env.STORE.put("yg:osm", JSON.stringify(n)); } catch {}
     return n;
   };
