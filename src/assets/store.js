@@ -13,6 +13,8 @@
     document.addEventListener("visibilitychange", () => ev("vis-" + document.visibilityState));
     const oo = window.open; window.open = function (u) { ev("window.open " + u); return oo.apply(this, arguments); };
     document.addEventListener("click", (e) => { const a = e.target.closest && e.target.closest("a"); if (a) ev("click " + a.href + " target=" + a.target); }, true);
+    try { if (window.navigation) navigation.addEventListener("navigate", (e) => ev("navigate " + e.navigationType + " " + (e.destination && e.destination.url) + " user=" + e.userInitiated)); } catch {}
+    try { navigator.serviceWorker && navigator.serviceWorker.addEventListener("message", (e) => ev("swmsg " + JSON.stringify(e.data).slice(0, 80))); } catch {}
   }
   // جوّا تطبيق الأندرويد (أو على ko-sport.pages.dev): أي رابط لـ ko-sport.online بيضل جوّا التطبيق، ما بيفتح المتصفح
   const IN_APP = /; wv\)|appcreator/i.test(navigator.userAgent || "") || location.hostname === "ko-sport.pages.dev";
@@ -3060,7 +3062,7 @@ ${trustH()}
   ["touchstart", "pointerdown", "keydown", "wheel"].forEach((t) => addEventListener(t, () => { touched = true; }, { passive: true, once: true }));
   if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", (e) => {
     // a new version of the shop was published: reload only if the visitor hasn't started using the page yet
-    if (e.data && e.data.koUpgrade) { if (!touched && window.scrollY < 30 && !/^\/(checkout|done)/.test(curRoute())) location.reload(); return; }
+    if (e.data && e.data.koUpgrade) { if (/; wv\)|appcreator/i.test(navigator.userAgent || "")) return; if (!touched && window.scrollY < 30 && !/^\/(checkout|done)/.test(curRoute())) location.reload(); return; }
     if (!e.data || !e.data.koFresh) return;
     clearTimeout(freshT);
     freshT = setTimeout(async () => {
