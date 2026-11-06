@@ -2035,3 +2035,4 @@ html.sheet-lock .pwa-bar{visibility:hidden}
 .qd-lux .qd-note svg{flex:none}
 .qd-lux .qd-cta{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;padding:12px 16px;border-radius:14px;font-weight:800;color:#0b0b0d;background:linear-gradient(180deg,#fff,#e9e9e7);box-shadow:0 6px 16px -8px rgba(255,255,255,.4)}
 .qd-lux:hover .qd-cta svg{transform:translateX(-3px)}.qd-lux .qd-cta svg{transition:transform .25s ease}
+a.pwa-go{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}.pb-android .app-bar{display:none!important}

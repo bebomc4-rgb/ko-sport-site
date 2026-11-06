@@ -22,7 +22,15 @@
     return Date.now() - t > (f === "week" ? 7 : 1) * 864e5;
   }
   function mark(p) { var f = p.freq || "session", k = "ko_pm_" + p.id; if (f === "session") SS(k, "1"); else if (f !== "always") LS(k, String(Date.now())); }
-  function href(l) { l = String(l || ""); if (/^\/#\//.test(l)) return l.slice(1); if (/^(#|\/|https?:\/\/)/.test(l)) return l; return ""; }
+  // رابط تحميل التطبيق بالإعلان (متل رسائل الواتس): أندرويد ← Google Play، آيفون ← ko-sport.online/iphone
+  var UA = navigator.userAgent || "", IOS = /iphone|ipad|ipod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1), AND = /android/i.test(UA);
+  var PLAY = "https://play.google.com/store/apps/details?id=com.kosport.app", IPH = "https://ko-sport.online/iphone";
+  function appLink(l) { return /(^|\/\/(www\.)?ko-sport\.online)\/(app|iphone)\/?($|[?#])|play\.google\.com\/store\/apps\/details\?id=com\.kosport\.app|^\/app$|^\/iphone$/i.test(String(l || "").trim()); }
+  function href(l) {
+    l = String(l || "");
+    if (appLink(l)) return IOS ? IPH : AND ? PLAY : l;
+    if (/^\/#\//.test(l)) return l.slice(1); if (/^(#|\/|https?:\/\/)/.test(l)) return l; return "";
+  }
   function el(tag, cls, txt) { var n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
 
   function countdown(p, root, onEnd) {
@@ -62,7 +70,7 @@
     }
     if (p.btn) {
       var h = href(p.link), a = el(h ? "a" : "button", "pm-btn", p.btn);
-      if (h) { a.href = h; if (/^https?:/.test(h) && h.indexOf(location.origin) !== 0) { a.target = "_blank"; a.rel = "noopener"; } } else a.type = "button";
+      if (h) { a.href = h; if (IOS && h === IPH) a.setAttribute("data-ios-install", ""); else if (/^https?:/.test(h) && h.indexOf(location.origin) !== 0) { a.target = "_blank"; a.rel = "noopener"; } } else a.type = "button";
       a.addEventListener("click", function () { setTimeout(function () { close(); }, 50); });
       parts.push(a);
     }

@@ -55,6 +55,8 @@
       var t, s, g;
       if (mode === "notif") { t = B.nTitle || "فعّل إشعارات العروض"; s = B.nText || "اعرف أول بأول بالمنتجات الجديدة والتخفيضات"; g = B.nBtn || "تفعيل"; }
       else if (mode === "combined") { t = B.title || "ثبّت التطبيق وفعّل الإشعارات"; s = B.text || "أسرع من شاشتك الرئيسية، وتوصلك العروض والمنتجات الجديدة على جوالك"; g = B.btn || "تثبيت + تفعيل"; }
+      else if (mode === "android") { t = B.title || "حمّل تطبيق KO SPORT"; s = "من Google Play لموبايلك الأندرويد"; g = "حمّل"; }
+      else if (mode === "iphone") { t = B.title || "حمّل تطبيق KO SPORT"; s = "للآيفون: بخطوتين بيصير عندك التطبيق على الشاشة"; g = "حمّل"; }
       else if (mode === "install") { t = B.title || "ثبّت تطبيق KO SPORT"; s = B.text || "وصول أسرع من شاشتك الرئيسية"; g = B.btn || "تثبيت"; }
       else { t = B.title || "ثبّت تطبيق KO SPORT"; s = B.text || "اضغط مشاركة ثم «إضافة إلى الشاشة الرئيسية»، وبعدها فعّل الإشعارات من التطبيق"; g = ""; }
       var el = document.createElement("div");
@@ -74,6 +76,9 @@
   if (/\/admin/.test(location.pathname) || /[?&]preview/.test(location.search)) return;
   var standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  // إعلان تحميل التطبيق (صاحب المتجر، 6 تشرين التاني 2026: متل رسائل الواتس): أندرويد ← Google Play، آيفون ← ko-sport.online/iphone
+  var inApp = /; wv\)|appcreator/i.test(navigator.userAgent), android = /android/i.test(navigator.userAgent) && !inApp;
+  var PLAY = "https://play.google.com/store/apps/details?id=com.kosport.app", IPH = "https://ko-sport.online/iphone";
   var pushOk = KOPush.supported() && !(ios && !standalone);      // iPhone supports push only inside the installed app
   var cfg = { prompt: true, delay: 1, bar: BDEF }, B = BDEF, dp = null, cur = null, shown = false, busy = false, gone = false, t0 = Date.now();
   var recent = function (k) { return B.again > 0 && Date.now() - (+get(k) || 0) < B.again * 864e5; };
@@ -85,9 +90,10 @@
     if (key) { gone = true; if (B.again > 0) set(key, String(Date.now())); }
   }
   function pick() {
-    var inst = B.install !== false, wantN = B.notif !== false && canAsk();
+    var inst = B.install !== false && !inApp, wantN = B.notif !== false && canAsk();
+    if (android && !standalone && inst && !recent("ko_pwa_x")) return "android";
+    if (ios && !standalone && inst && !recent("ko_pwa_x")) return "iphone";
     if (dp && inst && !recent("ko_pwa_x")) return wantN ? "combined" : "install";
-    if (!dp && ios && !standalone && inst && !recent("ko_pwa_x")) return "ios";
     if (wantN && (get("ko_push_want") || !recent("ko_push_x"))) return "notif";
     return null;
   }
@@ -107,6 +113,13 @@
     c.x.onclick = function () { hide(key); };
     if (B.hideAfter > 0) c.timer = setTimeout(function () { if (cur === c && !busy) { hide(""); gone = true; } }, B.hideAfter * 1000);
     if (!c.go) return;
+    if (mode === "android" || mode === "iphone") {
+      var a = document.createElement("a"); a.className = c.go.className; a.textContent = c.go.textContent; a.href = mode === "android" ? PLAY : IPH;
+      if (mode === "android") { a.target = "_blank"; a.rel = "noopener"; document.documentElement.classList.add("pb-android"); }
+      else a.setAttribute("data-ios-install", "");
+      a.addEventListener("click", function () { setTimeout(function () { hide(key); }, 300); });
+      c.go.replaceWith(a); c.go = a; return;
+    }
     c.go.onclick = function () {
       c.go.disabled = true; busy = true;
       if (mode === "notif") {

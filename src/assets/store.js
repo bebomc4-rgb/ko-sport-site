@@ -2,6 +2,9 @@
   "use strict";
   let C = {}; // flattened live settings
   const KO_PLAY = "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://play.google.com/store/apps/details%3Fid%3Dcom.kosport.app%26referrer%3Dutm_source%253Dgoogle%2526utm_medium%253Dorganic%2526utm_term%253Dko%2Bsport%2Bapk%2B%25D9%2584%25D9%2584%25D8%25A7%25D8%25AF%25D9%2588%25D8%25A7%25D8%25AA%2B%25D8%25A7%25D9%2584%25D8%25B1%25D9%258A%25D8%25A7%25D8%25B6%25D9%258A%25D8%25A9&ved=2ahUKEwiUhZrk1uaXAxWEQfEDHcBzPfwQFnoECBsQAQ&sqi=2&usg=AOvVaw0h_oyvDSLNv6Wk00GosHAb";
+  // تحميل التطبيق بالإعلانات (صاحب المتجر، 6 تشرين التاني 2026: متل رسائل الواتس): كل جهاز بيشوف تبعو بس
+  const APP_AND = "https://play.google.com/store/apps/details?id=com.kosport.app", APP_IPH = "https://ko-sport.online/iphone";
+  const DEV = (() => { const ua = navigator.userAgent || ""; return /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? "ios" : /android/i.test(ua) ? "android" : "pc"; })();
   const KO_MAP = "https://www.google.com/maps/place/?q=place_id:ChIJvTnREgDdGBUREN7vcmrghCU";
   let S = null; // full settings object
   const $ = (s, el = document) => el.querySelector(s);
@@ -2702,7 +2705,7 @@ ${trustH()}
         <div class="dw-list">${C.groups.map((g, i) => `<details class="dw-grp"><summary><span class="dw-ic" style="color:${ics[i % ics.length]}"><svg viewBox="0 0 24 24" width="18" height="18"><rect x="4" y="4" width="16" height="16" rx="${[8, 3, 8, 3, 6][i % 5]}" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></span><span class="dw-name">${esc(g.name)}</span><i class="dw-pm" aria-hidden="true"></i></summary>
           <div class="dw-cats">${g.cats.map((c) => cats.find((x) => x.name === c)).filter(Boolean).map((c) => `<a href="${cHref(c.name)}">${esc(catLabel(c.name))}</a>`).join("")}</div></details>`).join("")}
           <a class="dw-all" href="#/all"><span class="dw-ic" style="color:#6e56cf">${ICON.grid}</span><span class="dw-name">جميع المنتجات بصفحة واحدة</span></a></div>
-        ${/; wv\)|appcreator/i.test(navigator.userAgent || "") || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true ? "" : `<div class="dw-app"><small>حمّل التطبيق</small><div><a class="app-dl-btn sm" href="${KO_PLAY}" target="_blank" rel="noopener">▶ أندرويد</a><button type="button" class="app-dl-btn sm" data-ios-install> آيفون</button></div></div>`}
+        ${/; wv\)|appcreator/i.test(navigator.userAgent || "") || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true ? "" : `<div class="dw-app"><small>حمّل التطبيق</small><div>${DEV !== "ios" ? `<a class="app-dl-btn sm" href="${APP_AND}" target="_blank" rel="noopener">▶ ${DEV === "android" ? "حمّل من Google Play" : "أندرويد"}</a>` : ""}${DEV !== "android" ? `<a class="app-dl-btn sm" href="${APP_IPH}" data-ios-install> ${DEV === "ios" ? "حمّل على الآيفون" : "آيفون"}</a>` : ""}</div></div>`}
         <div class="dw-social"><small>تابعنا على</small><div>
           ${soc(C.facebook, "فيسبوك", "M14 8h3V4h-3a4 4 0 0 0-4 4v2H8v4h2v8h4v-8h3l1-4h-4V8z")}
           ${soc(KO_MAP, "موقعنا عالخريطة", "M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zm0-14a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z")}
@@ -2728,7 +2731,13 @@ ${trustH()}
     document.querySelectorAll("[data-play]").forEach((pl) => (pl.href = KO_PLAY));
     // «حمّل التطبيق»: Google Play لأندرويد، وللآيفون خطوات «إضافة إلى الشاشة الرئيسية» (بيفتح الموقع متل تطبيق)
     { const box = $("[data-app-dl]"), ua = navigator.userAgent || "";
-      if (box) box.hidden = /; wv\)|appcreator/i.test(ua) || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; }
+      if (box) {
+        box.hidden = /; wv\)|appcreator/i.test(ua) || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+        const pl = box.querySelector("[data-play]"), ib = box.querySelector("[data-ios-install]");
+        if (pl) { pl.href = APP_AND; pl.hidden = DEV === "ios"; }
+        if (ib) ib.hidden = DEV === "android";
+        const t = box.querySelector("b"); if (t) t.textContent = DEV === "ios" ? "حمّل تطبيق KO SPORT على الآيفون" : DEV === "android" ? "حمّل تطبيق KO SPORT لأندرويد" : "حمّل تطبيق KO SPORT";
+      } }
     appBanner();
     // جاي من رابط المجيب ko-sport.online/app عالآيفون: منفتحلو خطوات التثبيت لحالها
     try { if (new URLSearchParams(location.search).get("install") === "ios") setTimeout(iosInstall, 700); } catch {}
@@ -2752,11 +2761,13 @@ ${trustH()}
   function appBanner() {
     try {
       const ua = navigator.userAgent || "";
-      if (!/Android/i.test(ua) || /; wv\)|appcreator|AppCreator24/i.test(ua) || matchMedia("(display-mode: standalone)").matches) return;
+      if (DEV !== "android" || /; wv\)|appcreator|AppCreator24/i.test(ua) || matchMedia("(display-mode: standalone)").matches) return;
       if (localStorage.getItem("ko-app-hide") || document.querySelector(".app-bar")) return;
       const b = document.createElement("div");
       b.className = "app-bar";
-      b.innerHTML = `<img src="/favicon.svg" alt="" width="34" height="34"><span><b>تطبيق KO SPORT</b><small>تسوّق أسرع من موبايلك</small></span><a href="${KO_PLAY}" target="_blank" rel="noopener">حمّل</a><button type="button" aria-label="إغلاق">✕</button>`;
+      b.innerHTML = DEV === "ios"
+        ? `<img src="/favicon.svg" alt="" width="34" height="34"><span><b>تطبيق KO SPORT للآيفون</b><small>تسوّق أسرع من موبايلك</small></span><a href="${APP_IPH}" data-ios-install>حمّل</a><button type="button" aria-label="إغلاق">✕</button>`
+        : `<img src="/favicon.svg" alt="" width="34" height="34"><span><b>تطبيق KO SPORT لأندرويد</b><small>تسوّق أسرع من موبايلك</small></span><a href="${APP_AND}" target="_blank" rel="noopener">حمّل</a><button type="button" aria-label="إغلاق">✕</button>`;
       b.querySelector("button").onclick = () => { b.remove(); try { localStorage.setItem("ko-app-hide", "1"); } catch {} };
       document.body.appendChild(b);
     } catch {}
