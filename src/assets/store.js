@@ -2579,7 +2579,7 @@ ${trustH()}
   function gateView() {
     document.body.classList.add("gated");
     authView(() => { document.body.classList.remove("gated"); route(null, false); }, "", "reg");
-    app.insertAdjacentHTML("afterbegin", `<div class="gate-hero"><div class="gate-logo">${($("[data-logo]") || {}).innerHTML || "KO SPORT"}</div><h2>أهلاً فيك بـ KO SPORT</h2><p>لتشوف المنتجات والأسعار وتطلب، سجّل حساب أو ادخل على حسابك. بياخد أقل من دقيقة.</p></div>`);
+    app.insertAdjacentHTML("afterbegin", `<div class="gate-hero"><div class="gate-logo"><span class="logo" dir="ltr">${($("[data-logo]") || {}).innerHTML || "KO SPORT"}</span></div><h2>أهلاً فيك بـ KO SPORT</h2><p>لتشوف المنتجات والأسعار وتطلب، سجّل حساب أو ادخل على حسابك. بياخد أقل من دقيقة.</p></div>`);
   }
   // الجلسة: مرة بالجلسة منتأكد إنو الدخول لسا صالح (وبيتسجّل جهاز الزبون للوحة التحكم)
   try {
