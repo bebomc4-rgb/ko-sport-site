@@ -1,6 +1,6 @@
 /* KO SPORT service worker — fast repeat visits + offline fallback.
    Products/prices are always fetched fresh from the network first. */
-const V = "ko-v193";
+const V = "ko-v194";
 const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
 const KEEP = [SHELL, ASSET, IMG, DATA];
 
@@ -14,7 +14,9 @@ self.addEventListener("activate", (e) => {
     await self.clients.claim();
     // An open page (also inside the Android app) may still be an old copy: the page reloads itself only if the visitor has not started scrolling or tapping (never yanks them back to the top).
     // Never in the middle of checkout or the dashboard, so nobody loses what they typed.
-    if (upgraded) for (const w of await self.clients.matchAll({ type: "window" })) {
+    // جوّا تطبيق الأندرويد: ولا مرة (التطبيق بيرمي إعادة التحميل على كروم). هاد بيحمي كمان الزباين يلي لسا عندهن نسخة قديمة من الصفحة
+    const inApp = /; wv\)|appcreator/i.test((self.navigator && self.navigator.userAgent) || "");
+    if (upgraded && !inApp) for (const w of await self.clients.matchAll({ type: "window" })) {
       try { if (!/\/(checkout|done)|admin/.test(new URL(w.url).pathname)) w.postMessage({ koUpgrade: 1 }); } catch (e) {}
     }
   })());
