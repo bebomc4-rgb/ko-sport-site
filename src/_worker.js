@@ -2138,7 +2138,7 @@ function orderText(o, origin, syp) {
   if (syp > 0) tot.push(`سوري: ${Math.round(Number(final) * syp).toLocaleString("en-US")}${isSyp ? " 🔴" : ""}`);
   if (o.discount && o.discount.amount > 0) tot.push(`(بعد الحسم${o.discount.name ? ": " + o.discount.name : ""})`);
   if (o.delivery.fee == null) tot.push("التوصيل: بيتحدد عند التأكيد");
-  else if (dl.yg) tot.push(`التوصيل (يلا غو): ${dl.yg.syp.toLocaleString("en-US")} ل.س تقريباً (لحد ${dl.yg.max.toLocaleString("en-US")} بالذروة)${o.delivery.fee === 0 ? " — عالمتجر (مجاني للزبون)" : ""}`);
+  else if (dl.yg) tot.push(`التوصيل (يلا غو): ${dl.yg.syp.toLocaleString("en-US")} ل.س تقريباً${o.delivery.fee === 0 ? " — عالمتجر (مجاني للزبون)" : ""}`);
   else if (o.delivery.fee > 0) tot.push(`التوصيل: ${sy(o.delivery.fee) || usd(o.delivery.fee)}`);
   const head = [c.notes ? `📝 ${c.notes}` : "", c.name, whereLine, c.phone, c.address ? "📍 " + c.address : "", dl.yg ? `🛵 ${dl.yg.area} · ~${dl.yg.km} كم من قدسيا` : "", dl.yg && dl.yg.lat ? `اللوكيشن: https://maps.google.com/?q=${dl.yg.lat},${dl.yg.lng}` : "", `الكود: ${o.id}`, `الطلب: ${origin}/ar/o/${encodeURIComponent(o.id)}`].filter(Boolean);
   const at = orderTime(o.createdAt);
@@ -2301,7 +2301,13 @@ function ygFind(q, places) {
   return best;
 }
 // {area, at?:[lat,lng]} أو {lat,lng} ← {area, km, syp, max, lat?, lng?} أو {error}
+// صاحب المتجر (6 تشرين التاني 2026): السعر الوسطي بين الطبيعي والأعلى، ومكتوب «تقريباً»
 function ygQuote(input, places) {
+  const q = ygQuote0(input, places);
+  if (q && !q.error && q.max > q.syp) q.syp = yg10((q.syp + q.max) / 2);
+  return q;
+}
+function ygQuote0(input, places) {
   const i = input || {};
   const lat = +i.lat, lng = +i.lng;
   if (isFinite(lat) && isFinite(lng) && lat && lng) {
