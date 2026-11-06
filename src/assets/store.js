@@ -2537,6 +2537,9 @@ ${trustH()}
     const hereHref = routeHref(curRoute()); // curRoute() is decoded, the rendered href is encoded — compare decoded
     const sameHref = (v) => { try { return decodeURIComponent(v || "") === hereHref; } catch (e) { return v === hereHref; } };
     document.querySelectorAll("[data-groups] a").forEach((x) => x.classList.toggle("on", sameHref(x.getAttribute("href"))));
+    // صاحب المتجر (6 تشرين التاني 2026): ما حدا بيفوت عالموقع إلا يكون مسجّل. المسجّل بيفوت عادي.
+    // مستثنى: الصفحات القانونية (سياسة الخصوصية لازم تكون مفتوحة لـ Google Play)، ومحركات البحث وفحص السرعة
+    if (!acct() && a !== "page" && !KO_BOT) { gateView(); return finishRoute(hs, keepScroll, keepY, revisit); }
     if (!a) home();
     else if (a === "browse") browse();
     else if (a === "all") listing({ title: "كل المنتجات", crumbs: `<a href="#/">الرئيسية</a>`, items: products, key: "all" });
@@ -2555,6 +2558,9 @@ ${trustH()}
     else if (a === "games" && gamesOn()) gamesPage();
     else if (a === "o" && b) orderPage(b);
     else home();
+    finishRoute(hs, keepScroll, keepY, revisit);
+  }
+  function finishRoute(hs, keepScroll, keepY, revisit) {
     if (revisit) { const y = scrollMem[hs.koK], de = document.documentElement.style; de.setProperty("scroll-behavior", "auto", "important"); window.scrollTo(0, y); requestAnimationFrame(() => { window.scrollTo(0, y); de.removeProperty("scroll-behavior"); }); }
     else if (!keepScroll && window.scrollY) toTop();
     if (keepY) {
@@ -2567,6 +2573,22 @@ ${trustH()}
     closeMenu();
     if (!route.o && window.KOFx) { route.o = 1; KOFx.open(); }
   }
+
+  // ---------- بوابة الدخول ----------
+  const KO_BOT = /bot|crawl|spider|slurp|google|bing|yandex|baidu|duckduck|lighthouse|pagespeed|facebookexternalhit|whatsapp|telegram|twitter|preview/i.test(navigator.userAgent || "");
+  function gateView() {
+    document.body.classList.add("gated");
+    authView(() => { document.body.classList.remove("gated"); route(null, false); }, "", "reg");
+    app.insertAdjacentHTML("afterbegin", `<div class="gate-hero"><div class="gate-logo">${($("[data-logo]") || {}).innerHTML || "KO SPORT"}</div><h2>أهلاً فيك بـ KO SPORT</h2><p>لتشوف المنتجات والأسعار وتطلب، سجّل حساب أو ادخل على حسابك. بياخد أقل من دقيقة.</p></div>`);
+  }
+  // الجلسة: مرة بالجلسة منتأكد إنو الدخول لسا صالح (وبيتسجّل جهاز الزبون للوحة التحكم)
+  try {
+    const A0 = acct();
+    if (A0 && !sessionStorage.getItem("ko_me_ok")) fetch("/api/acct/me", { headers: { authorization: "Bearer " + A0.token } }).then((r) => {
+      if (r.ok) sessionStorage.setItem("ko_me_ok", "1");
+      else if (r.status === 401) { acctOut(); route(null, true); }
+    }).catch(() => {});
+  } catch {}
 
   // ---------- games ----------
   const gamesOn = () => !!(S.design.games && S.design.games.on);

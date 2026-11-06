@@ -3295,10 +3295,6 @@ export default {
       if (path === "/api/rate" && (m === "GET" || m === "POST")) return fxApi(request, env, ctx);
       if (path === "/api/yg" && (m === "GET" || m === "POST")) return ygApi(request, env, ctx);
       if (path === "/yg-areas.txt") return ygList(request, env, ctx);
-      if (path === "/promo-check.txt") { // مؤقت: الإعلانات (هي أصلاً عامة بإعدادات الموقع)
-        const st = await getSettings(env, request);
-        return new Response(JSON.stringify(st.promos || null, null, 1), { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
-      }
       if (path === "/ord-diag.txt") { const idx = await env.STORE.list({ prefix: "acctord2:" }); return new Response(`indexes: ${idx.keys.length}`, { headers: { "content-type": "text/plain", "cache-control": "no-store" } }); }
       if (path === "/api/order-items" && m === "GET") return orderItemsGet(request, env);
       if (path === "/api/order-thumb" && m === "GET") return orderThumb(request, env);

@@ -2036,3 +2036,8 @@ html.sheet-lock .pwa-bar{visibility:hidden}
 .qd-lux .qd-cta{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;padding:12px 16px;border-radius:14px;font-weight:800;color:#0b0b0d;background:linear-gradient(180deg,#fff,#e9e9e7);box-shadow:0 6px 16px -8px rgba(255,255,255,.4)}
 .qd-lux:hover .qd-cta svg{transform:translateX(-3px)}.qd-lux .qd-cta svg{transition:transform .25s ease}
 a.pwa-go{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}.pb-android .app-bar{display:none!important}
+body.gated [data-bnav],body.gated .pwa-bar,body.gated .app-bar,body.gated .sticky-buy{display:none!important}
+.gate-hero{text-align:center;max-width:480px;margin:10px auto 6px;padding:26px 20px 8px}
+.gate-hero .gate-logo{display:inline-flex;transform:scale(1.25);margin-bottom:16px}
+.gate-hero h2{margin:0 0 8px;font-size:1.5em}.gate-hero p{margin:0;color:var(--muted);line-height:1.7}
+body.gated .auth .page-title{display:none}

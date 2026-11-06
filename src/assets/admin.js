@@ -190,7 +190,18 @@
   const MI = { edit: "✎", eye: "👁", del: "🗑", wa: "💬", block: "⛔", ok: "✓", list: "☰" };
 
   // ---------- customers (orders + saved info: tags, notes, blocking, manual adds, imports) ----------
-  let CUST = {}, custTab = "all", custSel = new Set(), allLoaded = false;
+  let CUST = {}, custTab = "all", custSel = new Set(), allLoaded = false, ACCTS = null;
+  // حسابات الموقع (يلي سجّلو) وجهاز كل واحد
+  const DEV_N = { ios: "آيفون", android: "أندرويد", app: "أندرويد (التطبيق)", pc: "كمبيوتر" };
+  const devChip = (d) => d ? `<em class="dv-chip dv-${esc(d)}">${d === "ios" ? "📱" : d === "pc" ? "💻" : "🤖"} ${DEV_N[d] || d}</em>` : `<em class="dv-chip dv-x">جهاز غير معروف</em>`;
+  const acctMap = () => { const m = new Map(); for (const a of (ACCTS && ACCTS.accounts) || []) m.set(ckey(a.phone), a); return m; };
+  function acctSummary() {
+    if (!ACCTS) return "";
+    const L = ACCTS.accounts || [], c = { ios: 0, android: 0, app: 0, pc: 0, x: 0 };
+    for (const a of L) c[a.dev in c ? a.dev : "x"]++;
+    return `<div class="acc-sum"><div class="acc-sum-n"><b>${nf(ACCTS.total)}</b><span>زبون مسجّل بالموقع</span></div>
+      <div class="acc-sum-d"><span class="dv-chip dv-ios">📱 آيفون <b>${nf(c.ios)}</b></span><span class="dv-chip dv-android">🤖 أندرويد <b>${nf(c.android + c.app)}</b>${c.app ? ` <small>(منهم ${nf(c.app)} بالتطبيق)</small>` : ""}</span><span class="dv-chip dv-pc">💻 كمبيوتر <b>${nf(c.pc)}</b></span>${c.x ? `<span class="dv-chip dv-x">غير معروف <b>${nf(c.x)}</b> <small>(بيتعرّف أول ما يفوت)</small></span>` : ""}</div></div>`;
+  }
   async function ensureAllOrders() { if (allLoaded) return; let n = 0; try { while (cursor && n++ < 80) await loadOrders(false); } catch {} allLoaded = true; }
   const ckey = (phone, email) => { const d = String(phone || "").replace(/\D/g, "").slice(-9); if (d.length >= 9) return "p" + d; const e = String(email || "").trim().toLowerCase(); return e.includes("@") ? "e" + e.slice(0, 80) : ""; };
   function custRows() {
@@ -207,11 +218,17 @@
       Object.assign(c, { name: x.name || c.name, phone: x.phone || c.phone, email: x.email || c.email, gov: x.gov || c.gov, address: x.address || c.address, tags: x.tags || [], note: x.note || "", blocked: !!x.blocked, stored: true, manual: !!x.manual });
       m.set(k, c);
     }
+    for (const a of (ACCTS && ACCTS.accounts) || []) {
+      const k = ckey(a.phone); let c = m.get(k);
+      if (!c) { c = { key: k, name: a.name, phone: a.phone, gov: a.gov, orders: [], spend: 0, last: a.at, tags: [] }; m.set(k, c); }
+      c.acct = a;
+    }
     return [...m.values()].sort((a, b) => String(b.last || "").localeCompare(String(a.last || "")));
   }
   async function loadCustomers() {
     const box = $("[data-cust-list]"); if (box && !box.innerHTML) box.innerHTML = `<p class="hint" style="padding:16px">جاري تحميل العملاء…</p>`;
     try { CUST = await api("/api/customers"); } catch (e) { toast(e.message); }
+    try { ACCTS = await api("/api/accounts"); } catch { ACCTS = null; }
     await ensureAllOrders(); renderCustomers();
   }
   const ordTxt = (n) => (!n ? "لا طلبات" : n === 1 ? "طلب واحد" : n === 2 ? "طلبين" : n <= 10 ? `${nf(n)} طلبات` : `${nf(n)} طلب`);
@@ -220,13 +237,14 @@
   function renderCustomers() {
     const box = $("[data-cust-list]"); if (!box) return;
     const rows = custRows(), q = normA(($("[data-cust-q]") || {}).value || "");
-    const cnt = { all: rows.length, active: rows.filter((c) => !c.blocked).length, blocked: rows.filter((c) => c.blocked).length };
-    $("[data-cu-tabs]").innerHTML = [["all", "الجميع"], ["active", "نشط"], ["blocked", "محظور"]].map(([k, t]) => `<button type="button" data-cu-tab="${k}" class="${custTab === k ? "on" : ""}">${t}${k === "all" ? ` <b>${nf(cnt.all)}</b>` : ""}</button>`).join("");
-    CROWS = rows.filter((c) => (custTab === "all" || (custTab === "blocked" ? c.blocked : !c.blocked)) && (!q || normA([c.name, c.phone, c.email, c.gov, (c.tags || []).join(" ")].join(" ")).includes(q)));
+    const cnt = { all: rows.length, active: rows.filter((c) => !c.blocked).length, blocked: rows.filter((c) => c.blocked).length, acct: rows.filter((c) => c.acct).length };
+    { const sm = $("[data-acc-sum]"); if (sm) sm.innerHTML = acctSummary(); }
+    $("[data-cu-tabs]").innerHTML = [["all", "الجميع"], ["acct", "مسجّلين بالموقع"], ["active", "نشط"], ["blocked", "محظور"]].map(([k, t]) => `<button type="button" data-cu-tab="${k}" class="${custTab === k ? "on" : ""}">${t}${k === "all" || k === "acct" ? ` <b>${nf(cnt[k])}</b>` : ""}</button>`).join("");
+    CROWS = rows.filter((c) => (custTab === "all" || (custTab === "acct" ? c.acct : custTab === "blocked" ? c.blocked : !c.blocked)) && (!q || normA([c.name, c.phone, c.email, c.gov, (c.tags || []).join(" ")].join(" ")).includes(q)));
     custSel = new Set([...custSel].filter((k) => CROWS.some((c) => c.key === k)));
     box.innerHTML = `<div class="w-table cu-table"><div class="w-tr w-th"><span><input type="checkbox" data-cu-all ${CROWS.length && custSel.size === CROWS.length ? "checked" : ""}></span><span>بيانات العميل</span><span>المكان</span><span>حالة الحساب</span><span>تصنيفاتي</span><span>الطلبات</span><span>النفقات</span><span></span></div>` +
       CROWS.slice(0, 500).map((c) => `<div class="w-tr cu-row" data-cu="${esc(c.key)}"><span><input type="checkbox" data-cu-chk="${esc(c.key)}" ${custSel.has(c.key) ? "checked" : ""}></span>
-        <span class="cu-id"><i class="cu-av">${esc(initials(c.name))}</i><span><b>${esc(c.name || "بدون اسم")}</b><small dir="ltr">${esc(c.email || c.phone || "")}</small></span></span>
+        <span class="cu-id"><i class="cu-av">${esc(initials(c.name))}</i><span><b>${esc(c.name || "بدون اسم")}</b><small dir="ltr">${esc(c.email || c.phone || "")}</small>${c.acct ? devChip(c.acct.dev) : ""}</span></span>
         <span>${c.gov ? `Syria, ${esc(c.gov)}` : '<small class="hint">لا يوجد عنوان</small>'}</span>
         <span><em class="cu-st ${c.blocked ? "bl" : ""}">● ${c.blocked ? "محظور" : "نشط"}</em></span>
         <span>${(c.tags || []).map((t) => `<em class="cu-tag">${esc(t)}</em>`).join("") || "-"}</span>

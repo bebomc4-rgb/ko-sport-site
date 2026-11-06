@@ -1054,3 +1054,9 @@ body:not(.in) .w-tabbar{display:none!important}
 
 /* ترتيب صور المنتج بالسحب (ماوس ولمس) */
 .thumb{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}.thumb.dragging{cursor:grabbing}.thumb.dragging{opacity:.55;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.25)}.thumb.drop-target{outline:3px dashed var(--ink);outline-offset:1px}.thumb img{pointer-events:none}.thumbs-hint{display:block;margin-top:4px;font-size:12px}
+.acc-sum{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 14px;padding:16px 18px;border-radius:16px;background:var(--card,#fff);border:1px solid var(--line,#e5e5e5)}
+.acc-sum-n{display:flex;align-items:baseline;gap:8px}.acc-sum-n b{font-size:2em;line-height:1}.acc-sum-n span{color:var(--muted,#777)}
+.acc-sum-d{display:flex;gap:8px;flex-wrap:wrap}
+.dv-chip{display:inline-flex;align-items:center;gap:4px;font-style:normal;font-size:.8em;font-weight:700;padding:3px 10px;border-radius:999px;background:#f1f5f9;color:#334155;white-space:nowrap}
+.cu-id .dv-chip{margin-top:4px;width:max-content}.dv-chip small{font-weight:500;opacity:.8}
+.dv-ios{background:#eef2ff;color:#3730a3}.dv-android,.dv-app{background:#ecfdf5;color:#047857}.dv-pc{background:#f1f5f9;color:#334155}.dv-x{background:#fafafa;color:#888}
