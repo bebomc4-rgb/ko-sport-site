@@ -942,15 +942,15 @@ const ordPublic = (o) => ({
 });
 async function acctOrders(request, env) {
   const a = await acctFromReq(request, env);
-  if (!a) return json({ error: "سجّل دخول من جديد", needLogin: true }, 401);
-  const ph = ordPhone(a.phone), keys = (await acctOrdKeys(env, ph)).slice(0, 80);
+  // بلا دخول صالح: منرجّع طلبات هالجهاز بس (متل صفحة الطلب العامة)، والزبون بيرجع يفوت لتطلع كلها
+  const ph = a ? ordPhone(a.phone) : "", keys = a ? (await acctOrdKeys(env, ph)).slice(0, 80) : [];
   // + الطلبات يلي انعملت من هالجهاز (حتى لو قبل الحسابات أو برقم تاني): متل ما كانت «طلباتي» قبل
   const ids = String(new URL(request.url).searchParams.get("ids") || "").split(",").filter((x) => /^KO-\d{4}-[A-Z0-9]{4}$/.test(x)).slice(0, 40);
   const extra = (await Promise.all(ids.map((id) => env.STORE.get("orderid:" + id).catch(() => null)))).filter(Boolean);
   const all = [...new Set([...keys, ...extra])];
   const list = (await Promise.all(all.map((k) => env.STORE.get(k, "json").catch(() => null))))
     .filter((o) => o && o.id).sort((x, y) => String(y.createdAt).localeCompare(String(x.createdAt))).map(ordPublic);
-  const r = json({ orders: list }); r.headers.set("cache-control", "no-store"); return r;
+  const r = json({ orders: list, needLogin: !a }); r.headers.set("cache-control", "no-store"); return r;
 }
 async function acctApi(request, env, path, m) {
   if (!env.STORE) return json({ error: "الحسابات مو متاحة هلق" }, 503);
@@ -3278,6 +3278,14 @@ export default {
       if (path === "/api/rate" && (m === "GET" || m === "POST")) return fxApi(request, env, ctx);
       if (path === "/api/yg" && (m === "GET" || m === "POST")) return ygApi(request, env, ctx);
       if (path === "/yg-areas.txt") return ygList(request, env, ctx);
+      if (path === "/ord-diag.txt") { // مؤقت للفحص: أعداد بس، بلا أي معلومة شخصية
+        const p4 = String(url.searchParams.get("p") || "").replace(/\D/g, "").slice(-4); if (p4.length !== 4) return new Response("?", { status: 400 });
+        const r = await env.STORE.list({ prefix: "order:", limit: 1000 }); let m = 0, bad = 0, fmt = {};
+        const vals = await Promise.all(r.keys.slice(0, 400).map((k) => env.STORE.get(k.name, "json").catch(() => "ERR")));
+        for (const o of vals) { if (o === "ERR" || !o) { bad++; continue; } const ph = String((o.customer || {}).phone || ""); if (ph.replace(/\D/g, "").endsWith(p4)) { m++; const f = ph.replace(/\d/g, "9"); fmt[f] = (fmt[f] || 0) + 1; } }
+        const idx = await env.STORE.list({ prefix: "acctord2:" });
+        return new Response(`orders listed: ${r.keys.length} complete:${r.list_complete}\nread: ${vals.length} bad:${bad}\nmatching ...${p4}: ${m}\nformats: ${JSON.stringify(fmt)}\nindexes: ${idx.keys.length}`, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+      }
       if (path === "/api/order-items" && m === "GET") return orderItemsGet(request, env);
       if (path === "/api/order-thumb" && m === "GET") return orderThumb(request, env);
       // the dashboard reads through its own addresses: the shop's service worker never touches them,

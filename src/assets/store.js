@@ -1816,10 +1816,11 @@
       <section class="acc-card"><h2>طلباتي</h2><div data-myorders>${(myOrdOwner(), myOrdersHtml(myOrdCache))}</div></section>
       <section class="acc-card acc-links"><a href="#/cart">🛒 السلة</a><a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">💬 تواصل معنا على واتساب</a></section>`;
     app.onclick = (e) => {
+      if (e.target.closest("[data-relog]")) { acctOut(); authView(() => account(), "ادخل على حسابك لتطلع كل طلباتك.", "login"); return; }
       if (e.target.closest("[data-logout]")) { askConfirm("بدك تسجّل خروج من حسابك؟", "نعم، اطلع").then((y) => { if (y) { acctOut(); account(); } }); return; }
     };
     app.onchange = null;
-    myOrdersLoad().then(() => { const box = app.querySelector("[data-myorders]"); if (box) box.innerHTML = myOrdersHtml(myOrdCache); });
+    myOrdersLoad().then(() => { const box = app.querySelector("[data-myorders]"); if (box) box.innerHTML = myOrdCache ? myOrdersHtml(myOrdCache) : myOrdLocal().length ? myOrdersHtml(null) : `<p class="acc-empty">ما قدرنا نحمّل طلباتك، جرّب كمان شوي.</p>`; });
   }
   // طلباتي: من الحساب نفسو (بتبيّن من أي جهاز)، وكل طلب بينفتح لحالو
   let myOrdCache = null, myOrdFor = "";
@@ -1833,15 +1834,21 @@
       const mine = [...new Set([...(store.get("ko_orders", []) || []).map((o) => o && o.id), (store.get("ko_last_order", null) || {}).id].filter(Boolean))].slice(0, 40);
       const r = await fetch("/api/acct/orders?ids=" + encodeURIComponent(mine.join(",")), { headers: { authorization: "Bearer " + ((acct() || {}).token || "") }, cache: "no-store" });
       const j = await r.json().catch(() => ({}));
-      if (r.ok && Array.isArray(j.orders)) myOrdCache = j.orders;
-      else if (!myOrdCache) myOrdCache = [];
-    } catch { if (!myOrdCache) myOrdCache = []; }
+      if (r.ok && Array.isArray(j.orders)) { myOrdCache = j.orders; myOrdCache.needLogin = !!j.needLogin; }
+      else if (!myOrdCache) myOrdCache = null;
+    } catch {}
     return myOrdCache;
   }
-  function myOrdersHtml(L) {
-    if (!L) return `<div class="loading" style="padding:14px">جاري تحميل طلباتك…</div>`;
+  // نسخة الجهاز (متل قبل): إذا السيرفر ما جاوب منعرضها لحتى ما تختفي الطلبات أبداً
+  const myOrdLocal = () => (store.get("ko_orders", []) || []).filter((o) => o && o.id).map((o) => ({ id: o.id, createdAt: o.at, total: o.total, n: o.n, items: [], local: true }));
+  function myOrdersHtml(L, loading) {
+    if (!L && loading !== false) L = null;
+    if (!L) { const loc = myOrdLocal(); if (!loc.length) return `<div class="loading" style="padding:14px">جاري تحميل طلباتك…</div>`; L = loc; }
+    const relog = L.needLogin ? `<div class="acc-relog">لتشوف كل طلباتك المسجّلة على رقمك <button type="button" class="btn btn-dark sm" data-relog>ادخل على حسابك من جديد</button></div>` : "";
+    if (!L.length) return relog + `<p class="acc-empty">ما عندك طلبات لهلق. <a href="#/all">ابدأ التسوق</a></p>`;
+    return relog + `<div class="ord-list">${L.map((o) => { const n = o.n || o.items.reduce((a, i) => a + i.qty, 0), th = o.items.slice(0, 3);
+      if (o.local) return `<a class="ord-row" href="#/o/${encodeURIComponent(o.id)}"><span class="ord-mid"><b dir="ltr">${esc(o.id)}</b><small>${ordDate(o.createdAt)} · ${n} ${n === 1 ? "قطعة" : "قطع"}</small></span><span class="ord-tot">${money(o.total)}<i aria-hidden="true">‹</i></span></a>`;
     if (!L.length) return `<p class="acc-empty">ما عندك طلبات لهلق. <a href="#/all">ابدأ التسوق</a></p>`;
-    return `<div class="ord-list">${L.map((o) => { const n = o.items.reduce((a, i) => a + i.qty, 0), th = o.items.slice(0, 3);
       return `<a class="ord-row" href="#/account/${encodeURIComponent(o.id)}"><span class="ord-th">${th.map((i) => `<img src="${esc(imgW(img(i.image), 120))}" alt="" loading="lazy">`).join("")}</span>
         <span class="ord-mid"><b dir="ltr">${esc(o.id)}</b><small>${ordDate(o.createdAt)} · ${n} ${n === 1 ? "قطعة" : "قطع"}</small>${ordSt(o)}</span>
         <span class="ord-tot">${oMoney(o)(o.total)}<i aria-hidden="true">‹</i></span></a>`; }).join("")}</div>`;
