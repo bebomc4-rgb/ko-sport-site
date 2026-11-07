@@ -1273,9 +1273,18 @@
   const dlg = $("[data-modal]"), ef = $("[data-edit]");
   let editing = null, isNew = false, imgs = [], thumbOf = {};
   const imgsOf = (p) => (p.images && p.images.length ? p.images.slice() : p.image ? [p.image] : []);
+  // الصور (متل لوحات المتاجر العالمية): الأولى كبيرة وهي الرئيسية، الباقي مربعات، سحب وإفلات بأي مكان، تحديد وحذف
+  let mediaSel = new Set();
   function renderThumbs() {
-    $("[data-edit-img]").src = img(imgs[0]);
-    $("[data-edit-thumbs]").innerHTML = imgs.map((u, i) => `<button type="button" class="thumb${i ? "" : " main"}" data-ti="${i}" title="${i ? "خليها الرئيسية" : "الصورة الرئيسية"}"><img src="${esc(u)}" alt=""><span data-trm="${i}" title="شيل">✕</span><span class="tst" data-tst="${i}" title="عدّلها بالاستوديو">🪄</span></button>`).join("");
+    $("[data-edit-img]").src = img(imgs[0] || "");
+    mediaSel = new Set([...mediaSel].filter((u) => imgs.includes(u)));
+    $("[data-edit-thumbs]").innerHTML = imgs.map((u, i) => `<div class="mtile${i ? "" : " main"}${mediaSel.has(u) ? " sel" : ""}" data-ti="${i}" title="${i ? "اسحبها لأي مكان" : "الصورة الرئيسية"}">
+        <img src="${esc(u)}" alt="" draggable="false">
+        <label class="mchk" title="حدّد"><input type="checkbox" data-msel="${i}"${mediaSel.has(u) ? " checked" : ""}></label>
+        ${i ? "" : '<em class="mmain">الرئيسية</em>'}
+        <span class="mact"><span class="tst" data-tst="${i}" title="عدّلها بالاستوديو">🪄</span><span data-trm="${i}" title="احذف">✕</span></span></div>`).join("")
+      + `<label class="mtile madd" for="ko-edit-file"><span class="madd-ic"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>أضف صور</b></label>`;
+    const n = mediaSel.size, bar = $("[data-media-sel]"); if (bar) { bar.hidden = !n; $("[data-media-n]").textContent = `محدد ${n}`; }
   }
   // ---- photo studio (remove background, shop identity, edit with words) ----
   const studioStyle = () => { try { return (ST && ST.design && ST.design.imgStyle) || JSON.parse(localStorage.getItem("ko_img_style") || "null") || {}; } catch { return {}; } };
@@ -1289,32 +1298,45 @@
     const bmp = await decode(blob);
     const url = await uploadBlob(await squareFull(bmp)); thumbOf[url] = await uploadBlob(await squareThumb(bmp)); return url;
   }
-  // ترتيب صور المنتج بالسحب (ماوس ولمس): اسحب الصورة لمكانها الجديد
+  // ترتيب الصور بالسحب (ماوس ولمس): الصورة بتمشي مع إصبعك، والباقي بيزيحو لها مكان مباشرة
   { const box = $("[data-edit-thumbs]"); let drag = null, skipClick = false;
-    const clear = () => box.querySelectorAll(".drop-target").forEach((x) => x.classList.remove("drop-target"));
-    const under = (x, y) => { drag.el.style.visibility = "hidden"; const t = document.elementFromPoint(x, y); drag.el.style.visibility = ""; return t && t.closest && t.closest("[data-ti]"); };
+    const tiles = () => [...box.querySelectorAll(".mtile[data-ti]")];
+    const flip = (fn) => { const before = new Map(tiles().map((t) => [t.querySelector("img").getAttribute("src") + "|" + t.dataset.ti, t.getBoundingClientRect()])); const pos = new Map(tiles().map((t) => [t.querySelector("img").getAttribute("src"), t.getBoundingClientRect()])); fn();
+      for (const t of tiles()) { const r0 = pos.get(t.querySelector("img").getAttribute("src")); if (!r0 || t.classList.contains("ghost")) continue; const r1 = t.getBoundingClientRect(); const dx = r0.left - r1.left, dy = r0.top - r1.top, sx = r0.width / r1.width, sy = r0.height / r1.height;
+        if (Math.abs(dx) + Math.abs(dy) < 1 && Math.abs(sx - 1) < .01) continue; t.style.transformOrigin = "0 0"; t.style.transition = "none"; t.style.transform = `translate(${dx}px,${dy}px) scale(${sx},${sy})`; requestAnimationFrame(() => { t.style.transition = "transform .22s cubic-bezier(.2,.8,.2,1)"; t.style.transform = ""; }); } };
+    const at = (x, y) => { let best = null, bd = 1e9; for (const t of tiles()) { const r = t.getBoundingClientRect(); if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return +t.dataset.ti; const d = Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)); if (d < bd) { bd = d; best = +t.dataset.ti; } } return bd < 140 ? best : null; };
     box.addEventListener("pointerdown", (e) => {
-      const t = e.target.closest("[data-ti]"); if (!t || e.target.closest("[data-trm],[data-tst]") || imgs.length < 2) return;
-      drag = { from: +t.dataset.ti, x: e.clientX, y: e.clientY, moved: false, el: t, id: e.pointerId };
+      const t = e.target.closest(".mtile[data-ti]"); if (!t || e.button > 0 || e.target.closest("[data-trm],[data-tst],.mchk") || imgs.length < 2) return;
+      drag = { i: +t.dataset.ti, x: e.clientX, y: e.clientY, moved: false, id: e.pointerId, t };
     });
     box.addEventListener("pointermove", (e) => {
       if (!drag || e.pointerId !== drag.id) return;
-      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-      if (!drag.moved) { if (Math.hypot(dx, dy) < 8) return; drag.moved = true; drag.el.classList.add("dragging"); try { drag.el.setPointerCapture(e.pointerId); } catch {} }
+      if (!drag.moved) {
+        if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 8) return;
+        drag.moved = true; try { box.setPointerCapture(e.pointerId); } catch {}
+        const r = drag.t.getBoundingClientRect(), g = drag.t.cloneNode(true); g.className = "mfloat"; g.removeAttribute("data-ti");
+        Object.assign(g.style, { width: Math.min(r.width, 150) + "px", height: Math.min(r.height, 150) + "px" }); document.body.appendChild(g); drag.g = g; drag.u = imgs[drag.i];
+        drag.t.classList.add("ghost"); document.body.classList.add("m-dragging");
+      }
       e.preventDefault();
-      drag.el.style.transform = `translate(${dx}px,${dy}px)`;
-      clear(); const t = under(e.clientX, e.clientY); if (t && t !== drag.el) t.classList.add("drop-target");
+      drag.g.style.transform = `translate(${e.clientX - 40}px,${e.clientY - 40}px) rotate(-3deg)`;
+      const to = at(e.clientX, e.clientY);
+      if (to != null && to !== drag.i) {
+        flip(() => { const [x] = imgs.splice(drag.i, 1); imgs.splice(to, 0, x); drag.i = to; renderThumbs(); drag.t = box.querySelector(`.mtile[data-ti="${to}"]`); drag.t.classList.add("ghost"); });
+      }
     });
     const end = (e) => {
       if (!drag || (e && e.pointerId !== drag.id)) return;
-      const d = drag; drag = null; clear(); d.el.classList.remove("dragging"); d.el.style.transform = "";
-      if (!d.moved) return;
-      skipClick = true; setTimeout(() => (skipClick = false), 0);
-      const t = e && under(e.clientX, e.clientY);
-      if (t && t.dataset.ti != null) { const to = +t.dataset.ti; if (to !== d.from) { const [x] = imgs.splice(d.from, 1); imgs.splice(to, 0, x); renderThumbs(); } }
+      const d = drag; drag = null; document.body.classList.remove("m-dragging");
+      if (d.g) d.g.remove(); if (d.t) d.t.classList.remove("ghost");
+      if (d.moved) { skipClick = true; setTimeout(() => (skipClick = false), 0); }
     };
-    box.addEventListener("pointerup", end); box.addEventListener("pointercancel", () => { if (drag) { drag.el.classList.remove("dragging"); drag.el.style.transform = ""; clear(); drag = null; } });
+    box.addEventListener("pointerup", end); box.addEventListener("pointercancel", end);
     box.addEventListener("click", (e) => { if (skipClick) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+    box.addEventListener("change", (e) => { const c = e.target.closest("[data-msel]"); if (!c) return; const u = imgs[+c.dataset.msel]; if (c.checked) mediaSel.add(u); else mediaSel.delete(u); renderThumbs(); });
+    $("[data-media-del]").addEventListener("click", () => { if (!mediaSel.size) return; imgs = imgs.filter((u) => !mediaSel.has(u)); mediaSel.clear(); renderThumbs(); });
+    $("[data-media-main]").addEventListener("click", () => { const L = imgs.filter((u) => mediaSel.has(u)); imgs = [...L, ...imgs.filter((u) => !mediaSel.has(u))]; mediaSel.clear(); renderThumbs(); });
+    $("[data-media-none]").addEventListener("click", () => { mediaSel.clear(); renderThumbs(); });
   }
   $("[data-edit-thumbs]").addEventListener("click", (e) => {
     const ts = e.target.closest("[data-tst]");
@@ -1329,8 +1351,9 @@
     })(); return; }
     const rm = e.target.closest("[data-trm]");
     if (rm) { imgs.splice(+rm.dataset.trm, 1); renderThumbs(); return; }
-    const t = e.target.closest("[data-ti]");
-    if (t) { const [x] = imgs.splice(+t.dataset.ti, 1); imgs.unshift(x); renderThumbs(); }
+    if (e.target.closest(".mchk")) return;
+    const t = e.target.closest(".mtile[data-ti]");
+    if (t) { const c = t.querySelector("[data-msel]"); if (c) { c.checked = !c.checked; c.dispatchEvent(new Event("change", { bubbles: true })); } }
   });
   function openEdit(p) {
     isNew = !p;

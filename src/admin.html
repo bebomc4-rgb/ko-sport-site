@@ -16,10 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Changa:wght@700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/store.css?v=196">
-<link rel="stylesheet" href="/assets/admin.css?v=196">
-<link rel="stylesheet" href="/assets/promo.css?v=196">
-<link rel="stylesheet" href="/assets/pwabar.css?v=196">
+<link rel="stylesheet" href="/assets/store.css?v=197">
+<link rel="stylesheet" href="/assets/admin.css?v=197">
+<link rel="stylesheet" href="/assets/promo.css?v=197">
+<link rel="stylesheet" href="/assets/pwabar.css?v=197">
 </head>
 <body class="admin wuilt">
 <aside class="w-side" data-side>
@@ -912,13 +912,14 @@
   <form method="dialog" class="form" data-edit>
     <h3 data-edit-title>تعديل منتج</h3>
     <div class="edit-grid">
-      <div>
-        <div class="img-drop"><img data-edit-img alt=""></div>
-        <div class="thumbs" data-edit-thumbs></div>
-        <small class="muted thumbs-hint">↔ اسحب الصور لترتيبها · كبسة على صورة بتخليها الرئيسية</small>
-        <label class="btn btn-ghost sm" style="margin-top:8px;width:100%">+ رفع صور<input type="file" accept="image/*" multiple data-edit-file hidden></label>
+      <div class="media-col">
+        <div class="media-head"><b>الصور</b><span class="media-sel" data-media-sel hidden><span data-media-n></span> <button type="button" class="btn btn-ghost sm" data-media-main>خليها الرئيسية</button> <button type="button" class="btn btn-ghost sm danger" data-media-del>احذف</button> <button type="button" class="btn btn-ghost sm" data-media-none>إلغاء</button></span></div>
+        <img data-edit-img alt="" hidden>
+        <div class="media-grid" data-edit-thumbs></div>
+        <input type="file" accept="image/*" multiple data-edit-file hidden id="ko-edit-file">
+        <small class="muted thumbs-hint">اسحب أي صورة وحطها وين ما بدك · أول صورة (الكبيرة) هي الرئيسية</small>
         <label class="check" style="margin-top:6px"><input type="checkbox" data-studio-on onchange="try{localStorage.setItem('ko_studio_on',this.checked?'1':'')}catch(e){}"> 🪄 افتح استوديو الصور قبل الرفع (شيل الخلفية، هوية المتجر، Nano Banana)</label>
-        <small class="hint">أول صورة هي الرئيسية. اكبس على أي صورة لتصير هي الرئيسية، وعلى 🪄 لتعدّلها بالاستوديو.</small>
+        <small class="hint">كبسة على صورة بتحددها (لتحذفها أو تخليها الرئيسية)، و🪄 لتعدّلها بالاستوديو.</small>
       </div>
       <div class="edit-fields">
         <div class="field"><label>اسم المنتج</label><input name="name" required></div>
@@ -944,12 +945,12 @@
 <datalist id="cat-list"></datalist>
 
 <div class="toast" data-toast role="status" aria-live="polite"></div>
-<script src="/assets/media.js?v=196"></script>
-<script src="/assets/pwa.js?v=196"></script>
-<script src="/assets/promo.js?v=196"></script>
-<script src="/assets/imgstudio.js?v=196"></script>
-<script src="/assets/themes.js?v=196"></script>
-<script src="/assets/packs.js?v=196"></script>
-<script src="/assets/admin.js?v=196"></script>
+<script src="/assets/media.js?v=197"></script>
+<script src="/assets/pwa.js?v=197"></script>
+<script src="/assets/promo.js?v=197"></script>
+<script src="/assets/imgstudio.js?v=197"></script>
+<script src="/assets/themes.js?v=197"></script>
+<script src="/assets/packs.js?v=197"></script>
+<script src="/assets/admin.js?v=197"></script>
 </body>
 </html>
