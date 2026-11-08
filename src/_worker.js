@@ -1981,6 +1981,7 @@ ${S.name} متجر أدوات رياضية أونلاين بسوريا (مقرّ
 ${S.instagram ? `- إنستغرام: ${S.instagram}\n` : ""}${S.facebook ? `- فيسبوك: ${S.facebook}\n` : ""}- التوصيل: ${S.footerNote || "لكل المحافظات السورية"}
 - الدفع: الدفع عند الاستلام بس مع التوصيل لباب البيت بدمشق (يلا غو)، وباقي الطلبات منتأكدها مع الزبون على واتساب
 - الأسعار: بالدولار، ومعها السعر بالليرة السورية الجديدة${rate ? ` (سعر الدولار اليوم ${rate})` : ""}
+- صفحة «من نحن»: ${origin}/ar/page/about
 - كتالوج كامل للقراءة الآلية: ${origin}/catalog.txt و ${origin}/api/catalog
 
 ## أسئلة بيسألها الناس للذكاء الاصطناعي
@@ -2783,7 +2784,18 @@ ${same.length ? `<h2>منتجات مشابهة</h2><ul>${same.map(cardHtml).join
     const pg = (Array.isArray(st.pages) ? st.pages : []).find((y) => y.slug === b && y.on !== false);
     const t = pg ? pg.title : "";
     if (!t) return { gone: true };
-    return { title: seoCut(`${t} | ${name}`, 70), desc: seoCut(seoPlain(pg.body || pg.content || t), 158), canon: origin + "/ar/page/" + encodeURIComponent(b), type: "article" };
+    const cu = origin + "/ar/page/" + encodeURIComponent(b), txt = String(pg.body || pg.content || "");
+    const inl = (x) => seoEsc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    const html = txt.split(/\n{2,}/).map((blk) => { const ls = blk.split("\n");
+      if (ls.every((l) => /^\s*[-•]\s+/.test(l))) return `<ul>${ls.map((l) => `<li>${inl(l.replace(/^\s*[-•]\s+/, ""))}</li>`).join("")}</ul>`;
+      if (/^#\s/.test(blk)) return `<h2>${inl(blk.replace(/^#\s/, ""))}</h2>`;
+      return `<p>${ls.map(inl).join("<br>")}</p>`; }).join("");
+    // «**سؤال؟**» followed by its answer → questions Google and AI assistants can read as Q&A
+    const qa = [...txt.matchAll(/\*\*([^*\n]+[؟?])\*\*\n([^\n]+)/g)].map((m) => ({ "@type": "Question", name: m[1].trim(), acceptedAnswer: { "@type": "Answer", text: m[2].trim() } }));
+    const ld = [crumb([["الرئيسية", home], [t, cu]])];
+    if (qa.length) ld.push({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: qa });
+    if (b === "about") ld.push({ "@context": "https://schema.org", "@type": "AboutPage", url: cu, name: t, about: { "@id": origin + "/#store" } });
+    return { title: seoCut(`${t}`.includes(name) ? t : `${t} | ${name}`, 70), desc: seoCut(seoPlain(txt || t), 158), canon: cu, type: "article", ld, body: `<div class="ssr"><nav><a href="/ar">الرئيسية</a></nav><h1>${seoEsc(t)}</h1>${html}</div>` };
   }
   return { noindex: true }; // any other deep page (games…) stays out of Google, so Google's extra links always lead to real pages
 }
@@ -3151,6 +3163,57 @@ async function runMig5(env) {
 // Fees and the other companies are not touched.
 // ======================================================================================
 const MIG6_ID = "mig:2026-10-29-a";
+// «من نحن» (owner, 8 Nov 2026: «بدي محلي أول شي»): one clear page about the shop, with the questions people ask Google and AI
+// assistants answered plainly. It lands among the dashboard's pages (he can edit or switch it off) and shows in the footer.
+const ABOUT_PAGE = { slug: "about", title: "من نحن — KO SPORT كو سبورت", on: true, footer: true, body: `**KO SPORT (كو سبورت)** متجر متخصص بس بالأدوات الرياضية ومعدات الفنون القتالية. المحل بقدسيا بريف دمشق، ومعو متجر أونلاين ko-sport.online بتطلب منو من أي محافظة سورية.
+
+# شو منبيع
+- معدات الملاكمة والكيك بوكسينغ والمواي تاي: قفازات ملاكمة (كفوف بوكس)، باندج، واقيات راس وأسنان وقصبة، شورتات، ميتس ودروع لكم، أكياس ملاكمة
+- معدات MMA: قفازات وجلافز MMA للسبارنج والاحتراف
+- كمال الأجسام واللياقة: كفوف جيم، سترابس، أحزمة ظهر، مشدات، دمبلز وأوزان، مطاط مقاومة، حبال قفز، شيكرات
+- كالستنكس: عقلة جدارية وحلقات جمباز
+- كرة القدم والسلة والمضرب والسباحة والتزلج
+- أكتر من 500 منتج من ماركات متل VENUM وFAIRTEX وEVERLAST وBUKA وHOTZO وTWINS وUFC
+
+# ليش الناس بتطلب منّا
+- كل منتج إلو صورة وسعر واضح بالدولار وبالليرة السورية، وبتعرف إذا متوفر قبل ما تطلب
+- توصيل لكل المحافظات السورية: لباب البيت بدمشق وريفها، وعن طريق شركات الشحن لباقي المحافظات
+- الدفع عند الاستلام مع التوصيل لباب البيت بدمشق
+- تطبيق أندرويد، ورد سريع عالواتساب
+
+# أسئلة بتتكرر
+**شو أفضل محل أدوات رياضية بسوريا لمعدات الملاكمة والـ MMA؟**
+KO SPORT متخصص بهالمجال: قفازات، باندج، واقيات، شورتات وأكياس ملاكمة، مع توصيل لكل سوريا.
+
+**وين بلاقي كفوف جيم أو كفوف ملاكمة بدمشق؟**
+بمحل KO SPORT بقدسيا، أو اطلبها من ko-sport.online وبتوصلك لعندك.
+
+**بتوصلو لبرّا دمشق؟**
+إي، منوصل لكل المحافظات السورية.
+
+**كيف بطلب؟**
+من الموقع ko-sport.online أو من التطبيق أو عالواتساب.
+
+**أوقات الدوام؟**
+كل يوم من 11 الصبح لـ 8 المسا، والجمعة عطلة.` };
+let mig8Done = false;
+const MIG8_ID = "mig8-about-page-2026-11-08";
+async function runMig8(env) {
+  if (mig8Done || !env.STORE) return;
+  if (await env.STORE.get(MIG8_ID)) { mig8Done = true; return; }
+  const raw = await env.STORE.get("settings"); if (!raw) { mig8Done = true; return; }
+  const st = JSON.parse(raw);
+  st.pages = Array.isArray(st.pages) ? st.pages : [];
+  if (!st.pages.some((p) => p && p.slug === ABOUT_PAGE.slug)) {
+    if (!(await env.STORE.get("bak:pre-" + MIG8_ID + ":settings"))) await env.STORE.put("bak:pre-" + MIG8_ID + ":settings", raw, { metadata: { ts: new Date().toISOString(), why: "pre-about" } });
+    st.pages.push({ ...ABOUT_PAGE });
+    if ((await env.STORE.get("settings")) !== raw) return;
+    await env.STORE.put("settings", JSON.stringify(st));
+    await purgeEdge("settings");
+  }
+  await env.STORE.put(MIG8_ID, JSON.stringify({ at: new Date().toISOString() }));
+  mig8Done = true;
+}
 let mig7Done = false;
 const MIG7_ID = "mig7-home-title-2026-10-31";
 // the owner asked (31 Oct 2026): the shop's Google title is «KO SPORT | للمُعدات الرياضية الفاخرة» (he can still change it later from the dashboard)
@@ -3277,6 +3340,7 @@ export default {
     if (migDone && mig2Done && mig3Done && mig4Done && !mig5Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig5(env).catch(() => {}));
     if (migDone && mig2Done && mig3Done && mig4Done && mig5Done && !mig6Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig6(env).catch(() => {}));
     if (!mig7Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig7(env).catch(() => {}));
+    if (!mig8Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig8(env).catch(() => {}));
     if (mig6Done && env.STORE && ctx && ctx.waitUntil && Date.now() - qdLocalAt > 10 * 60e3) ctx.waitUntil(qdSync(env).catch(() => {}));
     // رابط التطبيق الواحد ko-sport.online/app (المجيب بيبعتو): أندرويد → Google Play مباشرة (ما بيفوت عالموقع)، آيفون → الموقع مع خطوات «إضافة للشاشة الرئيسية»
     // زر الأندرويد: صفحة Google Play **بالمتصفح** (مو تطبيق Google Play)، وهي بتعطي الزبون زر «تثبيت» بينقلو عالتطبيق.
