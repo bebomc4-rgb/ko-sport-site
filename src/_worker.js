@@ -1793,7 +1793,9 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
     ["head", { element(e) { e.prepend(earlyDesign(st.design || {}), { html: true }); } }],
     ["html", { element(e) { e.setAttribute("style", cssVars(D)); for (const [k, v] of Object.entries(layoutOf(D))) e.setAttribute("data-l-" + k, v); } }],
     ["[data-headfont]", { element(e) { const u = fontUrl(D); if (u) e.setAttribute("href", u); else e.remove(); } }],
-    ['link[rel="icon"]', { element(e) { if (D.favicon) { e.setAttribute("href", D.favicon); e.setAttribute("type", "image/png"); } } }],
+    // أيقونة الموقع (بتطلع بنتائج غوغل وبالمتصفح): لوغو المتجر الأصفر مع التنين، مو الـ KO الأحمر الافتراضي
+    ['link[rel="icon"]', { element(e) { const fi = favOf(D); if (fi) { e.setAttribute("href", fi); e.setAttribute("type", /\.svg($|\?)/i.test(fi) ? "image/svg+xml" : /\.webp($|\?)/i.test(fi) ? "image/webp" : "image/png"); e.after(`<link rel="shortcut icon" href="${fi}">`, { html: true }); } } }],
+    ['link[rel="apple-touch-icon"]', { element(e) { const ai = D.appIcon192 || D.appIcon512 || favOf(D); if (ai) e.setAttribute("href", ai); } }],
   );
   if (crit) {
     // full stylesheet: downloaded at high priority without blocking the first paint; the shop script waits for it
@@ -2598,6 +2600,7 @@ async function catalogApi(request, env, ctx, kind) {
   return new Response(JSON.stringify(data), { headers: { "content-type": "application/json; charset=utf-8", ...cors } });
 }
 // The shop on Google Maps (its Google Business Profile). Keep in sync if the hours change on Google.
+const favOf = (D) => (D && (D.favicon || D.appIcon192 || D.appIcon512 || D.logoImage)) || "";
 const BIZ = {
   placeId: "ChIJvTnREgDdGBUREN7vcmrghCU",
   lat: 33.5468787, lng: 36.212863,
@@ -3266,6 +3269,12 @@ export default {
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
       // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
+      if ((path === "/favicon.ico" || path === "/favicon.svg" || path === "/favicon.png") && m === "GET" && env.STORE) {
+        let fi = ""; try { fi = favOf((await getSettings(env, request)).design || {}); } catch {}
+        if (fi) { const u = new URL(fi, url.origin); const r = await fetch(u.href, { cf: { cacheTtl: 86400 } }).catch(() => null);
+          if (r && r.ok) { const h = new Headers(r.headers); h.set("cache-control", "public, max-age=86400"); h.delete("set-cookie"); return new Response(r.body, { status: 200, headers: h }); }
+          return Response.redirect(u.href, 302); }
+      }
       if ((path === "/review" || path === "/map") && m === "GET") {
         let S = {}; try { S = (await getSettings(env, request)).store || {}; } catch {}
         return Response.redirect(path === "/review" ? reviewUrl(S) : mapUrl(S), 302);
