@@ -2812,8 +2812,8 @@ ${trustH()}
       const b = document.createElement("div");
       b.className = "app-bar";
       b.innerHTML = DEV === "ios"
-        ? `<img src="/favicon.svg" alt="" width="34" height="34"><span><b>تطبيق KO SPORT للآيفون</b><small>تسوّق أسرع من موبايلك</small></span><a href="${APP_IPH}" data-ios-install>حمّل</a><button type="button" aria-label="إغلاق">✕</button>`
-        : `<img src="/favicon.svg" alt="" width="34" height="34"><span><b>تطبيق KO SPORT لأندرويد</b><small>تسوّق أسرع من موبايلك</small></span><a href="${APP_AND}" target="_blank" rel="noopener">حمّل</a><button type="button" aria-label="إغلاق">✕</button>`;
+        ? `<img src="/brand/fav-96.png?v=3" alt="" width="34" height="34"><span><b>تطبيق KO SPORT للآيفون</b><small>تسوّق أسرع من موبايلك</small></span><a href="${APP_IPH}" data-ios-install>حمّل</a><button type="button" aria-label="إغلاق">✕</button>`
+        : `<img src="/brand/fav-96.png?v=3" alt="" width="34" height="34"><span><b>تطبيق KO SPORT لأندرويد</b><small>تسوّق أسرع من موبايلك</small></span><a href="${APP_AND}" target="_blank" rel="noopener">حمّل</a><button type="button" aria-label="إغلاق">✕</button>`;
       b.querySelector("button").onclick = () => { b.remove(); try { localStorage.setItem("ko-app-hide", "1"); } catch {} };
       document.body.appendChild(b);
     } catch {}

@@ -238,9 +238,10 @@ async function getSettings(env, request) {
   // اللوغو بدقة عالية (صاحب المتجر، 8 تشرين التاني 2026): الصور القديمة كانت صغيرة (240 و64 بكسل) وبتطلع مغبّشة.
   // منبدّلها باللوغو الرسمي يلي بعتو (1280 بكسل، دائري) عن طريق /brand/… — وإذا رفع لوغو جديد من اللوحة بيمشي هوي
   { const B = "https://ko-sport.online/brand/", D = out.design || (out.design = {});
-    const swap = { logoImage: ["/img/e2d9e7cd456c4eecb50e", B + "logo.webp"], favicon: ["/img/25ad8223c25042b58daa", B + "fav-96.png"], appIcon192: ["/img/5922c27023d94d55add6", B + "icon-192.png"], appIcon512: ["/img/9288386963554941ae39", B + "icon-512.png"] };
+    const V = "?v=3"; // رقم النسخة: بيتغيّر مع كل لوغو جديد لحتى ما يضل عند الزباين نسخة قديمة محفوظة
+    const swap = { logoImage: ["/img/e2d9e7cd456c4eecb50e", B + "logo.webp" + V], favicon: ["/img/25ad8223c25042b58daa", B + "fav-96.png" + V], appIcon192: ["/img/5922c27023d94d55add6", B + "icon-192.png" + V], appIcon512: ["/img/9288386963554941ae39", B + "icon-512.png" + V] };
     for (const [k, [old, nu]] of Object.entries(swap)) if (D[k] === old) D[k] = nu;
-    if (out.store && out.store.shareImage === "/img/591b294983754600b73d") out.store = { ...out.store, shareImage: B + "share.jpg" }; }
+    if (out.store && out.store.shareImage === "/img/591b294983754600b73d") out.store = { ...out.store, shareImage: B + "share.jpg" + V }; }
   return out;
 }
 
@@ -3266,7 +3267,7 @@ export default {
           const st = await getSettings(env, request), D = st.design || {};
           const r = await env.ASSETS.fetch(new URL("/manifest.webmanifest", request.url)); const man = await r.json();
           if (D.appIcon512 && D.appIcon192) {
-            man.icons = [{ src: D.appIcon192, sizes: "192x192", type: "image/png", purpose: "any" }, { src: D.appIcon512, sizes: "512x512", type: "image/png", purpose: "any" }, { src: /\/brand\//.test(D.appIcon512) ? "https://ko-sport.online/brand/maskable-512.png" : D.appIcon512, sizes: "512x512", type: "image/png", purpose: "maskable" }];
+            man.icons = [{ src: D.appIcon192, sizes: "192x192", type: "image/png", purpose: "any" }, { src: D.appIcon512, sizes: "512x512", type: "image/png", purpose: "any" }, { src: /\/brand\//.test(D.appIcon512) ? "https://ko-sport.online/brand/maskable-512.png?v=3" : D.appIcon512, sizes: "512x512", type: "image/png", purpose: "maskable" }];
             if (man.shortcuts) man.shortcuts.forEach((x) => { x.icons = [{ src: D.appIcon192, sizes: "192x192" }]; });
           }
           if (st.store && st.store.name) { man.short_name = String(st.store.name).slice(0, 20); }
@@ -3295,14 +3296,14 @@ export default {
         let D = {}; try { D = (await getSettings(env, request)).design || {}; } catch {}
         const r = await env.ASSETS.fetch(new URL("/admin.webmanifest", request.url)); let man = null; try { man = await r.json(); } catch {}
         if (man) { const a192 = D.appIcon192 || favOf(D), a512 = D.appIcon512 || a192;
-          if (a192) { man.icons = [{ src: a192, sizes: "192x192", type: "image/png", purpose: "any" }, { src: a512, sizes: "512x512", type: "image/png", purpose: "any" }, { src: /\/brand\//.test(a512) ? "https://ko-sport.online/brand/maskable-512.png" : a512, sizes: "512x512", type: "image/png", purpose: "maskable" }]; (man.shortcuts || []).forEach((x) => { x.icons = [{ src: a192, sizes: "192x192" }]; }); }
+          if (a192) { man.icons = [{ src: a192, sizes: "192x192", type: "image/png", purpose: "any" }, { src: a512, sizes: "512x512", type: "image/png", purpose: "any" }, { src: /\/brand\//.test(a512) ? "https://ko-sport.online/brand/maskable-512.png?v=3" : a512, sizes: "512x512", type: "image/png", purpose: "maskable" }]; (man.shortcuts || []).forEach((x) => { x.icons = [{ src: a192, sizes: "192x192" }]; }); }
           return new Response(JSON.stringify(man), { headers: { "content-type": "application/manifest+json; charset=utf-8", "cache-control": "public, max-age=3600" } }); }
       }
       if ((path === "/favicon.ico" || path === "/favicon.svg" || path === "/favicon.png" || /^\/assets\/icons\/(admin-(192|512|apple|maskable-512)|apple-touch-icon|icon-(192|512)|maskable-512)\.png$/.test(path)) && m === "GET" && env.STORE) {
-        let fi = ""; try { const D = (await getSettings(env, request)).design || {}; fi = /apple/.test(path) ? "https://ko-sport.online/brand/apple-180.png" : /maskable/.test(path) ? "https://ko-sport.online/brand/maskable-512.png" : /512/.test(path) ? (D.appIcon512 || favOf(D)) : favOf(D); } catch {}
+        let fi = ""; try { const D = (await getSettings(env, request)).design || {}; fi = /apple/.test(path) ? "https://ko-sport.online/brand/apple-180.png?v=3" : /maskable/.test(path) ? "https://ko-sport.online/brand/maskable-512.png?v=3" : /512/.test(path) ? (D.appIcon512 || favOf(D)) : favOf(D); } catch {}
         if (fi && new URL(fi, url.origin).pathname === path) fi = "";
         if (fi) { const u = new URL(fi, url.origin); const r = await fetch(u.href, { cf: { cacheTtl: 86400 } }).catch(() => null);
-          if (r && r.ok) { const h = new Headers(r.headers); h.set("cache-control", "public, max-age=86400"); h.delete("set-cookie"); return new Response(r.body, { status: 200, headers: h }); }
+          if (r && r.ok) { const h = new Headers(r.headers); h.set("cache-control", "public, max-age=3600"); h.delete("set-cookie"); return new Response(r.body, { status: 200, headers: h }); }
           return Response.redirect(u.href, 302); }
       }
       if ((path === "/review" || path === "/map") && m === "GET") {
