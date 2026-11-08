@@ -1913,14 +1913,14 @@ const INDEXNOW_KEY = "a4eedfb1f416acfed1d3ed1a4575125a";
 async function indexNowAll(request, env, ctx, force) {
   const u = new URL(request.url);
   if (u.hostname !== "ko-sport.online" || !env.STORE) return;
-  if (!force && (await env.STORE.get("indexnow:last"))) return; // at most every 6 hours
-  await env.STORE.put("indexnow:last", new Date().toISOString(), { expirationTtl: 6 * 3600 });
+  if (!force && (await env.STORE.get("indexnow:last2"))) return; // at most every 6 hours
+  await env.STORE.put("indexnow:last2", new Date().toISOString(), { expirationTtl: 6 * 3600 });
   const xml = await (await siteFiles(new Request(u.origin + "/sitemap.xml"), env, "/sitemap.xml", ctx)).text();
   const urlList = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((x) => x[1].replace(/&amp;/g, "&")).filter((x) => x.startsWith(u.origin + "/")).slice(0, 10000);
   const r = await fetch("https://www.bing.com/indexnow", { method: "POST", headers: { "content-type": "application/json; charset=utf-8" },
     body: JSON.stringify({ host: u.hostname, key: INDEXNOW_KEY, keyLocation: u.origin + "/" + INDEXNOW_KEY + ".txt", urlList }) }).catch((e) => ({ status: 0, e: String(e) }));
   await env.STORE.put("indexnow:result", JSON.stringify({ at: new Date().toISOString(), status: r.status, n: urlList.length, via: "bing" }));
-  if (!(r.status >= 200 && r.status < 300)) await env.STORE.put("indexnow:last", "retry", { expirationTtl: 3600 }); // try again in an hour
+  if (!(r.status >= 200 && r.status < 300)) await env.STORE.put("indexnow:last2", "retry", { expirationTtl: 3600 }); // try again in an hour
 }
 // robots.txt, sitemap.xml and llms.txt for search engines and AI assistants
 // owner's 301 redirects (from «النطاق»)
