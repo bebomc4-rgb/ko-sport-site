@@ -3312,6 +3312,10 @@ export default {
       }
       // The shop lives under /ar/… : /ar/, /ar/cart, /ar/p/<id> … every address is a real page now.
       if (m === "GET" && /^\/ar\/product(\/|$)/.test(path)) return oldWuiltLink(request, env, url);
+      // صفحات ويلت القديمة يلي غوغل لسا بيعرفها (المتجر، تواصل معنا…) ← صفحاتنا الجديدة بتحويل دائم
+      if (m === "GET" && /^\/(ar|en)\/(shop|store|products|categories|collections?|contact-us|contact|about-us|about|pages\/[^/]+|blog|faq|track-order|account\/login)\/?$/i.test(path)) {
+        return Response.redirect(new URL(/\/(shop|store|products|categories|collections?)\/?$/i.test(path) ? "/ar/all" : "/ar", url.origin).toString(), 301);
+      }
       // روابط ويلت القديمة بلا /ar (متل /product/all/<الاسم> يلي بنتائج غوغل) ← نفس التحويل
       if (m === "GET" && /^\/(en\/)?(product|products|collections?|category|categories|shop|store)(\/|$)/i.test(path)) {
         const u2 = new URL(url.href); u2.pathname = "/ar" + path.replace(/^\/en/i, "").replace(/^\/products(\/|$)/i, "/product$1"); return oldWuiltLink(request, env, u2);
