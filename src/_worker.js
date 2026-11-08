@@ -3285,6 +3285,7 @@ export default {
       // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
       // أيقونات لوحة التحكم كمان (المتصفح، الشاشة الرئيسية، تطبيق اللوحة): التنين الأصفر بدل الـ KO الأحمر
       // اللوغو الرسمي (صورة صاحب المتجر 1280 بكسل، مقصوصة دائرية) بكل الأحجام: محفوظة جوّا الموقع بـ /assets/brand/
+      if (path === "/ar/sitemap.xml" && m === "GET") return siteFiles(request, env, "/sitemap.xml", ctx); // خريطة الموقع جوّا حساب Search Console
       if (path.startsWith("/brand/") && m === "GET") {
         const f = { "share.png": "share.jpg" }[path.slice(7)] || path.slice(7);
         if (!/^[a-z0-9-]+\.(png|webp|jpg)$/.test(f)) return new Response("not found", { status: 404 });
