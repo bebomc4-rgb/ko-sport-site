@@ -3234,7 +3234,7 @@ export default {
     // ko-sport.pages.dev → ko-sport.online (pages only; /api and /media stay reachable for the bot and the app)
     // تطبيق الأندرويد (WebView) لازم يضل جوّا التطبيق: منتعرّف عليه من أكتر من إشارة (مو بس "; wv)" بالـ user-agent)
     const inAppReq = (rq) => { const h = rq.headers, ua = h.get("user-agent") || "";
-      return /; wv\)|appcreator|Version\/4\.0 Chrome/i.test(ua) || /WebView/i.test(h.get("sec-ch-ua") || "") || /kosport|appcreator/i.test(h.get("x-requested-with") || "") || (h.get("sec-fetch-mode") && h.get("sec-fetch-mode") !== "navigate"); };
+      return /; wv\)|appcreator|Version\/4\.0 Chrome/i.test(ua) || /WebView/i.test(h.get("sec-ch-ua") || "") || /kosport|appcreator/i.test(h.get("x-requested-with") || ""); };
     if (url.hostname === "ko-sport.pages.dev" && m === "GET" && !path.startsWith("/api/") && !path.startsWith("/media/") && !inAppReq(request)) { // the Android app (WebView) stays on its own address so it never jumps to the browser
       return Response.redirect("https://ko-sport.online" + path + url.search, 301);
     }
