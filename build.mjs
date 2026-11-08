@@ -25,7 +25,7 @@ for (const g of groups) {
   catch { minOk = false; console.warn("⚠️ ما قدرت صغّر الملفات (esbuild)، كمّلت بدون تصغير"); fs.rmSync(tmp, { recursive: true, force: true }); fs.cpSync(src, tmp, { recursive: true }); }
 }
 // 2) embed every static file into _worker.js
-const CT = { ".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json; charset=utf-8", ".txt": "text/plain; charset=utf-8" };
+const CT = { ".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg", ".webmanifest": "application/manifest+json; charset=utf-8", ".txt": "text/plain; charset=utf-8" };
 const files = {};
 const walk = (d) => { for (const n of fs.readdirSync(d)) { const p = path.join(d, n); if (fs.statSync(p).isDirectory()) walk(p); else { const rel = "/" + path.relative(tmp, p).split(path.sep).join("/"); if (rel === "/_worker.js" || !CT[path.extname(n)]) continue; const b = fs.readFileSync(p); files[rel] = [b.toString("base64"), CT[path.extname(n)], '"' + crypto.createHash("sha1").update(b).digest("hex").slice(0, 16) + '"']; } } };
 walk(tmp);
