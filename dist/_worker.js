@@ -35,7 +35,7 @@ function __embAssets(real) {
 //   Optional      TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (instant order alerts)
 
 // Replaced by build.mjs with the moment this copy was built — so we can tell which deploy is live.
-const BUILD_AT = "2026-11-08 13:21Z";
+const BUILD_AT = "2026-11-08 13:24Z";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -3312,6 +3312,10 @@ export default {
       }
       // The shop lives under /ar/… : /ar/, /ar/cart, /ar/p/<id> … every address is a real page now.
       if (m === "GET" && /^\/ar\/product(\/|$)/.test(path)) return oldWuiltLink(request, env, url);
+      // روابط ويلت القديمة بلا /ar (متل /product/all/<الاسم> يلي بنتائج غوغل) ← نفس التحويل
+      if (m === "GET" && /^\/(en\/)?(product|products|collections?|category|categories|shop|store)(\/|$)/i.test(path)) {
+        const u2 = new URL(url.href); u2.pathname = "/ar" + path.replace(/^\/en/i, "").replace(/^\/products(\/|$)/i, "/product$1"); return oldWuiltLink(request, env, u2);
+      }
       if (m === "GET" && path.startsWith("/ar/p/") && env.STORE) {
         let id = path.slice(6); try { id = decodeURIComponent(id); } catch {}
         const t = await productByAlias(env, request, id.replace(/\/$/, ""));
