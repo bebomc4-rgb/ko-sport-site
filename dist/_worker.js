@@ -35,7 +35,7 @@ function __embAssets(real) {
 //   Optional      TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (instant order alerts)
 
 // Replaced by build.mjs with the moment this copy was built — so we can tell which deploy is live.
-const BUILD_AT = "2026-11-08 17:16Z";
+const BUILD_AT = "2026-11-08 17:18Z";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -3406,8 +3406,9 @@ export default {
       } else if (path === "/api/images") {
         if (m === "POST") return imageUpload(request, env);
         if (m === "PATCH") return imageMigrate(request, env);
-      } else if ((path === "/robots.txt" || path === "/sitemap.xml" || path === "/llms.txt") && m === "GET") {
-        return siteFiles(request, env, path, ctx);
+      } else if ((path === "/robots.txt" || path === "/sitemap.xml" || path === "/llms.txt" || path === "/ar/sitemap.xml") && m === "GET") {
+        // /ar/sitemap.xml: نفس الخريطة، لأنو حساب Search Console مسجّل على ko-sport.online/ar/ وما بيقبل خريطة برّاه
+        return siteFiles(request, env, path === "/ar/sitemap.xml" ? "/sitemap.xml" : path, ctx);
       } else if (path === "/api/reviews") {
         if (m === "POST") return reviewsPost(request, env, ctx);
         if (m === "GET") return reviewsGet(request, env, ctx);

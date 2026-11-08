@@ -3376,8 +3376,9 @@ export default {
       } else if (path === "/api/images") {
         if (m === "POST") return imageUpload(request, env);
         if (m === "PATCH") return imageMigrate(request, env);
-      } else if ((path === "/robots.txt" || path === "/sitemap.xml" || path === "/llms.txt") && m === "GET") {
-        return siteFiles(request, env, path, ctx);
+      } else if ((path === "/robots.txt" || path === "/sitemap.xml" || path === "/llms.txt" || path === "/ar/sitemap.xml") && m === "GET") {
+        // /ar/sitemap.xml: نفس الخريطة، لأنو حساب Search Console مسجّل على ko-sport.online/ar/ وما بيقبل خريطة برّاه
+        return siteFiles(request, env, path === "/ar/sitemap.xml" ? "/sitemap.xml" : path, ctx);
       } else if (path === "/api/reviews") {
         if (m === "POST") return reviewsPost(request, env, ctx);
         if (m === "GET") return reviewsGet(request, env, ctx);
