@@ -3286,7 +3286,7 @@ export default {
       // نسخ اللوغو بدقة عالية (أيقونة تطبيق KO SPORT على Google Play، 512 بكسل): السيرفر بيجيبها وبيخزّنها، فبتفتح بسوريا كمان
       if (path.startsWith("/brand/") && m === "GET") {
         const SRC = "https://play-lh.googleusercontent.com/ENZAxcJlKKIhcjpLXXjBmexzxGZlioqZSWdknz0moNm_iDMBGIqh0zXBaMTXLKRbBLhjiWZ-wtTuTz6MXvLgmA";
-        const V = { "logo.webp": "=s320-cc-rw", "logo.png": "=s320-cc-rp", "fav-96.png": "=s96-cc-rp", "fav-48.png": "=s48-cc-rp", "icon-192.png": "=s192-rp", "icon-512.png": "=s512-rp", "apple-180.png": "=s180-rp", "share.png": "=s600-rp" }[path.slice(7)];
+        const V = { "logo.webp": "=s240-cc-rw", "logo.png": "=s320-cc-rp", "fav-96.png": "=s96-cc-rp", "fav-48.png": "=s48-cc-rp", "icon-192.png": "=s192-rp", "icon-512.png": "=s512-rp", "apple-180.png": "=s180-rp", "share.png": "=s600-rp" }[path.slice(7)];
         if (!V) return new Response("not found", { status: 404 });
         const r = await fetch(SRC + V, { cf: { cacheTtl: 2592000, cacheEverything: true } }).catch(() => null);
         if (!r || !r.ok) return new Response("unavailable", { status: 502 });
