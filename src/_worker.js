@@ -235,6 +235,12 @@ async function getSettings(env, request) {
     out.shipping.carriers = out.shipping.carriers.map((c) => (c.id === "qadmous" ? { ...c, govs: (c.govs || []).filter((g) => !EAST.includes(g.name)) } : c));
     out.shipping.carriers.push({ id: "awda", name: "شركة العودة للشحن", type: "door", on: true, note: "الشحن لمحافظتك عن طريق شركة العودة — منتواصل معك لنأكد مكان الاستلام", payments: [], govs: EAST.map((name) => ({ name, fee: null, branches: [] })) });
   }
+  // اللوغو بدقة عالية (صاحب المتجر، 8 تشرين التاني 2026): الصور القديمة كانت صغيرة (240 و64 بكسل) وبتطلع مغبّشة.
+  // منبدّلها بأيقونة التطبيق الأصلية من Google Play (512 بكسل) عن طريق /brand/… — وإذا رفع لوغو جديد من اللوحة بيمشي هوي
+  { const B = "https://ko-sport.online/brand/", D = out.design || (out.design = {});
+    const swap = { logoImage: ["/img/e2d9e7cd456c4eecb50e", B + "logo.webp"], favicon: ["/img/25ad8223c25042b58daa", B + "fav-96.png"], appIcon192: ["/img/5922c27023d94d55add6", B + "icon-192.png"], appIcon512: ["/img/9288386963554941ae39", B + "icon-512.png"] };
+    for (const [k, [old, nu]] of Object.entries(swap)) if (D[k] === old) D[k] = nu;
+    if (out.store && out.store.shareImage === "/img/591b294983754600b73d") out.store = { ...out.store, shareImage: B + "share.png" }; }
   return out;
 }
 
@@ -3277,6 +3283,15 @@ export default {
       if (path === "/reset" && m === "GET") return resetPage();
       // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
       // أيقونات لوحة التحكم كمان (المتصفح، الشاشة الرئيسية، تطبيق اللوحة): التنين الأصفر بدل الـ KO الأحمر
+      // نسخ اللوغو بدقة عالية (أيقونة تطبيق KO SPORT على Google Play، 512 بكسل): السيرفر بيجيبها وبيخزّنها، فبتفتح بسوريا كمان
+      if (path.startsWith("/brand/") && m === "GET") {
+        const SRC = "https://play-lh.googleusercontent.com/ENZAxcJlKKIhcjpLXXjBmexzxGZlioqZSWdknz0moNm_iDMBGIqh0zXBaMTXLKRbBLhjiWZ-wtTuTz6MXvLgmA";
+        const V = { "logo.webp": "=s320-cc-rw", "logo.png": "=s320-cc-rp", "fav-96.png": "=s96-cc-rp", "fav-48.png": "=s48-cc-rp", "icon-192.png": "=s192-rp", "icon-512.png": "=s512-rp", "apple-180.png": "=s180-rp", "share.png": "=s600-rp" }[path.slice(7)];
+        if (!V) return new Response("not found", { status: 404 });
+        const r = await fetch(SRC + V, { cf: { cacheTtl: 2592000, cacheEverything: true } }).catch(() => null);
+        if (!r || !r.ok) return new Response("unavailable", { status: 502 });
+        return new Response(r.body, { headers: { "content-type": r.headers.get("content-type") || "image/png", "cache-control": "public, max-age=2592000", "access-control-allow-origin": "*" } });
+      }
       if (path === "/admin.webmanifest" && m === "GET" && env.STORE) {
         let D = {}; try { D = (await getSettings(env, request)).design || {}; } catch {}
         const r = await env.ASSETS.fetch(new URL("/admin.webmanifest", request.url)); let man = null; try { man = await r.json(); } catch {}
