@@ -3234,6 +3234,25 @@ async function runMig8(env) {
   await env.STORE.put(MIG8_ID, JSON.stringify({ at: new Date().toISOString() }));
   mig8Done = true;
 }
+// the owner asked (8 Nov 2026, «حط بسوريا»): the shop's Google title becomes «KO SPORT | للمُعدات الرياضية الفاخرة بسوريا»
+let mig9Done = false;
+const MIG9_ID = "mig9-home-title-syria-2026-11-08";
+async function runMig9(env) {
+  if (mig9Done || !env.STORE) return;
+  if (await env.STORE.get(MIG9_ID)) { mig9Done = true; return; }
+  const raw = await env.STORE.get("settings"); if (!raw) { mig9Done = true; return; }
+  const st = JSON.parse(raw); st.store = st.store || {};
+  const was = st.store.seoTitle || "";
+  if (was !== "KO SPORT | للمُعدات الرياضية الفاخرة بسوريا") {
+    if (!(await env.STORE.get("bak:pre-" + MIG9_ID + ":settings"))) await env.STORE.put("bak:pre-" + MIG9_ID + ":settings", raw, { metadata: { ts: new Date().toISOString(), why: "pre-title" } });
+    st.store.seoTitle = "KO SPORT | للمُعدات الرياضية الفاخرة بسوريا";
+    if ((await env.STORE.get("settings")) !== raw) return;
+    await env.STORE.put("settings", JSON.stringify(st));
+    await purgeEdge("settings");
+  }
+  await env.STORE.put(MIG9_ID, JSON.stringify({ at: new Date().toISOString(), was }));
+  mig9Done = true;
+}
 let mig7Done = false;
 const MIG7_ID = "mig7-home-title-2026-10-31";
 // the owner asked (31 Oct 2026): the shop's Google title is «KO SPORT | للمُعدات الرياضية الفاخرة» (he can still change it later from the dashboard)
@@ -3361,6 +3380,7 @@ export default {
     if (migDone && mig2Done && mig3Done && mig4Done && mig5Done && !mig6Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig6(env).catch(() => {}));
     if (!mig7Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig7(env).catch(() => {}));
     if (!mig8Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig8(env).catch(() => {}));
+    if (mig7Done && !mig9Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig9(env).catch(() => {}));
     if (mig6Done && env.STORE && ctx && ctx.waitUntil && Date.now() - qdLocalAt > 10 * 60e3) ctx.waitUntil(qdSync(env).catch(() => {}));
     // رابط التطبيق الواحد ko-sport.online/app (المجيب بيبعتو): أندرويد → Google Play مباشرة (ما بيفوت عالموقع)، آيفون → الموقع مع خطوات «إضافة للشاشة الرئيسية»
     // زر الأندرويد: صفحة Google Play **بالمتصفح** (مو تطبيق Google Play)، وهي بتعطي الزبون زر «تثبيت» بينقلو عالتطبيق.
