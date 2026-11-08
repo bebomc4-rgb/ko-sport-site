@@ -35,7 +35,7 @@ function __embAssets(real) {
 //   Optional      TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (instant order alerts)
 
 // Replaced by build.mjs with the moment this copy was built — so we can tell which deploy is live.
-const BUILD_AT = "2026-11-08 12:08Z";
+const BUILD_AT = "2026-11-08 12:10Z";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -2629,7 +2629,8 @@ async function catalogApi(request, env, ctx, kind) {
   return new Response(JSON.stringify(data), { headers: { "content-type": "application/json; charset=utf-8", ...cors } });
 }
 // The shop on Google Maps (its Google Business Profile). Keep in sync if the hours change on Google.
-const favOf = (D) => (D && (D.favicon || D.appIcon192 || D.appIcon512 || D.logoImage)) || "";
+// أيقونة التطبيق (التنين الأصفر) أول شي، بعدين اللوغو، وآخر شي أيقونة المتصفح القديمة (كانت الـ KO الأحمر)
+const favOf = (D) => (D && (D.appIcon192 || D.appIcon512 || D.logoImage || D.favicon)) || "";
 const BIZ = {
   placeId: "ChIJvTnREgDdGBUREN7vcmrghCU",
   lat: 33.5468787, lng: 36.212863,
@@ -3299,11 +3300,6 @@ export default {
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
       // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
-      if (path === "/favicon-check.txt" && env.STORE) { // مؤقت للفحص
-        let D = {}; try { D = (await getSettings(env, request)).design || {}; } catch {}
-        const fi = favOf(D); let st = "-", ct = "-", n = 0; if (fi) { try { const r = await fetch(new URL(fi, url.origin).href); st = r.status; ct = r.headers.get("content-type"); n = (await r.arrayBuffer()).byteLength; } catch (e) { st = "ERR " + e.message; } }
-        return new Response(`icon: ${fi}\nfavicon:${D.favicon || ""} app192:${D.appIcon192 || ""} logo:${D.logoImage || ""}\nfetch: ${st} ${ct} ${n} bytes`, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
-      }
       if ((path === "/favicon.ico" || path === "/favicon.svg" || path === "/favicon.png") && m === "GET" && env.STORE) {
         let fi = ""; try { fi = favOf((await getSettings(env, request)).design || {}); } catch {}
         if (fi) { const u = new URL(fi, url.origin); const r = await fetch(u.href, { cf: { cacheTtl: 86400 } }).catch(() => null);
