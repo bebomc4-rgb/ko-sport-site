@@ -24,7 +24,7 @@
   function mark(p) { var f = p.freq || "session", k = "ko_pm_" + p.id; if (f === "session") SS(k, "1"); else if (f !== "always") LS(k, String(Date.now())); }
   // رابط تحميل التطبيق بالإعلان (متل رسائل الواتس): أندرويد ← Google Play، آيفون ← ko-sport.online/iphone
   var UA = navigator.userAgent || "", IOS = /iphone|ipad|ipod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1), AND = /android/i.test(UA);
-  var PLAY = "https://play.google.com/store/apps/details?id=com.kosport.app", IPH = "https://ko-sport.online/iphone";
+  var PLAY = "https://ko-sport.online/app", IPH = "https://ko-sport.online/iphone";
   function appLink(l) { return /(^|\/\/(www\.)?ko-sport\.online)\/(app|iphone)\/?($|[?#])|play\.google\.com\/store\/apps\/details\?id=com\.kosport\.app|^\/app$|^\/iphone$/i.test(String(l || "").trim()); }
   function href(l) {
     l = String(l || "");

@@ -3,7 +3,7 @@
   let C = {}; // flattened live settings
   const KO_PLAY = "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://play.google.com/store/apps/details%3Fid%3Dcom.kosport.app%26referrer%3Dutm_source%253Dgoogle%2526utm_medium%253Dorganic%2526utm_term%253Dko%2Bsport%2Bapk%2B%25D9%2584%25D9%2584%25D8%25A7%25D8%25AF%25D9%2588%25D8%25A7%25D8%25AA%2B%25D8%25A7%25D9%2584%25D8%25B1%25D9%258A%25D8%25A7%25D8%25B6%25D9%258A%25D8%25A9&ved=2ahUKEwiUhZrk1uaXAxWEQfEDHcBzPfwQFnoECBsQAQ&sqi=2&usg=AOvVaw0h_oyvDSLNv6Wk00GosHAb";
   // تحميل التطبيق بالإعلانات (صاحب المتجر، 6 تشرين التاني 2026: متل رسائل الواتس): كل جهاز بيشوف تبعو بس
-  const APP_AND = "https://play.google.com/store/apps/details?id=com.kosport.app", APP_IPH = "https://ko-sport.online/iphone";
+  const APP_AND = KO_PLAY, /* رابط غوغل يلي اختارو صاحب المتجر: بيفتح تطبيق Google Play الأصلي (الرابط المباشر كان يعطي «تعذّر فتح التطبيق») */ APP_IPH = "https://ko-sport.online/iphone";
   const DEV = (() => { const ua = navigator.userAgent || ""; return /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? "ios" : /android/i.test(ua) ? "android" : "pc"; })();
   // جوّا تطبيق الأندرويد (أو على ko-sport.pages.dev): أي رابط لـ ko-sport.online بيضل جوّا التطبيق، ما بيفتح المتصفح
   const IN_APP = /; wv\)|appcreator/i.test(navigator.userAgent || "") || location.hostname === "ko-sport.pages.dev";
