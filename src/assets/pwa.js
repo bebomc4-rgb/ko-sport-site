@@ -78,7 +78,7 @@
   var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
   // إعلان تحميل التطبيق (صاحب المتجر، 6 تشرين التاني 2026: متل رسائل الواتس): أندرويد ← Google Play، آيفون ← ko-sport.online/iphone
   var inApp = /; wv\)|appcreator/i.test(navigator.userAgent), android = /android/i.test(navigator.userAgent) && !inApp;
-  var PLAY = "https://ko-sport.online/app", IPH = "https://ko-sport.online/iphone";
+  var PLAY = "https://play.google.com/store/apps/details?id=com.kosport.app", IPH = "https://ko-sport.online/iphone";
   var pushOk = KOPush.supported() && !(ios && !standalone);      // iPhone supports push only inside the installed app
   var cfg = { prompt: true, delay: 1, bar: BDEF }, B = BDEF, dp = null, cur = null, shown = false, busy = false, gone = false, t0 = Date.now();
   var recent = function (k) { return B.again > 0 && Date.now() - (+get(k) || 0) < B.again * 864e5; };
