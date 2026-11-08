@@ -2681,7 +2681,13 @@ async function pageSeo(request, env, ctx, st) {
     const price = `$${x.price_usd}${x.price_syp ? ` (${SYP(x.price_syp)} ل.س)` : ""}`;
     const title = seoCut(`${x.name} | ${label(c)} بسوريا | ${name}`, 70);
     const about = seoPlain(x.description || x.details || "");
-    const desc = seoCut(`${x.name} بسعر ${price} من ${name}. ${x.in_stock ? "متوفر" : "خالص حالياً"}، توصيل لكل المحافظات السورية. ${about}`, 158);
+    // real customer stars (only reviews the owner approved) → Google can show ⭐ under the product
+    const revs = ((await env.STORE.get("reviews", "json").catch(() => null)) || []).filter((r) => r.ok && (r.pid === x.id || r.pid === seoMain(list, x).id));
+    const rateLd = revs.length ? {
+      aggregateRating: { "@type": "AggregateRating", ratingValue: Math.round((revs.reduce((t, r) => t + r.rating, 0) / revs.length) * 10) / 10, reviewCount: revs.length, bestRating: 5, worstRating: 1 },
+      review: revs.slice(-5).reverse().map((r) => ({ "@type": "Review", author: { "@type": "Person", name: r.name || "زبون" }, datePublished: String(r.at || "").slice(0, 10), reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5 }, ...(r.text ? { reviewBody: r.text } : {}) })),
+    } : {};
+    const desc = seoCut(`${x.name} بسعر ${price} من ${name} (كو سبورت). ${x.in_stock ? "متوفر" : "خالص حالياً"}، توصيل لكل المحافظات السورية. ${about}`, 158);
     const ld = [{
       "@context": "https://schema.org", "@type": "Product", name: x.name, sku: x.id, category: label(c), url: canon,
       image: x.images.length ? x.images : undefined, description: about || desc, brand: { "@type": "Brand", name: (x.name.match(/\b(Venum|Everlast|Adidas|Nike|Fairtex|Twins|Buka|Hotzo|Reebok|RDX|Hayabusa)\b/i) || [])[0] || name },
@@ -2691,6 +2697,7 @@ async function pageSeo(request, env, ctx, st) {
         seller: { "@type": "Organization", name }, areaServed: { "@type": "Country", name: "Syria" },
         shippingDetails: { "@type": "OfferShippingDetails", shippingDestination: { "@type": "DefinedRegion", addressCountry: "SY" } },
       },
+      ...rateLd,
     }, crumb([["الرئيسية", home], [label(c), cu], [x.name, canon]])];
     const same = list.filter((y) => y.id !== x.id && y.collections.includes(c)).slice(0, 12);
     const body = `<div class="ssr"><nav><a href="/ar">الرئيسية</a> / <a href="/ar/c/${encodeURIComponent(catSlugOf(st, c))}">${seoEsc(label(c))}</a></nav>
@@ -2718,8 +2725,10 @@ ${same.length ? `<h2>منتجات مشابهة</h2><ul>${same.map(cardHtml).join
     if (!items.length) return list.length ? { gone: true } : { noindex: true };
     items = items.slice().sort((x, y) => (y.in_stock - x.in_stock));
     const lo = Math.min(...items.map((y) => y.price_usd));
-    const title = seoCut(mt.seoTitle || `${t} بسوريا — أسعار وتوصيل | ${name}`, 70);
-    const desc = seoCut(mt.seoDesc || mt.desc || `تسوّق ${t} من ${name}: تشكيلة كاملة، الأسعار بتبلّش من $${lo}، بالدولار والليرة السورية. توصيل لكل المحافظات السورية.`, 158);
+    const def = a === "c" ? MIG_CAT_TEXT[catOfSlug(st, cats, b)] : null, sk = a === "c" ? SEO_CAT[catOfSlug(st, cats, b)] : null;
+    const mine = (v, i) => (sk && (!v || (def && v === def[i])) ? sk[i - 1] : v); // the owner's own text always wins
+    const title = seoCut(mine(mt.seoTitle, 1) || `${t} بسوريا — أسعار وتوصيل | ${name}`, 70);
+    const desc = seoCut(mine(mt.seoDesc, 2) || mt.desc || `تسوّق ${t} من ${name}: تشكيلة كاملة، الأسعار بتبلّش من $${lo}، بالدولار والليرة السورية. توصيل لكل المحافظات السورية.`, 158);
     const ld = [{
       "@context": "https://schema.org", "@type": "CollectionPage", name: t, url: cu, description: desc,
       mainEntity: { "@type": "ItemList", numberOfItems: items.length, itemListElement: items.slice(0, 30).map((y, i) => ({ "@type": "ListItem", position: i + 1, url: origin + "/ar/p/" + encodeURIComponent(y.id), name: y.name })) },
@@ -2878,6 +2887,20 @@ const MIG_CAT_TEXT = {
   "كرات قدم": ["طابات كرة قدم وكفوف حراسة من ADIDAS وREUSCH، ولوح خطط ومنفاخ، لكل لاعب وحارس مرمى.", "كرة قدم وكفوف حراسة بسوريا | KO SPORT", "طابات كرة قدم، كفوف حراسة ADIDAS وREUSCH، لوح خطط ومنفاخ. توصيل لكل المحافظات السورية."],
   "كرة سلة": ["طابات كرة سلة للملاعب الداخلية والخارجية، منها الملونة والمضيئة، مع لوح خطط للمدربين.", "طابة كرة سلة بسوريا | KO SPORT", "طابات كرة سلة للملاعب الداخلية والخارجية، ملونة ومضيئة، ولوح خطط. توصيل لكل المحافظات السورية."],
   "الاكثر مبيعا": ["المنتجات يلي أكتر شي عم يطلبها زبائن KO SPORT: قفازات وباندج وأدوات جيم ولياقة.", "الأكثر مبيعاً | KO SPORT", "أكتر الأدوات الرياضية مبيعاً بـ KO SPORT: قفازات ملاكمة، باندج، أدوات جيم ولياقة. توصيل لكل المحافظات السورية."],
+};
+// Google: the exact words Syrians type (from Search Console), used only while the owner kept the default category texts
+const SEO_CAT = {
+  "قفازات ملاكمة": ["قفازات ملاكمة (كفوف بوكس) بسوريا | VENUM وFAIRTEX | KO SPORT", "قفازات ملاكمة وكفوف بوكس بسوريا من VENUM وHOTZO وFAIRTEX وBUKA، للتمرين والسبارينغ ومقاسات للولاد. أسعار بالدولار والليرة، توصيل لكل المحافظات."],
+  "قفاز MMA": ["قفازات وجلافز MMA بسوريا — سبارنج واحتراف | KO SPORT", "قفازات وجلافز MMA للقتال المختلط بسوريا: سبارنج وهواة واحتراف من VENUM وUFC وGREEN HILL. توصيل لكل المحافظات السورية."],
+  "باندج": ["باندج ملاكمة بسوريا — باندج رياضي 3 و5 متر | KO SPORT", "باندج ملاكمة وباندج رياضي لحماية اليد والرسغ، 3 و5 متر وألوان كتير من VENUM وHOTZO وRIVAL. توصيل لكل المحافظات السورية."],
+  "كفوف جيم": ["كفوف جيم (كفوف جم) لرفع الأوزان بسوريا | KO SPORT", "كفوف جيم وكفوف للجم بتحمي الكف وبتحسّن المسكة، جلد وقماش مع رباط معصم. أسعار بالدولار والليرة، توصيل لكل المحافظات."],
+  "شيكرات": ["شيكرات بروتين ومطرات ماء كبيرة | KO SPORT", "شيكرات بروتين ومطرات ماء رياضية كبيرة وصغيرة، وخلاط بروتين أوتوماتيكي. توصيل لكل المحافظات السورية."],
+  "سترابس": ["سترابس وهوك سترابس للجيم بسوريا | KO SPORT", "سترابس وهوك سترابس لتمارين السحب والديدلفت، جلد وقماش وسيليكون. توصيل لكل المحافظات السورية."],
+  "ادوات كالستنكس": ["عقلة جدارية وأدوات كالستنكس بسوريا | KO SPORT", "عقلة جدارية وعقلة باب، حلقات جمباز ومطاط مساعدة لتمارين الكالستنكس بالبيت. توصيل لكل المحافظات السورية."],
+  "شورتات": ["شورت مواي تاي وملاكمة وMMA بسوريا | KO SPORT", "شورت مواي تاي وشورت ملاكمة وMMA من VENUM وFAIRTEX وTWINS، بكل المقاسات. توصيل لكل المحافظات السورية."],
+  "ملابس تمرين": ["ملابس تمرين وملابس جيم رياضية بسوريا | KO SPORT", "ملابس تمرين وجيم من VENUM وBUKA: كنزات، شيالات، جاكيتات وطقم ملاكمة. توصيل لكل المحافظات السورية."],
+  "معدات تمرين": ["كيس ملاكمة وطقم ملاكمة ومعدات تمرين بسوريا | KO SPORT", "كيس ملاكمة، دبل باغ، وسادة لكم وكرات رد فعل للتمرين بالبيت والنادي. توصيل لكل المحافظات السورية."],
+  "كرات قدم": ["كرة قدم وكفوف حراسة بسوريا | KO SPORT", "طابات كرة قدم وكفوف حراسة ADIDAS وREUSCH، لوح خطط ومنفاخ. توصيل لكل المحافظات السورية."],
 };
 const MASARAT = ["إدلب", "منبج", "سرمدا", "الباب", "اعزاز"];
 async function runMigrations(env, request) {
