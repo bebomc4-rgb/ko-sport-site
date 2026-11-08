@@ -3270,8 +3270,17 @@ export default {
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
       // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
-      if ((path === "/favicon.ico" || path === "/favicon.svg" || path === "/favicon.png") && m === "GET" && env.STORE) {
-        let fi = ""; try { fi = favOf((await getSettings(env, request)).design || {}); } catch {}
+      // أيقونات لوحة التحكم كمان (المتصفح، الشاشة الرئيسية، تطبيق اللوحة): التنين الأصفر بدل الـ KO الأحمر
+      if (path === "/admin.webmanifest" && m === "GET" && env.STORE) {
+        let D = {}; try { D = (await getSettings(env, request)).design || {}; } catch {}
+        const r = await env.ASSETS.fetch(new URL("/admin.webmanifest", request.url)); let man = null; try { man = await r.json(); } catch {}
+        if (man) { const a192 = D.appIcon192 || favOf(D), a512 = D.appIcon512 || a192;
+          if (a192) { man.icons = [{ src: a192, sizes: "192x192", type: "image/png", purpose: "any" }, { src: a512, sizes: "512x512", type: "image/png", purpose: "any" }, { src: a512, sizes: "512x512", type: "image/png", purpose: "maskable" }]; (man.shortcuts || []).forEach((x) => { x.icons = [{ src: a192, sizes: "192x192" }]; }); }
+          return new Response(JSON.stringify(man), { headers: { "content-type": "application/manifest+json; charset=utf-8", "cache-control": "public, max-age=3600" } }); }
+      }
+      if ((path === "/favicon.ico" || path === "/favicon.svg" || path === "/favicon.png" || /^\/assets\/icons\/(admin-(192|512|apple|maskable-512)|apple-touch-icon)\.png$/.test(path)) && m === "GET" && env.STORE) {
+        let fi = ""; try { const D = (await getSettings(env, request)).design || {}; fi = /512/.test(path) ? (D.appIcon512 || favOf(D)) : favOf(D); } catch {}
+        if (fi && new URL(fi, url.origin).pathname === path) fi = "";
         if (fi) { const u = new URL(fi, url.origin); const r = await fetch(u.href, { cf: { cacheTtl: 86400 } }).catch(() => null);
           if (r && r.ok) { const h = new Headers(r.headers); h.set("cache-control", "public, max-age=86400"); h.delete("set-cookie"); return new Response(r.body, { status: 200, headers: h }); }
           return Response.redirect(u.href, 302); }
