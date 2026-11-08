@@ -533,8 +533,10 @@ async function ordersPost(request, env, ctx) {
   if (body.items.length > 50) return json({ error: "عدد المنتجات كبير" }, 400);
 
   // ordering needs a customer account (three-part name, Syrian phone, governorate, password)
-  const acct = await acctFromReq(request, env);
-  if (!acct) return json({ error: "لازم تسجّل حساب أو تدخل على حسابك قبل ما تطلب", needLogin: true }, 401);
+  const acctWhy = {}, acct = await acctFromReq(request, env, acctWhy);
+  if (!acct) return acctWhy.reason === "missing" || acctWhy.reason === "busy"
+    ? json({ error: "حسابك لسا عم يتجهّز، جرّب تكبس «اطلب» كمان مرة بعد ثواني" }, 503)
+    : json({ error: "لازم تسجّل حساب أو تدخل على حسابك قبل ما تطلب", needLogin: true, logout: !!acctWhy.reason }, 401);
   body.customer = { ...body.customer, name: acct.name, phone: acct.phone };
   const c = body.customer;
   const customer = {
@@ -846,13 +848,16 @@ async function acctToken(env, a) {
   const exp = Date.now() + 365 * 864e5, body = `${a.phone}.${exp}.${a.hash.slice(0, 8)}`;
   return `${body}.${await hmac(env, body)}`;
 }
-async function acctFromReq(request, env) {
+async function acctFromReq(request, env, why) {
   const t = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const [phone, exp, pv, sig] = t.split(".");
-  if (!sig || !/^09\d{8}$/.test(phone) || !(+exp > Date.now())) return null;
-  if ((await hmac(env, `${phone}.${exp}.${pv}`)) !== sig) return null;
-  const a = await env.STORE.get("acct:" + phone, "json");
-  return a && !a.blocked && a.hash.slice(0, 8) === pv ? a : null;
+  const no = (r) => { if (why) why.reason = r; return null; };
+  if (!sig || !/^09\d{8}$/.test(phone) || !(+exp > Date.now())) return no("token");
+  if ((await hmac(env, `${phone}.${exp}.${pv}`)) !== sig) return no("token");
+  let a = null; try { a = await env.STORE.get("acct:" + phone, "json"); } catch { return no("busy"); }
+  if (!a) return no("missing"); // حساب جديد ممكن ياخد لحد دقيقة ليوصل لكل السيرفرات: ما منطلّع الزبون
+  if (a.blocked) return no("blocked");
+  return a.hash.slice(0, 8) === pv ? a : no("password");
 }
 const acctOut = (a) => ({ name: a.name, phone: a.phone, governorate: a.governorate, at: a.at });
 // WhatsApp code: the site signs the request (ECDSA P-256, private key kept in KV), K FAST AI checks it with /api/acct/otp-key
@@ -972,8 +977,9 @@ async function acctApi(request, env, path, m) {
   if (!env.STORE) return json({ error: "الحسابات مو متاحة هلق" }, 503);
   if (path === "/api/acct/orders" && m === "GET") return acctOrders(request, env);
   if (path === "/api/acct/me") {
-    const a = await acctFromReq(request, env);
-    if (!a) return json({ error: "سجّل دخول من جديد" }, 401);
+    const why = {}, a = await acctFromReq(request, env, why);
+    // بس الحساب الموقوف أو كلمة سر تغيّرت بيطلّعو الزبون. غير هيك (ضغط أو حساب لسا عم يوصل) بيضل داخل
+    if (!a) return json({ error: "سجّل دخول من جديد", reason: why.reason || "", logout: why.reason === "blocked" || why.reason === "password" || why.reason === "token" }, 401);
     if (m === "GET") { await acctTouch(env, request, a); return json({ ok: true, account: acctOut(a) }); }
     if (m === "PUT") {
       const b = await request.json().catch(() => ({}));

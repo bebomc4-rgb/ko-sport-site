@@ -1619,9 +1619,18 @@
     app.onclick = null; app.onchange = null;
   }
   // ---------- customer account (needed before ordering) ----------
-  const acct = () => { const a = store.get("ko_acct", null); return a && a.token && a.account ? a : null; };
-  const acctSet = (j) => store.set("ko_acct", { token: j.token, account: j.account });
-  const acctOut = () => { try { localStorage.removeItem("ko_acct"); } catch {} };
+  // تسجيل الدخول بيضل محفوظ عالجهاز: بالـ localStorage وكمان بكوكي لسنة (بعض الموبايلات والتطبيقات بتمسح الـ localStorage)
+  const ACK = "ko_acct";
+  const ckGet = () => { try { const m = document.cookie.match(/(?:^|;\s*)ko_acct=([^;]+)/); return m ? JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1]))))) : null; } catch { return null; } };
+  const ckSet = (v) => { try { document.cookie = v ? `${ACK}=${encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(v)))))}; max-age=31536000; path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}` : `${ACK}=; max-age=0; path=/`; } catch {} };
+  const acct = () => {
+    let a = store.get(ACK, null);
+    if (!(a && a.token && a.account)) { a = ckGet(); if (a && a.token && a.account) store.set(ACK, a); }
+    else if (!ckGet()) ckSet(a);
+    return a && a.token && a.account ? a : null;
+  };
+  const acctSet = (j) => { const v = { token: j.token, account: j.account }; store.set(ACK, v); ckSet(v); };
+  const acctOut = () => { try { localStorage.removeItem(ACK); } catch {} ckSet(null); };
   const ACCT_GOVS = ["دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "إدلب", "درعا", "السويداء", "القنيطرة", "دير الزور", "الرقة", "الحسكة"];
   // sign up / log in, then carry on with what the customer was doing (checkout, account…)
   function authView(next, why, startTab) {
@@ -2261,7 +2270,7 @@ ${trustH()}
       try {
         const r = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + ((acct() || {}).token || "") }, body: JSON.stringify(body) });
         const j = await r.json().catch(() => ({}));
-        if (r.status === 401 && j.needLogin) { acctOut(); authView(() => checkout(), "انتهت جلستك، ادخل على حسابك من جديد لتكمّل الطلب.", "login"); return; }
+        if (r.status === 401 && j.needLogin) { if (j.logout || !acct()) acctOut(); authView(() => checkout(), "انتهت جلستك، ادخل على حسابك من جديد لتكمّل الطلب.", "login"); return; }
         if (!r.ok) throw new Error(j.error || "صار خطأ");
         cart = []; saveCart(); store.set("ko_sid", "");
         store.set("ko_last_order", j.order);
@@ -2598,8 +2607,8 @@ ${trustH()}
   try {
     const A0 = acct();
     if (A0 && !sessionStorage.getItem("ko_me_ok")) fetch("/api/acct/me", { headers: { authorization: "Bearer " + A0.token } }).then((r) => {
-      if (r.ok) sessionStorage.setItem("ko_me_ok", "1");
-      else if (r.status === 401) { acctOut(); route(null, true); }
+      if (r.ok) { sessionStorage.setItem("ko_me_ok", "1"); return; }
+      if (r.status === 401) r.json().then((j) => { if (j && j.logout) { acctOut(); route(null, true); } }).catch(() => {});
     }).catch(() => {});
   } catch {}
 
