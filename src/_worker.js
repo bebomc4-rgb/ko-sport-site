@@ -3284,7 +3284,7 @@ export default {
           if (a192) { man.icons = [{ src: a192, sizes: "192x192", type: "image/png", purpose: "any" }, { src: a512, sizes: "512x512", type: "image/png", purpose: "any" }, { src: a512, sizes: "512x512", type: "image/png", purpose: "maskable" }]; (man.shortcuts || []).forEach((x) => { x.icons = [{ src: a192, sizes: "192x192" }]; }); }
           return new Response(JSON.stringify(man), { headers: { "content-type": "application/manifest+json; charset=utf-8", "cache-control": "public, max-age=3600" } }); }
       }
-      if ((path === "/favicon.ico" || path === "/favicon.svg" || path === "/favicon.png" || /^\/assets\/icons\/(admin-(192|512|apple|maskable-512)|apple-touch-icon)\.png$/.test(path)) && m === "GET" && env.STORE) {
+      if ((path === "/favicon.ico" || path === "/favicon.svg" || path === "/favicon.png" || /^\/assets\/icons\/(admin-(192|512|apple|maskable-512)|apple-touch-icon|icon-(192|512)|maskable-512)\.png$/.test(path)) && m === "GET" && env.STORE) {
         let fi = ""; try { const D = (await getSettings(env, request)).design || {}; fi = /512/.test(path) ? (D.appIcon512 || favOf(D)) : favOf(D); } catch {}
         if (fi && new URL(fi, url.origin).pathname === path) fi = "";
         if (fi) { const u = new URL(fi, url.origin); const r = await fetch(u.href, { cf: { cacheTtl: 86400 } }).catch(() => null);
