@@ -2607,7 +2607,7 @@ ${trustH()}
   try {
     const A0 = acct();
     if (A0 && !sessionStorage.getItem("ko_me_ok")) fetch("/api/acct/me", { headers: { authorization: "Bearer " + A0.token } }).then((r) => {
-      if (r.ok) { sessionStorage.setItem("ko_me_ok", "1"); return; }
+      if (r.ok) { sessionStorage.setItem("ko_me_ok", "1"); r.json().then((j) => { if (j && j.token && j.account && acct()) acctSet({ token: j.token, account: j.account }); }).catch(() => {}); return; }
       if (r.status === 401) r.json().then((j) => { if (j && j.logout) { acctOut(); route(null, true); } }).catch(() => {});
     }).catch(() => {});
   } catch {}

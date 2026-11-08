@@ -845,7 +845,7 @@ async function hmac(env, msg) {
   return b64u(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg)));
 }
 async function acctToken(env, a) {
-  const exp = Date.now() + 365 * 864e5, body = `${a.phone}.${exp}.${a.hash.slice(0, 8)}`;
+  const exp = Date.now() + 10 * 365 * 864e5, body = `${a.phone}.${exp}.${a.hash.slice(0, 8)}`; // الدخول ما بينتهي (10 سنين، وبيتجدّد لحالو)
   return `${body}.${await hmac(env, body)}`;
 }
 async function acctFromReq(request, env, why) {
@@ -980,7 +980,7 @@ async function acctApi(request, env, path, m) {
     const why = {}, a = await acctFromReq(request, env, why);
     // بس الحساب الموقوف أو كلمة سر تغيّرت بيطلّعو الزبون. غير هيك (ضغط أو حساب لسا عم يوصل) بيضل داخل
     if (!a) return json({ error: "سجّل دخول من جديد", reason: why.reason || "", logout: why.reason === "blocked" || why.reason === "password" || why.reason === "token" }, 401);
-    if (m === "GET") { await acctTouch(env, request, a); return json({ ok: true, account: acctOut(a) }); }
+    if (m === "GET") { await acctTouch(env, request, a); return json({ ok: true, account: acctOut(a), token: await acctToken(env, a) }); } // تجديد الدخول مع كل زيارة: بيضل داخل للأبد
     if (m === "PUT") {
       const b = await request.json().catch(() => ({}));
       if (b.governorate) { if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة" }, 400); a.governorate = b.governorate; }
