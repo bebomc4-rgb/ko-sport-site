@@ -1093,6 +1093,36 @@ async function acctApi(request, env, path, m) {
     if (await env.STORE.get("acct:" + phone)) return json({ error: "هالرقم عندو حساب، سجّل دخول", exists: true }, 409);
     return makeAcct(pend, true);
   }
+  // الدخول بكود عالواتساب (الواتساب مو على هالجهاز): منبعت كود 6 أرقام لرقمو، بيكتبو هون وبيفوت
+  if (path === "/api/acct/login-code") {
+    const a = await env.STORE.get("acct:" + phone, "json");
+    if (!a) return json({ error: "ما في حساب على هالرقم، سجّل حساب جديد", field: "phone", missing: true }, 404);
+    if (a.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403);
+    const ip = request.headers.get("cf-connecting-ip") || "x", hr = Math.floor(Date.now() / 3600e3);
+    if (await env.STORE.get("acct:otpwait:" + phone)) return json({ error: "بعتنالك كود من شوي، استنى دقيقة وجرّب", field: "phone", wait: true }, 429);
+    const nPh = +(await env.STORE.get(`acct:otpn:${phone}:${hr}`)) || 0, nIp = +(await env.STORE.get(`acct:otpip:${ip}:${hr}`)) || 0;
+    if (nPh >= 5 || nIp >= 15) return json({ error: "طلبت أكواد كتير، جرّب بعد ساعة" }, 429);
+    const code = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
+    if (!(await sendOtp(env, phone, code))) return json({ error: "ما قدرنا نبعت الكود هلق، ادخل بكلمة السر أو جرّب بعد شوي" }, 503);
+    await env.STORE.put("acct:lpend:" + phone, JSON.stringify({ code: await otpHash(env, phone, code), tries: 0 }), { expirationTtl: 600 });
+    await env.STORE.put("acct:otpwait:" + phone, "1", { expirationTtl: 60 });
+    await env.STORE.put(`acct:otpn:${phone}:${hr}`, String(nPh + 1), { expirationTtl: 3700 });
+    await env.STORE.put(`acct:otpip:${ip}:${hr}`, String(nIp + 1), { expirationTtl: 3700 });
+    return json({ ok: true, phone });
+  }
+  if (path === "/api/acct/login-verify") {
+    const pend = await env.STORE.get("acct:lpend:" + phone, "json");
+    if (!pend) return json({ error: "الكود انتهى، اطلب كود جديد", expired: true }, 410);
+    if (pend.tries >= 5) { await env.STORE.delete("acct:lpend:" + phone); return json({ error: "غلطت كتير، اطلب كود جديد", expired: true }, 410); }
+    const code = String(b.code || "").replace(/[٠-٩]/g, (x) => "٠١٢٣٤٥٦٧٨٩".indexOf(x)).replace(/\D/g, "");
+    if ((await otpHash(env, phone, code)) !== pend.code) { pend.tries++; await env.STORE.put("acct:lpend:" + phone, JSON.stringify(pend), { expirationTtl: 600 }); return json({ error: "الكود غلط", field: "code" }, 400); }
+    await env.STORE.delete("acct:lpend:" + phone);
+    const a = await env.STORE.get("acct:" + phone, "json");
+    if (!a) return json({ error: "ما في حساب على هالرقم", missing: true }, 404);
+    if (a.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403);
+    await acctTouch(env, request, a);
+    return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
+  }
   if (path === "/api/acct/login") {
     const a = await env.STORE.get("acct:" + phone, "json");
     if (!a) return json({ error: "ما في حساب على هالرقم، سجّل حساب جديد", field: "phone", missing: true }, 404);

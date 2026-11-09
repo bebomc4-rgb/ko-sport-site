@@ -1655,7 +1655,8 @@
               : `<button class="btn btn-red" data-auth-go>${reg ? "سجّل وكمّل" : "دخول"}</button>
                  ${reg ? `<small class="auth-note"><button type="button" class="link-btn" data-via="wa">سجّل بالواتساب (أسهل)</button></small>`
                        : `<a class="btn btn-wa-go ghost" href="#" target="_blank" rel="noopener" data-wa-login>${WA_ICON}<span>ادخل بالواتساب (بلا كلمة سر)</span></a>
-                          <small class="auth-note">نسيت كلمة السر؟ ادخل بالواتساب من فوق.</small>`}`}
+                          <button type="button" class="btn btn-ghost" data-code-login>💬 ابعتلي كود عالواتساب</button>
+                          <small class="auth-note">نسيت كلمة السر؟ ادخل بالواتساب. والواتساب مو على هالجهاز؟ اكتب رقمك واطلب كود، بيوصلك عالواتساب بأي جهاز تاني.</small>`}`}
         </form></div>`;
       app.onchange = null;
       const f = app.querySelector("[data-auth]");
@@ -1673,6 +1674,20 @@
       app.onclick = (e) => {
         const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; draw(); return; }
         const vv = e.target.closest("[data-via]"); if (vv) { via = vv.dataset.via; draw(); return; }
+        // الدخول بكود عالواتساب (الواتساب على جهاز تاني)
+        const cl = e.target.closest("[data-code-login]");
+        if (cl) {
+          clear(); const ph = fixPh(f.phone.value);
+          if (!okPh(ph)) { showErrs({ phone: PH_ERR }); return; }
+          cl.disabled = true; const lbl = cl.textContent; cl.textContent = "لحظة…";
+          fetch("/api/acct/login-code", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone: ph }) })
+            .then(async (r) => { const j = await r.json().catch(() => ({})); cl.disabled = false; cl.textContent = lbl;
+              if (r.ok) return loginCode(ph);
+              if (j.missing) { tab = "reg"; draw(); toast("ما في حساب على هالرقم، سجّل حساب جديد"); return; }
+              if (j.field === "phone") show("phone", esc(j.error)); else toast(esc(j.error || "صار خطأ، جرّب كمان مرة")); })
+            .catch(() => { cl.disabled = false; cl.textContent = lbl; toast("ما في اتصال، جرّب كمان مرة"); });
+          return;
+        }
         // one tap: the WhatsApp message opens right away (same tap, so phones don't block it), the site is told in the background
         const go = e.target.closest("[data-wa-go],[data-wa-login]");
         if (go) {
@@ -1828,6 +1843,46 @@
           fl.classList.add("err"); msg.textContent = j.error || "صار خطأ"; f.code.select();
           if (j.expired) { rs.disabled = false; left = 0; rs.textContent = "اطلب كود جديد"; }
         } catch { btn.disabled = false; btn.textContent = "تأكيد وكمّل"; toast("ما في اتصال، جرّب كمان مرة"); }
+      });
+    };
+    // الدخول بكود: بيكتب الكود يلي وصلو عالواتساب
+    const loginCode = (ph) => {
+      let left = 60, timer = 0;
+      app.innerHTML = `<div class="auth"><h1 class="page-title">الدخول بكود</h1>
+        <p class="auth-why">بعتنالك كود من 6 أرقام على <b>الواتساب</b> على الرقم <b dir="ltr">${esc(ph)}</b> من رقم المتجر. افتحو من أي جهاز واكتبو هون:</p>
+        <form class="form auth-form" data-lcode novalidate>
+          <div class="field"><label for="l-code">الكود</label><input id="l-code" name="code" class="otp-in" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" placeholder="••••••" required><div class="msg"></div></div>
+          <button class="btn btn-red" data-lcode-go>دخول</button>
+          <small class="auth-note"><button type="button" class="link-btn" data-lresend disabled>إعادة الإرسال (60)</button> · <button type="button" class="link-btn" data-lback>رجوع</button></small>
+        </form></div>`;
+      const f = app.querySelector("[data-lcode]"), rs = app.querySelector("[data-lresend]");
+      const tick = () => { left--; if (!app.contains(rs)) return clearInterval(timer); rs.disabled = left > 0; rs.textContent = left > 0 ? `إعادة الإرسال (${left})` : "إعادة الإرسال"; if (left <= 0) clearInterval(timer); };
+      timer = setInterval(tick, 1000);
+      f.code.focus();
+      f.code.addEventListener("input", () => { f.code.value = f.code.value.replace(/[٠-٩]/g, (x) => "٠١٢٣٤٥٦٧٨٩".indexOf(x)).replace(/\D/g, "").slice(0, 6); if (f.code.value.length === 6) f.requestSubmit(); });
+      app.onclick = async (e) => {
+        if (e.target.closest("[data-lback]")) { clearInterval(timer); tab = "login"; draw(); app.querySelector("[data-auth]").phone.value = ph; return; }
+        if (e.target.closest("[data-lresend]") && !rs.disabled) {
+          rs.disabled = true;
+          const r = await fetch("/api/acct/login-code", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone: ph }) }).catch(() => null);
+          const j = r ? await r.json().catch(() => ({})) : {};
+          toast(r && r.ok ? "✓ بعتنالك كود جديد" : esc(j.error || "ما قدرنا نبعت، جرّب كمان شوي"));
+          left = 60; clearInterval(timer); timer = setInterval(tick, 1000);
+        }
+      };
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fl = f.code.closest(".field"), msg = fl.querySelector(".msg"); fl.classList.remove("err"); msg.textContent = "";
+        if (!/^\d{6}$/.test(f.code.value)) { fl.classList.add("err"); msg.textContent = "الكود 6 أرقام"; return; }
+        const btn = f.querySelector("[data-lcode-go]"); btn.disabled = true; btn.textContent = "لحظة…";
+        try {
+          const r = await fetch("/api/acct/login-verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone: ph, code: f.code.value }) });
+          const j = await r.json().catch(() => ({}));
+          if (r.ok && j.token) { clearInterval(timer); return done(j); }
+          btn.disabled = false; btn.textContent = "دخول";
+          fl.classList.add("err"); msg.textContent = j.error || "صار خطأ"; f.code.select();
+          if (j.expired) { rs.disabled = false; left = 0; rs.textContent = "اطلب كود جديد"; }
+        } catch { btn.disabled = false; btn.textContent = "دخول"; toast("ما في اتصال، جرّب كمان مرة"); }
       });
     };
     // came back from WhatsApp after the page was closed: carry on waiting
