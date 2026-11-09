@@ -931,14 +931,31 @@ async function botCall(env, kind, t) {
 // ---------- الاشتراكات (صاحب المتجر، 9 تشرين التاني 2026): قائمة بلوحة التحكم + تذكير عالواتساب قبل التجديد بـ 3 أيام ----------
 const SUBS_TO = "963938986875";
 const SUBS_SEED = [
-  { id: "hetzner", name: "سيرفر Hetzner (المجيب K FAST AI)", cycle: "month", date: "2026-12-01", price: "تقريباً 7–8$ بالشهر", url: "https://accounts.hetzner.com/invoice", note: "الدفع من الرصيد المشحون (25$). الفاتورة بتطلع أول الشهر عن الشهر يلي قبلو، وبوقتها بينخصم الرصيد — التاريخ تقريبي، شوفو بصفحة الفواتير." },
-  { id: "domain", name: "الدومين ko-sport.online", cycle: "year", date: "", price: "", url: "", note: "اكتب تاريخ انتهاء الدومين من الموقع يلي اشتريتو منو." },
+  { id: "hetzner", name: "سيرفر Hetzner (المجيب K FAST AI)", cycle: "month", date: "2026-11-16", price: "تقريباً 7–8$ بالشهر (من الرصيد)", url: "https://accounts.hetzner.com/invoice", note: "الفاتورة بتطلع يوم 16 من كل شهر وبتنخصم من الرصيد المشحون (25$). شيّك إنو الرصيد بيكفّي." },
+  { id: "claude", name: "اشتراك Claude", cycle: "month", date: "", price: "", url: "https://claude.ai/settings/billing", note: "اكتب تاريخ التجديد من إعدادات Claude ← Billing." },
+  { id: "domain", name: "الدومين ko-sport.online (Hostinger)", cycle: "year", date: "2028-12-13", price: "36.19$", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "بيتجدد لحالو (Auto-renew) — تأكد إنو في رصيد/بطاقة قبلها." },
+  { id: "domain-nl", name: "الدومين ko-sport.nl (Hostinger)", cycle: "year", date: "2027-11-03", price: "9.99$", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "بينتهي إذا ما جددتو." },
+  { id: "hst-hosting", name: "Premium Web Hosting (Hostinger) — تجربة مجانية", cycle: "once", date: "2027-01-08", price: "47.88$ إذا جددتو", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "الموقع شغّال على Cloudflare، فهالاستضافة مو ضرورية إلا إذا بدك ياها." },
+  { id: "hst-email", name: "Business Email (Hostinger) — تجربة", cycle: "once", date: "2027-01-22", price: "7.08$ إذا جددتو", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "" },
+  { id: "hst-reach", name: "Reach 100 تسويق بالإيميل (Hostinger) — تجربة مجانية", cycle: "once", date: "2027-08-14", price: "17.88$ إذا جددتو", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "" },
 ];
 const SUB_CYC = ["month", "year", "once"];
 const damToday = () => new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
 const dayDiff = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 864e5);
 const addCycle = (d, c) => { const x = new Date(d + "T00:00:00Z"); if (c === "month") x.setUTCMonth(x.getUTCMonth() + 1); else if (c === "year") x.setUTCFullYear(x.getUTCFullYear() + 1); return x.toISOString().slice(0, 10); };
-async function subsGet(env) { const l = await env.STORE.get("subs", "json"); return Array.isArray(l) ? l : SUBS_SEED.map((x) => ({ ...x })); }
+const SUBS_OLD = { hetzner: "2026-12-01", domain: "" }; // تواريخ أول نسخة (تقريبية) — منصلّحها بالتواريخ الحقيقية من حسابات صاحب المتجر
+async function subsGet(env) {
+  const l = await env.STORE.get("subs", "json");
+  if (!Array.isArray(l)) return SUBS_SEED.map((x) => ({ ...x }));
+  if (await env.STORE.get("subs:seed2")) return l;
+  for (const sd of SUBS_SEED) {
+    const x = l.find((y) => y.id === sd.id);
+    if (!x) l.push({ ...sd });
+    else if (sd.id in SUBS_OLD && x.date === SUBS_OLD[sd.id]) Object.assign(x, sd);
+  }
+  await env.STORE.put("subs", JSON.stringify(l)); await env.STORE.put("subs:seed2", "1");
+  return l;
+}
 function subsClean(l) {
   return (Array.isArray(l) ? l : []).slice(0, 100).map((x, i) => ({
     id: String(x.id || "s" + Date.now().toString(36) + i).replace(/[^\w-]/g, "").slice(0, 40) || "s" + i,
