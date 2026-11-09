@@ -934,10 +934,6 @@ const SUBS_SEED = [
   { id: "hetzner", name: "سيرفر Hetzner (المجيب K FAST AI)", cycle: "month", date: "2026-11-16", price: "تقريباً 7–8$ بالشهر (من الرصيد)", url: "https://accounts.hetzner.com/invoice", note: "الفاتورة بتطلع يوم 16 من كل شهر وبتنخصم من الرصيد المشحون (25$). شيّك إنو الرصيد بيكفّي." },
   { id: "claude", name: "اشتراك Claude", cycle: "month", date: "", price: "", url: "https://claude.ai/settings/billing", note: "اكتب تاريخ التجديد من إعدادات Claude ← Billing." },
   { id: "domain", name: "الدومين ko-sport.online (Hostinger)", cycle: "year", date: "2028-12-13", price: "36.19$", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "بيتجدد لحالو (Auto-renew) — تأكد إنو في رصيد/بطاقة قبلها." },
-  { id: "domain-nl", name: "الدومين ko-sport.nl (Hostinger)", cycle: "year", date: "2027-11-03", price: "9.99$", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "بينتهي إذا ما جددتو." },
-  { id: "hst-hosting", name: "Premium Web Hosting (Hostinger) — تجربة مجانية", cycle: "once", date: "2027-01-08", price: "47.88$ إذا جددتو", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "الموقع شغّال على Cloudflare، فهالاستضافة مو ضرورية إلا إذا بدك ياها." },
-  { id: "hst-email", name: "Business Email (Hostinger) — تجربة", cycle: "once", date: "2027-01-22", price: "7.08$ إذا جددتو", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "" },
-  { id: "hst-reach", name: "Reach 100 تسويق بالإيميل (Hostinger) — تجربة مجانية", cycle: "once", date: "2027-08-14", price: "17.88$ إذا جددتو", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "" },
 ];
 const SUB_CYC = ["month", "year", "once"];
 const damToday = () => new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
@@ -947,6 +943,8 @@ const SUBS_OLD = { hetzner: "2026-12-01", domain: "" }; // تواريخ أول �
 async function subsGet(env) {
   const l = await env.STORE.get("subs", "json");
   if (!Array.isArray(l)) return SUBS_SEED.map((x) => ({ ...x }));
+  // صاحب المتجر (9 تشرين التاني 2026): «بدي دومين وسيرفر وكلاود» بس
+  if (!(await env.STORE.get("subs:seed3"))) { const drop = ["domain-nl", "hst-hosting", "hst-email", "hst-reach"]; const k = l.filter((y) => !drop.includes(y.id)); l.length = 0; l.push(...k); await env.STORE.put("subs", JSON.stringify(l)); await env.STORE.put("subs:seed3", "1"); }
   if (await env.STORE.get("subs:seed2")) return l;
   for (const sd of SUBS_SEED) {
     const x = l.find((y) => y.id === sd.id);
