@@ -996,6 +996,26 @@ async function subsApi(request, env, m) {
   return json({ error: "Method not allowed" }, 405);
 }
 
+// اسم زبون الموقع لجهات اتصال واتساب المتجر: «الاسم الأول المحافظة» متل ما بيكتبهن صاحب المتجر (مثلاً «مرهف سويداء»)
+const waName = (a) => { const f = String(a.name || "").trim().split(/\s+/)[0] || "", g = String(a.governorate || a.gov || "").trim().replace(/^ال(?=\S)/, ""); return (f + (g ? " " + g : "")).trim(); };
+async function botContacts(env, list) {
+  const L = list.map((a) => ({ phone: a.phone, name: waName(a) })).filter((x) => x.phone && x.name);
+  if (!L.length) return false;
+  const k = await otpKeys(env), ts = Date.now(), nonce = b64u(crypto.getRandomValues(new Uint8Array(12))), text = JSON.stringify(L);
+  const key = await crypto.subtle.importKey("jwk", k.priv, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`contacts|${text}|${ts}|${nonce}`)));
+  try { const r = await botPost("/api/otp/ko-contacts", JSON.stringify({ text, ts, nonce, sig }), 15000); return !!(r && r.ok); } catch { return false; }
+}
+// مرة وحدة: كل الحسابات الموجودة لجهات الاتصال (يلي إلو اسم حقيقي محفوظ ما بيتغيّر)
+async function contactsBackfill(env) {
+  if (await env.STORE.get("acct:waNames1")) return;
+  const keys = [];
+  for (const pre of ["acct:09", "acct:+"]) { let cursor; do { const r = await env.STORE.list({ prefix: pre, limit: 1000, cursor }); for (const k of r.keys) if (ACCT_PH.test(k.name.slice(5))) keys.push(k.name); cursor = r.list_complete ? null : r.cursor; } while (cursor && keys.length < 3000); }
+  const all = [];
+  for (let i = 0; i < keys.length && i < 900; i += 50) { const v = await Promise.all(keys.slice(i, i + 50).map((k) => env.STORE.get(k, "json").catch(() => null))); for (const a of v) if (a && a.phone && !a.blocked) all.push(a); }
+  if (await botContacts(env, all)) await env.STORE.put("acct:waNames1", JSON.stringify({ at: new Date().toISOString(), n: all.length }));
+}
+
 // ---------- طلباتي: قائمة طلبات الزبون محفوظة بحسابو (acctord:<phone> = مفاتيح الطلبات، الأحدث أول) ----------
 const ordPhone = (p) => { const d = String(p || "").replace(/\D/g, ""); return d.length >= 9 ? "0" + d.slice(-9) : ""; };
 async function acctOrdAdd(env, phone, key) {
@@ -3493,6 +3513,7 @@ export default {
     if (migDone && mig2Done && mig3Done && mig4Done && mig5Done && !mig6Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig6(env).catch(() => {}));
     if (!mig7Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig7(env).catch(() => {}));
     if (!mig8Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig8(env).catch(() => {}));
+    if (ctx && ctx.waitUntil && env.STORE && !globalThis.__waNames) { globalThis.__waNames = 1; ctx.waitUntil(contactsBackfill(env).catch(() => { globalThis.__waNames = 0; })); }
     if (ctx && ctx.waitUntil && env.STORE && Date.now() - (globalThis.__subsAt || 0) > 3600e3) { globalThis.__subsAt = Date.now(); ctx.waitUntil(subsTick(env, false).catch(() => {})); }
     if (mig7Done && !mig9Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig9(env).catch(() => {}));
     if (mig6Done && env.STORE && ctx && ctx.waitUntil && Date.now() - qdLocalAt > 10 * 60e3) ctx.waitUntil(qdSync(env).catch(() => {}));
@@ -3641,7 +3662,8 @@ export default {
       if (path.startsWith("/api/acct/")) {
         if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
         const r = await acctApi(request, env, path, m);
-        if (r.status === 200 && (r.headers.get("content-type") || "").includes("json")) { try { const j = await r.clone().json(); if (j && j.token) { const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie(j.token)); r2.headers.set("cache-control", "no-store"); return r2; } } catch {} }
+        if (r.status === 200 && (r.headers.get("content-type") || "").includes("json")) { try { const j = await r.clone().json(); if (j && j.token) {
+              if (j.account && !j.existed && ["/api/acct/wa-check", "/api/acct/verify", "/api/acct/register"].includes(path) && ctx && ctx.waitUntil) ctx.waitUntil(botContacts(env, [j.account]).catch(() => {})); const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie(j.token)); r2.headers.set("cache-control", "no-store"); return r2; } } catch {} }
         if (r.status === 401) { try { const j = await r.clone().json(); if (j && j.logout) { const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie("")); return r2; } } catch {} }
         return r;
       }
