@@ -65,6 +65,7 @@
     const hashTab = location.hash.slice(1); if (TAB_TITLES[hashTab]) first = hashTab;
     show(TAB_TITLES[first] && allowed(first) && first !== "colledit" ? first : "dash");
     loadCarts(true).catch(() => {});
+    loadSubs(true).catch(() => {});
     if (ROLE !== "orders") loadReviews(true).then(() => { if (!$("[data-view=dash]").hidden) renderDash(); }).catch(() => {});
     fetch("/api/settings").then((r) => r.json()).then((st) => { const n = $("[data-store-name]"); if (n && st.store && st.store.name) n.textContent = st.store.name; }).catch(() => {});
     setInterval(() => { if (!$("[data-view=orders]").hidden) loadOrders(true).catch(() => {}); }, 60000);
@@ -94,6 +95,7 @@
     if (tab === "push") loadPush();
     if (tab === "dash") renderDash();
     if (tab === "carts") loadCarts();
+    if (tab === "subs") loadSubs();
     if (tab === "discounts") loadUsed();
     if (tab === "customers") loadCustomers();
     if (tab === "staff") { loadStaff(); loadStatus(); }
@@ -673,6 +675,49 @@
     if (e.target.closest("[data-carts-refresh]")) { loadCarts(); return; }
     const d = e.target.closest("[data-cart-del]"); if (!d) return;
     try { await api("/api/carts/" + encodeURIComponent(d.dataset.cartDel), { method: "DELETE" }); CARTS = CARTS.filter((c) => c.sid !== d.dataset.cartDel); renderCarts(); loadCarts(true); } catch (err) { toast(err.message); }
+  });
+
+  // ---------- الاشتراكات ----------
+  let SUBS = [], SUBS_TODAY = "";
+  const CYC = { month: "شهري", year: "سنوي", once: "مرة وحدة" };
+  const subDays = (d) => (d && SUBS_TODAY ? Math.round((Date.parse(d + "T00:00:00Z") - Date.parse(SUBS_TODAY + "T00:00:00Z")) / 864e5) : null);
+  async function loadSubs(quiet) {
+    try { const j = await api("/api/subs"); SUBS = j.subs || []; SUBS_TODAY = j.today || ""; } catch (e) { if (!quiet) toast(e.message); return; }
+    renderSubs();
+  }
+  function subsBadge() { const n = SUBS.filter((x) => !x.off && x.date && subDays(x.date) <= 3 && subDays(x.date) >= 0).length, b = $("[data-subcount]"); if (b) { b.textContent = n; b.hidden = !n; } }
+  function renderSubs() {
+    const box = $("[data-subs-list]"); if (!box) return; subsBadge();
+    const sorted = SUBS.map((x, i) => ({ x, i })).sort((a, b) => (a.x.date || "9999").localeCompare(b.x.date || "9999"));
+    box.innerHTML = sorted.map(({ x, i }) => {
+      const d = subDays(x.date), st = !x.date ? `<span class="dc-st wait">اكتب التاريخ</span>` : x.off ? `<span class="dc-st">موقوف</span>` : d < 0 ? `<span class="dc-st bad">فات من ${nf(-d)} يوم</span>` : d <= 3 ? `<span class="dc-st bad">بعد ${nf(d)} ${d === 1 ? "يوم" : "أيام"}${d === 0 ? " (اليوم)" : ""}</span>` : `<span class="dc-st ok">بعد ${nf(d)} يوم</span>`;
+      return `<div class="w-card sub-card" data-sub="${i}">
+        <div class="sub-head"><b>${esc(x.name)}</b>${st}</div>
+        <div class="sub-grid">
+          <label>الاسم<input data-f="name" value="${esc(x.name)}"></label>
+          <label>تاريخ التجديد / الانتهاء<input type="date" data-f="date" value="${esc(x.date)}"></label>
+          <label>كل قديش<select data-f="cycle">${Object.entries(CYC).map(([k, v]) => `<option value="${k}"${x.cycle === k ? " selected" : ""}>${v}</option>`).join("")}</select></label>
+          <label>السعر<input data-f="price" value="${esc(x.price)}" placeholder="مثلاً 10$ بالسنة"></label>
+          <label class="wide">رابط الدفع / الحساب<input data-f="url" dir="ltr" value="${esc(x.url)}" placeholder="https://"></label>
+          <label class="wide">ملاحظة<textarea data-f="note" rows="2">${esc(x.note)}</textarea></label>
+        </div>
+        <div class="ab-acts"><label class="sub-off"><input type="checkbox" data-f="off"${x.off ? " checked" : ""}> وقّف التذكير</label>${x.url ? `<a class="btn btn-ghost sm" target="_blank" rel="noopener" href="${esc(x.url)}">فتح الرابط</a>` : ""}<button type="button" class="btn btn-ghost sm" data-sub-del="${i}">حذف</button></div></div>`;
+    }).join("") || `<div class="w-card dc-empty"><b>ما في اشتراكات</b><p class="hint">اكبس «اشتراك جديد».</p></div>`;
+  }
+  let subsT = 0;
+  const subsSave = () => { clearTimeout(subsT); subsT = setTimeout(async () => { try { const j = await api("/api/subs", { method: "PUT", body: JSON.stringify({ subs: SUBS }) }); SUBS = j.subs; subsBadge(); toast("✓ انحفظ"); } catch (e) { toast(e.message); } }, 700); };
+  document.addEventListener("change", (e) => {
+    const c = e.target.closest("[data-sub]"); if (!c || !e.target.dataset.f) return;
+    const x = SUBS[+c.dataset.sub]; if (!x) return;
+    x[e.target.dataset.f] = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+    subsSave(); if (["date", "off", "name"].includes(e.target.dataset.f)) setTimeout(renderSubs, 50);
+  });
+  document.addEventListener("click", async (e) => {
+    if (e.target.closest("[data-sub-add]")) { SUBS.unshift({ id: "s" + Date.now().toString(36), name: "اشتراك جديد", cycle: "month", date: "", price: "", url: "", note: "" }); renderSubs(); subsSave(); const f = $("[data-sub] [data-f=name]"); if (f) { f.focus(); f.select(); } return; }
+    if (e.target.closest("[data-sub-test]")) { try { await api("/api/subs", { method: "POST", body: JSON.stringify({}) }); toast("✓ انبعت التذكير عالواتساب"); } catch (err) { toast(err.message); } return; }
+    const d = e.target.closest("[data-sub-del]"); if (!d) return;
+    const x = SUBS[+d.dataset.subDel]; if (!x || !confirm(`بدك تحذف «${x.name}»؟`)) return;
+    SUBS.splice(+d.dataset.subDel, 1); renderSubs(); subsSave();
   });
 
   // ---------- pages ----------

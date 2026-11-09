@@ -1094,3 +1094,12 @@ body.m-dragging{cursor:grabbing;user-select:none}
 .acc-gov-r{display:grid;grid-template-columns:7.5em 1fr 3em;align-items:center;gap:10px;font-size:.9em}
 .acc-gov-r i{display:block;height:10px;border-radius:999px;background:linear-gradient(90deg,#f5b800,#e0a100);width:var(--w)}
 .acc-gov-r b{text-align:end;font-variant-numeric:tabular-nums}
+
+.sub-card{display:grid;gap:12px}
+.sub-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.sub-grid label{display:grid;gap:4px;font-size:.85em;color:var(--muted,#666)}
+.sub-grid .wide{grid-column:1/-1}
+.sub-grid input,.sub-grid select,.sub-grid textarea{font:inherit;color:var(--ink,#111);padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:10px;background:var(--card,#fff)}
+.sub-off{display:inline-flex;align-items:center;gap:6px;font-size:.85em;margin-inline-end:auto}
+.dc-st.bad{background:#fee2e2;color:#b91c1c}.dc-st.ok{background:#dcfce7;color:#166534}

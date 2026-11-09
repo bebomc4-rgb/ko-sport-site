@@ -928,6 +928,57 @@ async function botCall(env, kind, t) {
   } catch { return null; }
 }
 
+// ---------- الاشتراكات (صاحب المتجر، 9 تشرين التاني 2026): قائمة بلوحة التحكم + تذكير عالواتساب قبل التجديد بـ 3 أيام ----------
+const SUBS_TO = "963938986875";
+const SUBS_SEED = [
+  { id: "hetzner", name: "سيرفر Hetzner (المجيب K FAST AI)", cycle: "month", date: "2026-12-01", price: "تقريباً 7–8$ بالشهر", url: "https://accounts.hetzner.com/invoice", note: "الدفع من الرصيد المشحون (25$). الفاتورة بتطلع أول الشهر عن الشهر يلي قبلو، وبوقتها بينخصم الرصيد — التاريخ تقريبي، شوفو بصفحة الفواتير." },
+  { id: "domain", name: "الدومين ko-sport.online", cycle: "year", date: "", price: "", url: "", note: "اكتب تاريخ انتهاء الدومين من الموقع يلي اشتريتو منو." },
+];
+const SUB_CYC = ["month", "year", "once"];
+const damToday = () => new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+const dayDiff = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 864e5);
+const addCycle = (d, c) => { const x = new Date(d + "T00:00:00Z"); if (c === "month") x.setUTCMonth(x.getUTCMonth() + 1); else if (c === "year") x.setUTCFullYear(x.getUTCFullYear() + 1); return x.toISOString().slice(0, 10); };
+async function subsGet(env) { const l = await env.STORE.get("subs", "json"); return Array.isArray(l) ? l : SUBS_SEED.map((x) => ({ ...x })); }
+function subsClean(l) {
+  return (Array.isArray(l) ? l : []).slice(0, 100).map((x, i) => ({
+    id: String(x.id || "s" + Date.now().toString(36) + i).replace(/[^\w-]/g, "").slice(0, 40) || "s" + i,
+    name: clip(String(x.name || "").trim(), 120), cycle: SUB_CYC.includes(x.cycle) ? x.cycle : "month",
+    date: /^\d{4}-\d{2}-\d{2}$/.test(x.date || "") ? x.date : "", price: clip(String(x.price || ""), 60),
+    url: /^https?:\/\//.test(x.url || "") ? clip(String(x.url), 300) : "", note: clip(String(x.note || ""), 400), off: !!x.off,
+  })).filter((x) => x.name);
+}
+const subsMsg = (x, days) => `🔔 *تذكير بتجديد اشتراك*\n\n📌 ${x.name}\n📅 ${days === 0 ? "بيتجدد / بينتهي *اليوم*" : `بيتجدد / بينتهي بعد *${days}* ${days === 1 ? "يوم" : "أيام"}`} (${x.date})${x.price ? `\n💵 ${x.price}` : ""}${x.note ? `\n📝 ${x.note}` : ""}${x.url ? `\n🔗 ${x.url}` : ""}`;
+// كل 6 ساعات (مع زيارات الموقع): منبعت تذكير لكل اشتراك باقيلو 3 أيام أو أقل، مرة وحدة بكل يوم من الأيام التلاتة
+async function subsTick(env, force) {
+  if (!env.STORE) return { sent: 0 };
+  if (!force && (await env.STORE.get("subs:tick"))) return { sent: 0 };
+  await env.STORE.put("subs:tick", "1", { expirationTtl: 6 * 3600 });
+  const today = damToday(), L = await subsGet(env); let changed = false, sent = 0;
+  for (const x of L) {
+    if (x.off || !x.date) continue;
+    // فات التاريخ: الشهري والسنوي بيتجددو لحالهن للمرة الجاية
+    while (x.cycle !== "once" && dayDiff(today, x.date) < -1) { x.date = addCycle(x.date, x.cycle); changed = true; }
+    const d = dayDiff(today, x.date);
+    if (d < 0 || d > 3) continue;
+    const k = `subs:sent:${x.id}:${x.date}:${d}`;
+    if (await env.STORE.get(k)) continue;
+    if (await botSign(env, "notify", SUBS_TO, subsMsg(x, d))) { sent++; await env.STORE.put(k, "1", { expirationTtl: 40 * 864e5 }); }
+  }
+  if (changed) await env.STORE.put("subs", JSON.stringify(L));
+  return { sent };
+}
+async function subsApi(request, env, m) {
+  if (!isAdmin(request, env, "settings")) return denied();
+  if (m === "GET") return json({ subs: await subsGet(env), today: damToday() });
+  if (m === "PUT") { const b = await request.json().catch(() => ({})); const L = subsClean(b.subs); await env.STORE.put("subs", JSON.stringify(L)); return json({ ok: true, subs: L }); }
+  if (m === "POST") { // «ابعتلي تجربة»
+    const b = await request.json().catch(() => ({})), L = await subsGet(env), x = L.find((s) => s.id === b.id) || { name: "تجربة تذكير الاشتراكات", date: damToday() };
+    const ok = await botSign(env, "notify", SUBS_TO, subsMsg(x, x.date ? Math.max(0, dayDiff(damToday(), x.date)) : 3));
+    return json({ ok }, ok ? 200 : 503);
+  }
+  return json({ error: "Method not allowed" }, 405);
+}
+
 // ---------- طلباتي: قائمة طلبات الزبون محفوظة بحسابو (acctord:<phone> = مفاتيح الطلبات، الأحدث أول) ----------
 const ordPhone = (p) => { const d = String(p || "").replace(/\D/g, ""); return d.length >= 9 ? "0" + d.slice(-9) : ""; };
 async function acctOrdAdd(env, phone, key) {
@@ -3425,6 +3476,7 @@ export default {
     if (migDone && mig2Done && mig3Done && mig4Done && mig5Done && !mig6Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig6(env).catch(() => {}));
     if (!mig7Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig7(env).catch(() => {}));
     if (!mig8Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig8(env).catch(() => {}));
+    if (ctx && ctx.waitUntil && env.STORE && Date.now() - (globalThis.__subsAt || 0) > 3600e3) { globalThis.__subsAt = Date.now(); ctx.waitUntil(subsTick(env, false).catch(() => {})); }
     if (mig7Done && !mig9Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig9(env).catch(() => {}));
     if (mig6Done && env.STORE && ctx && ctx.waitUntil && Date.now() - qdLocalAt > 10 * 60e3) ctx.waitUntil(qdSync(env).catch(() => {}));
     // رابط التطبيق الواحد ko-sport.online/app (المجيب بيبعتو): أندرويد → Google Play مباشرة (ما بيفوت عالموقع)، آيفون → الموقع مع خطوات «إضافة للشاشة الرئيسية»
@@ -3618,6 +3670,8 @@ export default {
         return couponCheck(request, env);
       } else if (path === "/api/discounts/used" && m === "GET") {
         return discountsUsed(request, env);
+      } else if (path === "/api/subs") {
+        return subsApi(request, env, m);
       } else if (path === "/api/carts") {
         if (m === "POST") return cartSave(request, env);
         if (m === "GET") return cartsGet(request, env);
