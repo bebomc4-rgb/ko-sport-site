@@ -859,9 +859,17 @@ async function acctToken(env, a) {
   const exp = Date.now() + 10 * 365 * 864e5, body = `${a.phone}.${exp}.${a.hash.slice(0, 8)}`; // الدخول ما بينتهي (10 سنين، وبيتجدّد لحالو)
   return `${body}.${await hmac(env, body)}`;
 }
+// الدخول بيضل محفوظ بكوكي بيحطها السيرفر (HttpOnly): سفاري والآيفون وإنستغرام بيمسحو التخزين يلي بيحطو الموقع بعد كم يوم، بس هالكوكي بتضل
+const SESS = "ko_sess";
+const sessOf = (request) => { const m = (request.headers.get("cookie") || "").match(/(?:^|;\s*)ko_sess=([^;]+)/); return m ? decodeURIComponent(m[1]) : ""; };
+const sessCookie = (t) => t ? `${SESS}=${encodeURIComponent(t)}; Max-Age=34560000; Path=/; HttpOnly; Secure; SameSite=Lax` : `${SESS}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`;
 async function acctFromReq(request, env, why) {
-  const t = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  const [phone, exp, pv, sig] = t.split(".");
+  const h = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim(), c = sessOf(request);
+  if (h && h !== c) { const w = {}, a = await acctFromTok(h, env, w); if (a) return a; if (!c) { if (why) why.reason = w.reason; return null; } }
+  return acctFromTok(c || h, env, why);
+}
+async function acctFromTok(t, env, why) {
+  const [phone, exp, pv, sig] = String(t || "").split(".");
   const no = (r) => { if (why) why.reason = r; return null; };
   if (!sig || !ACCT_PH.test(phone) || !(+exp > Date.now())) return no("token");
   if ((await hmac(env, `${phone}.${exp}.${pv}`)) !== sig) return no("token");
@@ -3561,7 +3569,13 @@ export default {
         if (m === "PUT") return settingsPut(request, env);
         return json({ error: "Method not allowed" }, 405);
       }
-      if (path.startsWith("/api/acct/")) return acctApi(request, env, path, m);
+      if (path.startsWith("/api/acct/")) {
+        if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
+        const r = await acctApi(request, env, path, m);
+        if (r.status === 200 && (r.headers.get("content-type") || "").includes("json")) { try { const j = await r.clone().json(); if (j && j.token) { const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie(j.token)); r2.headers.set("cache-control", "no-store"); return r2; } } catch {} }
+        if (r.status === 401) { try { const j = await r.clone().json(); if (j && j.logout) { const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie("")); return r2; } } catch {} }
+        return r;
+      }
       if (path === "/api/accounts" && m === "GET") return accountsList(request, env);
       if (path === "/api/login" && m === "POST") return env.__role ? json({ ok: true, role: env.__role, name: env.__staff }) : denied();
       if (path === "/api/products") {

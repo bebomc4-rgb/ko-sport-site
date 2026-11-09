@@ -1630,7 +1630,9 @@
     return a && a.token && a.account ? a : null;
   };
   const acctSet = (j) => { const v = { token: j.token, account: j.account }; store.set(ACK, v); ckSet(v); };
-  const acctOut = () => { try { localStorage.removeItem(ACK); } catch {} ckSet(null); };
+  const acctOut = () => { try { localStorage.removeItem(ACK); } catch {} ckSet(null); fetch("/api/acct/logout", { method: "POST", keepalive: true }).catch(() => {}); };
+  // الجهاز نسي الدخول (سفاري/إنستغرام مسحو التخزين، أو تحديث): منرجّعو من كوكي السيرفر بلا ما يسجّل دخول من جديد
+  const acctRestore = () => fetch("/api/acct/me", { credentials: "same-origin", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j && j.token && j.account) { acctSet(j); return true; } return false; }).catch(() => false);
   const ACCT_GOVS = ["دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "إدلب", "درعا", "السويداء", "القنيطرة", "دير الزور", "الرقة", "الحسكة"];
   // sign up / log in, then carry on with what the customer was doing (checkout, account…)
   function authView(next, why, startTab) {
@@ -2658,6 +2660,8 @@ ${trustH()}
   // ---------- بوابة الدخول ----------
   const KO_BOT = /bot|crawl|spider|slurp|google|bing|yandex|baidu|duckduck|lighthouse|pagespeed|facebookexternalhit|whatsapp|telegram|twitter|preview/i.test(navigator.userAgent || "");
   function gateView() {
+    // قبل ما نطلب تسجيل دخول: منجرّب نرجّع الدخول المحفوظ بالسيرفر (مرة وحدة بكل فتحة)
+    if (!gateView.tried) { gateView.tried = 1; app.innerHTML = '<div class="loading">لحظة…</div>'; acctRestore().then((ok) => { if (ok) route(null, false); else if (!acct()) gateView(); else route(null, false); }); return; }
     document.body.classList.add("gated");
     authView(() => { document.body.classList.remove("gated"); route(null, false); }, "", "reg");
     const li = document.querySelector("[data-logo] img"), src = li && (li.currentSrc || li.src);
@@ -2670,7 +2674,7 @@ ${trustH()}
   // الجلسة: مرة بالجلسة منتأكد إنو الدخول لسا صالح (وبيتسجّل جهاز الزبون للوحة التحكم)
   try {
     const A0 = acct();
-    if (A0 && !sessionStorage.getItem("ko_me_ok")) fetch("/api/acct/me", { headers: { authorization: "Bearer " + A0.token } }).then((r) => {
+    if (A0 && !sessionStorage.getItem("ko_me_ok")) fetch("/api/acct/me", { credentials: "same-origin", headers: { authorization: "Bearer " + A0.token } }).then((r) => {
       if (r.ok) { sessionStorage.setItem("ko_me_ok", "1"); r.json().then((j) => { if (j && j.token && j.account && acct()) acctSet({ token: j.token, account: j.account }); }).catch(() => {}); return; }
       if (r.status === 401) r.json().then((j) => { if (j && j.logout) { acctOut(); route(null, true); } }).catch(() => {});
     }).catch(() => {});
