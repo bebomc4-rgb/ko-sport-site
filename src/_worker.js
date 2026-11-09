@@ -830,12 +830,16 @@ async function cartDelete(request, env, sid) {
 // ---------- customer accounts (needed to place an order) ----------
 // three-part name like the ID card, Syrian mobile (09xxxxxxxx), governorate, password (PBKDF2). The phone is the login.
 const ACCT_GOVS = ["دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "إدلب", "درعا", "السويداء", "القنيطرة", "دير الزور", "الرقة", "الحسكة"];
+// Syrian numbers stay 09xxxxxxxx; any other country is kept as +<country code><number> (owner, 9 Nov 2026: «كل الأرقام سوري أو غير سوري»)
 function syPhone(v) {
   let d = String(v || "").replace(/[٠-٩]/g, (x) => "٠١٢٣٤٥٦٧٨٩".indexOf(x)).replace(/\D/g, "");
-  if (d.startsWith("00963")) d = d.slice(5); else if (d.startsWith("963")) d = d.slice(3);
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.startsWith("963")) d = d.slice(3).replace(/^0/, "");
   if (d.length === 9 && d[0] === "9") d = "0" + d;
-  return /^09\d{8}$/.test(d) ? d : "";
+  if (/^09\d{8}$/.test(d)) return d;
+  return /^[1-9]\d{9,14}$/.test(d) ? "+" + d : "";
 }
+const ACCT_PH = /^(09\d{8}|\+[1-9]\d{9,14})$/;
 async function acctSecret(env) {
   if (env.ACCT_SECRET) return env.ACCT_SECRET;
   if (env.__acs) return env.__acs;
@@ -859,7 +863,7 @@ async function acctFromReq(request, env, why) {
   const t = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const [phone, exp, pv, sig] = t.split(".");
   const no = (r) => { if (why) why.reason = r; return null; };
-  if (!sig || !/^09\d{8}$/.test(phone) || !(+exp > Date.now())) return no("token");
+  if (!sig || !ACCT_PH.test(phone) || !(+exp > Date.now())) return no("token");
   if ((await hmac(env, `${phone}.${exp}.${pv}`)) !== sig) return no("token");
   let a = null; try { a = await env.STORE.get("acct:" + phone, "json"); } catch { return no("busy"); }
   if (!a) return no("missing"); // حساب جديد ممكن ياخد لحد دقيقة ليوصل لكل السيرفرات: ما منطلّع الزبون
@@ -971,7 +975,7 @@ async function acctTouch(env, request, a) { const d = devOf(request); if (a.dev 
 async function accountsList(request, env) {
   if (!isAdmin(request, env, "orders")) return denied();
   const keys = []; let cursor;
-  do { const r = await env.STORE.list({ prefix: "acct:09", limit: 1000, cursor }); for (const k of r.keys) if (/^acct:09\d{8}$/.test(k.name)) keys.push(k.name); cursor = r.list_complete ? null : r.cursor; } while (cursor && keys.length < 5000);
+  for (const pre of ["acct:09", "acct:+"]) { let cursor; do { const r = await env.STORE.list({ prefix: pre, limit: 1000, cursor }); for (const k of r.keys) if (ACCT_PH.test(k.name.slice(5))) keys.push(k.name); cursor = r.list_complete ? null : r.cursor; } while (cursor && keys.length < 5000); }
   const out = [];
   for (let i = 0; i < keys.length && i < 900; i += 50) {
     const vals = await Promise.all(keys.slice(i, i + 50).map((k) => env.STORE.get(k, "json").catch(() => null)));
@@ -1032,7 +1036,7 @@ async function acctApi(request, env, path, m) {
     // WhatsApp hid the sender's number (@lid): the customer types the number and gets a code on WhatsApp instead
     if (!c.phone && c.hidden) { await env.STORE.delete("acct:wapend:" + t); return json({ error: "واتسابك ما بيبيّن رقمك، اكتب رقم موبايلك ومنبعتلك كود تأكيد عالواتساب", needPhone: true, login: !!pend.login }, 409); }
     const phone = syPhone(c.phone);
-    if (!phone && c.phone) { await env.STORE.delete("acct:wapend:" + t); return json({ error: "رقم واتسابك مو سوري، اكتب رقم موبايلك السوري ومنبعتلك كود تأكيد", needPhone: true, login: !!pend.login }, 409); }
+    if (!phone && c.phone) { await env.STORE.delete("acct:wapend:" + t); return json({ error: "ما قدرنا نقرا رقم واتسابك، اكتب رقم موبايلك ومنبعتلك كود تأكيد", needPhone: true, login: !!pend.login }, 409); }
     if (!phone) return json({ ok: true, waiting: true });
     await env.STORE.delete("acct:wapend:" + t);
     const ex = await env.STORE.get("acct:" + phone, "json");
@@ -1044,7 +1048,7 @@ async function acctApi(request, env, path, m) {
     return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
   }
   const phone = syPhone(b.phone), pw = String(b.password || "");
-  if (!phone) return json({ error: "اكتب رقم موبايل سوري صحيح (09xxxxxxxx)", field: "phone" }, 400);
+  if (!phone) return json({ error: "اكتب رقم موبايل صحيح: سوري (09xxxxxxxx) أو من برّا مع رمز الدولة (متل +90…)", field: "phone" }, 400);
   const failK = "acct:fail:" + phone, fails = +(await env.STORE.get(failK)) || 0;
   if (fails >= 8) return json({ error: "محاولات كتير، جرّب بعد ربع ساعة" }, 429);
   // the account is created only after the WhatsApp code is typed (proves the number is really theirs)

@@ -1636,7 +1636,9 @@
   function authView(next, why, startTab) {
     let tab = startTab || "reg", via = "wa";
     const WA_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9 0-1.4.7-2 1-2.3.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.7-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"/></svg>`;
-    const fixPh = (x) => String(x || "").replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/\D/g, "").replace(/^(00963|963)/, "").replace(/^9/, "09");
+    // سوري → 09xxxxxxxx، أي دولة تانية → +رمز الدولة والرقم
+    const fixPh = (x) => { let d = String(x || "").replace(/[٠-٩]/g, (c) => "٠١٢٣٤٥٦٧٨٩".indexOf(c)).replace(/\D/g, ""); if (d.startsWith("00")) d = d.slice(2); if (d.startsWith("963")) d = d.slice(3).replace(/^0/, ""); if (/^9\d{8}$/.test(d)) d = "0" + d; if (/^09\d{8}$/.test(d)) return d; return /^[1-9]\d{9,14}$/.test(d) ? "+" + d : d; };
+    const okPh = (p) => /^(09\d{8}|\+[1-9]\d{9,14})$/.test(p), PH_ERR = "اكتب رقم موبايل صحيح: سوري (09xxxxxxxx) أو من برّا مع رمز الدولة (متل +90…)";
     const draw = () => {
       const reg = tab === "reg", wa = reg && via === "wa";
       app.innerHTML = `<div class="auth"><h1 class="page-title">${reg ? "حساب جديد" : "تسجيل الدخول"}</h1>
@@ -1644,7 +1646,7 @@
         <div class="auth-tabs"><button type="button" data-tab="reg" class="${reg ? "on" : ""}">حساب جديد</button><button type="button" data-tab="login" class="${reg ? "" : "on"}">عندي حساب</button></div>
         <form class="form auth-form" data-auth novalidate>
           ${reg ? `<div class="field"><label for="a-name">الاسم الثلاثي (متل الهوية)</label><input id="a-name" name="name" autocomplete="name" placeholder="مثلاً: أحمد محمد الحسن" required><div class="msg"></div></div>` : ""}
-          ${wa ? "" : `<div class="field"><label for="a-phone">رقم الموبايل</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx" autocomplete="tel" required><div class="msg"></div></div>`}
+          ${wa ? "" : `<div class="field"><label for="a-phone">رقم الموبايل</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx أو +90…" autocomplete="tel" required><div class="msg"></div></div>`}
           ${reg ? `<div class="field"><label for="a-gov">المحافظة</label><select id="a-gov" name="governorate" required><option value="">اختار المحافظة</option>${ACCT_GOVS.map((g) => `<option>${esc(g)}</option>`).join("")}</select><div class="msg"></div></div>` : ""}
           <div class="field"><label for="a-pw">كلمة السر</label><input id="a-pw" name="password" type="password" autocomplete="${reg ? "new-password" : "current-password"}" ${reg ? 'placeholder="6 أحرف أو أكتر"' : ""} required><div class="msg"></div></div>
           ${reg ? `<div class="field"><label for="a-pw2">أعد كلمة السر</label><input id="a-pw2" name="password2" type="password" autocomplete="new-password" required><div class="msg"></div></div>` : ""}
@@ -1688,7 +1690,7 @@
       f.addEventListener("submit", async (e) => {
         e.preventDefault(); clear();
         const v = Object.fromEntries(new FormData(f)), ph = fixPh(v.phone), errs = reg ? regErrs(v) : {};
-        if (!/^09\d{8}$/.test(ph)) errs.phone = "اكتب رقم موبايل سوري صحيح (09xxxxxxxx)";
+        if (!okPh(ph)) errs.phone = PH_ERR;
         if (!reg && !v.password) errs.password = "اكتب كلمة السر";
         if (Object.keys(errs).length) { showErrs(errs); return; }
         const btn = f.querySelector("[data-auth-go]"), lbl = btn.textContent; btn.disabled = true; btn.textContent = "لحظة…";
@@ -1719,14 +1721,14 @@
     const quickPhone = (payload) => {
       app.innerHTML = `<div class="auth"><h1 class="page-title">آخر خطوة</h1>
         <form class="form auth-form" data-quick novalidate>
-          <div class="field"><label for="q-phone">رقم موبايلك (الواتساب)</label><input id="q-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx" autocomplete="tel" required><div class="msg"></div></div>
+          <div class="field"><label for="q-phone">رقم موبايلك (الواتساب)</label><input id="q-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx أو +90…" autocomplete="tel" required><div class="msg"></div></div>
           <button class="btn btn-red" data-quick-go>حسابي جاهز، كمّل ✓</button>
         </form></div>`;
       const f = app.querySelector("[data-quick]"); f.phone.focus();
       f.addEventListener("submit", async (e) => {
         e.preventDefault();
         const fl = f.phone.closest(".field"), msg = fl.querySelector(".msg"), ph = fixPh(f.phone.value); fl.classList.remove("err"); msg.textContent = "";
-        if (!/^09\d{8}$/.test(ph)) { fl.classList.add("err"); msg.textContent = "اكتب رقم موبايل سوري صحيح (09xxxxxxxx)"; return; }
+        if (!okPh(ph)) { fl.classList.add("err"); msg.textContent = PH_ERR; return; }
         const btn = f.querySelector("[data-quick-go]"); btn.disabled = true; btn.textContent = "لحظة…";
         try {
           const r = await fetch("/api/acct/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...payload, phone: ph }) });
