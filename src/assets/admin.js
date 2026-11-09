@@ -200,7 +200,14 @@
     const L = ACCTS.accounts || [], c = { ios: 0, android: 0, app: 0, pc: 0, x: 0 };
     for (const a of L) c[a.dev in c ? a.dev : "x"]++;
     return `<div class="acc-sum"><div class="acc-sum-n"><b>${nf(ACCTS.total)}</b><span>زبون مسجّل بالموقع</span></div>
-      <div class="acc-sum-d"><span class="dv-chip dv-ios">📱 آيفون <b>${nf(c.ios)}</b></span><span class="dv-chip dv-android">🤖 أندرويد <b>${nf(c.android + c.app)}</b>${c.app ? ` <small>(منهم ${nf(c.app)} بالتطبيق)</small>` : ""}</span><span class="dv-chip dv-pc">💻 كمبيوتر <b>${nf(c.pc)}</b></span>${c.x ? `<span class="dv-chip dv-x">غير معروف <b>${nf(c.x)}</b> <small>(بيتعرّف أول ما يفوت)</small></span>` : ""}</div></div>`;
+      <div class="acc-sum-d"><span class="dv-chip dv-ios">📱 آيفون <b>${nf(c.ios)}</b></span><span class="dv-chip dv-android">🤖 أندرويد <b>${nf(c.android + c.app)}</b>${c.app ? ` <small>(منهم ${nf(c.app)} بالتطبيق)</small>` : ""}</span><span class="dv-chip dv-pc">💻 كمبيوتر <b>${nf(c.pc)}</b></span>${c.x ? `<span class="dv-chip dv-x">غير معروف <b>${nf(c.x)}</b> <small>(بيتعرّف أول ما يفوت)</small></span>` : ""}</div>${govSummary(L)}</div>`;
+  }
+  // كم حساب بكل محافظة (الأكتر أول)
+  function govSummary(L) {
+    const g = new Map(); for (const a of L) { const k = a.gov || "بلا محافظة"; g.set(k, (g.get(k) || 0) + 1); }
+    if (!g.size) return "";
+    const rows = [...g].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], "ar")), max = rows[0][1];
+    return `<div class="acc-gov"><b class="acc-gov-t">📍 الحسابات حسب المحافظة</b>${rows.map(([n, k]) => `<div class="acc-gov-r"><span>${esc(n)}</span><i style="--w:${Math.max(4, Math.round((k / max) * 100))}%"></i><b>${nf(k)}</b></div>`).join("")}</div>`;
   }
   async function ensureAllOrders() { if (allLoaded) return; let n = 0; try { while (cursor && n++ < 80) await loadOrders(false); } catch {} allLoaded = true; }
   const ckey = (phone, email) => { const d = String(phone || "").replace(/\D/g, "").slice(-9); if (d.length >= 9) return "p" + d; const e = String(email || "").trim().toLowerCase(); return e.includes("@") ? "e" + e.slice(0, 80) : ""; };
