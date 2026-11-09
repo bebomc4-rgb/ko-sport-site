@@ -1741,7 +1741,7 @@
     };
     // waiting for the customer's WhatsApp message (the bot sees it and tells us the number)
     const waWait = (code, login, payload) => {
-      let stop = false, started = !payload, tries = 0, timer = 0;
+      let stop = false, started = !payload, tries = 0, timer = 0; const t0 = Date.now();
       const until = Date.now() + 20 * 60e3;
       app.innerHTML = `<div class="auth"><h1 class="page-title">${login ? "الدخول بالواتساب" : "تأكيد بالواتساب"}</h1>
         <div class="wa-wait"><div class="wa-pulse">${WA_ICON}</div>
@@ -1767,9 +1767,16 @@
             const r = await fetch("/api/acct/wa-check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t: code }) });
             const j = await r.json().catch(() => ({}));
             if (r.ok && j.token) { end(); return done(j); }
+            if (j.needPhone) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} tab = j.login || login ? "login" : "reg"; via = "phone"; draw(); toast(esc(j.error)); const ff = app.querySelector("[data-auth]"); if (ff && payload) { if (ff.name && payload.name) ff.name.value = payload.name; if (ff.governorate && payload.governorate) ff.governorate.value = payload.governorate; } if (ff && ff.phone) ff.phone.focus(); return; }
             if (j.missing) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} tab = "reg"; via = "wa"; draw(); toast("ما في حساب على رقمك لهلق، سجّل حساب جديد بكبسة"); return; }
             if (j.expired || r.status === 403) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} draw(); toast(esc(j.error || "انتهى الوقت، جرّب من جديد")); return; }
             msg.textContent = j.off ? "عم نستنى رسالتك… (إذا بعتها وطوّل، اكبس «افتح الواتساب مرة تانية» وابعتها كمان مرة)" : "";
+            // بعد 45 ثانية بلا نتيجة: طريق تاني أكيد — يكتب رقمو ومنبعتلو كود عالواتساب
+            if (Date.now() - t0 > 45e3 && !app.querySelector("[data-wa-phone]")) {
+              const b = document.createElement("button"); b.type = "button"; b.className = "btn btn-ghost"; b.dataset.waPhone = "1"; b.textContent = "بعتّ الرسالة وما زبط؟ اكتب رقمك ومنبعتلك كود";
+              b.onclick = () => { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} tab = login ? "login" : "reg"; via = "phone"; draw(); const ff = app.querySelector("[data-auth]"); if (ff && payload) { if (ff.name && payload.name) ff.name.value = payload.name; if (ff.governorate && payload.governorate) ff.governorate.value = payload.governorate; } if (ff && ff.phone) ff.phone.focus(); };
+              msg.after(b);
+            }
           }
         } catch {}
         tries++;

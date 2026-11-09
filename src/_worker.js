@@ -1029,7 +1029,10 @@ async function acctApi(request, env, path, m) {
     const c = await botCall(env, "claim", t);
     if (!c) return json({ ok: true, waiting: true, off: true });
     if (!c.known) return json({ ok: true, waiting: true }); // the store's WhatsApp may have just moved PC ↔ phone: keep waiting (this code still lives 20 minutes here)
+    // WhatsApp hid the sender's number (@lid): the customer types the number and gets a code on WhatsApp instead
+    if (!c.phone && c.hidden) { await env.STORE.delete("acct:wapend:" + t); return json({ error: "واتسابك ما بيبيّن رقمك، اكتب رقم موبايلك ومنبعتلك كود تأكيد عالواتساب", needPhone: true, login: !!pend.login }, 409); }
     const phone = syPhone(c.phone);
+    if (!phone && c.phone) { await env.STORE.delete("acct:wapend:" + t); return json({ error: "رقم واتسابك مو سوري، اكتب رقم موبايلك السوري ومنبعتلك كود تأكيد", needPhone: true, login: !!pend.login }, 409); }
     if (!phone) return json({ ok: true, waiting: true });
     await env.STORE.delete("acct:wapend:" + t);
     const ex = await env.STORE.get("acct:" + phone, "json");
