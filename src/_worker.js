@@ -1157,7 +1157,6 @@ async function acctApi(request, env, path, m) {
     return json({ error: "Method not allowed" }, 405);
   }
   if (path === "/api/acct/otp-key" && m === "GET") return json({ jwk: (await otpKeys(env)).pub });
-  if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
   if (m !== "POST") return json({ error: "Method not allowed" }, 405);
   const b = await request.json().catch(() => ({}));
   // «سجّل / ادخل بالواتساب»: the customer sends KO-XXXXXX from their own WhatsApp to the store; that proves the number
@@ -3720,6 +3719,7 @@ export default {
         if (m === "PUT") return settingsPut(request, env);
         return json({ error: "Method not allowed" }, 405);
       }
+      if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
       if (path.startsWith("/api/acct/")) {
         if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
         const r = await acctApi(request, env, path, m);
