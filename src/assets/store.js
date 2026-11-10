@@ -2561,7 +2561,7 @@ ${trustH()}
       if (q.length < 2) { close(); return; }
       const list = findProducts(q, true).slice(0, 14), cs = findCats(q);
       box.innerHTML = (cs.length ? `<div class="sx-cats">${cs.map((c) => `<a href="${cHref(c.name)}">${esc(catLabel(c.name))}</a>`).join("")}</div>` : "")
-        + (list.length ? `<div class="sx-row">${list.map((p) => `<a class="sx-p" href="#/p/${encodeURIComponent(p.id)}"><span class="sx-img"><img src="${esc(imgW(p.image || p.thumb, 360))}" alt="" loading="lazy" decoding="async"></span><b>${esc(p.name)}</b><span class="sx-pr">${p.inStock ? priceH(p) : "خالص"}</span></a>`).join("")}</div>
+        + (list.length ? `<div class="sx-row">${list.map((p) => `<a class="sx-p" href="#/p/${encodeURIComponent(p.id)}"><span class="sx-img"><img src="${esc(imgW(p.image || p.thumb, 240))}" width="128" height="128" alt="" loading="lazy" decoding="async"></span><b>${esc(p.name)}</b><span class="sx-pr">${p.inStock ? priceH(p) : "خالص"}</span></a>`).join("")}</div>
           <a class="sx-all" href="#/search/${encodeURIComponent(q)}">شوف كل النتائج ←</a>`
           : `<p class="sx-none">ما لقينا شي بهالاسم. جرّب كلمة تانية، متل «قفاز» أو «Venum».</p>`);
       fixLinks(box); box.hidden = false; form.classList.add("sx-on");
