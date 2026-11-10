@@ -917,6 +917,58 @@ async function botSign(env, kind, to, text) {
   const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`${kind}|${n}|${text}|${ts}|${nonce}`)));
   try { const r = await botPost("/api/otp/ko-" + kind, JSON.stringify({ to: n, text, ts, nonce, sig }), 8000); return !!(r && r.ok); } catch { return false; }
 }
+// ---------- منتجات من الواتساب (صاحب المتجر، 10 تشرين التاني 2026) ----------
+// صاحب المتجر بيبعت للمجيب (صورة + اسم + سعر، أو «احذف…»، «غيّر سعر…»). المجيب بيحضّر «مهمة» وبيقلّنا رقمها،
+// ونحنا منجيبها منو مباشرة من عنوانو الثابت (OTP_HOSTS)، فما حدا غيرو بيقدر يعدّل المنتجات من هالباب.
+const normAr = (s) => String(s || "").toLowerCase().replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+function matchProducts(list, q) {
+  const nq = normAr(q), toks = nq.split(" ").filter((t) => t.length > 1);
+  if (!toks.length) return [];
+  return list.map((p) => {
+    const n = normAr(p.name);
+    let sc = toks.filter((t) => n.includes(t)).length / toks.length;
+    if (n === nq) sc += 2; else if (n.includes(nq)) sc += 0.5;
+    return { p, sc };
+  }).filter((x) => x.sc >= 0.5).sort((a, b) => b.sc - a.sc);
+}
+const slugAr = (s) => String(s).trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "منتج";
+async function botJob(request, env) {
+  const b = await request.json().catch(() => ({}));
+  const t = String(b.t || "");
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(t)) return json({ error: "ناقص" }, 400);
+  const r = await botPost("/api/products-job", JSON.stringify({ t }), 8000);
+  if (!r || !r.ok) return json({ error: "ما لقيت المهمة عند المجيب" }, 404);
+  const job = await r.json().catch(() => null);
+  if (!job || job.site !== "ko") return json({ error: "مو إلنا" }, 403);
+  const list = await getProducts(env, request);
+  const out = (p) => ({ id: p.id, name: p.name, price: p.price, inStock: p.inStock, url: "https://ko-sport.online/#/p/" + encodeURIComponent(p.id) });
+  if (job.action === "add") {
+    const name = String(job.name || "").trim().slice(0, 150); if (!name) return json({ ok: false, msg: "ما في اسم للمنتج" });
+    const imgs = [];
+    for (const u of (job.images || []).slice(0, 8)) {
+      try { const ir = await fetch(u, { signal: AbortSignal.timeout(15000) }); const ct = ir.headers.get("content-type") || "image/jpeg"; const buf = await ir.arrayBuffer(); if (ir.ok && ct.startsWith("image/") && buf.byteLength <= MAX_IMG) { const k = newKey(); await env.STORE.put(`img:${k}`, buf, { metadata: { type: ct } }); imgs.push(`/img/${k}`); } } catch {}
+    }
+    let id = slugAr(name); const ids = new Set(list.map((p) => p.id)); for (let i = 2; ids.has(id); i++) id = slugAr(name) + "-" + i;
+    const cats = [...new Set(list.map((p) => p.category).filter(Boolean))];
+    const cat = cats.find((c) => normAr(c) === normAr(job.category)) || cats.find((c) => job.category && normAr(c).includes(normAr(job.category))) || String(job.category || "").trim() || "بدون قسم";
+    const p = { also: [], sports: [], options: [], name, category: cat, inStock: job.inStock !== false, price: Math.max(0, +job.price || 0), image: imgs[0] || "", images: imgs, id };
+    if (job.details) p.details = String(job.details).slice(0, 3000);
+    list.unshift(p); await saveProducts(env, list);
+    return json({ ok: true, msg: "انضاف", product: out(p), images: imgs.length });
+  }
+  let hits = job.id ? list.filter((p) => p.id === job.id).map((p) => ({ p, sc: 9 })) : matchProducts(list, job.query || job.name);
+  if (!hits.length) return json({ ok: false, msg: `ما لقيت منتج اسمو «${job.query || job.name || ""}»` });
+  if (hits.length > 1 && !(hits[0].sc >= 1.5 && hits[0].sc - hits[1].sc >= 0.5) && !(hits[0].sc === 1 && hits[1].sc < 1)) return json({ ok: false, candidates: hits.slice(0, 6).map((h) => out(h.p)) });
+  const p = hits[0].p;
+  if (job.action === "delete") { list.splice(list.indexOf(p), 1); await saveProducts(env, list); return json({ ok: true, msg: "انحذف", product: out(p) }); }
+  if (job.price != null && job.price !== "") p.price = Math.max(0, +job.price || 0);
+  if (job.inStock != null) p.inStock = !!job.inStock;
+  if (job.newName) p.name = String(job.newName).trim().slice(0, 150);
+  if (job.category) p.category = String(job.category).trim().slice(0, 60);
+  if (job.details) p.details = String(job.details).slice(0, 3000);
+  await saveProducts(env, list);
+  return json({ ok: true, msg: "تعدّل", product: out(p) });
+}
 // signed call to K FAST AI (open / claim a «سجّل بالواتساب» code)
 async function botCall(env, kind, t) {
   const k = await otpKeys(env), ts = Date.now(), nonce = b64u(crypto.getRandomValues(new Uint8Array(12)));
@@ -1097,6 +1149,7 @@ async function acctApi(request, env, path, m) {
     return json({ error: "Method not allowed" }, 405);
   }
   if (path === "/api/acct/otp-key" && m === "GET") return json({ jwk: (await otpKeys(env)).pub });
+  if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
   if (m !== "POST") return json({ error: "Method not allowed" }, 405);
   const b = await request.json().catch(() => ({}));
   // «سجّل / ادخل بالواتساب»: the customer sends KO-XXXXXX from their own WhatsApp to the store; that proves the number
