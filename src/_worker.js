@@ -941,7 +941,8 @@ async function botJob(request, env) {
   const job = await r.json().catch(() => null);
   if (!job || job.site !== "ko" || Number(job.tenant) !== 1) return json({ error: "مو إلنا" }, 403);
   const list = await getProducts(env, request);
-  const out = (p) => ({ id: p.id, name: p.name, price: p.price, inStock: p.inStock, url: "https://ko-sport.online/#/p/" + encodeURIComponent(p.id) });
+  const out = (p) => ({ id: p.id, name: p.name, price: p.price, inStock: p.inStock, category: p.category, details: p.details || "", url: "https://ko-sport.online/#/p/" + encodeURIComponent(p.id) });
+  if (job.action === "cats") { const c = {}; for (const p of list) if (p.category && p.category !== "بدون قسم") c[p.category] = (c[p.category] || 0) + 1; return json({ ok: true, cats: Object.keys(c).sort((a, b) => c[b] - c[a]) }); }
   if (job.action === "add") {
     const name = String(job.name || "").trim().slice(0, 150); if (!name) return json({ ok: false, msg: "ما في اسم للمنتج" });
     const imgs = [];
