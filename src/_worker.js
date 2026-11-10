@@ -939,7 +939,7 @@ async function botJob(request, env) {
   const r = await botPost("/api/products-job", JSON.stringify({ t }), 8000);
   if (!r || !r.ok) return json({ error: "ما لقيت المهمة عند المجيب" }, 404);
   const job = await r.json().catch(() => null);
-  if (!job || job.site !== "ko") return json({ error: "مو إلنا" }, 403);
+  if (!job || job.site !== "ko" || Number(job.tenant) !== 1) return json({ error: "مو إلنا" }, 403);
   const list = await getProducts(env, request);
   const out = (p) => ({ id: p.id, name: p.name, price: p.price, inStock: p.inStock, url: "https://ko-sport.online/#/p/" + encodeURIComponent(p.id) });
   if (job.action === "add") {
@@ -960,6 +960,14 @@ async function botJob(request, env) {
   if (!hits.length) return json({ ok: false, msg: `ما لقيت منتج اسمو «${job.query || job.name || ""}»` });
   if (hits.length > 1 && !(hits[0].sc >= 1.5 && hits[0].sc - hits[1].sc >= 0.5) && !(hits[0].sc === 1 && hits[1].sc < 1)) return json({ ok: false, candidates: hits.slice(0, 6).map((h) => out(h.p)) });
   const p = hits[0].p;
+  if (job.action === "addimg") {
+    const imgs = p.images && p.images.length ? p.images.slice() : p.image ? [p.image] : [];
+    for (const u of (job.images || []).slice(0, 8)) {
+      try { const ir = await fetch(u, { signal: AbortSignal.timeout(15000) }); const ct = ir.headers.get("content-type") || "image/jpeg"; const buf = await ir.arrayBuffer(); if (ir.ok && ct.startsWith("image/") && buf.byteLength <= MAX_IMG) { const k = newKey(); await env.STORE.put(`img:${k}`, buf, { metadata: { type: ct } }); imgs.push(`/img/${k}`); } } catch {}
+    }
+    p.images = imgs; p.image = imgs[0] || p.image; await saveProducts(env, list);
+    return json({ ok: true, msg: "انضافت الصورة", product: out(p) });
+  }
   if (job.action === "delete") { list.splice(list.indexOf(p), 1); await saveProducts(env, list); return json({ ok: true, msg: "انحذف", product: out(p) }); }
   if (job.price != null && job.price !== "") p.price = Math.max(0, +job.price || 0);
   if (job.inStock != null) p.inStock = !!job.inStock;
