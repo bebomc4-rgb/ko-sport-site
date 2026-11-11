@@ -1058,7 +1058,8 @@ async function subsApi(request, env, m) {
 }
 
 // اسم زبون الموقع لجهات اتصال واتساب المتجر: «الاسم الأول المحافظة» متل ما بيكتبهن صاحب المتجر (مثلاً «مرهف سويداء»)
-const waName = (a) => { const f = String(a.name || "").trim().split(/\s+/)[0] || "", g = String(a.governorate || a.gov || "").trim().replace(/^ال(?=\S)/, ""); return (f + (g ? " " + g : "")).trim(); };
+// الاسم الثلاثي متل ما كتبو الزبون بالموقع (صاحب المتجر، 11 تشرين التاني 2026)
+const waName = (a) => String(a.name || "").replace(/\s+/g, " ").trim().slice(0, 40);
 async function botContacts(env, list) {
   const L = list.map((a) => ({ phone: a.phone, name: waName(a) })).filter((x) => x.phone && x.name);
   if (!L.length) return false;
@@ -1069,12 +1070,12 @@ async function botContacts(env, list) {
 }
 // مرة وحدة: كل الحسابات الموجودة لجهات الاتصال (يلي إلو اسم حقيقي محفوظ ما بيتغيّر)
 async function contactsBackfill(env) {
-  if (await env.STORE.get("acct:waNames1")) return;
+  if (await env.STORE.get("acct:waNames2")) return;
   const keys = [];
   for (const pre of ["acct:09", "acct:+"]) { let cursor; do { const r = await env.STORE.list({ prefix: pre, limit: 1000, cursor }); for (const k of r.keys) if (ACCT_PH.test(k.name.slice(5))) keys.push(k.name); cursor = r.list_complete ? null : r.cursor; } while (cursor && keys.length < 3000); }
   const all = [];
   for (let i = 0; i < keys.length && i < 900; i += 50) { const v = await Promise.all(keys.slice(i, i + 50).map((k) => env.STORE.get(k, "json").catch(() => null))); for (const a of v) if (a && a.phone && !a.blocked) all.push(a); }
-  if (await botContacts(env, all)) await env.STORE.put("acct:waNames1", JSON.stringify({ at: new Date().toISOString(), n: all.length }));
+  if (await botContacts(env, all)) await env.STORE.put("acct:waNames2", JSON.stringify({ at: new Date().toISOString(), n: all.length }));
 }
 
 // ---------- طلباتي: قائمة طلبات الزبون محفوظة بحسابو (acctord:<phone> = مفاتيح الطلبات، الأحدث أول) ----------
