@@ -2658,7 +2658,8 @@ ${trustH()}
   }
 
   // ---------- بوابة الدخول ----------
-  const KO_BOT = /bot|crawl|spider|slurp|google|bing|yandex|baidu|duckduck|lighthouse|pagespeed|facebookexternalhit|whatsapp|telegram|twitter|preview/i.test(navigator.userAgent || "");
+  const KO_BOT = /bot|crawl|spider|slurp|google|bing|yandex|baidu|duckduck|lighthouse|pagespeed|facebookexternalhit|whatsapp|telegram|twitter|preview/i.test(navigator.userAgent || "") || (() => { // رابط فحص السرعة لصاحب المتجر (16 تشرين التاني 2026): ?speed=TOKEN بيفتح الموقع بلا واجهة تسجيل الدخول
+    try { const k = "ixd42oc3"; if (new URLSearchParams(location.search).get("speed") === k) { sessionStorage.setItem("ko_speed", k); return true; } return sessionStorage.getItem("ko_speed") === k; } catch { return false; } })();
   function gateView() {
     // قبل ما نطلب تسجيل دخول: منجرّب نرجّع الدخول المحفوظ بالسيرفر (مرة وحدة بكل فتحة)
     if (!gateView.tried) { gateView.tried = 1; app.innerHTML = '<div class="loading">لحظة…</div>'; acctRestore().then((ok) => { if (ok) route(null, false); else if (!acct()) gateView(); else route(null, false); }); return; }
