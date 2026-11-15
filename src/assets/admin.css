@@ -38,7 +38,7 @@
 
 .prod-count{font-size:13px;color:var(--muted);margin-bottom:8px}
 .ptable{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
-.prow{display:grid;grid-template-columns:52px 1fr 90px 92px 70px;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)}
+.prow{display:grid;grid-template-columns:52px minmax(0,460px) 90px 92px 70px;justify-content:start;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)}
 .prow:last-child{border-bottom:0}
 .prow.dirty{background:#fffbea}
 .prow.is-hidden{opacity:.55}
