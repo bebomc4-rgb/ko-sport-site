@@ -1,6 +1,6 @@
 /* KO SPORT service worker — fast repeat visits + offline fallback.
    Products/prices are always fetched fresh from the network first. */
-const V = "ko-v234";
+const V = "ko-v235";
 const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
 const KEEP = [SHELL, ASSET, IMG, DATA];
 
@@ -109,7 +109,7 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (p.startsWith("/assets/")) { e.respondWith(url.searchParams.has("v") ? cacheFirst(req, ASSET, 80) : swr(req, ASSET, 80)); return; }
-  if (p.startsWith("/img/") || p.startsWith("/cdn-cgi/image/")) { e.respondWith(swr(req, IMG, 200)); return; }
+  if (p.startsWith("/img/") || p.startsWith("/imgs/") || p.startsWith("/cdn-cgi/image/")) { e.respondWith(swr(req, IMG, 200)); return; }
   if (/\.(png|svg|webmanifest|woff2?)$/.test(p)) e.respondWith(swr(req, ASSET, 80));
 });
 

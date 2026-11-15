@@ -1804,6 +1804,45 @@ async function imageGet(request, env, ctx, key) {
   return res;
 }
 
+// صاحب المتجر (16 تشرين التاني 2026): كل صورة بتتصغّر مرة وحدة بس (Cloudflare) ومنحفظ النسخة الصغيرة بالمخزن (KV)،
+// فالزباين بياخدو المحفوظة وما في تصغير جديد كل شهر. إذا التصغير ما زبط لأي سبب، بتطلع الصورة الأصلية (ما بيخرب شي).
+// /imgs/<width>/<key>  أو  /imgs/<width>q<quality>/<key>
+const IMGS_W = new Set([120, 160, 200, 240, 300, 320, 360, 400, 480, 540, 600, 640, 720, 800, 828, 960, 1080, 1200, 1280, 1600]);
+async function imagesGet(request, env, ctx, rest) {
+  const m = /^(\d{2,4})(?:q(\d{2,3}))?\/([a-z0-9]+)$/.exec(rest || "");
+  if (!m) return new Response("Not found", { status: 404 });
+  const w = +m[1], q = Math.min(100, Math.max(30, +(m[2] || 90))), key = m[3];
+  const url = new URL(request.url), probe = url.searchParams.has("probe");
+  const orig = () => imageGet(new Request(new URL("/img/" + key, url.origin).href, { headers: request.headers }), env, ctx, key);
+  if (!IMGS_W.has(w)) return orig();
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const ck = new Request(new URL(`/imgs/${w}q${q}/${key}`, url.origin).href);
+  if (!probe && cache) { const hit = await cache.match(ck); if (hit) return hit; }
+  const kk = `imgs:${key}:${w}:${q}`;
+  const send = (buf, type, from) => {
+    const r = new Response(buf, { headers: { "content-type": type, "cache-control": "public, max-age=31536000, immutable", "x-ko-img": from } });
+    if (cache && !probe) ctx.waitUntil(cache.put(ck, r.clone()).catch(() => {}));
+    return r;
+  };
+  try {
+    const { value, metadata } = await env.STORE.getWithMetadata(kk, "arrayBuffer");
+    if (value) return send(value, (metadata && metadata.type) || "image/webp", "kv");
+  } catch {}
+  try {
+    const r = await fetch(new URL("/img/" + key, url.origin).href, { cf: { image: { width: w, quality: q, format: "webp", fit: "scale-down" } } });
+    const type = r.headers.get("content-type") || "";
+    if (r.ok && /^image\//.test(type) && r.headers.get("cf-resized") !== null && !/err/i.test(r.headers.get("cf-resized") || "")) {
+      const buf = await r.arrayBuffer();
+      if (buf.byteLength > 0 && buf.byteLength < 20e6) {
+        ctx.waitUntil(env.STORE.put(kk, buf, { metadata: { type } }).catch(() => {}));
+        return send(buf, type, "new");
+      }
+    }
+    if (probe) return new Response(JSON.stringify({ status: r.status, type, resized: r.headers.get("cf-resized") }), { headers: { "content-type": "application/json" } });
+  } catch (e) { if (probe) return new Response(JSON.stringify({ error: String(e && e.message || e) }), { headers: { "content-type": "application/json" } }); }
+  return orig();
+}
+
 // Old Wuilt links (shared on WhatsApp/Facebook) keep working:
 // /ar/product/all/<slug> → that product, anything else under /ar → home page.
 async function oldWuiltLink(request, env, url) {
@@ -3820,6 +3859,8 @@ const koMain = {
         return mediaUpload(request, env);
       } else if (path.startsWith("/media/") && (m === "GET" || m === "HEAD")) {
         return mediaGet(request, env, path.slice(7));
+      } else if (path.startsWith("/imgs/") && m === "GET") {
+        return imagesGet(request, env, ctx, path.slice(6));
       } else if (path.startsWith("/img/") && m === "GET") {
         return imageGet(request, env, ctx, path.slice(5));
       } else if (m === "GET" && path !== "/" && !/^\/(assets|index\.html|admin|favicon|manifest|sw\.js)/.test(path) && (await redirectFor(env, request, path))) {
