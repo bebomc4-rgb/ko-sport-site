@@ -2013,6 +2013,15 @@ async function homePageInner(request, env, res, home = true, ctx = null) {
       e.replace(`<style>${crit}</style><link rel="preload" as="style" href="${full}"><link rel="stylesheet" href="${full}" media="print" data-kocss onload="this.media='all';window.__koCss=1;document.dispatchEvent(new Event('ko:css'))"><noscript><link rel="stylesheet" href="${full}"></noscript>`, { html: true });
     } }]);
   } else if (css) rules.push(['link[href^="/assets/store.css"]', { element(e) { e.replace(`<style>${css}</style>`, { html: true }); } }]);
+  // شريط الأقسام تحت الهيدر: منكتبو من السيرفر، منشان الصفحة ما تنزل لتحت لما يتحمّل الموقع (CLS)
+  try {
+    const G = Array.isArray(D.groups) ? D.groups.filter((g) => g && g.name) : [];
+    if (G.length) {
+      const gm = D.games && D.games.on ? `<a href="#/games">🎮 ${h(D.games.title || "ألعاب")}</a>` : "";
+      const gh = `<a href="#/">الرئيسية</a>` + G.map((g) => `<a href="#/g/${encodeURIComponent(g.name)}">${h(g.name)}</a>`).join("") + gm + `<a href="#/all">كل المنتجات</a>`;
+      rules.push(["nav[data-groups]", { element(e) { e.setInnerContent(gh, { html: true }); } }]);
+    }
+  } catch {}
   let rw = new HTMLRewriter();
   for (const [sel, h] of rules) rw = rw.on(sel, h);
   return rw.transform(res);
