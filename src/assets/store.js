@@ -1648,7 +1648,7 @@
         ${why ? `<p class="auth-why">${esc(why)}</p>` : ""}
         <div class="auth-tabs"><button type="button" data-tab="reg" class="${reg ? "on" : ""}">حساب جديد</button><button type="button" data-tab="login" class="${reg ? "" : "on"}">عندي حساب</button></div>
         <form class="form auth-form" data-auth novalidate>
-          ${reg ? `<div class="field"><label for="a-name">الاسم الثلاثي (متل الهوية)</label><input id="a-name" name="name" autocomplete="name" placeholder="مثلاً: أحمد محمد الحسن" required><div class="msg"></div></div>` : ""}
+          ${reg ? `<div class="field"><label for="a-name">الاسم الثلاثي بالعربي (متل الهوية)</label><input id="a-name" name="name" autocomplete="name" placeholder="مثلاً: أحمد محمد الحسن" required><div class="msg"></div></div>` : ""}
           ${wa ? "" : `<div class="field"><label for="a-phone">رقم الموبايل</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx أو +90…" autocomplete="tel" required><div class="msg"></div></div>`}
           ${reg ? `<div class="field"><label for="a-gov">المحافظة</label><select id="a-gov" name="governorate" required><option value="">اختار المحافظة</option>${ACCT_GOVS.map((g) => `<option>${esc(g)}</option>`).join("")}</select><div class="msg"></div></div>` : ""}
           <div class="field"><label for="a-pw">كلمة السر</label><input id="a-pw" name="password" type="password" autocomplete="${reg ? "new-password" : "current-password"}" ${reg ? 'placeholder="6 أحرف أو أكتر"' : ""} required><div class="msg"></div></div>
@@ -1668,6 +1668,7 @@
       const regErrs = (v) => {
         const errs = {}, nm = String(v.name || "").trim().replace(/\s+/g, " ");
         if (nm.split(" ").filter((w) => w.length > 1).length < 3 || /[0-9٠-٩]/.test(nm)) errs.name = "اكتب الاسم الثلاثي متل الهوية";
+        else if (!/^[\u0600-\u06FF\s]+$/.test(nm)) errs.name = "اكتب اسمك بالعربي (متل الهوية)";
         if (!v.governorate) errs.governorate = "اختار المحافظة";
         if (String(v.password || "").length < 6) errs.password = "كلمة السر لازم تكون 6 أحرف أو أكتر";
         else if (v.password !== v.password2) errs.password2 = "كلمتين السر مو متطابقين";

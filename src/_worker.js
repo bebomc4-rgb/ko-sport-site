@@ -1206,6 +1206,8 @@ async function acctApi(request, env, path, m) {
     if (!login) {
       const name = clip(String(b.name || "").replace(/\s+/g, " "), 80), parts = name.split(" ").filter(Boolean), pw = String(b.password || "");
       if (parts.length < 3 || parts.some((w) => w.length < 2) || /[0-9٠-٩@#$%^&*_=+<>{}\[\]|\\\/]/.test(name)) return json({ error: "اكتب الاسم الثلاثي متل الهوية (الاسم، اسم الأب، الكنية)", field: "name" }, 400);
+      // صاحب المتجر (16 تشرين التاني 2026): الحسابات الجديدة بالاسم العربي بس (القديمة بتضل متل ما هي)
+      if (!/^[\u0600-\u06FF\s]+$/.test(name)) return json({ error: "اكتب اسمك بالعربي (متل الهوية)", field: "name" }, 400);
       if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة", field: "governorate" }, 400);
       if (pw.length < 6 || pw.length > 64) return json({ error: "كلمة السر لازم تكون 6 أحرف أو أكتر", field: "password" }, 400);
       const salt = b64u(crypto.getRandomValues(new Uint8Array(16)));
@@ -1257,6 +1259,8 @@ async function acctApi(request, env, path, m) {
   if (path === "/api/acct/register") {
     const name = clip(String(b.name || "").replace(/\s+/g, " "), 80), parts = name.split(" ").filter(Boolean);
     if (parts.length < 3 || parts.some((w) => w.length < 2) || /[0-9٠-٩@#$%^&*_=+<>{}\[\]|\\\/]/.test(name)) return json({ error: "اكتب الاسم الثلاثي متل الهوية (الاسم، اسم الأب، الكنية)", field: "name" }, 400);
+    // صاحب المتجر (16 تشرين التاني 2026): الحسابات الجديدة بالاسم العربي بس (القديمة بتضل متل ما هي)
+    if (!/^[\u0600-\u06FF\s]+$/.test(name)) return json({ error: "اكتب اسمك بالعربي (متل الهوية)", field: "name" }, 400);
     if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة", field: "governorate" }, 400);
     if (pw.length < 6 || pw.length > 64) return json({ error: "كلمة السر لازم تكون 6 أحرف أو أكتر", field: "password" }, 400);
     if (await env.STORE.get("acct:" + phone)) return json({ error: "هالرقم عندو حساب، سجّل دخول", field: "phone", exists: true }, 409);
