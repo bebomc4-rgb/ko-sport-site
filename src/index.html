@@ -6,6 +6,14 @@
 <script>/* inside the Android app (WebView, "; wv)") the page is fixed-size: no +/- zoom buttons. Normal browsers keep zoom (accessibility). */if(/; wv\)/.test(navigator.userAgent)){document.querySelector('meta[name=viewport]').setAttribute("content","width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover")}</script>
 <script>document.documentElement.classList.add("js")</script>
 <script>/* start loading the catalogue and settings at once, while the scripts are still downloading */try{var koF=function(u){return fetch(u,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})};window.__koF=[koF("/api/settings?r=1"),koF("/api/products?r=1")]}catch(e){}</script>
+<script>/* صاحب المتجر (16 تشرين التاني 2026): الموقع ما بينفتح جوّا إنستغرام، بينفتح بالمتصفح فوراً (منشان تسجيل الدخول يضل واحد) */(function(){try{var ua=navigator.userAgent||"";if(!/Instagram/i.test(ua))return;var u=location.href,ss=window.sessionStorage,tried=ss&&ss.getItem("ko_ig");try{ss&&ss.setItem("ko_ig","1")}catch(e){}
+var and=/Android/i.test(ua),ios=/iPhone|iPad|iPod/i.test(ua);
+if(and&&!tried){location.replace("intent://"+u.replace(/^https?:\/\//,"")+"#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url="+encodeURIComponent(u)+";end");}
+var show=function(){if(document.getElementById("ko-ig"))return;var d=document.createElement("div");d.id="ko-ig";d.setAttribute("dir","rtl");d.style.cssText="position:fixed;inset:auto 0 0 0;z-index:2147483647;background:#111;color:#fff;padding:14px 16px calc(14px + env(safe-area-inset-bottom));font:600 15px/1.6 system-ui,sans-serif;box-shadow:0 -6px 24px #0008;text-align:center";
+var open=ios?"x-safari-"+u:"intent://"+u.replace(/^https?:\/\//,"")+"#Intent;scheme=https;S.browser_fallback_url="+encodeURIComponent(u)+";end";
+d.innerHTML='<div style="margin-bottom:8px">لتسجّل دخول مرة وحدة وما ينطلب منك تأكيد مرة تانية، افتح الموقع '+(ios?"بسفاري":"بكروم")+'</div><a id="ko-ig-go" href="'+open+'" style="display:block;background:#f5c518;color:#111;border-radius:12px;padding:11px;text-decoration:none;font-weight:800;margin-bottom:8px">افتح '+(ios?"بسفاري":"بالمتصفح")+'</a><div style="font-size:13px;opacity:.85">إذا ما انفتح: اكبس <b>⋯</b> فوق ← <b>'+(ios?"فتح في المتصفح":"فتح في Chrome")+'</b></div><button id="ko-ig-x" style="margin-top:8px;background:none;border:0;color:#bbb;font:inherit;font-size:13px;text-decoration:underline">كمّل هون</button>';
+document.body.appendChild(d);document.getElementById("ko-ig-x").onclick=function(){d.remove()};};
+var later=function(){setTimeout(show,and&&!tried?1500:0)};if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",later);else later();}catch(e){}})();</script>
 <title>KO SPORT | للمُعدات الرياضية الفاخرة</title>
 <meta name="description" content="KO SPORT — أول موقع داخل سوريا متخصص بالأدوات الرياضية: قفازات ملاكمة، معدات كمال أجسام، كرة قدم وسلة. توصيل لكل المحافظات السورية.">
 <meta name="theme-color" content="#121212">
@@ -27,8 +35,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link data-headfont rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="/assets/store.css?v=230">
-<link rel="stylesheet" href="/assets/promo.css?v=230" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="/assets/store.css?v=231">
+<link rel="stylesheet" href="/assets/promo.css?v=231" media="print" onload="this.media='all'">
 <script>
 /* Runs before first paint: apply last-known design */
 (function () {
@@ -136,10 +144,10 @@
 
 <div class="toast" data-toast role="status" aria-live="polite"></div>
 
-<script src="/assets/fx.js?v=230" defer></script>
-<script src="/assets/media.js?v=230" defer></script>
-<script src="/assets/promo.js?v=230" defer></script>
-<script src="/assets/store.js?v=230" defer></script>
-<script src="/assets/pwa.js?v=230" defer></script>
+<script src="/assets/fx.js?v=231" defer></script>
+<script src="/assets/media.js?v=231" defer></script>
+<script src="/assets/promo.js?v=231" defer></script>
+<script src="/assets/store.js?v=231" defer></script>
+<script src="/assets/pwa.js?v=231" defer></script>
 </body>
 </html>
