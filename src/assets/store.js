@@ -28,7 +28,7 @@
   // Resized copies made by Cloudflare (Image Transformations): the same photo, sized for the screen, a fraction of the KB.
   // onerror=redirect → if the free monthly quota ever runs out, the original photo is served instead (nothing breaks).
   const LOCAL_IMG = /^\/img\/[a-z0-9]+$/;
-  const imgW = (u, w, q) => LOCAL_IMG.test(u || "") ? `/cdn-cgi/image/width=${w},quality=${q || 90},format=auto,onerror=redirect${u}` : (u || NOIMG);
+  const imgW = (u, w, q) => LOCAL_IMG.test(u || "") ? `/imgs/${w}${q && +q !== 90 ? "q" + q : ""}/${u.slice(5)}` : (u || NOIMG);
   // product page photo: same sizes as the <link rel=preload> the server puts in the page head
   const PDP_W = [640, 828, 1080], PDP_SIZES = "(max-width:900px) 100vw, 560px";
   const imgSet = (u, ws, sizes) => LOCAL_IMG.test(u || "") ? ` srcset="${ws.map((w) => imgW(u, w) + " " + w + "w").join(", ")}" sizes="${sizes}"` : "";

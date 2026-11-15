@@ -1790,7 +1790,7 @@ async function galleryCopy(request, env) {
 }
 
 // Same helper as the shop: resized copy of one of our own photos (Cloudflare Image Transformations), original if anything else.
-const imgW = (u, w, q) => /^\/img\/[a-z0-9]+$/.test(u || "") ? `/cdn-cgi/image/width=${w},quality=${q || 90},format=auto,onerror=redirect${u}` : (u || "");
+const imgW = (u, w, q) => /^\/img\/[a-z0-9]+$/.test(u || "") ? `/imgs/${w}${q && +q !== 90 ? "q" + q : ""}/${u.slice(5)}` : (u || "");
 async function imageGet(request, env, ctx, key) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const hit = cache && (await cache.match(request));
@@ -1807,7 +1807,7 @@ async function imageGet(request, env, ctx, key) {
 // صاحب المتجر (16 تشرين التاني 2026): كل صورة بتتصغّر مرة وحدة بس (Cloudflare) ومنحفظ النسخة الصغيرة بالمخزن (KV)،
 // فالزباين بياخدو المحفوظة وما في تصغير جديد كل شهر. إذا التصغير ما زبط لأي سبب، بتطلع الصورة الأصلية (ما بيخرب شي).
 // /imgs/<width>/<key>  أو  /imgs/<width>q<quality>/<key>
-const IMGS_W = new Set([120, 160, 200, 240, 300, 320, 360, 400, 480, 540, 600, 640, 720, 800, 828, 960, 1080, 1200, 1280, 1600]);
+const IMGS_W = new Set([120, 160, 200, 240, 300, 320, 360, 400, 480, 540, 600, 640, 720, 800, 828, 900, 960, 1080, 1200, 1280, 1600]);
 async function imagesGet(request, env, ctx, rest) {
   const m = /^(\d{2,4})(?:q(\d{2,3}))?\/([a-z0-9]+)$/.exec(rest || "");
   if (!m) return new Response("Not found", { status: 404 });
