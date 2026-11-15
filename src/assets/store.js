@@ -1638,6 +1638,7 @@
   // sign up / log in, then carry on with what the customer was doing (checkout, account…)
   function authView(next, why, startTab) {
     let tab = startTab || "reg", via = "wa";
+    let keep = {}; // صاحب المتجر (16 تشرين التاني 2026): يلي كتبو الزبون ما بينمسح لما يبدّل بين «بالواتساب» و«ابعتلي كود»
     const WA_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9 0-1.4.7-2 1-2.3.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.7-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"/></svg>`;
     // سوري → 09xxxxxxxx، أي دولة تانية → +رمز الدولة والرقم
     const fixPh = (x) => { let d = String(x || "").replace(/[٠-٩]/g, (c) => "٠١٢٣٤٥٦٧٨٩".indexOf(c)).replace(/\D/g, ""); if (d.startsWith("00")) d = d.slice(2); if (d.startsWith("963")) d = d.slice(3).replace(/^0/, ""); if (/^9\d{8}$/.test(d)) d = "0" + d; if (/^09\d{8}$/.test(d)) return d; return /^[1-9]\d{9,14}$/.test(d) ? "+" + d : d; };
@@ -1665,6 +1666,8 @@
         </form></div>`;
       app.onchange = null;
       const f = app.querySelector("[data-auth]");
+      for (const [k, v] of Object.entries(keep)) if (f[k] && v) f[k].value = v;
+      f.addEventListener("pointerdown", koAudio, { once: true }); f.addEventListener("keydown", koAudio, { once: true });
       const clear = () => f.querySelectorAll(".field").forEach((x) => { x.classList.remove("err"); const m = x.querySelector(".msg"); if (m) m.textContent = ""; });
       const show = (k, m) => { const el = f[k], fl = el && el.closest(".field"); if (fl) { fl.classList.add("err"); fl.querySelector(".msg").innerHTML = m; } };
       const regErrs = (v) => {
@@ -1685,12 +1688,14 @@
           el.value = el.value.replace(/[^\u0600-\u06FF\s]/g, "");
           try { const p2 = Math.max(0, pos - (before - el.value.length)); el.setSelectionRange(p2, p2); } catch {}
           if (fl) { fl.classList.add("err"); msg.textContent = "اكتب اسمك بالعربي بس (حوّل الكيبورد للعربي)"; }
+          soundWarn();
           clearTimeout(el._arT); el._arT = setTimeout(() => { if (fl && msg && /بالعربي/.test(msg.textContent)) { fl.classList.remove("err"); msg.textContent = ""; } }, 4000);
         }
       });
       app.onclick = (e) => {
-        const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; draw(); return; }
-        const vv = e.target.closest("[data-via]"); if (vv) { via = vv.dataset.via; draw(); return; }
+        const grab = () => { keep = {}; ["name", "phone", "governorate", "password", "password2"].forEach((k) => { if (f[k] && f[k].value) keep[k] = f[k].value; }); };
+        const t = e.target.closest("[data-tab]"); if (t) { grab(); tab = t.dataset.tab; draw(); return; }
+        const vv = e.target.closest("[data-via]"); if (vv) { grab(); via = vv.dataset.via; draw(); return; }
         // الدخول بكود عالواتساب (الواتساب على جهاز تاني)
         const cl = e.target.closest("[data-code-login]");
         if (cl) {
@@ -1744,6 +1749,7 @@
     const done = (j) => {
       try { localStorage.removeItem("ko_wa_pending"); } catch {}
       acctSet(j);
+      soundOk();
       const old = store.get("ko_customer", {}) || {};
       store.set("ko_customer", { ...old, name: j.account.name, phone: j.account.phone, governorate: old.governorate || j.account.governorate });
       toast(j.existed || tab === "login" ? "✓ أهلين " + esc(j.account.name.split(" ")[0]) : "✓ انعمل حسابك");
@@ -2604,6 +2610,15 @@ ${trustH()}
   let navK = Date.now() % 1e9, curK = null; const scrollMem = {};
   addEventListener("scroll", () => { if (curK != null) scrollMem[curK] = window.scrollY; }, { passive: true });
   // one from each section in turn (the order inside each section is kept)
+  // أصوات ناعمة (صاحب المتجر، 16 تشرين التاني 2026): تحذير لما ينكتب حرف إنكليزي بالاسم، ونغمة نجاح لما يخلص التسجيل/الدخول
+  let koAC = null, warnAt = 0;
+  function koAudio() { try { koAC = koAC || new (window.AudioContext || window.webkitAudioContext)(); if (koAC.state === "suspended") koAC.resume(); } catch { koAC = null; } return koAC; }
+  function koTone(freqs, dur, vol) {
+    const ac = koAudio(); if (!ac) return;
+    try { let t = ac.currentTime + 0.01; for (const fq of freqs) { const o = ac.createOscillator(), g = ac.createGain(); o.type = "sine"; o.frequency.value = fq; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + 0.03); t += dur * 0.75; } } catch {}
+  }
+  function soundWarn() { const n = Date.now(); if (n - warnAt < 700) return; warnAt = n; koTone([392, 294], 0.17, 0.09); }
+  function soundOk() { koTone([660, 880, 1175], 0.16, 0.08); }
   // صاحب المتجر (16 تشرين التاني 2026): منعدّ كم مرة الزباين فتحو كل منتج وكل قسم (بيطلع بالتقارير بلوحة التحكم)
   const hitSeen = new Map();
   function koHit(t, id) {

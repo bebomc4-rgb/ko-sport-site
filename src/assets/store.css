@@ -2067,3 +2067,9 @@ body.gated main,body.gated #app{background:radial-gradient(120% 60% at 50% 0%,co
 .foot-soc a[hidden]{display:none!important}
 .fs-ios i{background:#111;border:1px solid rgba(255,255,255,.25)}
 .foot-soc .fs-rev{grid-column:1/-1;justify-content:center}
+
+/* صاحب المتجر (16 تشرين التاني 2026): الخطأ بالأحمر الواضح، مهما كان لون المتجر */
+.field.err input,.field.err select{border-color:#e02424!important;background:#fff5f5;box-shadow:0 0 0 3px rgba(224,36,36,.15)}
+.field.err .msg{color:#e02424;font-weight:600}
+.field.err label{color:#e02424}
+[data-theme=dark] .field.err input,[data-theme=dark] .field.err select{background:rgba(224,36,36,.12)}
