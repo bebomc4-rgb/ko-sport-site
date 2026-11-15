@@ -2590,6 +2590,15 @@ ${trustH()}
   let navK = Date.now() % 1e9, curK = null; const scrollMem = {};
   addEventListener("scroll", () => { if (curK != null) scrollMem[curK] = window.scrollY; }, { passive: true });
   // one from each section in turn (the order inside each section is kept)
+  // صاحب المتجر (16 تشرين التاني 2026): منعدّ كم مرة الزباين فتحو كل منتج وكل قسم (بيطلع بالتقارير بلوحة التحكم)
+  const hitSeen = new Map();
+  function koHit(t, id) {
+    try {
+      const k = t + ":" + id, now = Date.now(); if (now - (hitSeen.get(k) || 0) < 30e3) return; hitSeen.set(k, now);
+      const body = JSON.stringify({ t, id: String(id).slice(0, 120) });
+      if (!(navigator.sendBeacon && navigator.sendBeacon("/api/hit", new Blob([body], { type: "application/json" })))) fetch("/api/hit", { method: "POST", body, headers: { "content-type": "application/json" }, keepalive: true }).catch(() => {});
+    } catch {}
+  }
   function takeTurns(list) {
     const by = new Map();
     for (const p of list) { const k = p.category || ""; if (!by.has(k)) by.set(k, []); by.get(k).push(p); }
@@ -2624,6 +2633,7 @@ ${trustH()}
     // صاحب المتجر (6 تشرين التاني 2026): ما حدا بيفوت عالموقع إلا يكون مسجّل. المسجّل بيفوت عادي.
     // مستثنى: الصفحات القانونية (سياسة الخصوصية لازم تكون مفتوحة لـ Google Play)، ومحركات البحث وفحص السرعة
     if (!acct() && a !== "page" && !KO_BOT) { gateView(); return finishRoute(hs, keepScroll, keepY, revisit); }
+    if (!keepScroll && !KO_BOT) { if (a === "p" && b) koHit("p", b); else if (a === "c" && b) koHit("c", catFromSlug(b)); }
     if (!a) home();
     else if (a === "browse") browse();
     else if (a === "all") listing({ title: "كل المنتجات", crumbs: `<a href="#/">الرئيسية</a>`, items: products, key: "all" });

@@ -1051,6 +1051,38 @@ async function subsTick(env, force) {
   if (changed) await env.STORE.put("subs", JSON.stringify(L));
   return { sent };
 }
+// ---------- views: how many times customers opened each product / section (صاحب المتجر، 16 تشرين التاني 2026) ----------
+const HIT_BOT = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|preview|facebookexternalhit|whatsapp|telegram/i;
+async function hitsMerge(env, add) {
+  for (const [day, D] of Object.entries(add)) {
+    const key = "hits:" + day;
+    let cur = null; try { cur = await env.STORE.get(key, "json"); } catch {}
+    cur = cur && typeof cur === "object" ? cur : { p: {}, c: {} }; cur.p ||= {}; cur.c ||= {};
+    for (const t of ["p", "c"]) for (const [k, v] of Object.entries(D[t] || {})) cur[t][k] = (cur[t][k] || 0) + v;
+    try { await env.STORE.put(key, JSON.stringify(cur), { expirationTtl: 400 * 86400 }); } catch {}
+  }
+}
+async function hitApi(request, env, ctx) {
+  const ok = () => new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+  if (HIT_BOT.test(request.headers.get("user-agent") || "")) return ok();
+  let b = null; try { b = JSON.parse(await request.text()); } catch {}
+  const t = b && (b.t === "p" || b.t === "c") ? b.t : "", id = b ? clip(String(b.id || "").trim(), 120) : "";
+  if (!t || !id) return ok();
+  if (await throttle(request, "hit", 400, 3600)) return ok();
+  const day = damToday(), add = { [day]: { p: {}, c: {} } }; add[day][t][id] = 1;
+  ctx.waitUntil(hitsMerge(env, add));
+  return ok();
+}
+async function hitsApi(request, env) {
+  if (!isAdmin(request, env, "settings")) return denied();
+  const days = Math.min(90, Math.max(1, +new URL(request.url).searchParams.get("days") || 30));
+  const base = Date.now() + 3 * 3600e3, ds = [];
+  for (let i = 0; i < days; i++) ds.push(new Date(base - i * 864e5).toISOString().slice(0, 10));
+  const all = await Promise.all(ds.map((d) => env.STORE.get("hits:" + d, "json").catch(() => null)));
+  const sum = { p: {}, c: {} };
+  for (const D of all) if (D) for (const t of ["p", "c"]) for (const [k, v] of Object.entries(D[t] || {})) sum[t][k] = (sum[t][k] || 0) + v;
+  return json({ days, since: ds[ds.length - 1], p: sum.p, c: sum.c });
+}
 async function subsApi(request, env, m) {
   if (!isAdmin(request, env, "settings")) return denied();
   if (m === "GET") return json({ subs: await subsGet(env), today: damToday() });
@@ -3826,6 +3858,10 @@ const koMain = {
         return couponCheck(request, env);
       } else if (path === "/api/discounts/used" && m === "GET") {
         return discountsUsed(request, env);
+      } else if (path === "/api/hit" && m === "POST") {
+        return hitApi(request, env, ctx);
+      } else if (path === "/api/hits" && m === "GET") {
+        return hitsApi(request, env);
       } else if (path === "/api/subs") {
         return subsApi(request, env, m);
       } else if (path === "/api/carts") {

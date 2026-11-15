@@ -374,7 +374,21 @@
     box.innerHTML = `<div class="d-stats"><div class="d-stat"><span>المبيعات</span><b>$${nf(sales)}</b></div><div class="d-stat"><span>عدد الطلبات</span><b>${nf(L.length)}</b></div><div class="d-stat"><span>متوسط الطلب</span><b>$${nf(L.length ? sales / L.length : 0)}</b></div><div class="d-stat"><span>القطع المباعة</span><b>${nf(L.reduce((a, o) => a + o.items.reduce((b, i) => b + i.qty, 0), 0))}</b></div></div>
       <div class="w-card"><h3>المبيعات باليوم</h3><div class="r-bars">${days.map((x) => `<i title="${x.d.toLocaleDateString("ar-SY")}: $${nf(x.v)}" style="--h:${(x.v / max) * 100}%"></i>`).join("")}</div></div>
       <div class="d-grid"><div class="w-card"><h3>الأكثر مبيعاً</h3>${list(top, "قطعة")}</div><div class="w-card"><h3>حسب المحافظة</h3>${list(govs, "طلب")}<h3 style="margin-top:16px">طرق الدفع</h3>${list(pays, "طلب")}</div></div>
-      ${cursor ? `<p class="hint">في طلبات أقدم ما انحسبت. اكبس «حمّل كل الطلبات».</p>` : ""}`;
+      ${cursor ? `<p class="hint">في طلبات أقدم ما انحسبت. اكبس «حمّل كل الطلبات».</p>` : ""}
+      <div class="d-grid" data-hits><div class="w-card"><h3>الأكثر مشاهدة</h3><p class="hint">عم نحمّل…</p></div><div class="w-card"><h3>الأقسام الأكثر زيارة</h3><p class="hint">عم نحمّل…</p></div></div>`;
+    loadHits(repDays, list);
+  }
+  // صاحب المتجر (16 تشرين التاني 2026): المنتجات يلي الزباين فتحوها أكتر، والأقسام يلي فاتو عليها أكتر
+  async function loadHits(days, list) {
+    const box = $("[data-hits]"); if (!box) return;
+    let j; try { j = await api("/api/hits?days=" + days); } catch (e) { box.innerHTML = `<div class="w-card"><p class="hint">ما قدرنا نجيب المشاهدات: ${esc(e.message || "")}</p></div>`; return; }
+    if (days !== repDays) return;
+    const byId = new Map((products || []).map((p) => [p.id, p.name]));
+    const lab = (c) => (ST && ST.design && ST.design.catLabels && ST.design.catLabels[c]) || c;
+    const P = Object.entries(j.p || {}).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([id, n]) => [byId.get(id) || id, n]);
+    const Cs = Object.entries(j.c || {}).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([c, n]) => [lab(c), n]);
+    const note = `<p class="hint" style="margin-top:8px">منعدّ من 16 تشرين التاني 2026.</p>`;
+    box.innerHTML = `<div class="w-card"><h3>الأكثر مشاهدة</h3>${list(P, "مشاهدة")}${note}</div><div class="w-card"><h3>الأقسام الأكثر زيارة</h3>${list(Cs, "زيارة")}${note}</div>`;
   }
   document.addEventListener("click", (e) => { const b = e.target.closest("[data-rr]"); if (b) { repDays = +b.dataset.rr; renderReports(); } });
   // ---------- collections: list (Wuilt-style) + full edit page ----------
