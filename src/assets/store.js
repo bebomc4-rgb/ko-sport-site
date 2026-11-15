@@ -1685,7 +1685,8 @@
           el.value = el.value.replace(/[^\u0600-\u06FF\s]/g, "");
           try { const p2 = Math.max(0, pos - (before - el.value.length)); el.setSelectionRange(p2, p2); } catch {}
           if (fl) { fl.classList.add("err"); msg.textContent = "اكتب اسمك بالعربي بس (حوّل الكيبورد للعربي)"; }
-        } else if (fl && msg && /بالعربي/.test(msg.textContent)) { fl.classList.remove("err"); msg.textContent = ""; }
+          clearTimeout(el._arT); el._arT = setTimeout(() => { if (fl && msg && /بالعربي/.test(msg.textContent)) { fl.classList.remove("err"); msg.textContent = ""; } }, 4000);
+        }
       });
       app.onclick = (e) => {
         const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; draw(); return; }
