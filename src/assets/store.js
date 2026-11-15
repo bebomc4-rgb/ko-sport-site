@@ -541,7 +541,8 @@
   const sortStock = (a, b) => (b.inStock - a.inStock);
   // the same shuffle for everyone all day (Damascus date), a different one tomorrow
   function dailyShuffle(list, salt) {
-    const day = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+    // صاحب المتجر (16 تشرين التاني 2026): الترتيب بيتغيّر كل 6 ساعات (بتوقيت سوريا)، وبيضل نفسو خلال الـ 6 ساعات
+    const day = String(Math.floor((Date.now() + 3 * 3600e3) / (6 * 3600e3)));
     let h = 2166136261; for (const ch of day + "|" + (salt || "")) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
     const rnd = () => { h = (h + 0x6d2b79f5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     const a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
@@ -1239,7 +1240,7 @@
       if (st.colors.length) list = list.filter((p) => facetsOf(p).colors.some((x) => st.colors.includes(x)));
       if (st.min !== "") list = list.filter((p) => p.price >= +st.min);
       if (st.max !== "") list = list.filter((p) => p.price <= +st.max);
-      if (st.sort === "default") list = takeTurns(dailyShuffle(list, key)); // a new random order every day (same all day long), sections take turns
+      if (st.sort === "default") list = takeTurns(dailyShuffle(list, key)); // a new random order every 6 hours (same within those hours), sections take turns
       if (st.sort === "low") list.sort((a, b) => a.price - b.price);
       else if (st.sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ar"));
       else if (st.sort === "high") list.sort((a, b) => b.price - a.price);
