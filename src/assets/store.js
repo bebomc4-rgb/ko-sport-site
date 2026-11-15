@@ -1650,10 +1650,11 @@
         <div class="auth-tabs"><button type="button" data-tab="reg" class="${reg ? "on" : ""}">حساب جديد</button><button type="button" data-tab="login" class="${reg ? "" : "on"}">عندي حساب</button></div>
         <form class="form auth-form" data-auth novalidate>
           ${reg ? `<div class="field"><label for="a-name">الاسم الثلاثي بالعربي (متل الهوية)</label><input id="a-name" name="name" autocomplete="name" placeholder="مثلاً: أحمد محمد الحسن" required><div class="msg"></div></div>` : ""}
-          ${wa ? "" : `<div class="field"><label for="a-phone">رقم الموبايل</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx أو +90…" autocomplete="tel" required><div class="msg"></div></div>`}
+          ${wa || reg ? "" : `<div class="field"><label for="a-phone">رقم الموبايل</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx أو +90…" autocomplete="tel" required><div class="msg"></div></div>`}
           ${reg ? `<div class="field"><label for="a-gov">المحافظة</label><select id="a-gov" name="governorate" required><option value="">اختار المحافظة</option>${ACCT_GOVS.map((g) => `<option>${esc(g)}</option>`).join("")}</select><div class="msg"></div></div>` : ""}
           <div class="field"><label for="a-pw">كلمة السر</label><input id="a-pw" name="password" type="password" autocomplete="${reg ? "new-password" : "current-password"}" ${reg ? 'placeholder="6 أحرف أو أكتر"' : ""} required><div class="msg"></div></div>
           ${reg ? `<div class="field"><label for="a-pw2">أعد كلمة السر</label><input id="a-pw2" name="password2" type="password" autocomplete="new-password" required><div class="msg"></div></div>` : ""}
+          ${reg && !wa ? `<div class="field ph-code"><label for="a-phone">📲 اكتب رقم موبايلك هون، ومنبعتلك عليه كود التأكيد عالواتساب</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx أو +90…" autocomplete="tel" required><div class="msg"></div></div>` : ""}
           ${wa ? `<a class="btn btn-wa-go" href="#" target="_blank" rel="noopener" data-wa-go>${WA_ICON}<span>أكّد رقمي بالواتساب وكمّل</span></a>
                   <small class="auth-note">بينفتح الواتساب ومعو رسالة جاهزة، بس اكبس إرسال وارجع لهون. رقمك بينأخد من الواتساب لحالو.</small>
                   <button type="button" class="btn btn-ghost" data-via="phone">💬 ابعتلي كود عالواتساب</button>
@@ -1695,7 +1696,7 @@
       app.onclick = (e) => {
         const grab = () => { keep = {}; ["name", "phone", "governorate", "password", "password2"].forEach((k) => { if (f[k] && f[k].value) keep[k] = f[k].value; }); };
         const t = e.target.closest("[data-tab]"); if (t) { grab(); tab = t.dataset.tab; draw(); return; }
-        const vv = e.target.closest("[data-via]"); if (vv) { grab(); via = vv.dataset.via; draw(); return; }
+        const vv = e.target.closest("[data-via]"); if (vv) { grab(); via = vv.dataset.via; draw(); if (via === "phone") { const pf = app.querySelector("#a-phone"); if (pf) { pf.scrollIntoView({ block: "center", behavior: "smooth" }); setTimeout(() => { try { pf.focus({ preventScroll: true }); } catch {} }, 350); } } return; }
         // الدخول بكود عالواتساب (الواتساب على جهاز تاني)
         const cl = e.target.closest("[data-code-login]");
         if (cl) {

@@ -2073,3 +2073,19 @@ body.gated main,body.gated #app{background:radial-gradient(120% 60% at 50% 0%,co
 .field.err .msg{color:#e02424;font-weight:600}
 .field.err label{color:#e02424}
 [data-theme=dark] .field.err input,[data-theme=dark] .field.err select{background:rgba(224,36,36,.12)}
+
+/* صاحب المتجر (16 تشرين التاني 2026): خانة الرقم لكود الواتساب تحت، ولافتة للنظر */
+.field.ph-code{background:linear-gradient(180deg,rgba(37,211,102,.10),rgba(37,211,102,.03));border:1.5px dashed rgba(37,211,102,.7);border-radius:14px;padding:12px}
+.field.ph-code label{color:#128c4a;font-weight:800;line-height:1.5}
+[data-theme=dark] .field.ph-code label{color:#4ade80}
+.field.ph-code input{border-color:#25d366;animation:phPulse 1.6s ease-in-out 3}
+@keyframes phPulse{0%,100%{box-shadow:0 0 0 0 rgba(37,211,102,0)}50%{box-shadow:0 0 0 5px rgba(37,211,102,.25)}}
+/* الشعار الأصفر بفخامة: حلقة ذهبية بتتنفّس ولمعة بتمرق عليه كل شوي */
+.gate-logo.img{position:relative;border-radius:50%;overflow:hidden;animation:koPulse 4.8s ease-in-out infinite;box-shadow:0 0 0 3px #f5c518,0 0 0 7px rgba(245,197,24,.18),0 16px 36px -12px rgba(201,151,28,.6)}
+.gate-logo.img img{width:92px;height:92px;box-shadow:none}
+.gate-logo.img::after,html[data-logo-round=on] header.top .logo:has(>img)::after{content:"";position:absolute;inset:-25%;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.35) 44%,rgba(255,255,255,.95) 50%,rgba(255,255,255,.35) 56%,transparent 68%);transform:translateX(-130%) ;animation:koShine 4.8s ease-in-out infinite;pointer-events:none}
+html[data-logo-round=on] header.top .logo:has(>img){position:relative;overflow:hidden;border-radius:50%}
+html[data-logo-round=on] header.top .logo>img{animation:koGlow 4.8s ease-in-out infinite}
+@keyframes koShine{0%,62%{transform:translateX(-130%)}88%,100%{transform:translateX(130%)}}
+@keyframes koPulse{0%,100%{box-shadow:0 0 0 3px #f5c518,0 0 0 7px rgba(245,197,24,.16),0 16px 36px -12px rgba(201,151,28,.55)}50%{box-shadow:0 0 0 3px #f5c518,0 0 0 12px rgba(245,197,24,.08),0 16px 44px -8px rgba(201,151,28,.85)}}
+@keyframes koGlow{0%,70%,100%{filter:none}82%{filter:brightness(1.15) drop-shadow(0 0 6px rgba(245,197,24,.8))}}
