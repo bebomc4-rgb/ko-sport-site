@@ -1654,8 +1654,10 @@
           <div class="field"><label for="a-pw">كلمة السر</label><input id="a-pw" name="password" type="password" autocomplete="${reg ? "new-password" : "current-password"}" ${reg ? 'placeholder="6 أحرف أو أكتر"' : ""} required><div class="msg"></div></div>
           ${reg ? `<div class="field"><label for="a-pw2">أعد كلمة السر</label><input id="a-pw2" name="password2" type="password" autocomplete="new-password" required><div class="msg"></div></div>` : ""}
           ${wa ? `<a class="btn btn-wa-go" href="#" target="_blank" rel="noopener" data-wa-go>${WA_ICON}<span>أكّد رقمي بالواتساب وكمّل</span></a>
-                  <small class="auth-note">بينفتح الواتساب ومعو رسالة جاهزة، بس اكبس إرسال وارجع لهون. رقمك بينأخد من الواتساب لحالو.<br><button type="button" class="link-btn" data-via="phone">ما عندي واتساب على هالجهاز</button></small>`
-              : `<button class="btn btn-red" data-auth-go>${reg ? "سجّل وكمّل" : "دخول"}</button>
+                  <small class="auth-note">بينفتح الواتساب ومعو رسالة جاهزة، بس اكبس إرسال وارجع لهون. رقمك بينأخد من الواتساب لحالو.</small>
+                  <button type="button" class="btn btn-ghost" data-via="phone">💬 ابعتلي كود عالواتساب</button>
+                  <small class="auth-note">الواتساب مو على هالجهاز؟ اكتب رقمك ومنبعتلك كود عالواتساب بأي جهاز تاني.</small>`
+              : `<button class="btn btn-red" data-auth-go>${reg ? "ابعتلي كود عالواتساب وكمّل" : "دخول"}</button>
                  ${reg ? `<small class="auth-note"><button type="button" class="link-btn" data-via="wa">سجّل بالواتساب (أسهل)</button></small>`
                        : `<a class="btn btn-wa-go ghost" href="#" target="_blank" rel="noopener" data-wa-login>${WA_ICON}<span>ادخل بالواتساب (بلا كلمة سر)</span></a>
                           <button type="button" class="btn btn-ghost" data-code-login>💬 ابعتلي كود عالواتساب</button>
@@ -1675,6 +1677,16 @@
         return errs;
       };
       const showErrs = (errs) => { for (const [k, m] of Object.entries(errs)) show(k, esc(m)); const first = f.querySelector(".field.err input, .field.err select"); if (first) first.focus(); };
+      // صاحب المتجر (16 تشرين التاني 2026): خانة الاسم بتقبل عربي بس، وأول ما ينكتب حرف إنكليزي بيطلع تحذير أحمر فوراً
+      if (f.name) f.name.addEventListener("input", () => {
+        const el = f.name, fl = el.closest(".field"), msg = fl && fl.querySelector(".msg");
+        if (/[^\u0600-\u06FF\s]/.test(el.value)) {
+          const pos = el.selectionStart, before = el.value.length;
+          el.value = el.value.replace(/[^\u0600-\u06FF\s]/g, "");
+          try { const p2 = Math.max(0, pos - (before - el.value.length)); el.setSelectionRange(p2, p2); } catch {}
+          if (fl) { fl.classList.add("err"); msg.textContent = "اكتب اسمك بالعربي بس (حوّل الكيبورد للعربي)"; }
+        } else if (fl && msg && /بالعربي/.test(msg.textContent)) { fl.classList.remove("err"); msg.textContent = ""; }
+      });
       app.onclick = (e) => {
         const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; draw(); return; }
         const vv = e.target.closest("[data-via]"); if (vv) { via = vv.dataset.via; draw(); return; }
