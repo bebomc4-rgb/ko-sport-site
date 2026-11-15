@@ -3553,7 +3553,7 @@ async function qdSync(env) {
   }
 }
 
-export default {
+const koMain = {
   async fetch(request, rawEnv, ctx) {
     // Accept the KV binding whatever it was named (STORE, store, KV...).
     const env = Object.assign({}, rawEnv);
@@ -3820,3 +3820,23 @@ export default {
     }
   },
 };
+
+// حماية إضافية (صاحب المتجر 15 تشرين التاني 2026): المتصفح بيفتح الموقع مشفّر دايماً (HSTS)،
+// وصفحات الموقع ما بتقبل إضافات Flash/object ولا تغيير عنوان الأساس ولا تنحط جوّا موقع غريب.
+// ما منقيّد السكربتات والصور والفيديوهات منشان ما يخرب شي (فيديوهات يوتيوب، التتبع، كود الهيد من لوحة التحكم).
+const KO_CSP = "object-src 'none'; base-uri 'self'; frame-ancestors 'self'";
+export default {
+  async fetch(request, rawEnv, ctx) {
+    const res = await koMain.fetch(request, rawEnv, ctx);
+    try {
+      if (!res || res.status === 101 || res.webSocket) return res;
+      const host = new URL(request.url).hostname;
+      if (host !== "ko-sport.online" && host !== "www.ko-sport.online") return res;
+      const out = new Response(res.body, res);
+      out.headers.set("strict-transport-security", "max-age=31536000");
+      if (/text\/html/i.test(out.headers.get("content-type") || "") && !out.headers.has("content-security-policy")) out.headers.set("content-security-policy", KO_CSP);
+      return out;
+    } catch { return res; }
+  },
+};
+
