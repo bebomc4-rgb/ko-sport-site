@@ -2762,7 +2762,7 @@ ${trustH()}
     const fxIdx = (i, it) => fx !== "none" && (fxOn === "all" || (fxOn === "cart" ? it.link === "#/cart" : i === mainI));
     const allTaken = items.some((it) => it.link === "#/all" || it.link === "#/browse");
     nav.innerHTML = items.map((it, i) => {
-      const link = String(it.link || "") === "#/all" && toBrowse ? "#/browse" : String(it.link || ""), path = BIC[it.icon] || BIC.star, label = esc(it.label || ""), fc = (fxIdx(i, it) ? ' class="bn-fx"' : "") + (HX.test(it.color || "") ? ` style="--bi:${it.color}"` : "");
+      const link = String(it.link || "") /* صاحب المتجر (16 تشرين التاني 2026): «متجر» بيفتح كل المنتجات فوراً، وشريط الأقسام فوقها */, path = BIC[it.icon] || BIC.star, label = esc(it.label || ""), fc = (fxIdx(i, it) ? ' class="bn-fx"' : "") + (HX.test(it.color || "") ? ` style="--bi:${it.color}"` : "");
       const svg = `<svg viewBox="0 0 24 24"><path d="${path}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
       const inner = svg + (label ? `<span>${label}</span>` : "") + (link === "#/cart" ? '<b class="cart-count" data-cart-count hidden>0</b>' : "");
       if (link === "menu" || link === "search" || link === "explore") return `<button type="button"${fc} data-action="${link}"${link === "menu" && toBrowse && !allTaken ? ' data-nav="all"' : ""} aria-label="${label}">${inner}</button>`;
