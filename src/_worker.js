@@ -994,7 +994,7 @@ const SUBS_TO = "963938986875";
 const SUBS_SEED = [
   { id: "hetzner", name: "سيرفر Hetzner (المجيب K FAST AI)", cycle: "month", date: "2026-11-16", price: "تقريباً 7–8$ بالشهر (من الرصيد)", url: "https://accounts.hetzner.com/invoice", note: "الفاتورة بتطلع يوم 16 من كل شهر وبتنخصم من الرصيد المشحون (25$). شيّك إنو الرصيد بيكفّي." },
   { id: "claude", name: "اشتراك Claude (Pro)", cycle: "month", date: "2026-11-22", price: "20$ بالشهر", url: "https://claude.ai/settings/billing", note: "بيتجدد لحالو من بطاقة الفيزا المنتهية بـ 3362 (صالحة لـ 06/2029). تأكد إنو فيها رصيد." },
-  { id: "domain", name: "الدومين ko-sport.online (Hostinger)", cycle: "year", date: "2028-12-13", price: "36.19$", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "بيتجدد لحالو (Auto-renew) — تأكد إنو في رصيد/بطاقة قبلها." },
+  { id: "domain", name: "الدومين ko-sport.online (Hostinger)", cycle: "year", date: "2029-01-08", price: "36.19$", url: "https://hpanel.hostinger.com/billing/subscriptions", note: "بيتجدد لحالو (Auto-renew) — تأكد إنو في رصيد/بطاقة قبلها." },
 ];
 const SUB_CYC = ["month", "year", "once"];
 const damToday = () => new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
@@ -1008,6 +1008,12 @@ async function subsGet(env) {
   if (!(await env.STORE.get("subs:seed3"))) { const drop = ["domain-nl", "hst-hosting", "hst-email", "hst-reach"]; const k = l.filter((y) => !drop.includes(y.id)); l.length = 0; l.push(...k); await env.STORE.put("subs", JSON.stringify(l)); await env.STORE.put("subs:seed3", "1"); }
   // تاريخ Claude الحقيقي (صاحب المتجر بعتو من صفحة الدفع)
   if (!(await env.STORE.get("subs:seed4"))) { const x = l.find((y) => y.id === "claude"), sd = SUBS_SEED.find((y) => y.id === "claude"); if (x && !x.date) Object.assign(x, sd); else if (!x) l.push({ ...sd }); await env.STORE.put("subs", JSON.stringify(l)); await env.STORE.put("subs:seed4", "1"); }
+  // صاحب المتجر (16 تشرين التاني 2026): اشتراك تطبيق الأندرويد بلا إعلانات (Adfree) لـ 31/10/2027 بـ 18$، وتاريخ الدومين الصحيح من سجلّو الرسمي (8/1/2029)
+  if (!(await env.STORE.get("subs:seed5"))) {
+    if (!l.find((y) => y.id === "adfree")) l.push({ id: "adfree", name: "تطبيق الأندرويد بلا إعلانات (Adfree)", cycle: "year", date: "2027-10-31", price: "18$", url: "", note: "اشتراك منع الإعلانات بتطبيق KO على أندرويد، صالح لـ 31/10/2027." });
+    const d = l.find((y) => y.id === "domain"); if (d && d.date === "2028-12-13") d.date = "2029-01-08";
+    await env.STORE.put("subs", JSON.stringify(l)); await env.STORE.put("subs:seed5", "1");
+  }
   if (await env.STORE.get("subs:seed2")) return l;
   for (const sd of SUBS_SEED) {
     const x = l.find((y) => y.id === sd.id);
