@@ -1106,7 +1106,6 @@ const PRED_LEAGUES = [
   { k: "ufc", p: "mma/ufc", sp: "ufc", n: "UFC" },
   { k: "pfl", p: "mma/pfl", sp: "ufc", n: "PFL" },
   { k: "mma-other", p: "mma/other", sp: "ufc", n: "", evName: true }, // منظمات MMA تانية من ESPN (UAE Warriors، Brave، ONE…)؛ PFL مستبعد منها
-  { k: "bkfc", sp: "boxing", n: "BKFC ملاكمة بلا قفازات (من ويكيبيديا)", wiki: "Bare Knuckle Fighting Championship", org: "BKFC" },
   { k: "one", sp: "ufc", n: "ONE Championship (من ويكيبيديا)", wiki: "ONE Championship", org: "ONE" },
   { k: "brave", sp: "ufc", n: "Brave CF (من ويكيبيديا)", wiki: "Brave Combat Federation", org: "Brave CF" },
   { k: "boxing", sp: "boxing", n: "ملاكمة (Box.live)", box: true },
@@ -1124,7 +1123,7 @@ const PRED_FEM = /women|woman|womens|female|féminin|femenin|femmin|frauen|ladie
 const predFem = (mt) => PRED_FEM.test([mt.league, mt.ev, mt.a, mt.b].join(" "));
 const PRED_TBA = /\b(TBA|TBD)\b|^\s*$/i; // نزال لسا ما انعرف أطرافو (ESPN بيحط «TBA» و«Opponent TBA»): ما منعرضو
 const predTba = (mt) => PRED_TBA.test(String(mt.a || "")) || PRED_TBA.test(String(mt.b || ""));
-const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L : []; };
+const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L.filter((x) => x.src !== "bkfc" && x.org !== "BKFC") : []; }; // صاحب المتجر (16 تشرين التاني 2026): شلنا كلشي إلو علاقة بـ BKFC
 async function predCfg(env) { const c = await env.STORE.get("pred:cfg", "json").catch(() => null); return c && typeof c === "object" ? c : {}; }
 const predKeyOk = (k) => k === "a" || k === "b" || k === "d";
 // شو بيتوقّع الزبون (صاحب المتجر 16 تشرين التاني 2026):
@@ -1221,7 +1220,7 @@ function bxResult(mt) {
   if (/\bdraw\b|drew\b/i.test(d)) return { res: "d", meth: "" };
   return { res: /no contest|cancel|postpon/i.test(d) ? "x" : "" };
 }
-// ويكيبيديا (مجانية ومفتوحة، CC BY-SA): صفحات «2026 in BKFC/ONE/Brave» فيها كل حدث بجدول نزالاتو، والوزن مكتوب فيه «Women's» أو «W.» للسيدات.
+// ويكيبيديا (مجانية ومفتوحة، CC BY-SA): صفحات «2026 in ONE/Brave» فيها كل حدث بجدول نزالاتو، والوزن مكتوب فيه «Women's» أو «W.» للسيدات.
 // النتيجة بتنكتب «X def. Y» (الفايز أول)، والجاية «X vs. Y». التاريخ بلا ساعة، فمنقفل التوقعات بأول اليوم (منتصف الليل بدمشق تقريباً).
 const wkTxt = (h) => String(h || "").replace(/<sup[\s\S]*?<\/sup>/g, "").replace(/<style[\s\S]*?<\/style>/g, "").replace(/<br\s*\/?>/g, " ").replace(/<[^>]+>/g, "").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&#91;|&#93;/g, "").replace(/\s+/g, " ").trim();
 const WK_FEM = /women|\bW\.\s*\w|\(W\)|female/i;
@@ -1431,7 +1430,7 @@ async function predSync(env, force) {
     }
   }));
   for (const lg of PRED_LEAGUES.filter((x) => x.wiki && on.has(x.k))) for (const mt of await wkFetch(lg, errs)) if (mt.at >= from) got.push(mt);
-  // نزالات ويكيبيديا (BKFC، ONE، Brave): منلاقي المقاتل بـ ESPN من اسمو (صورة، جنس، إحصائيات)، وإذا ما لقيناه منجيب صورتو من صفحتو بويكيبيديا
+  // نزالات ويكيبيديا (ONE، Brave): منلاقي المقاتل بـ ESPN من اسمو (صورة، جنس، إحصائيات)، وإذا ما لقيناه منجيب صورتو من صفحتو بويكيبيديا
   { const W = got.filter((g) => g.dOnly), NM = (await env.STORE.get("pred:nm", "json").catch(() => null)) || {}, nk = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
     const need = [...new Set(W.flatMap((g) => [g.a, g.b]).filter((n) => n && !(NM[nk(n)] && NM[nk(n)].t > now - 7 * 864e5)))].slice(0, 120);
     for (let i = 0; i < need.length; i += 8) await Promise.all(need.slice(i, i + 8).map(async (n) => {
@@ -1499,7 +1498,7 @@ async function predApi(request, env, path, m, ctx) {
     const [L, B, C, U] = await Promise.all([predMatches(env), env.STORE.get("pred:board", "json").catch(() => null), env.STORE.get("pred:cnt", "json").catch(() => null), acct ? env.STORE.get("pred:u:" + acct.phone, "json").catch(() => null) : null]);
     const board = Object.entries(B || {}).filter(([, r]) => r.t > 0).map(([ph, r]) => ({ n: r.n || "زبون", p: r.p, w: r.w, t: r.t, me: !!(acct && acct.phone === ph) })).sort((x, y) => y.p - x.p || y.w - x.w).slice(0, 30);
     const mine = (U && U.k) || {}, hideO = new Set(cfg.hideOrgs || []);
-    return json({ owner, live, now: Date.now(), sync: last, bkv: cfg.bkv || {}, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (PFL MENA وغيرها)", sp: x.sp, on: on.has(x.k) })); })(),
+    return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (PFL MENA وغيرها)", sp: x.sp, on: on.has(x.k) })); })(),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
       orgsAll: owner ? [...new Map(L.filter((mt) => !predFem(mt)).map((mt) => { const o = predOut(mt); return [o.sport + "|" + o.org, { k: o.sport + "|" + o.org, sp: o.sport, n: o.org, hid: hideO.has(o.sport + "|" + o.org) }]; })).values()] : undefined,
       matches: L.filter((mt) => !predFem(mt) && !(mt.src && predTba(mt))).filter((mt) => !hideO.has(mt.sport + "|" + (mt.org || (mt.league || "").split(" · ")[0] || ""))).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
@@ -1554,8 +1553,6 @@ async function predApi(request, env, path, m, ctx) {
     if (b.action === "sync") return json(await predSync(env, true));
     if (b.action === "leagues") { const ks = (Array.isArray(b.leagues) ? b.leagues : []).filter((k) => PRED_LEAGUES.some((x) => x.k === k)); await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, leagues: ks })); return json({ ok: true, ...(await predSync(env, true)) }); }
     if (b.action === "orgs") { const ks = (Array.isArray(b.hide) ? b.hide : []).map((k) => clip(k, 80)).filter(Boolean).slice(0, 200); await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, hideOrgs: ks })); return json({ ok: true, hide: ks }); }
-    // صاحب المتجر (16 تشرين التاني 2026): رابط يوتيوب لكل نزال مشهور بقسم BKFC، ليشتغل الفيديو جوّا الصفحة
-    if (b.action === "bkvid") { const k = clip(b.key, 80), mm = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([A-Za-z0-9_-]{11})/.exec(String(b.url || "")); if (!k) return json({ error: "ناقص" }, 400); if (b.url && !mm) return json({ error: "الرابط لازم يكون رابط فيديو يوتيوب" }, 400); const bkv = { ...(cfg.bkv || {}) }; if (mm) bkv[k] = mm[1]; else delete bkv[k]; await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, bkv })); return json({ ok: true, bkv }); }
     if (b.action === "live") { await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, live: !!b.live })); return json({ ok: true, live: !!b.live }); }
     let L = await predMatches(env);
     if (b.action === "add") {
@@ -1610,78 +1607,6 @@ async function predImg(request, url, ctx) {
   const out = new Response(r.body, { headers: { "content-type": r.headers.get("content-type"), "cache-control": "public, max-age=604800, immutable" } });
   if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(ck, out.clone()).catch(() => {}));
   return out;
-}
-// ---------- صفحة BKFC الشخصية (صاحب المتجر بس، 16 تشرين التاني 2026) ----------
-// شروط bkfc.com بتسمح بالاستعمال الشخصي وغير التجاري بس: هالصفحة مقفولة بكلمة سر اللوحة، مو مربوطة بالمتجر ولا بالتوقعات، وما بتنعرض لحدا غير المالك.
-const BK = "https://www.bkfc.com", BK_HDR = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", accept: "text/html" };
-const bkT = (h) => String(h || "").replace(/<svg[\s\S]*?<\/svg>/g, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ").trim();
-const bkGet = async (path) => { const r = await fetch(BK + path, { headers: BK_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtlByStatus: { "200-299": 1800, "300-599": 0 } } }); if (!r.ok) throw new Error("bkfc " + r.status); return r.text(); };
-async function bkFighter(env, slug) {
-  const ck = "bk:f4:" + slug, hit = await env.STORE.get(ck, "json").catch(() => null); if (hit) return hit;
-  const h = await bkGet("/fighters/" + slug).catch(() => ""); if (!h) return null;
-  const nums = [...h.matchAll(/class="(hero_record_number[^"]*)"[^>]*>([^<]*)</g)].filter((x) => !/w-condition-invisible/.test(x[1])).map((x) => x[2].trim()).filter((x) => /^\d+$/.test(x)); // بيتجاهل الأرقام المخفية
-  const lab = (k) => { const i = h.search(new RegExp(`stat_list-item_label[^>]*>\\s*${k}`, "i")); return i < 0 ? "" : h.slice(i, i + 1500); };
-  const nat = bkT((lab("Nationality").match(/paragraph-9[^>]*>([^<]*)</) || [])[1]);
-  const dob = ((lab("age").match(/(\d{1,2})\/(\d{4})/) || []));
-  const hv = parseFloat(((lab("height").match(/height-metric[^>]*>([^<]*)</) || [])[1] || "").trim()), ht = hv > 0 ? Math.round(hv > 3 ? hv * 2.54 : hv * 100) + " سم" : ""; // أحياناً إنش وأحياناً متر
-  const div = bkT((lab("Division").match(/<div[^>]*>\s*([A-Za-z' ]{3,30})\s*<\/div>/) || [])[1]);
-  // قيمة كل خانة: النص بين عنوانها والعنوان يلي بعدو
-  const val = (k) => { const i = h.search(new RegExp(`stat_list-item_label[^>]*>\\s*${k}`, "i")); if (i < 0) return ""; const j = h.indexOf("stat_list-item_label", i + 30); return bkT(h.slice(h.indexOf(">", i) + 1, j < 0 ? i + 1500 : h.lastIndexOf("<", j)).replace(/<[^>]*w-condition-invisible[^>]*>[^<]*</g, "<")).replace(new RegExp("^" + k, "i"), "").replace(/<\/?[a-z]*$/i, "").trim().slice(0, 40); };
-  const nick = val("nickname").replace(/^-+$/, ""), reach = val("Reach").replace(/^-+$/, ""), status = val("status").replace(/^-+$/, "");
-  const fights = [];
-  for (const m2 of h.matchAll(/figher-record_fighter[^>]*>([^<]*)<([\s\S]*?)(?=figher-record_fighter|<\/main>|$)/g)) {
-    const vs = bkT(m2[1]), blk = m2[2], dt = bkT((blk.match(/fight-record_date[^>]*>([\s\S]*?)<\/div>/) || [])[1]);
-    const inf = [...blk.matchAll(/fight-card_info[^>]*>([^<]*)</g)].map((x) => x[1].trim()).filter((x) => x && !/^TB[CU]$/i.test(x));
-    const wl = (blk.match(/>\s*(WIN|LOSS|DRAW|NO CONTEST|W|L|D|NC)\s*</) || [])[1] || "";
-    if (vs) fights.push({ vs, dt, r: wl, inf: inf.slice(0, 4).join(" · ") }); if (fights.length >= 10) break;
-  }
-  const o = { nick, reach, status, fights, w: nums[0] || "", l: nums[1] || "", d: nums[2] || "", nat, age: dob[2] ? new Date().getUTCFullYear() - +dob[2] - (new Date().getUTCMonth() + 1 < +dob[1] ? 1 : 0) : "", ht, div };
-  await env.STORE.put(ck, JSON.stringify(o), { expirationTtl: 86400 }).catch(() => {});
-  return o;
-}
-async function bkData(env) {
-  const hit = await env.STORE.get("bk:cache4", "json").catch(() => null); if (hit && Date.now() - hit.t < 30 * 60e3) return hit;
-  const list = await bkGet("/events");
-  const slugs = [...new Set([...list.matchAll(/href="\/events\/([a-z0-9-]+)"/g)].map((x) => x[1]))].slice(0, 8);
-  const events = [];
-  for (const sl of slugs) {
-    const h = await bkGet("/events/" + sl).catch(() => ""); if (!h) continue;
-    const name = bkT((h.match(/class="events_header-text"[^>]*>\s*<div[^>]*>([\s\S]*?)<\/div>/) || [])[1]) || sl;
-    const date = bkT((h.match(/data-event-date-est[^>]*>([\s\S]*?)<\/div>/) || [])[1]);
-    const heads = [...h.matchAll(/class="header_heading"[^>]*>([\s\S]*?)<\/h2>/g)].map((x) => ({ i: x.index, t: bkT(x[1]) }));
-    const parts = h.split(/(?=<div[^>]*class="fight-card_wrapper")/).slice(1), seen = new Set(), bouts = [];
-    let pos = h.indexOf(parts[0] || "\u0000");
-    for (const p of parts) {
-      const at = h.indexOf(p, pos); pos = at + 1;
-      const hd = [...p.matchAll(/class="fight-card_heading"[^>]*>([\s\S]*?)<\/h3>/g)].map((x) => bkT(x[1]));
-      const wcl = hd.find((x) => !/main event|co-main/i.test(x)) || "", mev = hd.some((x) => /main event/i.test(x)) ? (hd.some((x) => /co-main/i.test(x)) ? "co" : "main") : "";
-      if (/women|female|\bW\.\s/i.test(wcl + " " + hd.join(" "))) continue; // ولا نزال سيدات
-      const nm = [...p.matchAll(/class="fight-card_name[^"]*"[^>]*>([\s\S]*?)<\/div>/g)].map((x) => bkT(x[1])).filter(Boolean);
-      const sl2 = [...p.matchAll(/href="\/fighters\/([a-z0-9-]+)"/g)].map((x) => x[1]).filter((v, i, A) => A.indexOf(v) === i);
-      const img = [...p.matchAll(/fight-card_headshot[^>]*>\s*<img src="([^"]+)"/g)].map((x) => x[1]);
-      if (nm.length < 2 || sl2.length < 2) continue;
-      const key = sl2.slice(0, 2).sort().join("|"); if (seen.has(key)) continue; seen.add(key);
-      const res = [...p.matchAll(/class="(?:text-align-center|text-size-large)"[^>]*>([^<]*)</g)].map((x) => x[1].trim()).filter((x) => x && !/^TB[UC]$/i.test(x));
-      const seg = (heads.filter((x) => x.i < at).pop() || { t: "" }).t;
-      bouts.push({ wc: wcl, mev, seg: "", a: { n: nm[0], s: sl2[0], img: img[0] || "" }, b: { n: nm[1], s: sl2[1], img: img[1] || "" }, res: res.slice(0, 3).join(" · ") });
-    }
-    if (bouts.length) events.push({ slug: sl, name, date, bouts });
-  }
-  const all = [...new Set(events.flatMap((e) => e.bouts.flatMap((b) => [b.a.s, b.b.s])))];
-  const F = {}; for (let i = 0; i < all.length; i += 6) await Promise.all(all.slice(i, i + 6).map(async (sl) => { F[sl] = await bkFighter(env, sl).catch(() => null); }));
-  for (const e of events) for (const b of e.bouts) { b.a.f = F[b.a.s] || null; b.b.f = F[b.b.s] || null; }
-  const out = { t: Date.now(), events };
-  await env.STORE.put("bk:cache4", JSON.stringify(out)).catch(() => {});
-  return out;
-}
-async function bkApi(request, env) {
-  if (env.__role !== "owner") return json({ error: "هالصفحة إلك بس · اكتب كلمة سر لوحة التحكم" }, 403);
-  if (new URL(request.url).searchParams.get("fresh")) await env.STORE.delete("bk:cache4").catch(() => {});
-  try { return json(await bkData(env)); } catch (e) { return json({ error: "ما قدرت جيب من موقع BKFC هلق (" + (e && e.message || "خطأ") + ")" }, 502); }
-}
-async function bkPage(request, env) {
-  const r = await env.ASSETS.fetch(new URL("/bkfc.html", request.url));
-  return new Response(r.body, { status: r.status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" } });
 }
 async function predPage(request, env) {
   const r = await env.ASSETS.fetch(new URL("/predict.html", request.url));
@@ -4371,7 +4296,6 @@ const koMain = {
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
       if ((path === "/predict" || path === "/ar/predict") && m === "GET" && env.STORE) return predPage(request, env);
-      if (path === "/my-bkfc" && m === "GET" && env.STORE) return bkPage(request, env);
       if (path === "/pimg" && m === "GET") return predImg(request, url, ctx);
       // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
       // أيقونات لوحة التحكم كمان (المتصفح، الشاشة الرئيسية، تطبيق اللوحة): التنين الأصفر بدل الـ KO الأحمر
@@ -4453,7 +4377,6 @@ const koMain = {
       }
       if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
       if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m, ctx);
-      if (path === "/api/my-bkfc" && m === "GET") return bkApi(request, env);
       if (path.startsWith("/api/acct/")) {
         if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
         const r = await acctApi(request, env, path, m);
