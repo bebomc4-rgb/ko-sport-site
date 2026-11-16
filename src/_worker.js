@@ -1082,7 +1082,7 @@ async function subsTick(env, force) {
 // هلق تجريبي: ما حدا بيشوف الصفحة غير المالك (كلمة سر لوحة التحكم + حسابو بالمتجر). بعدين منفتحها للكل من «pred:cfg».live
 // المفاتيح: pred:matches (كل المباريات المعروضة)، pred:picks:<id> (توقعات مباراة)، pred:u:<رقم> (توقعات زبون)، pred:cnt (عدّ التوقعات)، pred:board (النقاط)، pred:cfg، pred:sync
 const PRED_TESTERS = ["0938986875"]; // رقم صاحب المتجر بحسابو بالمتجر
-const PRED_SPORTS = { football: "كرة قدم", basketball: "كرة سلة", ufc: "MMA", boxing: "ملاكمة", wrestling: "مصارعة", tennis: "تنس", other: "غير" };
+const PRED_SPORTS = { football: "كرة قدم", basketball: "كرة سلة", ufc: "MMA", boxing: "ملاكمة", wrestling: "مصارعة", tennis: "تنس", esports: "ألعاب إلكترونية", other: "غير" };
 // off: true = مطفية بالأساس (كتيرة أو بعيدة عن جمهورنا)، صاحب المتجر بيشغّلها من لوحة المالك
 const PRED_LEAGUES = [
   { k: "uefa.champions", p: "soccer/uefa.champions", sp: "football", n: "دوري أبطال أوروبا" },
@@ -1134,6 +1134,19 @@ const PRED_LEAGUES = [
   { k: "brave", sp: "ufc", n: "Brave CF (من ويكيبيديا)", wiki: "Brave Combat Federation", org: "Brave CF" },
   { k: "bkfc", sp: "boxing", n: "BKFC ملاكمة بلا قفازات (من ويكيبيديا)", wiki: "Bare Knuckle Fighting Championship", org: "BKFC" }, // صاحب المتجر (17 تشرين التاني 2026): «حط ملاكمة و bkfc وكل بطولات القتال» — نزالات بس، بلا روابط ولا فيديوهات
   { k: "boxing", sp: "boxing", n: "ملاكمة (Box.live)", box: true },
+  // صاحب المتجر (17 تشرين التاني 2026): «ضيف كل البطولات تبع القتال» — منظمات إلها صفحة سنوية بويكيبيديا (الصفحة إذا لسا ما انعملت بتنتجاوز لحالها)
+  { k: "rizin", sp: "ufc", n: "RIZIN (من ويكيبيديا)", wiki: "Rizin Fighting Federation", org: "RIZIN" },
+  { k: "ksw", sp: "ufc", n: "KSW (من ويكيبيديا)", wiki: "Konfrontacja Sztuk Walki", org: "KSW" },
+  { k: "oktagon", sp: "ufc", n: "OKTAGON (من ويكيبيديا)", wiki: "Oktagon MMA", org: "OKTAGON" },
+  { k: "cagewarriors", sp: "ufc", n: "Cage Warriors (من ويكيبيديا)", wiki: "Cage Warriors", org: "Cage Warriors" },
+  { k: "aca", sp: "ufc", n: "ACA (من ويكيبيديا)", wiki: "Absolute Championship Akhmat", org: "ACA" },
+  { k: "uaew", sp: "ufc", n: "UAE Warriors (من ويكيبيديا)", wiki: "UAE Warriors", org: "UAE Warriors" },
+  { k: "glory", sp: "boxing", n: "GLORY كيك بوكسينغ (من ويكيبيديا)", wiki: "Glory", org: "GLORY كيك بوكسينغ" },
+  { k: "karate", sp: "ufc", n: "Karate Combat (من ويكيبيديا)", wiki: "Karate Combat", org: "Karate Combat" },
+  // ألعاب إلكترونية (PandaScore، الخطة المجانية، بدها مفتاح PANDASCORE_TOKEN كـ Secret بـ Cloudflare يحطّو صاحب المتجر بإيدو)
+  { k: "cs2", sp: "esports", n: "CS2", ps: "csgo" },
+  { k: "valorant", sp: "esports", n: "VALORANT", ps: "valorant" },
+  { k: "eafc", sp: "esports", n: "EA FC (FIFA)", psVg: /fifa|ea sports fc|ea fc/i },
 ];
 const predOn = (cfg) => Array.isArray(cfg.leagues) ? new Set(cfg.leagues) : new Set(PRED_LEAGUES.filter((x) => !x.off).map((x) => x.k));
 const PRED_AR = { "Real Madrid": "ريال مدريد", "Barcelona": "برشلونة", "Atlético Madrid": "أتلتيكو مدريد", "Atletico Madrid": "أتلتيكو مدريد", "Sevilla": "إشبيلية", "Valencia": "فالنسيا", "Villarreal": "فياريال", "Real Betis": "ريال بيتيس", "Real Sociedad": "ريال سوسيداد", "Athletic Club": "أتلتيك بلباو",
@@ -1162,6 +1175,7 @@ const predImp = (mt, boxAll) => {
   if (mt.sport === "football") return mt.src === "fifa.world" || PRED_BIG_FB.has(mt.a) || PRED_BIG_FB.has(mt.b);
   if (mt.sport === "basketball") return mt.src === "nba" && ((PRED_BIG_NBA.has(mt.a) && PRED_BIG_NBA.has(mt.b)) || PRED_TOP_NBA.has(mt.a) || PRED_TOP_NBA.has(mt.b));
   if (mt.sport === "boxing") return boxAll || !!mt.imp || PRED_BIG_BOX.test(mt.a + " | " + mt.b);
+  if (mt.sport === "esports") return !!mt.imp; // بطولة درجة S أو A
   return true;
 };
 const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L : []; }; // صاحب المتجر (17 تشرين التاني 2026): رجعو BKFC وONE وPFL
@@ -1463,6 +1477,32 @@ async function predInfo(env, mt) {
   }
   return { kind: "none" };
 }
+// ---------- ألعاب إلكترونية: PandaScore (CS2، VALORANT، EA FC). الخطة المجانية: المواعيد والنتايج ولوغوهات الفرق ----------
+// ولا فريق أو بطولة سيدات (Game Changers، فرق «fe»…).
+const ES_FEM = /game ?changers|female|women|ladies|girls|\bfe\b|gozen|valkyrie|\(w\)|سيدات|نسائي/i;
+async function psFetch(env, lg, from, to, errs) {
+  const tok = env.PANDASCORE_TOKEN; if (!tok) { errs.push(lg.k + ":no-key"); return []; }
+  const H = { authorization: "Bearer " + tok, accept: "application/json" }, out = [];
+  const get = async (u) => { const r = await fetch("https://api.pandascore.co" + u, { headers: H, signal: AbortSignal.timeout(10000), cf: { cacheTtlByStatus: { "200-299": 600, "300-599": 0 } } }); if (!r.ok) throw new Error(String(r.status)); return r.json(); };
+  try {
+    let base = lg.ps ? "/" + lg.ps + "/matches" : "";
+    if (lg.psVg) { const vg = (await get("/videogames?per_page=100")).find((v) => lg.psVg.test(String(v.name || "") + " " + String(v.slug || ""))); if (!vg) { errs.push(lg.k + ":no-game"); return []; } base = "/matches"; lg = { ...lg, vg: vg.id }; }
+    const f = lg.vg ? "&filter[videogame]=" + lg.vg : "", rng = "&range[begin_at]=" + new Date(from).toISOString() + "," + new Date(to).toISOString();
+    const L = [...await get(base + "/upcoming?per_page=100&sort=begin_at" + f + rng).catch((e) => (errs.push(lg.k + ":" + e.message), [])), ...await get(base + "/past?per_page=100&sort=-begin_at" + f + rng).catch((e) => (errs.push(lg.k + ":" + e.message), [])), ...await get(base + "/running?per_page=50" + f).catch(() => [])];
+    for (const x of L) {
+      const op = (x.opponents || []).map((o) => o.opponent || {}); if (op.length !== 2) continue;
+      const tr = x.tournament || {}, lgN = String((x.league && x.league.name) || ""), se = String((x.serie && (x.serie.full_name || x.serie.name)) || "");
+      if (ES_FEM.test([lgN, se, tr.name, x.name, op[0].name, op[1].name].join(" "))) continue;
+      const at = Date.parse(x.begin_at || x.scheduled_at || ""); if (!(at > 0)) continue;
+      const sc = (id) => { const r = (x.results || []).find((y) => y.team_id === id || y.player_id === id); return r ? +r.score : undefined; };
+      let res = ""; if (/canceled|postponed/.test(x.status || "")) res = "x"; else if (x.status === "finished") res = x.winner_id === op[0].id ? "a" : x.winner_id === op[1].id ? "b" : x.draw ? "d" : "";
+      const ra = sc(op[0].id), rb = sc(op[1].id);
+      out.push({ id: "ps" + x.id, src: lg.k, sport: "esports", org: lg.n, league: lg.n + (lgN ? " · " + lgN : ""), ev: se, a: String(op[0].name || ""), b: String(op[1].name || ""), ai: op[0].image_url || "", bi: op[1].image_url || "",
+        ar: "", br: "", af: "", bf: "", sc: res && res !== "x" && ra !== undefined ? ra + "-" + rb : "", at, draw: !!x.draw, pts: 10, res, meth: "", ns: true, imp: /^(s|a)$/i.test(String(tr.tier || "")), bo: x.number_of_games || 0 });
+    }
+  } catch (e) { errs.push(lg.k + ":" + (e && e.message || "err")); }
+  return out;
+}
 async function predSync(env, force) {
   const now = Date.now(), last = +(await env.STORE.get("pred:sync").catch(() => 0)) || 0;
   if (!force && now - last < 20 * 60e3) return { skipped: true };
@@ -1474,7 +1514,7 @@ async function predSync(env, force) {
   const days = []; for (let t = now - 864e5; t <= to; t += 864e5) days.push(predIso(t));
   // دفعات من 5 بطولات، وكل طلب بيرفضو ESPN (403/429) منعيدو مرة بعد ثانية: الطلبات الكتيرة سوا كانت تنرفض
   const getJ = async (u) => { for (let i = 0; i < 2; i++) { const r = await fetch(u, { signal: AbortSignal.timeout(8000), cf: { cacheTtlByStatus: { "200-299": 600, "300-599": 0 } } }); if (r.ok) return r.json(); if (i === 0 && (r.status === 403 || r.status === 429 || r.status >= 500)) { await new Promise((z) => setTimeout(z, 1200)); continue; } throw new Error(String(r.status)); } };
-  const todo = PRED_LEAGUES.filter((lg) => !lg.box && !lg.wiki && on.has(lg.k));
+  const todo = PRED_LEAGUES.filter((lg) => !lg.box && !lg.wiki && lg.sp !== "esports" && on.has(lg.k));
   for (let i = 0; i < todo.length; i += 5) await Promise.all(todo.slice(i, i + 5).map(async (lg) => {
     for (const d of lg.daily ? days : lg.sp === "ufc" ? mmaMonths : months) {
       try {
@@ -1486,7 +1526,7 @@ async function predSync(env, force) {
   for (const lg of PRED_LEAGUES.filter((x) => x.wiki && on.has(x.k))) for (const mt of await wkFetch(lg, errs)) if (mt.at >= from) got.push(mt);
   // نزالات ويكيبيديا (ONE، Brave): منلاقي المقاتل بـ ESPN من اسمو (صورة، جنس، إحصائيات)، وإذا ما لقيناه منجيب صورتو من صفحتو بويكيبيديا
   { const W = got.filter((g) => g.dOnly), NM = (await env.STORE.get("pred:nm", "json").catch(() => null)) || {}, nk = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-    const need = [...new Set(W.flatMap((g) => [g.a, g.b]).filter((n) => n && !(NM[nk(n)] && NM[nk(n)].t > now - 7 * 864e5)))].slice(0, 120);
+    const need = [...new Set(W.flatMap((g) => [g.a, g.b]).filter((n) => n && !(NM[nk(n)] && NM[nk(n)].t > now - 7 * 864e5)))].slice(0, 200);
     for (let i = 0; i < need.length; i += 8) await Promise.all(need.slice(i, i + 8).map(async (n) => {
       try { const r = await fetch(`https://site.api.espn.com/apis/common/v3/search?query=${encodeURIComponent(n)}&type=player&limit=5`, { signal: AbortSignal.timeout(6000), cf: { cacheTtlByStatus: { "200-299": 86400, "300-599": 0 } } }); if (!r.ok) { errs.push("nm:" + r.status); return; }
         const it = (((await r.json()) || {}).items || []).find((x) => x.sport === "mma" && nk(x.displayName) === nk(n)); NM[nk(n)] = { id: it ? String(it.id) : "", t: now }; } catch (e) { errs.push("nm:" + (e && e.name || e)); } }));
@@ -1509,6 +1549,7 @@ async function predSync(env, force) {
     if (need.length) await env.STORE.put("pred:ath", JSON.stringify(ATH)).catch(() => {}); if (athErr) errs.push("ath:" + athErr); }
   for (const g of got) if (g.dOnly) { const x = ATH[g.aid], y = ATH[g.bid]; g.ai = (x && x.h) || g.wai || ""; g.bi = (y && y.h) || g.wbi || ""; }
     else if (g.sport === "ufc" && g.aid) { const x = ATH[g.aid], y = ATH[g.bid]; if (x) g.ai = x.h; if (y) g.bi = y.h; g.men = !!(x && y && x.g === "M" && y.g === "M"); }
+  for (const lg of PRED_LEAGUES.filter((x) => x.sp === "esports" && on.has(x.k))) got.push(...await psFetch(env, lg, from, to, errs));
   if (on.has("boxing")) for (const mt of await bxFetch(errs)) if (mt.at >= from && mt.at <= now + 35 * 864e5) got.push(mt);
   const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
   let boardDirty = false;
@@ -1540,7 +1581,7 @@ async function predApi(request, env, path, m, ctx) {
     for (const h of ESPN_HOSTS) for (const q of ["", "?region=us&lang=en&contentorigin=espn"]) { try { const r = await fetch(`https://${h}/apis/site/v2/sports/${lg}/summary?event=${ev}${q ? "&" + q.slice(1) : ""}`, { headers: { accept: "application/json" } }); out[h + (q ? "+q" : "")] = r.status; } catch (e) { out[h] = String(e); } }
     return json(out);
   }
-  if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null), nm: await env.STORE.get("pred:nm", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, id: v.filter((x) => x.id).length }; }).catch(() => null), wimg: await env.STORE.get("pred:wimg", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, pic: v.filter(Boolean).length }; }).catch(() => null), ath: await env.STORE.get("pred:ath", "json").then((A) => { const o = { M: 0, F: 0, "?": 0, pic: 0 }; for (const x of Object.values(A || {})) { o[x.g] = (o[x.g] || 0) + 1; if (x.h) o.pic++; } return o; }).catch(() => null) }); }
+  if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, esKey: !!env.PANDASCORE_TOKEN, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null), nm: await env.STORE.get("pred:nm", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, id: v.filter((x) => x.id).length }; }).catch(() => null), wimg: await env.STORE.get("pred:wimg", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, pic: v.filter(Boolean).length }; }).catch(() => null), ath: await env.STORE.get("pred:ath", "json").then((A) => { const o = { M: 0, F: 0, "?": 0, pic: 0 }; for (const x of Object.values(A || {})) { o[x.g] = (o[x.g] || 0) + 1; if (x.h) o.pic++; } return o; }).catch(() => null) }); }
   const owner = env.__role === "owner", cfg = await predCfg(env), live = cfg.live !== false; // صاحب المتجر (16 تشرين التاني 2026): «خلي التوقعات مفتوحة للكل» — مفتوحة افتراضياً إلا إذا قفلها صراحة
   const acct = await acctFromReq(request, env);
   // وقت التجربة: صاحب المتجر بيشوف الصفحة متل أي زبون من حسابو بالمتجر (بلا كلمة سر اللوحة)

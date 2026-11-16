@@ -391,9 +391,9 @@ body.lock{overflow:hidden}
     const now = new Date(Date.now() + 3600e3 - new Date().getTimezoneOffset() * 60e3).toISOString().slice(0, 16);
     return `<details class="adm"><summary>⚙️ لوحة المالك</summary>
       <p style="color:var(--mut);font-size:.85rem;margin:10px 0 4px">البطولات يلي بتنجاب لحالها (مواعيد، صور، نتايج):</p>
-      <div class="lgs">${["football", "basketball", "ufc", "boxing"].map((sp) => `<h5>${esc(D.sports[sp])}</h5>` + D.leagues.filter((l) => l.sp === sp).map((l) => `<label><input type="checkbox" data-lg="${l.k}" ${l.on ? "checked" : ""}>${esc(l.n)}</label>`).join("")).join("")}</div>
+      <div class="lgs">${["football", "basketball", "ufc", "boxing", "esports"].map((sp) => `<h5>${esc(D.sports[sp])}</h5>` + D.leagues.filter((l) => l.sp === sp).map((l) => `<label><input type="checkbox" data-lg="${l.k}" ${l.on ? "checked" : ""}>${esc(l.n)}</label>`).join("")).join("")}</div>
       <p style="color:var(--mut);font-size:.85rem;margin:16px 0 4px">المنظمات والبطولات يلي بتبيّن بالصفحة (شيل العلامة لتخبّيها فوراً):</p>
-      <div class="lgs">${["football", "basketball", "ufc", "boxing"].map((sp) => { const L = (D.orgsAll || []).filter((o) => o.sp === sp); return L.length ? `<h5>${esc(D.sports[sp])}</h5>` + L.map((o) => `<label><input type="checkbox" data-og="${esc(o.k)}" ${o.hid ? "" : "checked"}>${esc(o.n)}</label>`).join("") : ""; }).join("")}</div>
+      <div class="lgs">${["football", "basketball", "ufc", "boxing", "esports"].map((sp) => { const L = (D.orgsAll || []).filter((o) => o.sp === sp); return L.length ? `<h5>${esc(D.sports[sp])}</h5>` + L.map((o) => `<label><input type="checkbox" data-og="${esc(o.k)}" ${o.hid ? "" : "checked"}>${esc(o.n)}</label>`).join("") : ""; }).join("")}</div>
       <button class="btn sm" id="og_go">احفظ الإظهار</button>
       <button class="btn sm" id="lg_go">احفظ البطولات وحدّث</button> <button class="btn sm ghost" id="sy_go">حدّث هلق</button>
       <p style="color:var(--mut);font-size:.85rem;margin:16px 0 0">➕ ضيف مباراة بإيدك (متل الملاكمة):</p>
