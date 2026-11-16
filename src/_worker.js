@@ -1373,6 +1373,16 @@ async function predSync(env, force) {
       } catch (e) { errs.push(lg.k + ":" + (e && e.message || e && e.name || "err")); }
     }
   }));
+  // MMA: ESPN ما بيكتب «Women's» بنوع النزال دايماً، فمنسأل عن جنس كل مقاتل (ومنحفظو للأبد) ومنجيب صورتو الحقيقية.
+  // ما منعرض نزال إلا إذا الطرفين معروفين رجال.
+  const ATH = (await env.STORE.get("pred:ath", "json").catch(() => null)) || {};
+  { const need = [...new Set(got.filter((g) => g.sport === "ufc").flatMap((g) => [g.aid, g.bid]).filter((id) => id && !ATH[id]))].slice(0, 300);
+    for (let i = 0; i < need.length; i += 10) await Promise.all(need.slice(i, i + 10).map(async (id) => {
+      try { const r = await fetch(`https://sports.core.api.espn.com/v2/sports/mma/athletes/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(6000) }); if (!r.ok) return; const j = await r.json();
+        const st = (j.images || []).find((x) => x && x.href) ; ATH[id] = { g: String(j.gender || "").toUpperCase() === "FEMALE" ? "F" : String(j.gender || "").toUpperCase() === "MALE" ? "M" : "?", h: (j.headshot && j.headshot.href) || (st && st.href) || "" };
+      } catch {} }));
+    if (need.length) await env.STORE.put("pred:ath", JSON.stringify(ATH)).catch(() => {}); }
+  for (const g of got) if (g.sport === "ufc" && g.aid) { const x = ATH[g.aid], y = ATH[g.bid]; if (x) g.ai = x.h; if (y) g.bi = y.h; g.men = !!(x && y && x.g === "M" && y.g === "M"); }
   if (on.has("boxing")) for (const mt of await bxFetch(errs)) if (mt.at >= from && mt.at <= now + 35 * 864e5) got.push(mt);
   const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
   let boardDirty = false;
@@ -1389,7 +1399,7 @@ async function predSync(env, force) {
     if (!predSameR(oldR, newR)) boardDirty = (await predSettle(env, B, cur, oldR, newR)) || boardDirty;
   }
   // منشيل يلي خلص من أكتر من 3 أيام (النقاط بتضل محفوظة بالترتيب)
-  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.src && predTba(x))).filter((x) => !(x.src === "mma-other" && /\bPFL\b/i.test((x.org || "") + " " + (x.league || "") + " " + (x.ev || "")))).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
+  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.src && predTba(x))).filter((x) => !(x.sport === "ufc" && x.src && x.aid && (ATH[x.aid] ? ATH[x.aid].g !== "M" : true) || x.sport === "ufc" && x.src && x.bid && (ATH[x.bid] ? ATH[x.bid].g !== "M" : true))).filter((x) => !(x.src === "mma-other" && /\bPFL\b/i.test((x.org || "") + " " + (x.league || "") + " " + (x.ev || "")))).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
   await env.STORE.put("pred:matches", JSON.stringify(keep));
   if (boardDirty) await env.STORE.put("pred:board", JSON.stringify(B));
   await env.STORE.put("pred:errs", JSON.stringify(errs.slice(0, 20))).catch(() => {});

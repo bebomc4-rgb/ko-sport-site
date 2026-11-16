@@ -74,6 +74,19 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
 .side{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;min-width:0}
 .side img.lg{width:58px;height:58px;object-fit:contain}
 .side img.ph{width:68px;height:68px;object-fit:cover;object-position:top;border-radius:50%;background:var(--card2);border:2px solid var(--gold)}
+.side .av{width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3rem;letter-spacing:1px;color:var(--gold2);background:radial-gradient(circle at 30% 25%,var(--goldbg),var(--card2));border:2px solid var(--gold)}
+.sh-hd .side img.ph,.sh-hd .side .av{width:104px;height:104px;font-size:1.9rem;box-shadow:0 10px 26px -10px rgba(201,164,92,.8)}
+.sh-hd .side .nm{font-size:1.08rem}
+.evno{display:inline-block;margin-bottom:6px;background:var(--ink);color:var(--gold);font-weight:900;font-size:.95rem;letter-spacing:1px;border-radius:10px;padding:3px 12px;border:1px solid var(--gold)}
+.info .row{position:relative;padding-bottom:12px}
+.info .row i.br{position:absolute;inset:auto 0 3px 0;height:4px;display:flex;gap:4px;direction:ltr}
+.info .row i.br em{flex:1;display:flex;border-radius:99px;background:var(--card2);overflow:hidden}
+.info .row i.br em:first-child{justify-content:flex-end}
+.info .row i.br em u{display:block;height:100%;border-radius:99px;background:var(--mut);opacity:.55;text-decoration:none}
+.info .row i.br em u.hi{background:var(--ok);opacity:1}.info .row i.br em u.lo{background:var(--bad);opacity:.8}
+.wm{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--card2);margin:4px 0 2px}.wm span{display:block;height:100%}
+.wm .k{background:#c62828}.wm .s{background:#c9a45c}.wm .d{background:#5f5c56}
+.wml{display:flex;gap:10px;justify-content:center;font-size:.72rem;color:var(--mut);margin:6px 0 2px}.wml i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:4px;vertical-align:middle}
 .side .nm{font-weight:800;font-size:.98rem;line-height:1.25;word-break:break-word}
 .side .inf{color:var(--mut);font-size:.72rem;display:flex;align-items:center;gap:4px}
 .side .inf img{width:16px;height:11px;object-fit:cover;border-radius:2px}
@@ -195,7 +208,9 @@ body.lock{overflow:hidden}
   const INF = {}, OPEN = new Set(), DR = {};
   function side(m, s) {
     const img = m[s + "i"], person = m.sport === "ufc" || m.sport === "boxing", flag = m[s + "f"], rec = m[s + "r"];
-    return `<div class="side">${img ? `<img class="${person ? "ph" : "lg"}" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
+    const ini = esc(String(m[s] || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase());
+    const av = `<span class="av">${ini}</span>`;
+    return `<div class="side">${img ? `<img class="${person ? "ph" : "lg"}" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="${person ? `this.outerHTML='<span class=&quot;av&quot;>${ini}</span>'` : "this.remove()"}">` : person ? av : ""}
       <span class="nm">${esc(m[s])}</span>${flag || rec ? `<span class="inf">${flag ? `<img src="${esc(flag)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${rec ? `سجل ${esc(rec)}` : ""}</span>` : ""}</div>`;
   }
   function infoHtml(m) {
@@ -205,7 +220,8 @@ body.lock{overflow:hidden}
     const num = (x) => { const n = parseFloat(String(x ?? "").replace(/[^\d.\-]/g, "")); return Number.isFinite(n) ? n : null; };
     const row = (x, label, y, low) => { const nx = num(x), ny = num(y), better = nx !== null && ny !== null && nx !== ny ? (low ? (nx < ny ? "a" : "b") : (nx > ny ? "a" : "b")) : "";
       const V = (z) => z === undefined || z === null || z === "" ? "—" : /^[\d\s+\-#.%:'"/]+$/.test(String(z)) ? `<bdi dir="ltr">${z}</bdi>` : z;
-      return `<div class="row"><b class="${better === "a" ? "hi" : better === "b" ? "lo" : ""}">${V(x)}</b><span>${label}</span><b class="${better === "b" ? "hi" : better === "a" ? "lo" : ""}">${V(y)}</b></div>`; };
+      const mx = Math.max(Math.abs(nx || 0), Math.abs(ny || 0)), bar = nx !== null && ny !== null && mx > 0 ? `<i class="br"><em><u class="${better === "b" ? "hi" : better === "a" ? "lo" : ""}" style="width:${Math.round(Math.abs(ny) * 100 / mx)}%"></u></em><em><u class="${better === "a" ? "hi" : better === "b" ? "lo" : ""}" style="width:${Math.round(Math.abs(nx) * 100 / mx)}%"></u></em></i>` : "";
+      return `<div class="row"><b class="${better === "a" ? "hi" : better === "b" ? "lo" : ""}">${V(x)}</b><span>${label}</span><b class="${better === "b" ? "hi" : better === "a" ? "lo" : ""}">${V(y)}</b>${bar}</div>`; };
     const has = (x, y) => (x !== undefined && x !== null && x !== "") || (y !== undefined && y !== null && y !== "");
     const head = `<div class="row"><b style="font-size:.8rem">${esc(m.a)}</b><span></span><b style="font-size:.8rem">${esc(m.b)}</b></div>`;
     const sec = (t) => `<div class="sec">${t}</div>`, fmL = { W: "ف", D: "ت", L: "خ" };
@@ -234,6 +250,8 @@ body.lock{overflow:hidden}
     const A = v.a || {}, B = v.b || {};
     if (v.weight || v.sched) h += `<div class="meta">${esc([v.sched && v.sched.replace(/(\d+) round contest/i, "$1 جولات"), v.weight].filter(Boolean).join(" · "))}</div>`;
     if ((v.belts || []).length) h += `<div class="meta">🏆 ${v.belts.map(esc).join(" · ")}</div>`;
+    const wmb = (X) => { const t = (+X.ko || 0) + (+X.sub || 0) + (+X.dec || 0); if (!t) return `<div class="wm"></div>`; const p = (n) => Math.round((+n || 0) * 100 / t); return `<div class="wm"><span class="k" style="width:${p(X.ko)}%"></span><span class="s" style="width:${p(X.sub)}%"></span><span class="d" style="width:${p(X.dec)}%"></span></div>`; };
+    h += sec("كيف بيربح كل واحد") + `<div class="two"><div><b style="font-size:.8rem">${esc(m.a)}</b>${wmb(A)}</div><div><b style="font-size:.8rem">${esc(m.b)}</b>${wmb(B)}</div></div><div class="wml"><span><i style="background:#c62828"></i>ضربة قاضية</span>${v.box ? "" : `<span><i style="background:#c9a45c"></i>إخضاع</span>`}<span><i style="background:#5f5c56"></i>قرار حكام</span></div>`;
     h += sec("السجل وطرق الفوز") + row(`${A.w}-${A.l}-${A.d}`, "السجل (فوز-خسارة-تعادل)", `${B.w}-${B.l}-${B.d}`)
       + row(A.ko, "الفوز بالضربة القاضية (KO/TKO)", B.ko) + row(v.box ? "—" : A.sub, "الفوز بالإخضاع (Submission)", v.box ? "—" : B.sub) + row(A.dec, "الفوز بقرار الحكام (Decision)", B.dec);
     if (has(A.kop, B.kop)) h += row(A.kop !== undefined ? A.kop + "%" : null, "نسبة الفوز بالضربة القاضية", B.kop !== undefined ? B.kop + "%" : null);
@@ -306,7 +324,8 @@ body.lock{overflow:hidden}
     }
     return out.map((x) => typeof x === "string" ? x : (() => {
       const L = seen.get(x.eid), f = L[0], segs = SEG.filter(([k]) => L.some((m) => m.seg === k));
-      return `<div class="evc"><div class="eh"><b>${esc(f.evn || f.ev || f.org)}</b><small>${esc(when(Math.min(...L.map((m) => m.at))))}${f.ven ? " · " + esc(f.ven) : ""} · ${L.length} نزال</small></div>` +
+      const no = (String(f.evn || f.ev || "").match(/\b(UFC|PFL|ONE|Brave CF|UAE Warriors)\s+(\d{2,4})\b/i) || []);
+      return `<div class="evc"><div class="eh">${no[2] ? `<span class="evno">${esc(no[1].toUpperCase())} ${no[2]}</span>` : ""}<b>${esc(f.evn || f.ev || f.org)}</b><small>${esc(when(Math.min(...L.map((m) => m.at))))}${f.ven ? " · " + esc(f.ven) : ""} · ${L.length} نزال</small></div>` +
         segs.map(([k, t]) => (segs.length > 1 ? `<h4>${t}</h4>` : "") + L.filter((m) => m.seg === k).sort((a, b) => b.ord - a.ord).map(card).join("")).join("") + `</div>`;
     })()).join("");
   }
