@@ -143,7 +143,7 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
   async function load() {
     try { D = await api("/api/pred"); draw(); }
     catch (e) {
-      if (e.status === 403 || e.status === 401 || e.status === 429) { const had = !!ls.get("ko_admin"); if (e.status !== 429) ls.set("ko_admin", ""); gate(403); if (had) toast(e.status === 429 ? e.message : "كلمة السر غلط"); }
+      if (e.status === 403 || e.status === 401 || e.status === 429) { const had = !VISITOR && !!ls.get("ko_admin"); if (had && e.status !== 429) ls.set("ko_admin", ""); gate(403); if (had) toast(e.status === 429 ? e.message : "كلمة السر غلط"); }
       else gate(0, e.message);
     }
   }
