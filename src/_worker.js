@@ -1567,7 +1567,7 @@ async function predSync(env, force) {
     if (!predSameR(oldR, newR)) boardDirty = (await predSettle(env, B, cur, oldR, newR)) || boardDirty;
   }
   // منشيل يلي خلص من أكتر من 3 أيام (النقاط بتضل محفوظة بالترتيب)
-  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.src && predTba(x))).filter((x) => x.dOnly ? !((x.aid && ATH[x.aid] && ATH[x.aid].g === "F") || (x.bid && ATH[x.bid] && ATH[x.bid].g === "F")) : !(x.sport === "ufc" && x.src && x.aid && (ATH[x.aid] ? ATH[x.aid].g !== "M" : true) || x.sport === "ufc" && x.src && x.bid && (ATH[x.bid] ? ATH[x.bid].g !== "M" : true))).filter((x) => !(x.src === "mma-other" && /\bPFL\b/i.test((x.org || "") + " " + (x.league || "") + " " + (x.ev || "")))).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
+  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.src && predTba(x))).filter((x) => x.dOnly ? !((x.aid && ATH[x.aid] && ATH[x.aid].g === "F") || (x.bid && ATH[x.bid] && ATH[x.bid].g === "F")) : !(x.sport === "ufc" && x.src && x.aid && (ATH[x.aid] ? ATH[x.aid].g !== "M" : true) || x.sport === "ufc" && x.src && x.bid && (ATH[x.bid] ? ATH[x.bid].g !== "M" : true))).filter((x) => !(x.src === "mma-other" && /\bPFL\b/i.test((x.org || "") + " " + (x.league || "") + " " + (x.ev || "")))).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 1500); // كان 600 وصار يقصّ نزالات القتال البعيدة
   await env.STORE.put("pred:matches", JSON.stringify(keep));
   if (boardDirty) await env.STORE.put("pred:board", JSON.stringify(B));
   await env.STORE.put("pred:errs", JSON.stringify(errs.slice(0, 20))).catch(() => {});
