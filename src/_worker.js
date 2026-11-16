@@ -1216,7 +1216,7 @@ async function bxFetch(errs) {
   const got = [];
   for (const [u, done] of [["https://box.live/upcoming-fights-schedule/", false], ["https://box.live/fight-results/", true]]) {
     try {
-      const r = await fetch(u, { headers: BX_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtl: 900 } });
+      const r = await fetch(u, { headers: BX_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtlByStatus: { "200-299": 900, "300-599": 0 } } });
       if (!r.ok) { errs.push("boxing:" + r.status); continue; }
       for (const e of bxEvents(await r.text())) { const mt = bxMatch(e); if (!mt) continue; if (done) { const r = bxResult(mt); mt.res = r.res || ""; mt.meth = r.meth || ""; } delete mt.desc; got.push(mt); }
     } catch (e) { errs.push("boxing:" + (e && e.name || "err")); }
@@ -1235,7 +1235,7 @@ const predJ = async (u) => {
   let last = "";
   const tries = /^https:\/\/site\.(web\.)?api\.espn\.com\//.test(u) ? ESPN_HOSTS.map((h) => u.replace(/^https:\/\/[^/]+/, "https://" + h) + (u.includes("?") ? "&" : "?") + "region=us&lang=en&contentorigin=espn") : [u];
   for (const t of [u, ...tries.filter((x) => x !== u)]) {
-    try { const r = await fetch(t, { signal: AbortSignal.timeout(9000), headers: { accept: "application/json" }, cf: { cacheTtl: 3600 } }); if (r.ok) return r.json(); last = "http " + r.status + " " + t.split("/")[2]; } catch (e) { last = String(e && e.name || e); }
+    try { const r = await fetch(t, { signal: AbortSignal.timeout(9000), headers: { accept: "application/json" }, cf: { cacheTtlByStatus: { "200-299": 3600, "300-599": 0 } } }); if (r.ok) return r.json(); last = "http " + r.status + " " + t.split("/")[2]; } catch (e) { last = String(e && e.name || e); }
   }
   throw new Error(last);
 };
@@ -1337,7 +1337,7 @@ async function predInfo(env, mt) {
     return { kind: "fight", a: A, b: Bc };
   }
   if (mt.sport === "boxing" && /^bx-/.test(mt.id)) {
-    const r = await fetch(`https://box.live/fights/${encodeURIComponent(mt.id.slice(3))}/`, { headers: BX_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtl: 3600 } });
+    const r = await fetch(`https://box.live/fights/${encodeURIComponent(mt.id.slice(3))}/`, { headers: BX_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtlByStatus: { "200-299": 3600, "300-599": 0 } } });
     if (!r.ok) throw new Error("http " + r.status);
     const T = bxTape(await r.text()); if (!T || !T.wins) return { kind: "none" };
     const P = (k, i) => (T[k] ? T[k][i] : undefined), N = (k, i) => (P(k, i) === undefined || P(k, i) === "-" ? undefined : +P(k, i));
@@ -1356,7 +1356,7 @@ async function predSync(env, force) {
   const months = [...new Set([now, to].map((t) => predIso(t).slice(0, 6)))];
   const days = []; for (let t = now - 864e5; t <= to; t += 864e5) days.push(predIso(t));
   // دفعات من 5 بطولات، وكل طلب بيرفضو ESPN (403/429) منعيدو مرة بعد ثانية: الطلبات الكتيرة سوا كانت تنرفض
-  const getJ = async (u) => { for (let i = 0; i < 2; i++) { const r = await fetch(u, { signal: AbortSignal.timeout(8000), cf: { cacheTtl: 600 } }); if (r.ok) return r.json(); if (i === 0 && (r.status === 403 || r.status === 429 || r.status >= 500)) { await new Promise((z) => setTimeout(z, 1200)); continue; } throw new Error(String(r.status)); } };
+  const getJ = async (u) => { for (let i = 0; i < 2; i++) { const r = await fetch(u, { signal: AbortSignal.timeout(8000), cf: { cacheTtlByStatus: { "200-299": 600, "300-599": 0 } } }); if (r.ok) return r.json(); if (i === 0 && (r.status === 403 || r.status === 429 || r.status >= 500)) { await new Promise((z) => setTimeout(z, 1200)); continue; } throw new Error(String(r.status)); } };
   const todo = PRED_LEAGUES.filter((lg) => !lg.box && on.has(lg.k));
   for (let i = 0; i < todo.length; i += 5) await Promise.all(todo.slice(i, i + 5).map(async (lg) => {
     for (const d of lg.daily ? days : months) {
@@ -1510,7 +1510,7 @@ async function predImg(request, url, ctx) {
   if (t.protocol !== "https:" || !["box.live", "www.box.live", "a.espncdn.com"].includes(t.hostname) || !/\.(png|jpe?g|webp)$/i.test(t.pathname)) return new Response("no", { status: 403 });
   const cache = typeof caches !== "undefined" ? caches.default : null, ck = new Request("https://ko-sport.online/pimg?u=" + encodeURIComponent(t.href));
   if (cache) { const hit = await cache.match(ck); if (hit) return hit; }
-  const r = await fetch(t.href, { headers: { "user-agent": BX_HDR["user-agent"], accept: "image/*" }, cf: { cacheTtl: 604800, cacheEverything: true } }).catch(() => null);
+  const r = await fetch(t.href, { headers: { "user-agent": BX_HDR["user-agent"], accept: "image/*" }, cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": 604800, "300-599": 0 } } }).catch(() => null);
   if (!r || !r.ok || !/^image\//.test(r.headers.get("content-type") || "")) return new Response("not found", { status: 404 });
   const out = new Response(r.body, { headers: { "content-type": r.headers.get("content-type"), "cache-control": "public, max-age=604800, immutable" } });
   if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(ck, out.clone()).catch(() => {}));
