@@ -1092,13 +1092,13 @@ const PRED_LEAGUES = [
   { k: "ger.dfb_pokal", p: "soccer/ger.dfb_pokal", sp: "football", n: "كأس ألمانيا" },
   { k: "fra.coupe_de_france", p: "soccer/fra.coupe_de_france", sp: "football", n: "كأس فرنسا" },
   { k: "ksa.kings.cup", p: "soccer/ksa.kings.cup", sp: "football", n: "كأس الملك السعودي" },
-  { k: "eng.2", p: "soccer/eng.2", sp: "football", n: "دوري التشامبيونشيب الإنكليزي", off: true },
-  { k: "sco.1", p: "soccer/sco.1", sp: "football", n: "الدوري الاسكتلندي", off: true },
-  { k: "bel.1", p: "soccer/bel.1", sp: "football", n: "الدوري البلجيكي", off: true },
-  { k: "bra.1", p: "soccer/bra.1", sp: "football", n: "الدوري البرازيلي", off: true },
-  { k: "arg.1", p: "soccer/arg.1", sp: "football", n: "الدوري الأرجنتيني", off: true },
-  { k: "mex.1", p: "soccer/mex.1", sp: "football", n: "الدوري المكسيكي", off: true },
-  { k: "usa.1", p: "soccer/usa.1", sp: "football", n: "الدوري الأمريكي MLS", off: true },
+  { k: "eng.2", p: "soccer/eng.2", sp: "football", n: "دوري التشامبيونشيب الإنكليزي" },
+  { k: "sco.1", p: "soccer/sco.1", sp: "football", n: "الدوري الاسكتلندي" },
+  { k: "bel.1", p: "soccer/bel.1", sp: "football", n: "الدوري البلجيكي" },
+  { k: "bra.1", p: "soccer/bra.1", sp: "football", n: "الدوري البرازيلي" },
+  { k: "arg.1", p: "soccer/arg.1", sp: "football", n: "الدوري الأرجنتيني" },
+  { k: "mex.1", p: "soccer/mex.1", sp: "football", n: "الدوري المكسيكي" },
+  { k: "usa.1", p: "soccer/usa.1", sp: "football", n: "الدوري الأمريكي MLS" },
   { k: "club.friendly", p: "soccer/club.friendly", sp: "football", n: "مباريات ودية للأندية", off: true },
   { k: "nba", p: "basketball/nba", sp: "basketball", n: "NBA", daily: true },
   { k: "ncaa", p: "basketball/mens-college-basketball", sp: "basketball", n: "دوري الجامعات الأمريكية", daily: true, off: true },
@@ -1442,7 +1442,7 @@ async function predSync(env, force) {
   if (!force && now - last < 20 * 60e3) return { skipped: true };
   await env.STORE.put("pred:sync", String(now)); // قفل: طلب تاني بنفس الوقت ما بيعيد المزامنة
   const cfg = await predCfg(env), on = predOn(cfg);
-  const from = now - 2 * 864e5, to = now + 8 * 864e5, got = [], errs = [];
+  const from = now - 2 * 864e5, to = now + 14 * 864e5, got = [], errs = []; // صاحب المتجر (16 تشرين التاني 2026): وسّعنا المدة لـ 14 يوم ليبيّن مباريات أكتر (خصوصاً وقت التوقف الدولي)
   const months = [...new Set([now, to].map((t) => predIso(t).slice(0, 6)))];
   const mmaTo = Infinity, mmaMonths = [...new Set(Array.from({ length: 9 }, (_, i) => { const d = new Date(now); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + i); return predIso(d.getTime()).slice(0, 6); }))]; // MMA بلا حد أيام: كل شهر ESPN حاطّ فيه شي (9 شهور قدّام)
   const days = []; for (let t = now - 864e5; t <= to; t += 864e5) days.push(predIso(t));
