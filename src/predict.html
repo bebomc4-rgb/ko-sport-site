@@ -115,9 +115,10 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const ls = { get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} } };
   let D = null, sport = "", busy = false;
+  const VISITOR = /[?&]visitor\b/.test(location.search); // صاحب المتجر بيشوف الصفحة متل الزبون
   const toast = (t) => { const e = $("#toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove("on"), 2600); };
   const api = async (p, body) => {
-    const h = { "content-type": "application/json" }, pw = ls.get("ko_admin"); if (pw) h.authorization = "Bearer " + pw;
+    const h = { "content-type": "application/json" }, pw = VISITOR ? "" : ls.get("ko_admin"); if (pw) h.authorization = "Bearer " + pw;
     const r = await fetch(p, { method: body ? "POST" : "GET", headers: h, body: body ? JSON.stringify(body) : undefined, credentials: "same-origin", cache: "no-store" });
     const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.error || "صار خطأ، جرّب كمان مرة"), { status: r.status }); return j;
   };
@@ -126,6 +127,10 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
     return d ? `بعد ${d} يوم و${h} ساعة` : h ? `بعد ${h} ساعة و${m} دقيقة` : `بعد ${m} دقيقة`; };
 
   function gate(status, msg) {
+    if (status === 403 && VISITOR) {
+      app.innerHTML = `<div class="msg"><b>هالصفحة لسا تجريبية</b><p style="color:var(--mut)">فوت على حسابك بالمتجر (رقم صاحب المتجر) لتشوفها متل الزبون.</p><a class="btn" href="/ar/account" style="text-decoration:none;display:inline-block">فوت على حسابي</a></div>`;
+      return;
+    }
     if (status === 403) {
       app.innerHTML = `<div class="msg"><b>هالصفحة لسا تجريبية</b><p class="sub" style="color:var(--mut)">إذا إنت صاحب المتجر، اكتب كلمة سر لوحة التحكم (بتنحفظ عهالجهاز متل لوحة التحكم).</p>
         <input id="pw" type="password" autocomplete="current-password" placeholder="كلمة سر لوحة التحكم"><button class="btn" id="go">فوت</button></div>`;
@@ -230,6 +235,8 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
     let h = D.me ? `<div class="me"><div><div class="sub">نقاطك يا ${esc(D.me.name.split(" ")[0])}</div><b>${D.me.p}</b></div><div class="sub" style="text-align:left">توقّعات صح: ${D.me.w} من ${D.me.t}</div></div>`
       : `<div class="msg" style="margin-bottom:14px">لازم تفوت على حسابك بالمتجر لتقدر تتوقّع.<br><br><a class="btn" href="/ar/account" style="text-decoration:none;display:inline-block">فوت على حسابي</a></div>`;
     if (used.length > 1) h += `<div class="chips"><button class="${sport ? "" : "on"}" data-sp="">الكل</button>${used.map((s) => `<button class="${sport === s ? "on" : ""}" data-sp="${s}">${esc(D.sports[s])}</button>`).join("")}</div>`;
+    if (VISITOR) h += `<div class="msg" style="padding:10px;margin-bottom:12px;font-size:.85rem">👁 عم تشوف الصفحة متل الزبون · <a href="/predict">رجوع للوحة المالك</a></div>`;
+    else if (D.owner) h += `<div style="text-align:center;margin:-4px 0 10px"><a class="btn sm ghost" href="/predict?visitor" style="text-decoration:none;display:inline-block">👁 شوف الصفحة متل الزبون</a></div>`;
     if (D.owner) h += adminForm();
     if (run.length) h += `<h2>🔴 عم تنلعب هلق</h2>` + run.map(card).join("");
     h += `<h2>المباريات الجاية</h2>`;

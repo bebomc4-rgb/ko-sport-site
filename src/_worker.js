@@ -1057,6 +1057,7 @@ async function subsTick(env, force) {
 // الملاكمة مو موجودة عند ESPN: صاحب المتجر بيضيفها بإيدو من الصفحة.
 // هلق تجريبي: ما حدا بيشوف الصفحة غير المالك (كلمة سر لوحة التحكم + حسابو بالمتجر). بعدين منفتحها للكل من «pred:cfg».live
 // المفاتيح: pred:matches (كل المباريات المعروضة)، pred:picks:<id> (توقعات مباراة)، pred:u:<رقم> (توقعات زبون)، pred:cnt (عدّ التوقعات)، pred:board (النقاط)، pred:cfg، pred:sync
+const PRED_TESTERS = ["0938986875"]; // رقم صاحب المتجر بحسابو بالمتجر
 const PRED_SPORTS = { football: "كرة قدم", basketball: "كرة سلة", ufc: "UFC", boxing: "ملاكمة", tennis: "تنس", other: "غير" };
 const PRED_LEAGUES = [
   { k: "uefa.champions", p: "soccer/uefa.champions", sp: "football", n: "دوري أبطال أوروبا" },
@@ -1264,8 +1265,10 @@ const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, league: mt.lea
 async function predApi(request, env, path, m, ctx) {
   if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null) }); }
   const owner = env.__role === "owner", cfg = await predCfg(env), live = !!cfg.live;
-  if (!owner && !live) return json({ error: "الصفحة لسا تجريبية" }, 403);
   const acct = await acctFromReq(request, env);
+  // وقت التجربة: صاحب المتجر بيشوف الصفحة متل أي زبون من حسابو بالمتجر (بلا كلمة سر اللوحة)
+  const tester = !!(acct && [...PRED_TESTERS, ...(Array.isArray(cfg.testers) ? cfg.testers : [])].includes(acct.phone));
+  if (!owner && !live && !tester) return json({ error: "الصفحة لسا تجريبية" }, 403);
   if (path === "/api/pred" && m === "GET") {
     const last = +(await env.STORE.get("pred:sync").catch(() => 0)) || 0;
     if (Date.now() - last > 20 * 60e3) { if (last === 0) await predSync(env, true).catch(() => {}); else if (ctx && ctx.waitUntil) ctx.waitUntil(predSync(env).catch(() => {})); }
