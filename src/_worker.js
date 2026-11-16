@@ -256,7 +256,7 @@ async function settingsGet(request, env, ctx) {
     const s = await getSettings(env, request);
     s.discounts = (s.discounts || []).filter((d) => d.type !== "code" && d.on !== false);
     s.pages = (s.pages || []).filter((p) => p.on !== false);
-    s.predLive = !!(await predCfg(env)).live; // صاحب المتجر (16 تشرين التاني 2026): قسم التوقعات بيبيّن بحسابي لما يصير live
+    s.predLive = (await predCfg(env)).live !== false; // صاحب المتجر (16 تشرين التاني 2026): قسم التوقعات بيبيّن بحسابي لما يصير live
     delete s.dev;
     return s;
   }, request);
@@ -1515,7 +1515,7 @@ async function predApi(request, env, path, m, ctx) {
     return json(out);
   }
   if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null), nm: await env.STORE.get("pred:nm", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, id: v.filter((x) => x.id).length }; }).catch(() => null), wimg: await env.STORE.get("pred:wimg", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, pic: v.filter(Boolean).length }; }).catch(() => null), ath: await env.STORE.get("pred:ath", "json").then((A) => { const o = { M: 0, F: 0, "?": 0, pic: 0 }; for (const x of Object.values(A || {})) { o[x.g] = (o[x.g] || 0) + 1; if (x.h) o.pic++; } return o; }).catch(() => null) }); }
-  const owner = env.__role === "owner", cfg = await predCfg(env), live = !!cfg.live;
+  const owner = env.__role === "owner", cfg = await predCfg(env), live = cfg.live !== false; // صاحب المتجر (16 تشرين التاني 2026): «خلي التوقعات مفتوحة للكل» — مفتوحة افتراضياً إلا إذا قفلها صراحة
   const acct = await acctFromReq(request, env);
   // وقت التجربة: صاحب المتجر بيشوف الصفحة متل أي زبون من حسابو بالمتجر (بلا كلمة سر اللوحة)
   const tester = !!(acct && [...PRED_TESTERS, ...(Array.isArray(cfg.testers) ? cfg.testers : [])].includes(acct.phone));
@@ -1796,7 +1796,7 @@ async function acctApi(request, env, path, m) {
     const why = {}, a = await acctFromReq(request, env, why);
     // بس الحساب الموقوف أو كلمة سر تغيّرت بيطلّعو الزبون. غير هيك (ضغط أو حساب لسا عم يوصل) بيضل داخل
     if (!a) return json({ error: "سجّل دخول من جديد", reason: why.reason || "", logout: why.reason === "blocked" || why.reason === "password" || why.reason === "token" }, 401);
-    if (m === "GET") { await acctTouch(env, request, a); const _pc = await predCfg(env); const _pt = !!_pc.live || [...PRED_TESTERS, ...(Array.isArray(_pc.testers) ? _pc.testers : [])].includes(a.phone); return json({ ok: true, account: { ...acctOut(a), predOpen: _pt }, token: await acctToken(env, a) }); } // predOpen: يشوف قسم التوقعات (live أو تستر)
+    if (m === "GET") { await acctTouch(env, request, a); const _pc = await predCfg(env); const _pt = _pc.live !== false || [...PRED_TESTERS, ...(Array.isArray(_pc.testers) ? _pc.testers : [])].includes(a.phone); return json({ ok: true, account: { ...acctOut(a), predOpen: _pt }, token: await acctToken(env, a) }); } // predOpen: يشوف قسم التوقعات (live أو تستر)
     if (m === "PUT") {
       const b = await request.json().catch(() => ({}));
       if (b.governorate) { if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة" }, 400); a.governorate = b.governorate; }
