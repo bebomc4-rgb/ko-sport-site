@@ -1615,20 +1615,20 @@ const BK = "https://www.bkfc.com", BK_HDR = { "user-agent": "Mozilla/5.0 (Window
 const bkT = (h) => String(h || "").replace(/<svg[\s\S]*?<\/svg>/g, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ").trim();
 const bkGet = async (path) => { const r = await fetch(BK + path, { headers: BK_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtlByStatus: { "200-299": 1800, "300-599": 0 } } }); if (!r.ok) throw new Error("bkfc " + r.status); return r.text(); };
 async function bkFighter(env, slug) {
-  const ck = "bk:f:" + slug, hit = await env.STORE.get(ck, "json").catch(() => null); if (hit) return hit;
+  const ck = "bk:f2:" + slug, hit = await env.STORE.get(ck, "json").catch(() => null); if (hit) return hit;
   const h = await bkGet("/fighters/" + slug).catch(() => ""); if (!h) return null;
-  const nums = [...h.matchAll(/class="hero_record_number[^"]*"[^>]*>([^<]*)</g)].map((x) => x[1].trim());
+  const nums = [...h.matchAll(/class="(hero_record_number[^"]*)"[^>]*>([^<]*)</g)].filter((x) => !/w-condition-invisible/.test(x[1])).map((x) => x[2].trim()).filter((x) => /^\d+$/.test(x)); // بيتجاهل الأرقام المخفية
   const lab = (k) => { const i = h.search(new RegExp(`stat_list-item_label[^>]*>\\s*${k}`, "i")); return i < 0 ? "" : h.slice(i, i + 1500); };
   const nat = bkT((lab("Nationality").match(/paragraph-9[^>]*>([^<]*)</) || [])[1]);
   const dob = ((lab("age").match(/(\d{1,2})\/(\d{4})/) || []));
-  const ht = ((lab("height").match(/height-metric[^>]*>([^<]*)</) || [])[1] || "").trim();
+  const hv = parseFloat(((lab("height").match(/height-metric[^>]*>([^<]*)</) || [])[1] || "").trim()), ht = hv > 0 ? Math.round(hv > 3 ? hv * 2.54 : hv * 100) + " سم" : ""; // أحياناً إنش وأحياناً متر
   const div = bkT((lab("Division").match(/<div[^>]*>\s*([A-Za-z' ]{3,30})\s*<\/div>/) || [])[1]);
   const o = { w: nums[0] || "", l: nums[1] || "", d: nums[2] || "", nat, age: dob[2] ? new Date().getUTCFullYear() - +dob[2] - (new Date().getUTCMonth() + 1 < +dob[1] ? 1 : 0) : "", ht, div };
   await env.STORE.put(ck, JSON.stringify(o), { expirationTtl: 86400 }).catch(() => {});
   return o;
 }
 async function bkData(env) {
-  const hit = await env.STORE.get("bk:cache", "json").catch(() => null); if (hit && Date.now() - hit.t < 30 * 60e3) return hit;
+  const hit = await env.STORE.get("bk:cache2", "json").catch(() => null); if (hit && Date.now() - hit.t < 30 * 60e3) return hit;
   const list = await bkGet("/events");
   const slugs = [...new Set([...list.matchAll(/href="\/events\/([a-z0-9-]+)"/g)].map((x) => x[1]))].slice(0, 8);
   const events = [];
@@ -1651,7 +1651,7 @@ async function bkData(env) {
       const key = sl2.slice(0, 2).sort().join("|"); if (seen.has(key)) continue; seen.add(key);
       const res = [...p.matchAll(/class="(?:text-align-center|text-size-large)"[^>]*>([^<]*)</g)].map((x) => x[1].trim()).filter((x) => x && !/^TB[UC]$/i.test(x));
       const seg = (heads.filter((x) => x.i < at).pop() || { t: "" }).t;
-      bouts.push({ wc: wcl, mev, seg: /free/i.test(seg) ? "فايتات مجانية" : /prelim/i.test(seg) ? "التمهيدية" : "البطاقة الرئيسية", a: { n: nm[0], s: sl2[0], img: img[0] || "" }, b: { n: nm[1], s: sl2[1], img: img[1] || "" }, res: res.slice(0, 3).join(" · ") });
+      bouts.push({ wc: wcl, mev, seg: "", a: { n: nm[0], s: sl2[0], img: img[0] || "" }, b: { n: nm[1], s: sl2[1], img: img[1] || "" }, res: res.slice(0, 3).join(" · ") });
     }
     if (bouts.length) events.push({ slug: sl, name, date, bouts });
   }
@@ -1659,12 +1659,12 @@ async function bkData(env) {
   const F = {}; for (let i = 0; i < all.length; i += 6) await Promise.all(all.slice(i, i + 6).map(async (sl) => { F[sl] = await bkFighter(env, sl).catch(() => null); }));
   for (const e of events) for (const b of e.bouts) { b.a.f = F[b.a.s] || null; b.b.f = F[b.b.s] || null; }
   const out = { t: Date.now(), events };
-  await env.STORE.put("bk:cache", JSON.stringify(out)).catch(() => {});
+  await env.STORE.put("bk:cache2", JSON.stringify(out)).catch(() => {});
   return out;
 }
 async function bkApi(request, env) {
   if (env.__role !== "owner") return json({ error: "هالصفحة إلك بس · اكتب كلمة سر لوحة التحكم" }, 403);
-  if (new URL(request.url).searchParams.get("fresh")) await env.STORE.delete("bk:cache").catch(() => {});
+  if (new URL(request.url).searchParams.get("fresh")) await env.STORE.delete("bk:cache2").catch(() => {});
   try { return json(await bkData(env)); } catch (e) { return json({ error: "ما قدرت جيب من موقع BKFC هلق (" + (e && e.message || "خطأ") + ")" }, 502); }
 }
 async function bkPage(request, env) {

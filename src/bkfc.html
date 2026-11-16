@@ -52,14 +52,14 @@ a{color:var(--gold2)}
   }
   const fighter = (x) => { const f = x.f || {};
     return `<div class="f">${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;av&quot;>${ini(x.n)}</div>'">` : `<div class="av">${ini(x.n)}</div>`}
-      <b>${esc(x.n)}</b>${f.w !== undefined && f.w !== "" ? `<span class="rec"><span class="w">${esc(f.w)}</span>-<span class="l">${esc(f.l)}</span>-${esc(f.d)}</span>` : ""}
+      <b>${esc(x.n)}</b>${f.w !== undefined && f.w !== "" && f.l !== "" ? `<span class="rec"><span class="w">${esc(f.w)}</span>-<span class="l">${esc(f.l)}</span>-${esc(f.d)}</span>` : ""}
       <small>${[f.nat, f.age ? f.age + " سنة" : "", f.ht].filter(Boolean).map(esc).join(" · ")}</small>
       <a href="https://www.bkfc.com/fighters/${esc(x.s)}" target="_blank" rel="noopener" style="font-size:.72rem">ملفو ↗</a></div>`; };
   function draw(D) {
     if (!D.events.length) { app.innerHTML = `<div class="msg">ما في أحداث جاية</div>`; return; }
     app.innerHTML = D.events.map((e) => { const segs = [...new Set(e.bouts.map((b) => b.seg))];
       return `<div class="ev"><div class="eh"><b>${esc(e.name)}</b><small>${esc(e.date)} · ${e.bouts.length} نزال</small></div>` +
-        segs.map((s) => `<h4>${esc(s)}</h4>` + e.bouts.filter((b) => b.seg === s).map((b) => `<div class="bt"><div class="top"><span>${esc(b.wc)}</span>${b.mev ? `<span class="badge">${b.mev === "co" ? "النزال الرئيسي المساعد" : "⭐ النزال الرئيسي"}</span>` : ""}</div>
+        segs.map((s) => (s ? `<h4>${esc(s)}</h4>` : "") + e.bouts.filter((b) => b.seg === s).map((b) => `<div class="bt"><div class="top"><span>${esc(b.wc)}</span>${b.mev ? `<span class="badge">${b.mev === "co" ? "النزال الرئيسي المساعد" : "⭐ النزال الرئيسي"}</span>` : ""}</div>
           <div class="vs">${fighter(b.a)}<div class="mid">ضد</div>${fighter(b.b)}</div>${b.res ? `<div class="res">${esc(b.res)}</div>` : ""}</div>`).join("")).join("") + `</div>`; }).join("");
   }
   async function load(fresh) {
