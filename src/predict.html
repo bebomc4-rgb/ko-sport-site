@@ -87,6 +87,15 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
 .info .row span{color:var(--mut);font-size:.8rem}
 .info .gl{margin-top:8px;color:var(--mut);font-size:.78rem;display:flex;flex-direction:column;gap:3px}
 .info .gl div{display:flex;justify-content:space-between}
+.sc2{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-top:4px}
+.sc2 input{width:100%;text-align:center;font:inherit;font-size:1.3rem;font-weight:700;background:var(--card2);color:var(--txt);border:1.5px solid var(--line);border-radius:12px;padding:8px 4px}
+.sc2 input:focus{outline:none;border-color:var(--gold)}
+.sc2 span{color:var(--mut)}
+.save{margin-top:8px;width:100%}
+.meths{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:center}
+.meths button{background:var(--card2);color:var(--txt);border:1.5px solid var(--line);border-radius:99px;padding:7px 12px;font:inherit;font-size:.85rem;cursor:pointer}
+.meths button.on{border-color:var(--gold);background:#2b2300;color:var(--gold2)}
+.hint{color:var(--mut);font-size:.72rem;margin-top:6px;text-align:center}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(120px);background:#222;color:#fff;border:1px solid var(--line);padding:10px 18px;border-radius:99px;transition:.25s;z-index:9;font-size:.92rem}
 #toast.on{transform:translateX(-50%) translateY(0)}
 </style>
@@ -138,7 +147,7 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
   const dayName = (k) => { const t = dayKey(Date.now()), tm = dayKey(Date.now() + 864e5); if (k === t) return "اليوم"; if (k === tm) return "بكرا";
     return new Date(k + "T12:00:00Z").toLocaleDateString("ar-SY", { weekday: "long", day: "numeric", month: "numeric" }); };
   const hm = (ms) => new Date(ms).toLocaleTimeString("ar-SY", { timeZone: "Asia/Damascus", hour: "numeric", minute: "2-digit" });
-  let day = ""; const INF = {}, OPEN = new Set();
+  let day = ""; const INF = {}, OPEN = new Set(), DR = {};
   function side(m, s) {
     const img = m[s + "i"], person = m.sport === "ufc" || m.sport === "boxing", flag = m[s + "f"], rec = m[s + "r"];
     return `<div class="side">${img ? `<img class="${person ? "ph" : "lg"}" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
@@ -163,30 +172,50 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
       ${row(v.box ? "—" : A.sub, "الفوز بالإخضاع (Submission)", v.box ? "—" : B.sub)}
       ${row(A.dec, "الفوز بقرار الحكام (Decision)", B.dec)}</div>`;
   }
+  const METH = { ko: "بالضربة القاضية", sub: "بالإخضاع", dec: "بقرار الحكام", rtd: "بالانسحاب" };
+  const METH_OK = (m) => m.sport === "ufc" ? ["ko", "sub", "dec"] : ["ko", "dec", "rtd"];
+  const scoreSport = (m) => m.sport === "football" || m.sport === "basketball", fight = (m) => m.sport === "ufc" || m.sport === "boxing";
+  const pickTxt = (m, v) => !v ? "" : scoreSport(m) && v.sa !== undefined ? `${esc(m.a)} ${v.sa} - ${v.sb} ${esc(m.b)}` : v.k === "d" ? "تعادل" : `${esc(v.k === "a" ? m.a : m.b)}${v.m ? " " + METH[v.m] : ""}`;
+  const resTxt = (m) => m.res === "d" ? (scoreSport(m) && m.ra !== undefined ? `تعادل ${m.ra}-${m.rb}` : "تعادل") : scoreSport(m) && m.ra !== undefined ? `${esc(m.a)} ${m.ra} - ${m.rb} ${esc(m.b)}` : `فاز ${esc(m.res === "a" ? m.a : m.b)}${m.meth ? " " + METH[m.meth] : ""}`;
+  const hint = (m) => m.sport === "football" ? `الفايز أو التعادل صح = ${m.pts} نقطة · النتيجة بالزبط = ${m.pts * 2}` : m.sport === "basketball" ? `الفايز صح = ${m.pts} نقطة · ونتيجة قريبة (فرق المجموع 10 أو أقل) = ${m.pts * 2}` : fight(m) ? `الفايز صح = ${m.pts} نقطة · الفايز مع طريقة الفوز = ${m.pts * 2} · التعادل صح = ${m.pts * 2}` : `التوقّع الصح = ${m.pts} نقطة`;
   function card(m) {
-    const locked = !!m.res || Date.now() >= m.at, tot = m.counts.a + m.counts.b + m.counts.d;
-    const pc = (k) => tot ? Math.round(m.counts[k] * 100 / tot) : 0, show = !!m.mine || locked;
-    const opt = (k, label) => `<button data-pick="${k}" data-id="${m.id}" class="${m.mine === k ? "mine" : ""} ${m.res === k ? "win" : ""}" ${locked || !D.me ? "disabled" : ""}>
-      ${esc(label)}${show ? `<span class="pc">${pc(k)}%</span><span class="bar" style="width:${pc(k)}%"></span>` : ""}</button>`;
+    const locked = !!m.res || Date.now() >= m.at, tot = m.counts.a + m.counts.b + m.counts.d, mine = m.mine;
+    const pc = (k) => tot ? Math.round(m.counts[k] * 100 / tot) : 0, show = !!mine || locked;
+    const can = !locked && !!D.me, dr = DR[m.id] || (mine ? { ...mine } : {});
+    let body = "";
+    if (scoreSport(m)) {
+      if (can) body = `<div class="sc2"><input type="number" inputmode="numeric" min="0" max="300" data-sa="${m.id}" value="${dr.sa ?? ""}" placeholder="${m.sport === "football" ? "0" : "100"}"><span>-</span><input type="number" inputmode="numeric" min="0" max="300" data-sb="${m.id}" value="${dr.sb ?? ""}" placeholder="${m.sport === "football" ? "0" : "100"}"></div>
+        <button class="btn save" data-save="${m.id}">${mine ? "عدّل توقّعي" : "احفظ توقّعي"}</button>`;
+      if (show) body += `<div class="opts d3" style="margin-top:8px">${["a", "d", "b"].filter((k) => k !== "d" || m.draw).map((k) => `<button disabled class="${mine && mine.k === k ? "mine" : ""} ${m.res === k ? "win" : ""}">${k === "d" ? "تعادل" : esc(k === "a" ? m.a : m.b)}<span class="pc">${pc(k)}%</span><span class="bar" style="width:${pc(k)}%"></span></button>`).join("")}</div>`;
+    } else if (fight(m)) {
+      const opt = (k, label) => `<button data-k="${k}" data-id="${m.id}" class="${dr.k === k ? "mine" : ""} ${m.res === k ? "win" : ""}" ${can ? "" : "disabled"}>${esc(label)}${show ? `<span class="pc">${pc(k)}%</span><span class="bar" style="width:${pc(k)}%"></span>` : ""}</button>`;
+      body = `<div class="opts d3">${opt("a", m.a)}${opt("d", "تعادل")}${opt("b", m.b)}</div>`;
+      if (can && dr.k && dr.k !== "d") body += `<div class="meths">${METH_OK(m).map((x) => `<button data-m="${x}" data-id="${m.id}" class="${dr.m === x ? "on" : ""}">${METH[x]}</button>`).join("")}</div>`;
+      if (can && dr.k) body += `<button class="btn save" data-save="${m.id}">${mine ? "عدّل توقّعي" : "احفظ توقّعي"}</button>`;
+    } else {
+      const opt = (k, label) => `<button data-k="${k}" data-id="${m.id}" class="${dr.k === k ? "mine" : ""} ${m.res === k ? "win" : ""}" ${can ? "" : "disabled"}>${esc(label)}${show ? `<span class="pc">${pc(k)}%</span><span class="bar" style="width:${pc(k)}%"></span>` : ""}</button>`;
+      body = `<div class="opts ${m.draw ? "d3" : ""}">${opt("a", m.a)}${m.draw ? opt("d", "تعادل") : ""}${opt("b", m.b)}</div>`;
+      if (can && dr.k) body += `<button class="btn save" data-save="${m.id}">${mine ? "عدّل توقّعي" : "احفظ توقّعي"}</button>`;
+    }
     let st = "";
     if (m.res === "x") st = `<div class="st">تأجّلت أو انلغت · ما في نقاط عليها</div>`;
-    else if (m.res) st = !m.mine ? `<div class="st">انتهت · ما توقّعت عليها</div>` : m.mine === m.res ? `<div class="st ok">✓ توقّعك صح! +${m.pts} نقطة</div>` : `<div class="st bad">✗ توقّعك ما زبط</div>`;
-    else if (locked) st = `<div class="st">بلّشت · التوقعات انقفلت، والنقاط بتنزل لحالها لما تخلص</div>`;
-    else st = `<div class="st">${m.mine ? "توقّعت · فيك تغيّر لحد ما تبلّش · " : ""}بتبلّش ${left(m.at)} · ${m.pts} نقطة للتوقّع الصح</div>`;
+    else if (m.res) st = `<div class="st">النتيجة: <b style="color:var(--txt)">${resTxt(m)}</b></div>` + (!mine ? `<div class="st">ما توقّعت عليها</div>` : m.got > 0 ? `<div class="st ok">✓ توقّعك (${pickTxt(m, mine)}) · +${m.got} نقطة</div>` : `<div class="st bad">✗ توقّعك (${pickTxt(m, mine)}) ما زبط</div>`);
+    else if (locked) st = `<div class="st">بلّشت · التوقعات انقفلت${mine ? ` · توقّعك: ${pickTxt(m, mine)}` : ""}، والنقاط بتنزل لحالها لما تخلص</div>`;
+    else st = `<div class="st">${mine ? `توقّعك: <b style="color:var(--gold2)">${pickTxt(m, mine)}</b> · فيك تعدّل لحد ما تبلّش · ` : ""}بتبلّش ${left(m.at)}</div><div class="hint">${hint(m)}</div>`;
     const adm = D.owner ? `<div class="ctl"><b>لوحة المالك${m.auto ? " · النتيجة بتجي لحالها، وإذا غلطت صحّحها من هون" : ": حط النتيجة"}</b>
-      <button class="btn sm ghost" data-res="a" data-id="${m.id}">ربح ${esc(m.a)}</button>
+      ${scoreSport(m) ? `<button class="btn sm ghost" data-setsc="${m.id}">حط النتيجة بالأرقام</button>` : `<button class="btn sm ghost" data-res="a" data-id="${m.id}">ربح ${esc(m.a)}</button>
       ${m.draw ? `<button class="btn sm ghost" data-res="d" data-id="${m.id}">تعادل</button>` : ""}
-      <button class="btn sm ghost" data-res="b" data-id="${m.id}">ربح ${esc(m.b)}</button>
+      <button class="btn sm ghost" data-res="b" data-id="${m.id}">ربح ${esc(m.b)}</button>`}
       <button class="btn sm ghost" data-res="x" data-id="${m.id}">تأجّلت</button>
       ${m.res ? `<button class="btn sm ghost" data-res="" data-id="${m.id}">شيل النتيجة</button>` : ""}
       <button class="btn sm ghost" data-pts="${m.id}">النقاط: ${m.pts}</button>
       <button class="btn sm red" data-del="${m.id}">احذف</button>
       <span style="color:var(--mut);font-size:.75rem;width:100%">توقّعات: ${tot}</span></div>` : "";
-    const mid = m.sc && m.res && m.res !== "x" ? `<b>${esc(m.sc)}</b>` : `<span>${hm(m.at)}</span><span>ضد</span>`;
+    const mid = m.res && m.res !== "x" && m.ra !== undefined ? `<b>${m.ra}-${m.rb}</b>` : `<span>${hm(m.at)}</span><span>ضد</span>`;
     return `<div class="m"><div class="top"><span class="sp">${esc(m.league || D.sports[m.sport] || "")}</span><span>${when(m.at)}</span></div>
       ${m.ev ? `<div class="evn">${esc(m.ev)}</div>` : ""}
       <div class="vs2">${side(m, "a")}<div class="mid">${mid}</div>${side(m, "b")}</div>
-      <div class="opts ${m.draw ? "d3" : ""}">${opt("a", m.a)}${m.draw ? opt("d", "تعادل") : ""}${opt("b", m.b)}</div>${st}
+      ${body}${st}
       ${m.auto ? `<button class="stb" data-info="${m.id}">📊 ${OPEN.has(m.id) ? "سكّر الإحصائيات" : "إحصائيات"}</button>${OPEN.has(m.id) ? infoHtml(m) : ""}` : ""}${adm}</div>`;
   }
 
@@ -230,6 +259,7 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
       <button class="btn w" id="a_go" style="grid-column:1/-1">ضيف المباراة</button></div></details>`;
   }
 
+  app.addEventListener("input", (e) => { const t = e.target, id = t.dataset.sa || t.dataset.sb; if (!id) return; const d = DR[id] || {}; if (t.dataset.sa) d.sa = t.value === "" ? undefined : +t.value; else d.sb = t.value === "" ? undefined : +t.value; DR[id] = d; });
   app.addEventListener("change", (e) => { if (e.target.id === "a_sp") $("#a_d").checked = e.target.value === "football"; });
   app.addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b || busy) return;
@@ -242,8 +272,18 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
       if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "10"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
       if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(); }
       if (b.id === "lg_go") { toast("عم حدّث…"); const ks = [...document.querySelectorAll("[data-lg]")].filter((x) => x.checked).map((x) => x.dataset.lg); const r = await api("/api/pred/admin", { action: "leagues", leagues: ks }); toast(`انحفظت ✓ (${r.total} مباراة)`); return await load(); }
-      if (b.dataset.pick) { await api("/api/pred/pick", { id: b.dataset.id, k: b.dataset.pick }); toast("انحفظ توقّعك ✓"); return await load(); }
-      if (b.dataset.res !== undefined) { await api("/api/pred/admin", { action: "result", id: b.dataset.id, res: b.dataset.res }); toast(b.dataset.res === "x" ? "انعلّمت مأجّلة" : b.dataset.res ? "انحطّت النتيجة وتوزّعت النقاط ✓" : "انشالت النتيجة"); return await load(); }
+      if (b.dataset.k) { const id = b.dataset.id, m = D.matches.find((x) => x.id === id), d = DR[id] || (m.mine ? { ...m.mine } : {}); d.k = b.dataset.k; if (d.k === "d") delete d.m; DR[id] = d; draw(); return; }
+      if (b.dataset.m) { const id = b.dataset.id, d = DR[id] || {}; d.m = b.dataset.m; DR[id] = d; draw(); return; }
+      if (b.dataset.save) {
+        const id = b.dataset.save, m = D.matches.find((x) => x.id === id), d = DR[id] || (m.mine ? { ...m.mine } : {}); let body = { id };
+        if (scoreSport(m)) { const sa = document.querySelector(`[data-sa="${id}"]`).value, sb = document.querySelector(`[data-sb="${id}"]`).value; if (sa === "" || sb === "") { toast("اكتب النتيجة للفريقين"); return; } body.sa = +sa; body.sb = +sb; }
+        else { if (!d.k) { toast("اختار مين بيربح"); return; } if (fight(m) && d.k !== "d" && !d.m) { toast("اختار كيف بيربح"); return; } body.k = d.k; body.m = d.m; }
+        await api("/api/pred/pick", body); delete DR[id]; toast("انحفظ توقّعك ✓"); return await load(); }
+      if (b.dataset.setsc) { const v = prompt("النتيجة: الفريق الأول - الفريق التاني (مثلاً 2-1)"); if (!v) return; const mm = v.match(/(\d+)\D+(\d+)/); if (!mm) { toast("اكتبها متل 2-1"); return; } const ra = +mm[1], rb = +mm[2];
+        await api("/api/pred/admin", { action: "result", id: b.dataset.setsc, res: ra > rb ? "a" : ra < rb ? "b" : "d", ra, rb }); toast("انحطّت النتيجة وتوزّعت النقاط ✓"); return await load(); }
+      if (b.dataset.res !== undefined) { const m = D.matches.find((x) => x.id === b.dataset.id); let meth = "";
+        if ((b.dataset.res === "a" || b.dataset.res === "b") && fight(m)) { const opts = METH_OK(m); const v = prompt("كيف ربح؟ اكتب الرقم:\n" + opts.map((x, i) => `${i + 1} = ${METH[x]}`).join("\n")); if (v === null) return; meth = opts[+v - 1] || ""; }
+        await api("/api/pred/admin", { action: "result", id: b.dataset.id, res: b.dataset.res, meth }); toast(b.dataset.res === "x" ? "انعلّمت مأجّلة" : b.dataset.res ? "انحطّت النتيجة وتوزّعت النقاط ✓" : "انشالت النتيجة"); return await load(); }
       if (b.dataset.del) { if (!confirm("أكيد بدك تحذف هالمباراة مع توقّعاتها؟")) return; await api("/api/pred/admin", { action: "del", id: b.dataset.del }); toast("انحذفت"); return await load(); }
       if (b.id === "a_go") {
         const at = new Date($("#a_at").value).getTime();
@@ -252,7 +292,7 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
       }
     } catch (err) { toast(err.message); } finally { busy = false; }
   });
-  setInterval(() => { const ad = document.querySelector("details.adm"); if (D && !document.hidden && !busy && !(ad && ad.open)) draw(); }, 30000);
+  setInterval(() => { const ad = document.querySelector("details.adm"); if (D && !document.hidden && !busy && !(ad && ad.open) && !(document.activeElement && document.activeElement.tagName === "INPUT")) draw(); }, 30000);
   load();
 })();
 </script>

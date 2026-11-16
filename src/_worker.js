@@ -1083,16 +1083,32 @@ const predFem = (mt) => PRED_FEM.test([mt.league, mt.ev, mt.a, mt.b].join(" "));
 const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L : []; };
 async function predCfg(env) { const c = await env.STORE.get("pred:cfg", "json").catch(() => null); return c && typeof c === "object" ? c : {}; }
 const predKeyOk = (k) => k === "a" || k === "b" || k === "d";
+// شو بيتوقّع الزبون (صاحب المتجر 16 تشرين التاني 2026):
+//  - كرة قدم وسلة: النتيجة بالأرقام (sa-sb)، والفايز بينحسب منها.
+//  - ملاكمة وUFC: مين بيربح (أو تعادل) + كيف: ko = ضربة قاضية، sub = إخضاع (UFC بس)، dec = قرار الحكام، rtd = انسحاب (ملاكمة بس).
+// النقاط (pts = الأساس، عادةً 10): الفايز صح = pts. وفوقها pts كمان: النتيجة بالزبط بكرة القدم، أو نتيجة قريبة بالسلة (فرق المجموع ≤ 10)، أو الطريقة صح بالنزالات. التعادل بالنزالات صح = pts×2.
+const PRED_METH = { ko: "بالضربة القاضية", sub: "بالإخضاع", dec: "بقرار الحكام", rtd: "بالانسحاب" };
+const predR = (mt) => ({ res: mt.res || "", ra: mt.ra, rb: mt.rb, meth: mt.meth || "" });
+const predSameR = (x, y) => x.res === y.res && x.ra === y.ra && x.rb === y.rb && x.meth === y.meth;
+function predPts(mt, v, R) {
+  if (!v || !predKeyOk(R.res)) return { p: 0, w: 0 };
+  const base = +mt.pts || 0; if (v.k !== R.res) return { p: 0, w: 0 };
+  let p = base;
+  if (mt.sport === "football" && Number.isFinite(v.sa) && v.sa === R.ra && v.sb === R.rb) p += base;
+  else if (mt.sport === "basketball" && Number.isFinite(v.sa) && Number.isFinite(R.ra) && Math.abs(v.sa - R.ra) + Math.abs(v.sb - R.rb) <= 10) p += base;
+  else if ((mt.sport === "ufc" || mt.sport === "boxing") && (R.res === "d" || (v.m && v.m === R.meth))) p += base;
+  return { p, w: 1 };
+}
 // تطبيق نتيجة على النقاط: بنطرح أثر النتيجة القديمة (إذا في) وبنزيد أثر الجديدة، فتصحيح النتيجة ما بيعدّ النقاط مرتين
-async function predSettle(env, B, mt, oldRes, newRes) {
-  if ((oldRes || "") === (newRes || "")) return false;
+async function predSettle(env, B, mt, oldR, newR) {
+  oldR = typeof oldR === "string" ? { res: oldR } : oldR || { res: "" }; newR = typeof newR === "string" ? { res: newR } : newR || { res: "" };
+  if (predSameR({ ra: undefined, rb: undefined, meth: "", ...oldR }, { ra: undefined, rb: undefined, meth: "", ...newR })) return false;
   const P = (await env.STORE.get("pred:picks:" + mt.id, "json").catch(() => null)) || {};
   if (!Object.keys(P).length) return false;
-  const pts = +mt.pts || 0, real = (r) => predKeyOk(r || "");
   for (const [ph, v] of Object.entries(P)) {
     const r = (B[ph] ||= { n: v.n || "", p: 0, w: 0, t: 0 }); if (v.n) r.n = v.n;
-    if (real(oldRes)) { r.t--; if (v.k === oldRes) { r.w--; r.p -= pts; } }
-    if (real(newRes)) { r.t++; if (v.k === newRes) { r.w++; r.p += pts; } }
+    if (predKeyOk(oldR.res)) { const x = predPts(mt, v, oldR); r.t--; r.w -= x.w; r.p -= x.p; }
+    if (predKeyOk(newR.res)) { const x = predPts(mt, v, newR); r.t++; r.w += x.w; r.p += x.p; }
   }
   return true;
 }
@@ -1109,14 +1125,18 @@ function predFromEspn(lg, ev) {
     const st = (comp.status && comp.status.type) || (ev.status && ev.status.type) || {}, sn = String(st.name || "");
     let res = "";
     if (/POSTPON|CANCEL|ABANDON|SUSPEND/.test(sn)) res = "x";
-    else if (st.completed) res = A.winner ? "a" : Bc.winner ? "b" : lg.sp === "football" ? "d" : "";
+    else if (st.completed) res = A.winner ? "a" : Bc.winner ? "b" : lg.sp === "football" || lg.sp === "ufc" ? "d" : "";
+    let meth = "";
+    if (lg.sp === "ufc" && (res === "a" || res === "b")) { const t = ((comp.details || []).map((d) => d.type && d.type.text).find((x) => /Unofficial Winner/i.test(x || "")) || ""); meth = /sub/i.test(t) ? "sub" : /ko|tko/i.test(t) ? "ko" : /decision/i.test(t) ? "dec" : ""; }
+    const num = (x) => (x === undefined || x === null || x === "" ? undefined : +x);
     const nm = (c) => { const s = name(c); return PRED_AR[s] || s; };
     out.push({
       id: "e" + (comp.id || ev.id), src: lg.k, sport: lg.sp, league: lg.n + (lg.sp === "ufc" && comp.type && comp.type.abbreviation ? " · " + (PRED_W[comp.type.abbreviation] || comp.type.abbreviation) : ""),
       ev: lg.sp === "ufc" ? String(ev.shortName || ev.name || "") : "",
       a: nm(A), b: nm(Bc), ai: pic(A), bi: pic(Bc), aid: String((A.team && A.team.id) || A.id || ""), bid: String((Bc.team && Bc.team.id) || Bc.id || ""), eid: String(ev.id || ""), ar: (A.records && A.records[0] && A.records[0].summary) || "", br: (Bc.records && Bc.records[0] && Bc.records[0].summary) || "",
       af: A.athlete && A.athlete.flag ? A.athlete.flag.href : "", bf: Bc.athlete && Bc.athlete.flag ? Bc.athlete.flag.href : "",
-      sc: st.completed && lg.sp !== "ufc" ? `${A.score ?? ""}-${Bc.score ?? ""}` : "", at: Date.parse(comp.date || ev.date), draw: lg.sp === "football", pts: 10, res,
+      sc: st.completed && lg.sp !== "ufc" ? `${A.score ?? ""}-${Bc.score ?? ""}` : "", at: Date.parse(comp.date || ev.date), draw: lg.sp === "football" || lg.sp === "ufc", pts: 10, res, meth,
+      ra: st.completed && lg.sp !== "ufc" ? num(A.score) : undefined, rb: st.completed && lg.sp !== "ufc" ? num(Bc.score) : undefined,
     });
   }
   return out;
@@ -1137,13 +1157,18 @@ function bxMatch(e) {
   const slug = (String(e.url || "").match(/\/fights\/([^/]+)/) || [])[1]; if (!slug) return null;
   const at = Date.parse(e.startDate || ""); if (!(at > 0)) return null;
   const nm = (x) => String(x.name || "").replace(/\s+/g, " ").trim();
-  return { id: "bx-" + slug.slice(0, 60), src: "boxing", sport: "boxing", league: "ملاكمة", ev: "", a: nm(c[0]), b: nm(c[1]), ai: c[0].image || "", bi: c[1].image || "", ar: "", br: "", af: "", bf: "", sc: "", at, draw: false, pts: 10, res: "", desc: String(e.description || "") };
+  return { id: "bx-" + slug.slice(0, 60), src: "boxing", sport: "boxing", league: "ملاكمة", ev: "", a: nm(c[0]), b: nm(c[1]), ai: c[0].image || "", bi: c[1].image || "", ar: "", br: "", af: "", bf: "", sc: "", at, draw: true, pts: 10, res: "", meth: "", desc: String(e.description || "") };
 }
 function bxResult(mt) {
   const d = mt.desc || "", n = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]+/g, " ").trim();
-  const w = (d.match(/(?:^|\.\s+)([^.]+?)\s+beat\s+/i) || [])[1];
-  if (w) { const W = n(w), A = n(mt.a), Bn = n(mt.b); if (W && (W === A || W.includes(A) || A.includes(W))) return "a"; if (W && (W === Bn || W.includes(Bn) || Bn.includes(W))) return "b"; return ""; }
-  return /\bdraw\b|no contest|cancel|postpon/i.test(d) ? "x" : "";
+  const w = (d.match(/(?:^|\.\s+)([^.]+?)\s+beat\s+[^.]*?\s+by\s+([^.]+)/i) || d.match(/(?:^|\.\s+)([^.]+?)\s+beat\s+/i) || []);
+  if (w[1]) {
+    const W = n(w[1]), A = n(mt.a), Bn = n(mt.b), how = String(w[2] || "");
+    const meth = /retire|rtd|corner/i.test(how) ? "rtd" : /decision|points|\bud\b|\bsd\b|\bmd\b/i.test(how) ? "dec" : /knock|\bko\b|tko|stoppage/i.test(how) ? "ko" : "";
+    if (W && (W === A || W.includes(A) || A.includes(W))) return { res: "a", meth }; if (W && (W === Bn || W.includes(Bn) || Bn.includes(W))) return { res: "b", meth }; return { res: "" };
+  }
+  if (/\bdraw\b|drew\b/i.test(d)) return { res: "d", meth: "" };
+  return { res: /no contest|cancel|postpon/i.test(d) ? "x" : "" };
 }
 async function bxFetch(errs) {
   const got = [];
@@ -1151,7 +1176,7 @@ async function bxFetch(errs) {
     try {
       const r = await fetch(u, { headers: BX_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtl: 900 } });
       if (!r.ok) { errs.push("boxing:" + r.status); continue; }
-      for (const e of bxEvents(await r.text())) { const mt = bxMatch(e); if (!mt) continue; if (done) mt.res = bxResult(mt) || ""; delete mt.desc; got.push(mt); }
+      for (const e of bxEvents(await r.text())) { const mt = bxMatch(e); if (!mt) continue; if (done) { const r = bxResult(mt); mt.res = r.res || ""; mt.meth = r.meth || ""; } delete mt.desc; got.push(mt); }
     } catch (e) { errs.push("boxing:" + (e && e.name || "err")); }
   }
   return got;
@@ -1221,10 +1246,11 @@ async function predSync(env, force) {
     const cur = byId.get(g.id);
     if (!cur) { byId.set(g.id, g); continue; }
     if (g.src === "boxing" && !g.res && cur.res) continue; // صفحة المواعيد ما فيها نتيجة: ما منمسح نتيجة جبناها من صفحة النتايج
-    if (cur.lock) { if (!cur.res && g.res) { boardDirty = (await predSettle(env, B, cur, cur.res, g.res)) || boardDirty; cur.res = g.res; cur.sc = g.sc; } continue; } // المالك صحّح النتيجة بإيدو: منترك قرارو
-    const oldRes = cur.res || "";
+    if (cur.lock) continue; // المالك حط النتيجة بإيدو: منترك قرارو
+    const oldR = predR(cur);
     Object.assign(cur, { ...g, pts: cur.pts || g.pts });
-    if (oldRes !== (g.res || "")) boardDirty = (await predSettle(env, B, cur, oldRes, g.res)) || boardDirty;
+    const newR = predR(cur);
+    if (!predSameR(oldR, newR)) boardDirty = (await predSettle(env, B, cur, oldR, newR)) || boardDirty;
   }
   // منشيل يلي خلص من أكتر من 3 أيام (النقاط بتضل محفوظة بالترتيب)
   const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
@@ -1233,7 +1259,8 @@ async function predSync(env, force) {
   await env.STORE.put("pred:errs", JSON.stringify(errs.slice(0, 20))).catch(() => {});
   return { ok: true, fetched: got.length, total: keep.length, errs };
 }
-const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, league: mt.league || "", ev: mt.ev || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: mine || "" });
+const predMine = (v) => !v ? null : typeof v === "string" ? { k: v } : v;
+const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, league: mt.league || "", ev: mt.ev || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", meth: mt.meth || "", ra: mt.ra, rb: mt.rb, auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: predMine(mine), got: mine && predKeyOk(mt.res) ? predPts(mt, predMine(mine), predR(mt)).p : null });
 async function predApi(request, env, path, m, ctx) {
   if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null) }); }
   const owner = env.__role === "owner", cfg = await predCfg(env), live = !!cfg.live;
@@ -1268,15 +1295,30 @@ async function predApi(request, env, path, m, ctx) {
     const mt = (await predMatches(env)).find((x) => x.id === b.id);
     if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
     if (mt.res || Date.now() >= mt.at) return json({ error: "التوقعات انقفلت لهالمباراة" }, 409);
-    const k = String(b.k || ""); if (!["a", "b"].includes(k) && !(k === "d" && mt.draw)) return json({ error: "اختيار غلط" }, 400);
+    const int = (x) => { const v = Math.round(+x); return Number.isFinite(v) && v >= 0 && v <= 300 ? v : NaN; };
+    let pick;
+    if (mt.sport === "football" || mt.sport === "basketball") {
+      const sa = int(b.sa), sb = int(b.sb); if (Number.isNaN(sa) || Number.isNaN(sb)) return json({ error: "اكتب النتيجة للفريقين" }, 400);
+      if (sa === sb && !mt.draw) return json({ error: "بالسلة ما في تعادل، غيّر النتيجة" }, 400);
+      pick = { k: sa > sb ? "a" : sa < sb ? "b" : "d", sa, sb };
+    } else if (mt.sport === "ufc" || mt.sport === "boxing") {
+      const k = String(b.k || ""); if (!["a", "b", "d"].includes(k)) return json({ error: "اختار مين بيربح" }, 400);
+      const ok = mt.sport === "ufc" ? ["ko", "sub", "dec"] : ["ko", "dec", "rtd"], m2 = String(b.m || "");
+      if (k !== "d" && !ok.includes(m2)) return json({ error: "اختار كيف بيربح" }, 400);
+      pick = k === "d" ? { k } : { k, m: m2 };
+    } else {
+      const k = String(b.k || ""); if (!["a", "b"].includes(k) && !(k === "d" && mt.draw)) return json({ error: "اختيار غلط" }, 400);
+      pick = { k };
+    }
+    const k = pick.k;
     const [P, U, C] = await Promise.all([env.STORE.get("pred:picks:" + mt.id, "json").catch(() => null), env.STORE.get("pred:u:" + acct.phone, "json").catch(() => null), env.STORE.get("pred:cnt", "json").catch(() => null)]);
     const picks = P || {}, user = U && U.k ? U : { k: {} }, cnt = C || {}, old = picks[acct.phone] && picks[acct.phone].k;
-    picks[acct.phone] = { k, n: clip(acct.name, 60), at: Date.now() }; user.k[mt.id] = k;
+    picks[acct.phone] = { ...pick, n: clip(acct.name, 60), at: Date.now() }; user.k[mt.id] = pick;
     const c = (cnt[mt.id] ||= { a: 0, b: 0, d: 0 }); if (old && c[old] > 0) c[old]--; c[k]++;
     // التوقعات القديمة كتير: منخلّي آخر 300 بحساب الزبون
     const ks = Object.keys(user.k); if (ks.length > 300) for (const x of ks.slice(0, ks.length - 300)) delete user.k[x];
     await Promise.all([env.STORE.put("pred:picks:" + mt.id, JSON.stringify(picks)), env.STORE.put("pred:u:" + acct.phone, JSON.stringify(user)), env.STORE.put("pred:cnt", JSON.stringify(cnt)).catch(() => {})]);
-    return json({ ok: true, match: predOut(mt, c, k) });
+    return json({ ok: true, match: predOut(mt, c, pick) });
   }
   if (path === "/api/pred/admin" && m === "POST") {
     if (!owner) return denied();
@@ -1289,22 +1331,24 @@ async function predApi(request, env, path, m, ctx) {
       const sport = PRED_SPORTS[b.sport] ? b.sport : "other", a = clip(b.a, 60), bb = clip(b.b, 60), at = +b.at;
       if (!a || !bb || !(at > 0)) return json({ error: "عبّي الطرفين والوقت" }, 400);
       if (predFem({ league: b.league, a, b: bb })) return json({ error: "ما منحط فرق أو لاعبات نساء" }, 400);
-      L.push({ id: "m" + newKey().slice(0, 12), sport, league: clip(b.league, 60), a, b: bb, at, draw: !!b.draw, pts: Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), res: "" });
+      L.push({ id: "m" + newKey().slice(0, 12), sport, league: clip(b.league, 60), a, b: bb, at, draw: !!b.draw || sport === "boxing" || sport === "ufc", pts: Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), res: "" });
       L.sort((x, y) => x.at - y.at);
     } else if (b.action === "result" || b.action === "pts") {
       const mt = L.find((x) => x.id === b.id); if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
       const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
       if (b.action === "pts") {
         const np = Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), r = mt.res;
-        if (predKeyOk(r)) await predSettle(env, B, mt, r, ""); mt.pts = np; if (predKeyOk(r)) await predSettle(env, B, mt, "", r);
+        const R = predR(mt); await predSettle(env, B, mt, R, { res: "" }); mt.pts = np; await predSettle(env, B, mt, { res: "" }, R);
       } else {
         const r = String(b.res || ""); if (r && !["a", "b", "x"].includes(r) && !(r === "d" && mt.draw)) return json({ error: "نتيجة غلط" }, 400);
-        await predSettle(env, B, mt, mt.res, r); mt.res = r; mt.lock = true;
+        const nb = (x) => (x === undefined || x === null || x === "" || !Number.isFinite(+x) ? undefined : Math.round(+x));
+        const newR = { res: r, ra: nb(b.ra), rb: nb(b.rb), meth: PRED_METH[b.meth] ? b.meth : "" };
+        await predSettle(env, B, mt, predR(mt), newR); Object.assign(mt, newR); mt.sc = Number.isFinite(newR.ra) ? `${newR.ra}-${newR.rb}` : ""; mt.lock = !!r;
       }
       await env.STORE.put("pred:board", JSON.stringify(B));
     } else if (b.action === "del") {
       const mt = L.find((x) => x.id === b.id);
-      if (mt && mt.res) { const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {}; if (await predSettle(env, B, mt, mt.res, "")) await env.STORE.put("pred:board", JSON.stringify(B)); }
+      if (mt && mt.res) { const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {}; if (await predSettle(env, B, mt, predR(mt), { res: "" })) await env.STORE.put("pred:board", JSON.stringify(B)); }
       L = L.filter((x) => x.id !== b.id); await env.STORE.delete("pred:picks:" + b.id).catch(() => {});
       if (mt && mt.src) await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, hide: [...(cfg.hide || []), mt.id].slice(-500) })); // ما ترجع مع المزامنة الجاية
     } else return json({ error: "؟" }, 400);
