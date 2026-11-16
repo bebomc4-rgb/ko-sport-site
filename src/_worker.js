@@ -1077,6 +1077,8 @@ const PRED_AR = { "Real Madrid": "ريال مدريد", "Barcelona": "برشلو
   "Galatasaray": "غلطة سراي", "Fenerbahce": "فنربخشة", "Benfica": "بنفيكا", "Porto": "بورتو", "FC Porto": "بورتو", "Sporting CP": "سبورتينغ لشبونة", "Ajax": "أياكس", "PSV Eindhoven": "آيندهوفن", "Celtic": "سلتيك", "Club Brugge": "كلوب بروج",
   "Los Angeles Lakers": "ليكرز", "Golden State Warriors": "غولدن ستيت", "Boston Celtics": "بوسطن سلتيكس", "Chicago Bulls": "شيكاغو بولز", "Miami Heat": "ميامي هيت", "New York Knicks": "نيويورك نيكس", "Dallas Mavericks": "دالاس مافريكس", "Denver Nuggets": "دنفر ناغتس", "Milwaukee Bucks": "ميلووكي باكس", "Oklahoma City Thunder": "أوكلاهوما ثاندر", "Phoenix Suns": "فينيكس صنز", "Philadelphia 76ers": "فيلادلفيا", "Los Angeles Clippers": "كليبرز", "LA Clippers": "كليبرز", "San Antonio Spurs": "سان أنطونيو سبيرز", "Cleveland Cavaliers": "كليفلاند" };
 const PRED_W = { Flyweight: "وزن الذبابة", Bantamweight: "وزن الديك", Featherweight: "وزن الريشة", Lightweight: "الوزن الخفيف", Welterweight: "وزن الويلتر", Middleweight: "الوزن المتوسط", "Light Heavyweight": "الثقيل الخفيف", Heavyweight: "الوزن الثقيل", "Women's Strawweight": "وزن القشة (سيدات)", "Women's Flyweight": "وزن الذبابة (سيدات)", "Women's Bantamweight": "وزن الديك (سيدات)", "Women's Featherweight": "وزن الريشة (سيدات)", "Catch Weight": "وزن متّفق عليه" };
+const PRED_FEM = /women|woman|womens|female|féminin|femenin|femmin|frauen|ladies|girls|\(w\)|\bW\b(?= *$)|سيدات|نسائي|بنات/i;
+const predFem = (mt) => PRED_FEM.test([mt.league, mt.ev, mt.a, mt.b].join(" "));
 const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L : []; };
 async function predCfg(env) { const c = await env.STORE.get("pred:cfg", "json").catch(() => null); return c && typeof c === "object" ? c : {}; }
 const predKeyOk = (k) => k === "a" || k === "b" || k === "d";
@@ -1099,6 +1101,8 @@ function predFromEspn(lg, ev) {
   const pic = (c) => c.team ? (c.team.logo || "") : c.athlete ? ((c.athlete.headshot && c.athlete.headshot.href) || `https://a.espncdn.com/i/headshots/mma/players/full/${c.id}.png`) : "";
   for (const comp of (ev.competitions || [])) {
     const cs = comp.competitors || []; if (cs.length !== 2) continue;
+    // صاحب المتجر: ولا فرق نسائية ولا لاعبات نساء أبداً
+    if (PRED_FEM.test([ev.name, ev.shortName, comp.type && comp.type.abbreviation, comp.type && comp.type.text, ...cs.map((c) => [name(c), c.athlete && c.athlete.gender, c.team && c.team.name].join(" "))].join(" "))) continue;
     // كرة القدم والسلة: صاحب الأرض أول (الفريق الأول = home)؛ UFC بالترتيب يلي جاي
     const [A, Bc] = cs[0].homeAway === "away" ? [cs[1], cs[0]] : [cs[0], cs[1]];
     const st = (comp.status && comp.status.type) || (ev.status && ev.status.type) || {}, sn = String(st.name || "");
@@ -1147,7 +1151,7 @@ async function predSync(env, force) {
     if (oldRes !== (g.res || "")) boardDirty = (await predSettle(env, B, cur, oldRes, g.res)) || boardDirty;
   }
   // منشيل يلي خلص من أكتر من 3 أيام (النقاط بتضل محفوظة بالترتيب)
-  const keep = [...byId.values()].filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
+  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
   await env.STORE.put("pred:matches", JSON.stringify(keep));
   if (boardDirty) await env.STORE.put("pred:board", JSON.stringify(B));
   return { ok: true, fetched: got.length, total: keep.length, errs };
@@ -1165,7 +1169,7 @@ async function predApi(request, env, path, m, ctx) {
     const mine = (U && U.k) || {};
     return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n, on: !Array.isArray(cfg.leagues) || cfg.leagues.includes(x.k) })),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
-      matches: L.map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
+      matches: L.filter((mt) => !predFem(mt)).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
   }
   if (path === "/api/pred/pick" && m === "POST") {
     if (!acct) return json({ error: "لازم تفوت على حسابك بالمتجر أول" }, 401);
@@ -1193,6 +1197,7 @@ async function predApi(request, env, path, m, ctx) {
     if (b.action === "add") {
       const sport = PRED_SPORTS[b.sport] ? b.sport : "other", a = clip(b.a, 60), bb = clip(b.b, 60), at = +b.at;
       if (!a || !bb || !(at > 0)) return json({ error: "عبّي الطرفين والوقت" }, 400);
+      if (predFem({ league: b.league, a, b: bb })) return json({ error: "ما منحط فرق أو لاعبات نساء" }, 400);
       L.push({ id: "m" + newKey().slice(0, 12), sport, league: clip(b.league, 60), a, b: bb, at, draw: !!b.draw, pts: Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), res: "" });
       L.sort((x, y) => x.at - y.at);
     } else if (b.action === "result" || b.action === "pts") {
@@ -1216,6 +1221,12 @@ async function predApi(request, env, path, m, ctx) {
     return json({ ok: true });
   }
   return json({ error: "Not found" }, 404);
+}
+// النتايج والنقاط بتتوزّع حتى لو ما حدا فتح صفحة التوقعات: أي زيارة للمتجر بتشيّك (كل 20 دقيقة مرة وحدة)
+async function predTick(env) {
+  if (!env.STORE) return;
+  const last = +(await env.STORE.get("pred:sync", { cacheTtl: 300 }).catch(() => 0)) || 0;
+  if (last && Date.now() - last > 20 * 60e3) await predSync(env).catch(() => {});
 }
 async function predPage(request, env) {
   const r = await env.ASSETS.fetch(new URL("/predict.html", request.url));
@@ -3979,7 +3990,7 @@ const koMain = {
       if (path === "/api/admin/settings" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getSettings(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/admin/products" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getProducts(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/settings") {
-        if (m === "GET") return settingsGet(request, env, ctx);
+        if (m === "GET") { if (ctx && ctx.waitUntil) ctx.waitUntil(predTick(env).catch(() => {})); return settingsGet(request, env, ctx); }
         if (m === "PUT") return settingsPut(request, env);
         return json({ error: "Method not allowed" }, 405);
       }
