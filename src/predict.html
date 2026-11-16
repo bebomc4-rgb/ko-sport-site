@@ -155,6 +155,7 @@ body.lock{overflow:hidden}
 .pz-c{border:1px dashed var(--gold);border-radius:10px;padding:8px 10px;margin:6px 0;font-size:.9rem}.pz-c b{color:var(--gold2);letter-spacing:1px}.pz-c small{display:block;color:var(--mut);font-size:.75rem;margin-top:2px}
 .lv{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid var(--lc);color:var(--lc);margin-inline-start:4px;white-space:nowrap}
 .lv-l{display:flex;justify-content:space-between;gap:4px;margin-top:10px}.lv-l span{flex:1;text-align:center;font-size:1.2rem;opacity:.35;filter:grayscale(1)}.lv-l span.on{opacity:1;filter:none}.lv-l small{display:block;font-size:.62rem;color:var(--lc);font-weight:700}
+.emb .top{display:none}.emb body{background:transparent}.emb .wrap{padding-top:6px}
 </style>
 </head>
 <body>
@@ -173,10 +174,15 @@ body.lock{overflow:hidden}
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const ls = { get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} } };
   let D = null, sport = "", busy = false;
-  const VISITOR = /[?&]visitor\b/.test(location.search); // صاحب المتجر بيشوف الصفحة متل الزبون
+  // صاحب المتجر (17 تشرين التاني 2026): الصفحة للزباين بس. أدوات التحكم بتشتغل بس جوّا لوحة التحكم (admin.html → تبويب التوقعات، ?manage)
+  const EMBED = window.top !== window;
+  const MANAGE = EMBED && /[?&]manage\b/.test(location.search) && (() => { try { return /\/admin/.test(top.location.pathname); } catch { return false; } })();
+  if (EMBED) { document.documentElement.classList.add("emb"); const bs = document.createElement("base"); bs.target = "_top"; document.head.appendChild(bs);
+    const post = () => { try { parent.postMessage({ koPredH: Math.ceil(document.documentElement.scrollHeight) }, location.origin); } catch {} };
+    try { new ResizeObserver(post).observe(document.documentElement); } catch {} addEventListener("load", post); setInterval(post, 1500); }
   const toast = (t) => { const e = $("#toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove("on"), 2600); };
   const api = async (p, body) => {
-    const h = { "content-type": "application/json" }, pw = VISITOR ? "" : ls.get("ko_admin"); if (pw) h.authorization = "Bearer " + pw;
+    const h = { "content-type": "application/json" }, pw = MANAGE ? ls.get("ko_admin") : ""; if (pw) h.authorization = "Bearer " + pw;
     const r = await fetch(p, { method: body ? "POST" : "GET", headers: h, body: body ? JSON.stringify(body) : undefined, credentials: "same-origin", cache: "no-store" });
     const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.error || "صار خطأ، جرّب كمان مرة"), { status: r.status }); return j;
   };
@@ -185,23 +191,14 @@ body.lock{overflow:hidden}
     return d ? `بعد ${d} يوم و${h} ساعة` : h ? `بعد ${h} ساعة و${m} دقيقة` : `بعد ${m} دقيقة`; };
 
   function gate(status, msg) {
-    if (status === 403 && VISITOR) {
-      app.innerHTML = `<div class="msg"><b>هالصفحة لسا تجريبية</b><p style="color:var(--mut)">فوت على حسابك بالمتجر (رقم صاحب المتجر) لتشوفها متل الزبون.</p><a class="btn" href="/ar/account" style="text-decoration:none;display:inline-block">فوت على حسابي</a></div>`;
-      return;
-    }
-    if (status === 403) {
-      app.innerHTML = `<div class="msg"><b>هالصفحة لسا تجريبية</b><p class="sub" style="color:var(--mut)">إذا إنت صاحب المتجر، اكتب كلمة سر لوحة التحكم (بتنحفظ عهالجهاز متل لوحة التحكم).</p>
-        <input id="pw" type="password" autocomplete="current-password" placeholder="كلمة سر لوحة التحكم"><button class="btn" id="go">فوت</button></div>`;
-      $("#go").onclick = async () => { const v = $("#pw").value.trim(); if (!v) return; ls.set("ko_admin", v); load(); };
-      return;
-    }
+    if (status === 403 || status === 401) { app.innerHTML = MANAGE ? `<div class="msg"><b>ادخل على لوحة التحكم من جديد</b></div>` : `<div class="msg"><b>التوقعات مسكّرة هلق</b><p class="sub" style="color:var(--mut)">رجعلنا بعد شوي 🙏</p></div>`; return; }
     app.innerHTML = `<div class="msg">${esc(msg)}<br><br><button class="btn" onclick="location.reload()">جرّب كمان مرة</button></div>`;
   }
 
   async function load() {
     try { D = await api("/api/pred"); draw(); }
     catch (e) {
-      if (e.status === 403 || e.status === 401 || e.status === 429) { const had = !VISITOR && !!ls.get("ko_admin"); if (had && e.status !== 429) ls.set("ko_admin", ""); gate(403); if (had) toast(e.status === 429 ? e.message : "كلمة السر غلط"); }
+      if (e.status === 403 || e.status === 401 || e.status === 429) { const had = MANAGE && !!ls.get("ko_admin"); gate(403); if (had) toast(e.status === 429 ? e.message : "كلمة السر غلط"); }
       else gate(0, e.message);
     }
   }

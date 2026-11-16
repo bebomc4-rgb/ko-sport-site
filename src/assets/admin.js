@@ -70,7 +70,7 @@
     fetch("/api/settings").then((r) => r.json()).then((st) => { const n = $("[data-store-name]"); if (n && st.store && st.store.name) n.textContent = st.store.name; }).catch(() => {});
     setInterval(() => { if (!$("[data-view=orders]").hidden) loadOrders(true).catch(() => {}); }, 60000);
   }
-  const TAB_TITLES = { bot: "المجيب K FAST", colledit: "المجموعة", domain: "النطاق", legal: "الصفحات القانونية", apps: "التطبيقات", general: "الإعدادات العامة", tax: "الضريبة", staff: "الموظفون", dev: "أدوات المطورين", carts: "السلّات المتروكة", discounts: "الخصومات", pages: "الصفحات", dash: "الرئيسية", orders: "الطلبات", products: "المنتجات", collections: "المجموعات", customers: "العملاء", delivery: "الشحن", payments: "الدفع", reviews: "التقييمات", push: "الإشعارات", promos: "الإعلانات الترويجية", themes: "قوالب التصميم", appearance: "المظهر", reports: "التقارير", images: "الصور" };
+  const TAB_TITLES = { pred: "التوقعات", bot: "المجيب K FAST", colledit: "المجموعة", domain: "النطاق", legal: "الصفحات القانونية", apps: "التطبيقات", general: "الإعدادات العامة", tax: "الضريبة", staff: "الموظفون", dev: "أدوات المطورين", carts: "السلّات المتروكة", discounts: "الخصومات", pages: "الصفحات", dash: "الرئيسية", orders: "الطلبات", products: "المنتجات", collections: "المجموعات", customers: "العملاء", delivery: "الشحن", payments: "الدفع", reviews: "التقييمات", push: "الإشعارات", promos: "الإعلانات الترويجية", themes: "قوالب التصميم", appearance: "المظهر", reports: "التقارير", images: "الصور" };
   // every dashboard page is a step in the browser history, so the mouse «back» button / phone back gesture goes to the previous page
   window.addEventListener("popstate", (e) => { const t = e.state && e.state.koTab; if (t && started && !(e.state && e.state.koAp)) show(t, true); });
   function show(tab, fromHistory) {
@@ -96,6 +96,7 @@
     if (tab === "dash") renderDash();
     if (tab === "carts") loadCarts();
     if (tab === "subs") loadSubs();
+    if (tab === "pred") { const fr = $("[data-pred-fr]"); if (fr && !fr.src) { fr.src = "/predict?manage"; addEventListener("message", (e) => { if (e.origin === location.origin && e.data && e.data.koPredH) fr.style.height = Math.max(500, +e.data.koPredH) + "px"; }); } }
     if (tab === "discounts") loadUsed();
     if (tab === "customers") loadCustomers();
     if (tab === "staff") { loadStaff(); loadStatus(); }
