@@ -1058,21 +1058,57 @@ async function subsTick(env, force) {
 // هلق تجريبي: ما حدا بيشوف الصفحة غير المالك (كلمة سر لوحة التحكم + حسابو بالمتجر). بعدين منفتحها للكل من «pred:cfg».live
 // المفاتيح: pred:matches (كل المباريات المعروضة)، pred:picks:<id> (توقعات مباراة)، pred:u:<رقم> (توقعات زبون)، pred:cnt (عدّ التوقعات)، pred:board (النقاط)، pred:cfg، pred:sync
 const PRED_TESTERS = ["0938986875"]; // رقم صاحب المتجر بحسابو بالمتجر
-const PRED_SPORTS = { football: "كرة قدم", basketball: "كرة سلة", ufc: "MMA", boxing: "ملاكمة", tennis: "تنس", other: "غير" };
+const PRED_SPORTS = { football: "كرة قدم", basketball: "كرة سلة", ufc: "MMA", boxing: "ملاكمة", wrestling: "مصارعة", tennis: "تنس", other: "غير" };
+// off: true = مطفية بالأساس (كتيرة أو بعيدة عن جمهورنا)، صاحب المتجر بيشغّلها من لوحة المالك
 const PRED_LEAGUES = [
   { k: "uefa.champions", p: "soccer/uefa.champions", sp: "football", n: "دوري أبطال أوروبا" },
+  { k: "uefa.europa", p: "soccer/uefa.europa", sp: "football", n: "الدوري الأوروبي" },
+  { k: "uefa.europa.conf", p: "soccer/uefa.europa.conf", sp: "football", n: "دوري المؤتمر الأوروبي" },
   { k: "eng.1", p: "soccer/eng.1", sp: "football", n: "الدوري الإنكليزي" },
   { k: "esp.1", p: "soccer/esp.1", sp: "football", n: "الدوري الإسباني" },
   { k: "ita.1", p: "soccer/ita.1", sp: "football", n: "الدوري الإيطالي" },
   { k: "ger.1", p: "soccer/ger.1", sp: "football", n: "الدوري الألماني" },
   { k: "fra.1", p: "soccer/fra.1", sp: "football", n: "الدوري الفرنسي" },
   { k: "ksa.1", p: "soccer/ksa.1", sp: "football", n: "الدوري السعودي" },
+  { k: "tur.1", p: "soccer/tur.1", sp: "football", n: "الدوري التركي" },
+  { k: "por.1", p: "soccer/por.1", sp: "football", n: "الدوري البرتغالي" },
+  { k: "ned.1", p: "soccer/ned.1", sp: "football", n: "الدوري الهولندي" },
+  { k: "afc.champions", p: "soccer/afc.champions", sp: "football", n: "دوري أبطال آسيا للنخبة" },
+  { k: "afc.cup", p: "soccer/afc.cup", sp: "football", n: "دوري أبطال آسيا 2" },
+  { k: "caf.champions", p: "soccer/caf.champions", sp: "football", n: "دوري أبطال أفريقيا" },
+  { k: "fifa.world", p: "soccer/fifa.world", sp: "football", n: "كأس العالم" },
+  { k: "fifa.worldq.afc", p: "soccer/fifa.worldq.afc", sp: "football", n: "تصفيات كأس العالم (آسيا)" },
+  { k: "fifa.worldq.uefa", p: "soccer/fifa.worldq.uefa", sp: "football", n: "تصفيات كأس العالم (أوروبا)" },
+  { k: "fifa.cwc", p: "soccer/fifa.cwc", sp: "football", n: "كأس العالم للأندية" },
+  { k: "afc.asian.cup", p: "soccer/afc.asian.cup", sp: "football", n: "كأس آسيا" },
+  { k: "caf.nations", p: "soccer/caf.nations", sp: "football", n: "كأس أمم أفريقيا" },
+  { k: "uefa.nations", p: "soccer/uefa.nations", sp: "football", n: "دوري الأمم الأوروبية" },
+  { k: "fifa.friendly", p: "soccer/fifa.friendly", sp: "football", n: "مباريات دولية ودية" },
+  { k: "esp.copa_del_rey", p: "soccer/esp.copa_del_rey", sp: "football", n: "كأس ملك إسبانيا" },
+  { k: "eng.fa", p: "soccer/eng.fa", sp: "football", n: "كأس الاتحاد الإنكليزي" },
+  { k: "eng.league_cup", p: "soccer/eng.league_cup", sp: "football", n: "كأس الرابطة الإنكليزية" },
+  { k: "ita.coppa_italia", p: "soccer/ita.coppa_italia", sp: "football", n: "كأس إيطاليا" },
+  { k: "ger.dfb_pokal", p: "soccer/ger.dfb_pokal", sp: "football", n: "كأس ألمانيا" },
+  { k: "fra.coupe_de_france", p: "soccer/fra.coupe_de_france", sp: "football", n: "كأس فرنسا" },
+  { k: "ksa.kings.cup", p: "soccer/ksa.kings.cup", sp: "football", n: "كأس الملك السعودي" },
+  { k: "eng.2", p: "soccer/eng.2", sp: "football", n: "دوري التشامبيونشيب الإنكليزي", off: true },
+  { k: "sco.1", p: "soccer/sco.1", sp: "football", n: "الدوري الاسكتلندي", off: true },
+  { k: "bel.1", p: "soccer/bel.1", sp: "football", n: "الدوري البلجيكي", off: true },
+  { k: "bra.1", p: "soccer/bra.1", sp: "football", n: "الدوري البرازيلي", off: true },
+  { k: "arg.1", p: "soccer/arg.1", sp: "football", n: "الدوري الأرجنتيني", off: true },
+  { k: "mex.1", p: "soccer/mex.1", sp: "football", n: "الدوري المكسيكي", off: true },
+  { k: "usa.1", p: "soccer/usa.1", sp: "football", n: "الدوري الأمريكي MLS", off: true },
+  { k: "club.friendly", p: "soccer/club.friendly", sp: "football", n: "مباريات ودية للأندية", off: true },
   { k: "nba", p: "basketball/nba", sp: "basketball", n: "NBA", daily: true },
+  { k: "ncaa", p: "basketball/mens-college-basketball", sp: "basketball", n: "دوري الجامعات الأمريكية", daily: true, off: true },
+  { k: "gleague", p: "basketball/nba-development", sp: "basketball", n: "NBA G League", daily: true, off: true },
+  { k: "nbl", p: "basketball/nbl", sp: "basketball", n: "الدوري الأسترالي NBL", daily: true, off: true },
   { k: "ufc", p: "mma/ufc", sp: "ufc", n: "UFC" },
   { k: "pfl", p: "mma/pfl", sp: "ufc", n: "PFL" },
   { k: "mma-other", p: "mma/other", sp: "ufc", n: "", evName: true }, // PFL MENA (مقاتلين عرب وسوريين)، PFL Africa، …
   { k: "boxing", sp: "boxing", n: "ملاكمة (Box.live)", box: true },
 ];
+const predOn = (cfg) => Array.isArray(cfg.leagues) ? new Set(cfg.leagues) : new Set(PRED_LEAGUES.filter((x) => !x.off).map((x) => x.k));
 const PRED_AR = { "Real Madrid": "ريال مدريد", "Barcelona": "برشلونة", "Atlético Madrid": "أتلتيكو مدريد", "Atletico Madrid": "أتلتيكو مدريد", "Sevilla": "إشبيلية", "Valencia": "فالنسيا", "Villarreal": "فياريال", "Real Betis": "ريال بيتيس", "Real Sociedad": "ريال سوسيداد", "Athletic Club": "أتلتيك بلباو",
   "Manchester United": "مانشستر يونايتد", "Manchester City": "مانشستر سيتي", "Liverpool": "ليفربول", "Arsenal": "آرسنال", "Chelsea": "تشيلسي", "Tottenham Hotspur": "توتنهام", "Newcastle United": "نيوكاسل", "Aston Villa": "أستون فيلا", "West Ham United": "وست هام", "Everton": "إيفرتون",
   "Bayern Munich": "بايرن ميونخ", "Borussia Dortmund": "بوروسيا دورتموند", "Bayer Leverkusen": "باير ليفركوزن", "RB Leipzig": "لايبزيغ", "Paris Saint-Germain": "باريس سان جيرمان", "Marseille": "مارسيليا", "Lyon": "ليون", "Monaco": "موناكو", "AS Monaco": "موناكو",
@@ -1134,7 +1170,7 @@ function predFromEspn(lg, ev) {
     const num = (x) => (x === undefined || x === null || x === "" ? undefined : +x);
     const nm = (c) => { const s = name(c); return PRED_AR[s] || s; };
     out.push({
-      id: "e" + (comp.id || ev.id), src: lg.k, sport: lg.sp, league: (lg.evName ? String(ev.shortName || ev.name || "MMA").replace(/:.*/, "") : lg.n) + (lg.sp === "ufc" && comp.type && comp.type.abbreviation ? " · " + (PRED_W[comp.type.abbreviation] || comp.type.abbreviation) : ""),
+      id: "e" + (comp.id || ev.id), src: lg.k, sport: lg.sp, org: lg.evName ? String(ev.shortName || ev.name || "MMA").replace(/:.*/, "").replace(/\s+\d+$/, "").trim() : lg.n, league: (lg.evName ? String(ev.shortName || ev.name || "MMA").replace(/:.*/, "") : lg.n) + (lg.sp === "ufc" && comp.type && comp.type.abbreviation ? " · " + (PRED_W[comp.type.abbreviation] || comp.type.abbreviation) : ""),
       ev: lg.sp === "ufc" ? String(ev.shortName || ev.name || "") : "",
       a: nm(A), b: nm(Bc), ai: pic(A), bi: pic(Bc), aid: String((A.team && A.team.id) || A.id || ""), bid: String((Bc.team && Bc.team.id) || Bc.id || ""), eid: String(ev.id || ""), ar: (A.records && A.records[0] && A.records[0].summary) || "", br: (Bc.records && Bc.records[0] && Bc.records[0].summary) || "",
       af: A.athlete && A.athlete.flag ? A.athlete.flag.href : "", bf: Bc.athlete && Bc.athlete.flag ? Bc.athlete.flag.href : "",
@@ -1147,6 +1183,7 @@ function predFromEspn(lg, ev) {
 // الملاكمة: Box.live (مفتوح وبلا مفتاح). صفحة المواعيد وصفحة النتايج فيهن بيانات منظّمة (JSON-LD SportsEvent):
 // الملاكمين، صورهن، بلدهن، جنسهن (Male/Female)، والنتيجة بجملة «X beat Y by …». منقبل بس النزالات يلي الطرفين فيها رجال.
 const BX_HDR = { "user-agent": "Mozilla/5.0 (compatible; KO-SPORT/1.0; +https://ko-sport.online)", accept: "text/html" };
+const BX_CTRY = { "Saudi Arabia": "السعودية", "United Kingdom": "بريطانيا", "United States": "أمريكا", "Japan": "اليابان", "Germany": "ألمانيا", "Australia": "أستراليا", "Mexico": "المكسيك", "United Arab Emirates": "الإمارات", "Qatar": "قطر", "France": "فرنسا", "Spain": "إسبانيا", "Italy": "إيطاليا", "Canada": "كندا", "Ireland": "إيرلندا", "Philippines": "الفلبين", "Kazakhstan": "كازاخستان", "Russia": "روسيا", "Ukraine": "أوكرانيا", "Poland": "بولندا", "Netherlands": "هولندا", "Argentina": "الأرجنتين", "Puerto Rico": "بورتوريكو", "South Africa": "جنوب أفريقيا", "Ghana": "غانا", "New Zealand": "نيوزيلندا", "China": "الصين", "Thailand": "تايلاند", "Uzbekistan": "أوزبكستان", "Kuwait": "الكويت", "Bahrain": "البحرين", "Egypt": "مصر", "Jordan": "الأردن", "Lebanon": "لبنان", "Turkey": "تركيا" };
 function bxEvents(html) {
   const out = [];
   for (const m of String(html).matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g)) {
@@ -1160,7 +1197,9 @@ function bxMatch(e) {
   const slug = (String(e.url || "").match(/\/fights\/([^/]+)/) || [])[1]; if (!slug) return null;
   const at = Date.parse(e.startDate || ""); if (!(at > 0)) return null;
   const nm = (x) => String(x.name || "").replace(/\s+/g, " ").trim();
-  return { id: "bx-" + slug.slice(0, 60), src: "boxing", sport: "boxing", league: "ملاكمة", ev: "", a: nm(c[0]), b: nm(c[1]), ai: c[0].image ? "/pimg?u=" + encodeURIComponent(c[0].image) : "", bi: c[1].image ? "/pimg?u=" + encodeURIComponent(c[1].image) : "", ar: "", br: "", af: "", bf: "", sc: "", at, draw: true, pts: 10, res: "", meth: "", desc: String(e.description || "") };
+  const pl = (Array.isArray(e.location) ? e.location : [e.location]).find((x) => x && x["@type"] === "Place"), ad = pl && pl.address;
+  const ctry = String((ad && (ad.addressCountry || String(ad["@value"] || "").split(",").pop())) || "").trim();
+  return { id: "bx-" + slug.slice(0, 60), src: "boxing", sport: "boxing", org: BX_CTRY[ctry] || ctry || "ملاكمة", league: "ملاكمة" + (ctry ? " · " + (BX_CTRY[ctry] || ctry) : ""), ev: "", a: nm(c[0]), b: nm(c[1]), ai: c[0].image ? "/pimg?u=" + encodeURIComponent(c[0].image) : "", bi: c[1].image ? "/pimg?u=" + encodeURIComponent(c[1].image) : "", ar: "", br: "", af: "", bf: "", sc: "", at, draw: true, pts: 10, res: "", meth: "", desc: String(e.description || "") };
 }
 function bxResult(mt) {
   const d = mt.desc || "", n = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]+/g, " ").trim();
@@ -1312,11 +1351,11 @@ async function predSync(env, force) {
   const now = Date.now(), last = +(await env.STORE.get("pred:sync").catch(() => 0)) || 0;
   if (!force && now - last < 20 * 60e3) return { skipped: true };
   await env.STORE.put("pred:sync", String(now)); // قفل: طلب تاني بنفس الوقت ما بيعيد المزامنة
-  const cfg = await predCfg(env), on = Array.isArray(cfg.leagues) ? new Set(cfg.leagues) : null;
+  const cfg = await predCfg(env), on = predOn(cfg);
   const from = now - 2 * 864e5, to = now + 8 * 864e5, got = [], errs = [];
   const months = [...new Set([now, to].map((t) => predIso(t).slice(0, 6)))];
   const days = []; for (let t = now - 864e5; t <= to; t += 864e5) days.push(predIso(t));
-  await Promise.all(PRED_LEAGUES.filter((lg) => !lg.box && (!on || on.has(lg.k))).map(async (lg) => {
+  await Promise.all(PRED_LEAGUES.filter((lg) => !lg.box && on.has(lg.k)).map(async (lg) => {
     for (const d of lg.daily ? days : months) {
       try {
         const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${lg.p}/scoreboard?dates=${d}&limit=200`, { signal: AbortSignal.timeout(8000), cf: { cacheTtl: 600 } });
@@ -1326,7 +1365,7 @@ async function predSync(env, force) {
       } catch (e) { errs.push(lg.k + ":" + (e && e.name || "err")); }
     }
   }));
-  if (!on || on.has("boxing")) for (const mt of await bxFetch(errs)) if (mt.at >= from && mt.at <= now + 35 * 864e5) got.push(mt);
+  if (on.has("boxing")) for (const mt of await bxFetch(errs)) if (mt.at >= from && mt.at <= now + 35 * 864e5) got.push(mt);
   const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
   let boardDirty = false;
   const hidden = new Set(cfg.hide || []);
@@ -1349,7 +1388,7 @@ async function predSync(env, force) {
   return { ok: true, fetched: got.length, total: keep.length, errs };
 }
 const predMine = (v) => !v ? null : typeof v === "string" ? { k: v } : v;
-const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, league: mt.league || "", ev: mt.ev || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", meth: mt.meth || "", ra: mt.ra, rb: mt.rb, auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: predMine(mine), got: mine && predKeyOk(mt.res) ? predPts(mt, predMine(mine), predR(mt)).p : null });
+const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, org: mt.org || (mt.league || "").split(" · ")[0] || "", league: mt.league || "", ev: mt.ev || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", meth: mt.meth || "", ra: mt.ra, rb: mt.rb, auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: predMine(mine), got: mine && predKeyOk(mt.res) ? predPts(mt, predMine(mine), predR(mt)).p : null });
 async function predApi(request, env, path, m, ctx) {
   if (path === "/api/pred/probe" && m === "GET") {
     const ev = clip(new URL(request.url).searchParams.get("ev") || "401878755", 20), lg = clip(new URL(request.url).searchParams.get("lg") || "soccer/eng.1", 30), out = {};
@@ -1368,7 +1407,7 @@ async function predApi(request, env, path, m, ctx) {
     const [L, B, C, U] = await Promise.all([predMatches(env), env.STORE.get("pred:board", "json").catch(() => null), env.STORE.get("pred:cnt", "json").catch(() => null), acct ? env.STORE.get("pred:u:" + acct.phone, "json").catch(() => null) : null]);
     const board = Object.entries(B || {}).filter(([, r]) => r.t > 0).map(([ph, r]) => ({ n: r.n || "زبون", p: r.p, w: r.w, t: r.t, me: !!(acct && acct.phone === ph) })).sort((x, y) => y.p - x.p || y.w - x.w).slice(0, 30);
     const mine = (U && U.k) || {};
-    return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n, on: !Array.isArray(cfg.leagues) || cfg.leagues.includes(x.k) })),
+    return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (PFL MENA وغيرها)", sp: x.sp, on: on.has(x.k) })); })(),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
       matches: L.filter((mt) => !predFem(mt)).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
   }

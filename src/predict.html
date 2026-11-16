@@ -33,6 +33,9 @@ a{color:var(--gold2)}
 .chips::-webkit-scrollbar{display:none}
 .chips button{flex:none;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:7px 15px;font:inherit;font-size:.9rem;cursor:pointer}
 .chips button.on{background:var(--btn);color:var(--btnfg);border-color:var(--btn);font-weight:700}
+.chips.orgs button{font-size:.82rem;padding:6px 12px;background:var(--card2)}
+.chips.orgs button.on{background:var(--goldbg);color:var(--gold2);border-color:var(--gold)}
+.lgs h5{width:100%;margin:8px 0 0;color:var(--gold2);font-size:.8rem}
 h2{font-size:1.1rem;margin:20px 2px 10px;font-weight:800}
 .m{background:var(--card);border:1px solid rgba(201,164,92,.55);border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
 .m .hd{display:flex;justify-content:space-between;color:var(--mut);font-size:.78rem;margin-bottom:10px;gap:8px}
@@ -183,8 +186,8 @@ body.lock{overflow:hidden}
   const dayName = (k) => { const t = dayKey(Date.now()), tm = dayKey(Date.now() + 864e5); if (k === t) return "اليوم"; if (k === tm) return "بكرا";
     return new Date(k + "T12:00:00Z").toLocaleDateString("ar-SY", { weekday: "long", day: "numeric", month: "numeric" }); };
   const hm = (ms) => new Date(ms).toLocaleTimeString("ar-SY", { timeZone: "Asia/Damascus", hour: "numeric", minute: "2-digit" });
-  let day = ""; try { const f = JSON.parse(localStorage.getItem("ko_pred_f") || "{}"); sport = f.sport || ""; day = f.day || ""; } catch {}
-  const saveF = () => { try { localStorage.setItem("ko_pred_f", JSON.stringify({ sport, day })); } catch {} };
+  let day = "", org = ""; try { const f = JSON.parse(localStorage.getItem("ko_pred_f") || "{}"); sport = f.sport || ""; day = f.day || ""; org = f.org || ""; } catch {}
+  const saveF = () => { try { localStorage.setItem("ko_pred_f", JSON.stringify({ sport, day, org })); } catch {} };
   const INF = {}, OPEN = new Set(), DR = {};
   function side(m, s) {
     const img = m[s + "i"], person = m.sport === "ufc" || m.sport === "boxing", flag = m[s + "f"], rec = m[s + "r"];
@@ -290,7 +293,9 @@ body.lock{overflow:hidden}
   function draw() {
     $("#tag").hidden = D.live;
     if (sport && !D.matches.some((m) => m.sport === sport)) sport = "";
-    const bySport = D.matches.filter((m) => !sport || m.sport === sport);
+    const orgs = sport ? [...new Set(D.matches.filter((m) => m.sport === sport).map((m) => m.org || ""))].filter(Boolean) : [];
+    if (org && !orgs.includes(org)) org = "";
+    const bySport = D.matches.filter((m) => (!sport || m.sport === sport) && (!org || m.org === org));
     const up = bySport.filter((m) => !m.res && Date.now() < m.at), run = bySport.filter((m) => !m.res && Date.now() >= m.at), done = bySport.filter((m) => m.res).reverse();
     const dks = [...new Set(up.map((m) => dayKey(m.at)))];
     if (day && !dks.includes(day)) day = "";
@@ -299,6 +304,8 @@ body.lock{overflow:hidden}
     let h = D.me ? `<div class="me"><div><div class="sub">نقاطك يا ${esc(D.me.name.split(" ")[0])}</div><b>${D.me.p}</b></div><div class="sub" style="text-align:left">توقّعات صح: ${D.me.w} من ${D.me.t}</div></div>`
       : `<div class="msg" style="margin-bottom:14px">لازم تفوت على حسابك بالمتجر لتقدر تتوقّع.<br><br><a class="btn" href="/ar/account" style="text-decoration:none;display:inline-block">فوت على حسابي</a></div>`;
     if (used.length > 1) h += `<div class="chips"><button class="${sport ? "" : "on"}" data-sp="">الكل</button>${used.map((s) => `<button class="${sport === s ? "on" : ""}" data-sp="${s}">${esc(D.sports[s])}</button>`).join("")}</div>`;
+    if (orgs.length > 1) { const cnt = (o) => D.matches.filter((m) => m.sport === sport && m.org === o && !m.res).length;
+      h += `<div class="chips orgs"><button class="${org ? "" : "on"}" data-org="">${sport === "football" ? "كل البطولات" : sport === "boxing" ? "كل البلدان" : "كل المنظمات"}</button>${orgs.sort((a, b) => cnt(b) - cnt(a)).map((o) => `<button class="${org === o ? "on" : ""}" data-org="${esc(o)}">${esc(o)} <small style="opacity:.6">${cnt(o)}</small></button>`).join("")}</div>`; }
     if (VISITOR) h += `<div class="msg" style="padding:10px;margin-bottom:12px;font-size:.85rem">👁 عم تشوف الصفحة متل الزبون · <a href="/predict">رجوع للوحة المالك</a></div>`;
     else if (D.owner) h += `<div style="text-align:center;margin:-4px 0 10px"><a class="btn sm ghost" href="/predict?visitor" style="text-decoration:none;display:inline-block">👁 شوف الصفحة متل الزبون</a></div>`;
     if (D.owner) h += adminForm();
@@ -316,7 +323,7 @@ body.lock{overflow:hidden}
     const now = new Date(Date.now() + 3600e3 - new Date().getTimezoneOffset() * 60e3).toISOString().slice(0, 16);
     return `<details class="adm"><summary>⚙️ لوحة المالك</summary>
       <p style="color:var(--mut);font-size:.85rem;margin:10px 0 4px">البطولات يلي بتنجاب لحالها (مواعيد، صور، نتايج):</p>
-      <div class="lgs">${D.leagues.map((l) => `<label><input type="checkbox" data-lg="${l.k}" ${l.on ? "checked" : ""}>${esc(l.n)}</label>`).join("")}</div>
+      <div class="lgs">${["football", "basketball", "ufc", "boxing"].map((sp) => `<h5>${esc(D.sports[sp])}</h5>` + D.leagues.filter((l) => l.sp === sp).map((l) => `<label><input type="checkbox" data-lg="${l.k}" ${l.on ? "checked" : ""}>${esc(l.n)}</label>`).join("")).join("")}</div>
       <button class="btn sm" id="lg_go">احفظ البطولات وحدّث</button> <button class="btn sm ghost" id="sy_go">حدّث هلق</button>
       <p style="color:var(--mut);font-size:.85rem;margin:16px 0 0">➕ ضيف مباراة بإيدك (متل الملاكمة):</p>
       <div class="f">
@@ -336,7 +343,8 @@ body.lock{overflow:hidden}
     const b = e.target.closest("button"); if (!b || busy) return;
     try {
       busy = true;
-      if (b.dataset.sp !== undefined) { sport = b.dataset.sp; day = ""; saveF(); draw(); return; }
+      if (b.dataset.sp !== undefined) { sport = b.dataset.sp; day = ""; org = ""; saveF(); draw(); return; }
+      if (b.dataset.org !== undefined) { org = b.dataset.org; day = ""; saveF(); draw(); return; }
       if (b.dataset.day !== undefined) { day = b.dataset.day; saveF(); draw(); return; }
       if (b.dataset.info) { busy = false; openInfo(b.dataset.info); return; }
       if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "10"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
