@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0d0d0f">
+<title>توقّعات KO SPORT</title>
+<link rel="icon" href="/brand/icon-192.png?v=3" type="image/png">
+<style>
+:root{--bg:#0d0d0f;--card:#17171b;--card2:#1f1f25;--line:#2a2a31;--txt:#f4f4f6;--mut:#9a9aa6;--gold:#f5c518;--gold2:#ffdd55;--ok:#2ecc71;--bad:#ff5a5a;--r:16px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif;font-size:16px;line-height:1.5}
+a{color:var(--gold)}
+.wrap{max-width:720px;margin:0 auto;padding:14px 14px 90px}
+header{display:flex;align-items:center;gap:12px;padding:6px 0 14px}
+header img{width:46px;height:46px;border-radius:50%;box-shadow:0 0 0 2px var(--gold)}
+header h1{font-size:1.35rem;margin:0}
+header small{display:block;color:var(--mut);font-size:.82rem}
+.badge{display:inline-block;background:#3a2f00;color:var(--gold2);border:1px solid #6b5600;border-radius:99px;padding:2px 10px;font-size:.75rem;margin-inline-start:6px;vertical-align:middle}
+.me{background:linear-gradient(135deg,#2b2300,#17171b 70%);border:1px solid #5a4800;border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.me b{font-size:2rem;color:var(--gold);line-height:1}
+.me .sub{color:var(--mut);font-size:.85rem}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;scrollbar-width:none}
+.chips button{flex:none;background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:99px;padding:7px 14px;font:inherit;font-size:.9rem;cursor:pointer}
+.chips button.on{background:var(--gold);color:#111;border-color:var(--gold);font-weight:700}
+h2{font-size:1.05rem;margin:18px 2px 10px;color:var(--gold2)}
+.m{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
+.m .top{display:flex;justify-content:space-between;color:var(--mut);font-size:.8rem;margin-bottom:8px;gap:8px}
+.m .top .sp{color:var(--gold2)}
+.m .vs{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:1.05rem;margin-bottom:10px}
+.m .vs span:nth-child(2){color:var(--mut);font-weight:400;font-size:.85rem}
+.m .vs span:first-child,.m .vs span:last-child{flex:1}
+.m .vs span:last-child{text-align:left}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opts.d3{grid-template-columns:1fr .8fr 1fr}
+.opts button{position:relative;overflow:hidden;background:var(--card2);color:var(--txt);border:1.5px solid var(--line);border-radius:12px;padding:10px 6px;font:inherit;font-size:.92rem;cursor:pointer;min-height:48px}
+.opts button .bar{position:absolute;inset:auto 0 0 0;height:3px;background:var(--gold);opacity:.55}
+.opts button .pc{display:block;font-size:.72rem;color:var(--mut)}
+.opts button.mine{border-color:var(--gold);background:#2b2300}
+.opts button.win{border-color:var(--ok)}
+.opts button:disabled{cursor:default}
+.st{margin-top:8px;font-size:.82rem;color:var(--mut)}
+.st.ok{color:var(--ok)}.st.bad{color:var(--bad)}
+.board{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.board div{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)}
+.board div:last-child{border-bottom:0}
+.board div.me1{background:#2b2300}
+.board .rk{color:var(--gold);width:2.2em;display:inline-block}
+.empty{color:var(--mut);text-align:center;padding:18px}
+.msg{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;text-align:center}
+.msg input{width:100%;margin:10px 0;background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:11px;font:inherit}
+.btn{background:var(--gold);color:#111;border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+.btn.sm{padding:6px 10px;font-size:.8rem;font-weight:600;border-radius:9px}
+.btn.red{background:transparent;color:var(--bad);border:1px solid #5a2222}
+details.adm{background:#141418;border:1px dashed #6b5600;border-radius:var(--r);padding:12px 14px;margin:16px 0}
+details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.f label{display:flex;flex-direction:column;font-size:.8rem;color:var(--mut);gap:4px}
+.f label.w{grid-column:1/-1}
+.f input,.f select{background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px;font:inherit;font-size:.95rem}
+.f .chk{flex-direction:row;align-items:center;gap:8px}
+.ctl{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.ctl b{font-size:.78rem;color:var(--mut);width:100%}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(120px);background:#222;color:#fff;border:1px solid var(--line);padding:10px 18px;border-radius:99px;transition:.25s;z-index:9;font-size:.92rem}
+#toast.on{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="/brand/icon-192.png?v=3" alt="KO SPORT" width="46" height="46">
+    <div><h1>توقّعات KO <span class="badge" id="tag" hidden>تجريبي · بس إنت شايفها</span></h1><small>توقّع مين بيربح، وكل توقّع صح بيعطيك نقاط بحسابك</small></div>
+  </header>
+  <div id="app"><div class="empty">عم يحمّل…</div></div>
+</div>
+<div id="toast"></div>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s), app = $("#app");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const ls = { get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} } };
+  let D = null, sport = "", busy = false;
+  const toast = (t) => { const e = $("#toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove("on"), 2600); };
+  const api = async (p, body) => {
+    const h = { "content-type": "application/json" }, pw = ls.get("ko_admin"); if (pw) h.authorization = "Bearer " + pw;
+    const r = await fetch(p, { method: body ? "POST" : "GET", headers: h, body: body ? JSON.stringify(body) : undefined, credentials: "same-origin", cache: "no-store" });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.error || "صار خطأ، جرّب كمان مرة"), { status: r.status }); return j;
+  };
+  const when = (ms) => new Date(ms).toLocaleString("ar-SY", { timeZone: "Asia/Damascus", weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
+  const left = (ms) => { const s = Math.max(0, ms - Date.now()) / 1000, d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+    return d ? `بعد ${d} يوم و${h} ساعة` : h ? `بعد ${h} ساعة و${m} دقيقة` : `بعد ${m} دقيقة`; };
+
+  function gate(status, msg) {
+    if (status === 403) {
+      app.innerHTML = `<div class="msg"><b>هالصفحة لسا تجريبية</b><p class="sub" style="color:var(--mut)">إذا إنت صاحب المتجر، اكتب كلمة سر لوحة التحكم (بتنحفظ عهالجهاز متل لوحة التحكم).</p>
+        <input id="pw" type="password" autocomplete="current-password" placeholder="كلمة سر لوحة التحكم"><button class="btn" id="go">فوت</button></div>`;
+      $("#go").onclick = async () => { const v = $("#pw").value.trim(); if (!v) return; ls.set("ko_admin", v); load(); };
+      return;
+    }
+    app.innerHTML = `<div class="msg">${esc(msg)}<br><br><button class="btn" onclick="location.reload()">جرّب كمان مرة</button></div>`;
+  }
+
+  async function load() {
+    try { D = await api("/api/pred"); draw(); }
+    catch (e) {
+      if (e.status === 403 || e.status === 401 || e.status === 429) { const had = !!ls.get("ko_admin"); if (e.status !== 429) ls.set("ko_admin", ""); gate(403); if (had) toast(e.status === 429 ? e.message : "كلمة السر غلط"); }
+      else gate(0, e.message);
+    }
+  }
+
+  function card(m) {
+    const locked = !!m.res || Date.now() >= m.at, tot = m.counts.a + m.counts.b + m.counts.d;
+    const pc = (k) => tot ? Math.round(m.counts[k] * 100 / tot) : 0, show = !!m.mine || locked;
+    const opt = (k, label) => `<button data-pick="${k}" data-id="${m.id}" class="${m.mine === k ? "mine" : ""} ${m.res === k ? "win" : ""}" ${locked || !D.me ? "disabled" : ""}>
+      ${esc(label)}${show ? `<span class="pc">${pc(k)}%</span><span class="bar" style="width:${pc(k)}%"></span>` : ""}</button>`;
+    let st = "";
+    if (m.res) st = !m.mine ? `<div class="st">انتهت · ما توقّعت عليها</div>` : m.mine === m.res ? `<div class="st ok">✓ توقّعك صح! +${m.pts} نقطة</div>` : `<div class="st bad">✗ توقّعك ما زبط</div>`;
+    else if (locked) st = `<div class="st">بلّشت · التوقعات انقفلت، ناطرين النتيجة</div>`;
+    else st = `<div class="st">${m.mine ? "توقّعت · فيك تغيّر لحد ما تبلّش · " : ""}بتبلّش ${left(m.at)} · ${m.pts} نقطة للتوقّع الصح</div>`;
+    const adm = D.owner ? `<div class="ctl"><b>لوحة المالك: حط النتيجة</b>
+      <button class="btn sm ghost" data-res="a" data-id="${m.id}">ربح ${esc(m.a)}</button>
+      ${m.draw ? `<button class="btn sm ghost" data-res="d" data-id="${m.id}">تعادل</button>` : ""}
+      <button class="btn sm ghost" data-res="b" data-id="${m.id}">ربح ${esc(m.b)}</button>
+      ${m.res ? `<button class="btn sm ghost" data-res="" data-id="${m.id}">شيل النتيجة</button>` : ""}
+      <button class="btn sm red" data-del="${m.id}">احذف</button>
+      <span style="color:var(--mut);font-size:.75rem;width:100%">توقّعات: ${tot}</span></div>` : "";
+    return `<div class="m"><div class="top"><span class="sp">${esc(D.sports[m.sport] || "")}${m.league ? " · " + esc(m.league) : ""}</span><span>${when(m.at)}</span></div>
+      <div class="vs"><span>${esc(m.a)}</span><span>ضد</span><span>${esc(m.b)}</span></div>
+      <div class="opts ${m.draw ? "d3" : ""}">${opt("a", m.a)}${m.draw ? opt("d", "تعادل") : ""}${opt("b", m.b)}</div>${st}${adm}</div>`;
+  }
+
+  function draw() {
+    $("#tag").hidden = D.live;
+    const L = D.matches.filter((m) => !sport || m.sport === sport);
+    const up = L.filter((m) => !m.res && Date.now() < m.at), run = L.filter((m) => !m.res && Date.now() >= m.at), done = L.filter((m) => m.res).reverse();
+    const used = [...new Set(D.matches.map((m) => m.sport))];
+    let h = D.me ? `<div class="me"><div><div class="sub">نقاطك يا ${esc(D.me.name.split(" ")[0])}</div><b>${D.me.p}</b></div><div class="sub" style="text-align:left">توقّعات صح: ${D.me.w} من ${D.me.t}</div></div>`
+      : `<div class="msg" style="margin-bottom:14px">لازم تفوت على حسابك بالمتجر لتقدر تتوقّع.<br><br><a class="btn" href="/ar/account" style="text-decoration:none;display:inline-block">فوت على حسابي</a></div>`;
+    if (used.length > 1) h += `<div class="chips"><button class="${sport ? "" : "on"}" data-sp="">الكل</button>${used.map((s) => `<button class="${sport === s ? "on" : ""}" data-sp="${s}">${esc(D.sports[s])}</button>`).join("")}</div>`;
+    if (D.owner) h += adminForm();
+    h += `<h2>المباريات الجاية</h2>` + (up.length ? up.map(card).join("") : `<div class="empty">ما في مباريات جاية هلق${D.owner ? " · ضيف وحدة من فوق" : ""}</div>`);
+    if (run.length) h += `<h2>عم تنلعب هلق</h2>` + run.map(card).join("");
+    if (done.length) h += `<h2>خلصت</h2>` + done.map(card).join("");
+    h += `<h2>🏆 الترتيب</h2><div class="board">${D.board.length ? D.board.map((r, i) => `<div class="${r.me ? "me1" : ""}"><span><span class="rk">${i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>${esc(r.n.split(" ").slice(0, 2).join(" "))}</span><span><b style="color:var(--gold)">${r.p}</b> نقطة</span></div>`).join("") : `<div class="empty" style="display:block">لسا ما في نتايج</div>`}</div>`;
+    app.innerHTML = h;
+  }
+
+  function adminForm() {
+    const now = new Date(Date.now() + 3600e3 - new Date().getTimezoneOffset() * 60e3).toISOString().slice(0, 16);
+    return `<details class="adm"><summary>➕ ضيف مباراة (المالك بس)</summary><div class="f">
+      <label>الرياضة<select id="a_sp">${Object.entries(D.sports).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select></label>
+      <label>الدوري / البطولة<input id="a_lg" placeholder="مثلاً: الدوري الإسباني"></label>
+      <label>الطرف الأول<input id="a_a" placeholder="مثلاً: ريال مدريد"></label>
+      <label>الطرف التاني<input id="a_b" placeholder="مثلاً: برشلونة"></label>
+      <label>وقت البداية (بتوقيت سوريا)<input id="a_at" type="datetime-local" value="${now}"></label>
+      <label>نقاط التوقّع الصح<input id="a_pts" type="number" min="1" max="1000" value="10"></label>
+      <label class="chk w"><input id="a_d" type="checkbox" checked> في تعادل؟ (كرة القدم عادةً إي)</label>
+      <button class="btn w" id="a_go" style="grid-column:1/-1">ضيف المباراة</button></div></details>`;
+  }
+
+  app.addEventListener("change", (e) => { if (e.target.id === "a_sp") $("#a_d").checked = e.target.value === "football"; });
+  app.addEventListener("click", async (e) => {
+    const b = e.target.closest("button"); if (!b || busy) return;
+    try {
+      busy = true;
+      if (b.dataset.sp !== undefined) { sport = b.dataset.sp; draw(); return; }
+      if (b.dataset.pick) { await api("/api/pred/pick", { id: b.dataset.id, k: b.dataset.pick }); toast("انحفظ توقّعك ✓"); return await load(); }
+      if (b.dataset.res !== undefined) { await api("/api/pred/admin", { action: "result", id: b.dataset.id, res: b.dataset.res }); toast(b.dataset.res ? "انحطّت النتيجة وتوزّعت النقاط ✓" : "انشالت النتيجة"); return await load(); }
+      if (b.dataset.del) { if (!confirm("أكيد بدك تحذف هالمباراة مع توقّعاتها؟")) return; await api("/api/pred/admin", { action: "del", id: b.dataset.del }); toast("انحذفت"); return await load(); }
+      if (b.id === "a_go") {
+        const at = new Date($("#a_at").value).getTime();
+        await api("/api/pred/admin", { action: "add", sport: $("#a_sp").value, league: $("#a_lg").value, a: $("#a_a").value, b: $("#a_b").value, at, pts: +$("#a_pts").value, draw: $("#a_d").checked });
+        toast("انضافت المباراة ✓"); return await load();
+      }
+    } catch (err) { toast(err.message); } finally { busy = false; }
+  });
+  setInterval(() => { const ad = document.querySelector("details.adm"); if (D && !document.hidden && !busy && !(ad && ad.open)) draw(); }, 30000);
+  load();
+})();
+</script>
+</body>
+</html>

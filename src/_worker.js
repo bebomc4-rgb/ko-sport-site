@@ -1051,6 +1051,80 @@ async function subsTick(env, force) {
   if (changed) await env.STORE.put("subs", JSON.stringify(L));
   return { sent };
 }
+// ---------- التوقعات (تجريبي، صاحب المتجر 16 تشرين التاني 2026) ----------
+// مباريات (كرة قدم، سلة، UFC، ملاكمة…). الزبون بيختار الفايز قبل البداية، وصاحب المتجر بيحط النتيجة، ويلي توقّع صح بياخد نقاط بحسابو.
+// هلق تجريبي: ما حدا بيشوف الصفحة غير المالك (كلمة سر لوحة التحكم + حسابو بالمتجر). بعدين منفتحها للكل من «pred:cfg».
+const PRED_SPORTS = { football: "كرة قدم", basketball: "كرة سلة", ufc: "UFC", boxing: "ملاكمة", tennis: "تنس", other: "غير" };
+const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L : []; };
+async function predOpen(env) { const c = await env.STORE.get("pred:cfg", "json").catch(() => null); return !!(c && c.live); }
+async function predBoard(env, matches) {
+  // بنعيد حساب الترتيب من كل المباريات يلي إلها نتيجة (أضمن من الجمع والطرح إذا صاحب المتجر صحّح نتيجة)
+  const B = {};
+  for (const mt of matches.filter((x) => x.res)) {
+    const P = (await env.STORE.get("pred:picks:" + mt.id, "json").catch(() => null)) || {};
+    for (const [ph, v] of Object.entries(P)) {
+      const r = (B[ph] ||= { n: v.n || "", p: 0, w: 0, t: 0 }); r.n = v.n || r.n; r.t++;
+      if (v.k === mt.res) { r.w++; r.p += +mt.pts || 0; }
+    }
+  }
+  await env.STORE.put("pred:board", JSON.stringify(B));
+  return B;
+}
+const predOut = (mt, P, ph) => {
+  const c = { a: 0, b: 0, d: 0 }; for (const v of Object.values(P || {})) if (c[v.k] !== undefined) c[v.k]++;
+  return { id: mt.id, sport: mt.sport, league: mt.league || "", a: mt.a, b: mt.b, at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", counts: c, mine: ph && P && P[ph] ? P[ph].k : "" };
+};
+async function predApi(request, env, path, m) {
+  const owner = env.__role === "owner", live = await predOpen(env);
+  if (!owner && !live) return json({ error: "الصفحة لسا تجريبية" }, 403);
+  const acct = await acctFromReq(request, env);
+  if (path === "/api/pred" && m === "GET") {
+    const L = (await predMatches(env)).sort((x, y) => x.at - y.at);
+    const picks = await Promise.all(L.map((mt) => env.STORE.get("pred:picks:" + mt.id, "json").catch(() => null)));
+    const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
+    const board = Object.entries(B).map(([ph, r]) => ({ n: r.n || "زبون", p: r.p, w: r.w, t: r.t, me: !!(acct && acct.phone === ph) })).sort((x, y) => y.p - x.p || y.w - x.w).slice(0, 30);
+    return json({ owner, live, now: Date.now(), sports: PRED_SPORTS, me: acct ? { name: acct.name, ...(B[acct.phone] || { p: 0, w: 0, t: 0 }) } : null, matches: L.map((mt, i) => predOut(mt, picks[i], acct && acct.phone)), board });
+  }
+  if (path === "/api/pred/pick" && m === "POST") {
+    if (!acct) return json({ error: "لازم تفوت على حسابك بالمتجر أول" }, 401);
+    const b = await request.json().catch(() => ({}));
+    const mt = (await predMatches(env)).find((x) => x.id === b.id);
+    if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
+    if (mt.res || Date.now() >= mt.at) return json({ error: "التوقعات انقفلت لهالمباراة" }, 409);
+    const k = String(b.k || ""); if (!["a", "b"].includes(k) && !(k === "d" && mt.draw)) return json({ error: "اختيار غلط" }, 400);
+    const P = (await env.STORE.get("pred:picks:" + mt.id, "json").catch(() => null)) || {};
+    P[acct.phone] = { k, n: clip(acct.name, 60), at: Date.now() };
+    await env.STORE.put("pred:picks:" + mt.id, JSON.stringify(P));
+    return json({ ok: true, match: predOut(mt, P, acct.phone) });
+  }
+  if (path === "/api/pred/admin" && m === "POST") {
+    if (!owner) return denied();
+    const b = await request.json().catch(() => ({}));
+    let L = await predMatches(env);
+    if (b.action === "add") {
+      const sport = PRED_SPORTS[b.sport] ? b.sport : "other", a = clip(b.a, 60), bb = clip(b.b, 60), at = +b.at;
+      if (!a || !bb || !(at > 0)) return json({ error: "عبّي الطرفين والوقت" }, 400);
+      L.push({ id: newKey().slice(0, 12), sport, league: clip(b.league, 60), a, b: bb, at, draw: !!b.draw, pts: Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), res: "" });
+    } else if (b.action === "result") {
+      const mt = L.find((x) => x.id === b.id); if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
+      const r = String(b.res || ""); if (r && !["a", "b"].includes(r) && !(r === "d" && mt.draw)) return json({ error: "نتيجة غلط" }, 400);
+      mt.res = r;
+    } else if (b.action === "del") {
+      L = L.filter((x) => x.id !== b.id); await env.STORE.delete("pred:picks:" + b.id).catch(() => {});
+    } else if (b.action === "live") {
+      await env.STORE.put("pred:cfg", JSON.stringify({ live: !!b.live })); return json({ ok: true, live: !!b.live });
+    } else return json({ error: "؟" }, 400);
+    await env.STORE.put("pred:matches", JSON.stringify(L));
+    if (b.action !== "add") await predBoard(env, L);
+    return json({ ok: true });
+  }
+  return json({ error: "Not found" }, 404);
+}
+async function predPage(request, env) {
+  const r = await env.ASSETS.fetch(new URL("/predict.html", request.url));
+  return new Response(r.body, { status: r.status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" } });
+}
+
 // ---------- views: how many times customers opened each product / section (صاحب المتجر، 16 تشرين التاني 2026) ----------
 const HIT_BOT = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|preview|facebookexternalhit|whatsapp|telegram/i;
 async function hitsMerge(env, add) {
@@ -3733,6 +3807,7 @@ const koMain = {
       if (path.startsWith("/s/") && m === "GET" && env.STORE) { const c = path.slice(3).toLowerCase(), d = await catalogData(request, env, ctx).catch(() => null), hit = d && d.products.find((x) => shortCode(x.id) === c); return hit ? productShare(request, env, ctx, hit.id) : Response.redirect(new URL("/", request.url).href, 302); }
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
+      if ((path === "/predict" || path === "/ar/predict") && m === "GET" && env.STORE) return predPage(request, env);
       // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
       // أيقونات لوحة التحكم كمان (المتصفح، الشاشة الرئيسية، تطبيق اللوحة): التنين الأصفر بدل الـ KO الأحمر
       // اللوغو الرسمي (صورة صاحب المتجر 1280 بكسل، مقصوصة دائرية) بكل الأحجام: محفوظة جوّا الموقع بـ /assets/brand/
@@ -3812,6 +3887,7 @@ const koMain = {
         return json({ error: "Method not allowed" }, 405);
       }
       if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
+      if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m);
       if (path.startsWith("/api/acct/")) {
         if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
         const r = await acctApi(request, env, path, m);
