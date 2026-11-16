@@ -1147,9 +1147,12 @@ const predKeyOk = (k) => k === "a" || k === "b" || k === "d";
 const PRED_METH = { ko: "بالضربة القاضية", sub: "بالإخضاع", dec: "بقرار الحكام", rtd: "بالانسحاب" };
 const predR = (mt) => ({ res: mt.res || "", ra: mt.ra, rb: mt.rb, meth: mt.meth || "" });
 const predSameR = (x, y) => x.res === y.res && x.ra === y.ra && x.rb === y.rb && x.meth === y.meth;
+// نقاط المباراة (صاحب المتجر 16 تشرين التاني 2026: «المهمة عليها نقاط كبيرة مشان تحذبو»): المباراة المهمة (predImp) = 10، والعادية = 3.
+// إذا صاحب المتجر حط نقاط بإيدو (ptsO) أو ضاف المباراة بإيدو: منحترم رقمو.
+const predBase = (mt) => mt.ptsO || !mt.src ? (+mt.pts || 10) : predImp(mt, false) ? 10 : 3;
 function predPts(mt, v, R) {
   if (!v || !predKeyOk(R.res)) return { p: 0, w: 0 };
-  const base = +mt.pts || 0; if (v.k !== R.res) return { p: 0, w: 0 };
+  const base = predBase(mt); if (v.k !== R.res) return { p: 0, w: 0 };
   let p = base;
   if (mt.sport === "football" && Number.isFinite(v.sa) && v.sa === R.ra && v.sb === R.rb) p += base;
   else if (mt.sport === "basketball" && Number.isFinite(v.sa) && Number.isFinite(R.ra) && Math.abs(v.sa - R.ra) + Math.abs(v.sb - R.rb) <= 10) p += base;
@@ -1160,7 +1163,7 @@ function predPts(mt, v, R) {
 // ---------- جوايز التوقعات (صاحب المتجر، 16 تشرين التاني 2026: ربحو بالقطعة 40% وتحت) ----------
 // الجايزة خصم بس: 300 نقطة = 5%، 600 = 10%، 1200 = 20%، 2000 = 30% (صاحب المتجر: «عميل اكبر خصم 30 بالمية»). النقاط المصروفة بتنحفظ بـ r.s (الرصيد = r.p - r.s) فالترتيب ما بينزل.
 // الكود (KO + 6 أحرف) لطلب واحد، لصاحب الحساب بس، صالح 14 يوم، وما بينجمع مع خصم تاني (pickDiscount بياخد الأحسن). محفوظ بـ pred:cp:<CODE>.
-const PRED_TIERS = [[300, 5], [600, 10], [1200, 20], [2000, 30]], PRED_CP_DAYS = 14;
+const PRED_TIERS = [[300, 5], [800, 10], [1800, 20], [3500, 30]], PRED_CP_DAYS = 14;
 async function predCpList(env, code, phone) {
   const c = String(code || "").trim().toUpperCase(); if (!/^KO[A-Z0-9]{6}$/.test(c)) return [];
   const x = await env.STORE.get("pred:cp:" + c, "json").catch(() => null);
@@ -1503,7 +1506,7 @@ async function predSync(env, force) {
   return { ok: true, fetched: got.length, total: keep.length, errs };
 }
 const predMine = (v) => !v ? null : typeof v === "string" ? { k: v } : v;
-const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, org: mt.org || (mt.league || "").split(" · ")[0] || "", league: mt.league || "", ev: mt.ev || "", evn: mt.evn || "", eid: mt.eid || "", seg: mt.seg || "", ord: mt.ord ?? 0, mev: !!mt.mev, ven: mt.ven || "", dOnly: !!mt.dOnly, ns: !!mt.ns, a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", meth: mt.meth || "", ra: mt.ra, rb: mt.rb, auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: predMine(mine), got: mine && predKeyOk(mt.res) ? predPts(mt, predMine(mine), predR(mt)).p : null });
+const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, org: mt.org || (mt.league || "").split(" · ")[0] || "", league: mt.league || "", ev: mt.ev || "", evn: mt.evn || "", eid: mt.eid || "", seg: mt.seg || "", ord: mt.ord ?? 0, mev: !!mt.mev, ven: mt.ven || "", dOnly: !!mt.dOnly, ns: !!mt.ns, a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: predBase(mt), res: mt.res || "", meth: mt.meth || "", ra: mt.ra, rb: mt.rb, auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: predMine(mine), got: mine && predKeyOk(mt.res) ? predPts(mt, predMine(mine), predR(mt)).p : null });
 async function predApi(request, env, path, m, ctx) {
   if (path === "/api/pred/probe" && m === "GET") {
     const ev = clip(new URL(request.url).searchParams.get("ev") || "401878755", 20), lg = clip(new URL(request.url).searchParams.get("lg") || "soccer/eng.1", 30), out = {};
@@ -1522,7 +1525,7 @@ async function predApi(request, env, path, m, ctx) {
     const [L, B, C, U] = await Promise.all([predMatches(env), env.STORE.get("pred:board", "json").catch(() => null), env.STORE.get("pred:cnt", "json").catch(() => null), acct ? env.STORE.get("pred:u:" + acct.phone, "json").catch(() => null) : null]);
     const board = Object.entries(B || {}).filter(([, r]) => r.t > 0).map(([ph, r]) => ({ n: r.n || "زبون", p: r.p, w: r.w, t: r.t, me: !!(acct && acct.phone === ph) })).sort((x, y) => y.p - x.p || y.w - x.w).slice(0, 30);
     const mine = (U && U.k) || {}, hideO = new Set(cfg.hideOrgs || []);
-    const boxAll = !!cfg.impAll || !L.some((mt) => mt.sport === "boxing" && mt.imp), impOk = (mt) => !!cfg.impAll || !!mine[mt.id] || predImp(mt, boxAll); // بالملاكمة: إذا المصدر ما عطى ولا إشارة لقب، منعرض الكل أحسن ما يفضى القسم
+    const boxAll = cfg.impAll !== false || !L.some((mt) => mt.sport === "boxing" && mt.imp), impOk = (mt) => cfg.impAll !== false || !!mine[mt.id] || predImp(mt, boxAll); // بالملاكمة: إذا المصدر ما عطى ولا إشارة لقب، منعرض الكل أحسن ما يفضى القسم
     return json({ owner, live, now: Date.now(), sync: last, tiers: PRED_TIERS, cpDays: PRED_CP_DAYS, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (منظمات تانية)", sp: x.sp, on: on.has(x.k) })); })(),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
       orgsAll: owner ? [...new Map(L.filter((mt) => !predFem(mt)).map((mt) => { const o = predOut(mt); return [o.sport + "|" + o.org, { k: o.sport + "|" + o.org, sp: o.sport, n: o.org, hid: hideO.has(o.sport + "|" + o.org) }]; })).values()] : undefined,
@@ -1607,7 +1610,7 @@ async function predApi(request, env, path, m, ctx) {
       const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
       if (b.action === "pts") {
         const np = Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), r = mt.res;
-        const R = predR(mt); await predSettle(env, B, mt, R, { res: "" }); mt.pts = np; await predSettle(env, B, mt, { res: "" }, R);
+        const R = predR(mt); await predSettle(env, B, mt, R, { res: "" }); mt.pts = np; mt.ptsO = true; await predSettle(env, B, mt, { res: "" }, R);
       } else {
         const r = String(b.res || ""); if (r && !["a", "b", "x"].includes(r) && !(r === "d" && mt.draw)) return json({ error: "نتيجة غلط" }, 400);
         const nb = (x) => (x === undefined || x === null || x === "" || !Number.isFinite(+x) ? undefined : Math.round(+x));
