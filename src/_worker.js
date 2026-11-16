@@ -1444,7 +1444,11 @@ async function predApi(request, env, path, m, ctx) {
 async function predTick(env) {
   if (!env.STORE) return;
   const last = +(await env.STORE.get("pred:sync", { cacheTtl: 300 }).catch(() => 0)) || 0;
-  if (last && Date.now() - last > 20 * 60e3) await predSync(env).catch(() => {});
+  if (!last) return;
+  // نسخة جديدة من الموقع انرفعت: منحدّث فوراً (الصور والمنظمات الجديدة بتطلع بلا انتظار 20 دقيقة)
+  const bv = await env.STORE.get("pred:build", { cacheTtl: 60 }).catch(() => "");
+  if (bv !== BUILD_AT) { await env.STORE.put("pred:build", BUILD_AT).catch(() => {}); await predSync(env, true).catch(() => {}); return; }
+  if (Date.now() - last > 20 * 60e3) await predSync(env).catch(() => {});
 }
 // صور الملاكمين من Box.live بتمرق من عنّا (بعض الأجهزة/الشبكات ما بتفتحها مباشرة)، ومنخزّنها أسبوع
 async function predImg(request, url, ctx) {
