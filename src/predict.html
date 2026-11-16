@@ -63,6 +63,20 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
 .f .chk{flex-direction:row;align-items:center;gap:8px}
 .ctl{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .ctl b{font-size:.78rem;color:var(--mut);width:100%}
+.side{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;min-width:0}
+.side img.lg{width:54px;height:54px;object-fit:contain;border-radius:12px;background:#fff1;padding:4px}
+.side img.ph{width:64px;height:64px;object-fit:cover;object-position:top;border-radius:50%;background:#26262d;border:2px solid var(--line)}
+.side .nm{font-weight:700;font-size:.98rem;line-height:1.25;word-break:break-word}
+.side .inf{color:var(--mut);font-size:.72rem;display:flex;align-items:center;gap:4px}
+.side .inf img{width:16px;height:11px;object-fit:cover;border-radius:2px}
+.mid{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--mut);font-size:.8rem;padding-top:18px}
+.mid b{color:var(--txt);font-size:1.25rem}
+.vs2{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.evn{color:var(--mut);font-size:.75rem;margin:-4px 0 8px;text-align:center}
+.days{margin-top:-2px}
+.sync{color:var(--mut);font-size:.75rem;text-align:center;margin:14px 0 0}
+.lgs{display:flex;flex-wrap:wrap;gap:8px 14px;margin:10px 0}
+.lgs label{display:flex;gap:6px;align-items:center;font-size:.85rem}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(120px);background:#222;color:#fff;border:1px solid var(--line);padding:10px 18px;border-radius:99px;transition:.25s;z-index:9;font-size:.92rem}
 #toast.on{transform:translateX(-50%) translateY(0)}
 </style>
@@ -110,53 +124,79 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
     }
   }
 
+  const dayKey = (ms) => new Date(ms + 3 * 3600e3).toISOString().slice(0, 10);
+  const dayName = (k) => { const t = dayKey(Date.now()), tm = dayKey(Date.now() + 864e5); if (k === t) return "اليوم"; if (k === tm) return "بكرا";
+    return new Date(k + "T12:00:00Z").toLocaleDateString("ar-SY", { weekday: "long", day: "numeric", month: "numeric" }); };
+  const hm = (ms) => new Date(ms).toLocaleTimeString("ar-SY", { timeZone: "Asia/Damascus", hour: "numeric", minute: "2-digit" });
+  let day = "";
+  function side(m, s) {
+    const img = m[s + "i"], person = m.sport === "ufc" || m.sport === "boxing", flag = m[s + "f"], rec = m[s + "r"];
+    return `<div class="side">${img ? `<img class="${person ? "ph" : "lg"}" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
+      <span class="nm">${esc(m[s])}</span>${flag || rec ? `<span class="inf">${flag ? `<img src="${esc(flag)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${rec ? `سجل ${esc(rec)}` : ""}</span>` : ""}</div>`;
+  }
   function card(m) {
     const locked = !!m.res || Date.now() >= m.at, tot = m.counts.a + m.counts.b + m.counts.d;
     const pc = (k) => tot ? Math.round(m.counts[k] * 100 / tot) : 0, show = !!m.mine || locked;
     const opt = (k, label) => `<button data-pick="${k}" data-id="${m.id}" class="${m.mine === k ? "mine" : ""} ${m.res === k ? "win" : ""}" ${locked || !D.me ? "disabled" : ""}>
       ${esc(label)}${show ? `<span class="pc">${pc(k)}%</span><span class="bar" style="width:${pc(k)}%"></span>` : ""}</button>`;
     let st = "";
-    if (m.res) st = !m.mine ? `<div class="st">انتهت · ما توقّعت عليها</div>` : m.mine === m.res ? `<div class="st ok">✓ توقّعك صح! +${m.pts} نقطة</div>` : `<div class="st bad">✗ توقّعك ما زبط</div>`;
-    else if (locked) st = `<div class="st">بلّشت · التوقعات انقفلت، ناطرين النتيجة</div>`;
+    if (m.res === "x") st = `<div class="st">تأجّلت أو انلغت · ما في نقاط عليها</div>`;
+    else if (m.res) st = !m.mine ? `<div class="st">انتهت · ما توقّعت عليها</div>` : m.mine === m.res ? `<div class="st ok">✓ توقّعك صح! +${m.pts} نقطة</div>` : `<div class="st bad">✗ توقّعك ما زبط</div>`;
+    else if (locked) st = `<div class="st">بلّشت · التوقعات انقفلت، والنقاط بتنزل لحالها لما تخلص</div>`;
     else st = `<div class="st">${m.mine ? "توقّعت · فيك تغيّر لحد ما تبلّش · " : ""}بتبلّش ${left(m.at)} · ${m.pts} نقطة للتوقّع الصح</div>`;
-    const adm = D.owner ? `<div class="ctl"><b>لوحة المالك: حط النتيجة</b>
+    const adm = D.owner ? `<div class="ctl"><b>لوحة المالك${m.auto ? " · النتيجة بتجي لحالها، وإذا غلطت صحّحها من هون" : ": حط النتيجة"}</b>
       <button class="btn sm ghost" data-res="a" data-id="${m.id}">ربح ${esc(m.a)}</button>
       ${m.draw ? `<button class="btn sm ghost" data-res="d" data-id="${m.id}">تعادل</button>` : ""}
       <button class="btn sm ghost" data-res="b" data-id="${m.id}">ربح ${esc(m.b)}</button>
+      <button class="btn sm ghost" data-res="x" data-id="${m.id}">تأجّلت</button>
       ${m.res ? `<button class="btn sm ghost" data-res="" data-id="${m.id}">شيل النتيجة</button>` : ""}
+      <button class="btn sm ghost" data-pts="${m.id}">النقاط: ${m.pts}</button>
       <button class="btn sm red" data-del="${m.id}">احذف</button>
       <span style="color:var(--mut);font-size:.75rem;width:100%">توقّعات: ${tot}</span></div>` : "";
-    return `<div class="m"><div class="top"><span class="sp">${esc(D.sports[m.sport] || "")}${m.league ? " · " + esc(m.league) : ""}</span><span>${when(m.at)}</span></div>
-      <div class="vs"><span>${esc(m.a)}</span><span>ضد</span><span>${esc(m.b)}</span></div>
+    const mid = m.sc && m.res && m.res !== "x" ? `<b>${esc(m.sc)}</b>` : `<span>${hm(m.at)}</span><span>ضد</span>`;
+    return `<div class="m"><div class="top"><span class="sp">${esc(m.league || D.sports[m.sport] || "")}</span><span>${when(m.at)}</span></div>
+      ${m.ev ? `<div class="evn">${esc(m.ev)}</div>` : ""}
+      <div class="vs2">${side(m, "a")}<div class="mid">${mid}</div>${side(m, "b")}</div>
       <div class="opts ${m.draw ? "d3" : ""}">${opt("a", m.a)}${m.draw ? opt("d", "تعادل") : ""}${opt("b", m.b)}</div>${st}${adm}</div>`;
   }
 
   function draw() {
     $("#tag").hidden = D.live;
-    const L = D.matches.filter((m) => !sport || m.sport === sport);
-    const up = L.filter((m) => !m.res && Date.now() < m.at), run = L.filter((m) => !m.res && Date.now() >= m.at), done = L.filter((m) => m.res).reverse();
+    const bySport = D.matches.filter((m) => !sport || m.sport === sport);
+    const up = bySport.filter((m) => !m.res && Date.now() < m.at), run = bySport.filter((m) => !m.res && Date.now() >= m.at), done = bySport.filter((m) => m.res).reverse();
+    const dks = [...new Set(up.map((m) => dayKey(m.at)))];
+    if (day && !dks.includes(day)) day = "";
+    const shown = up.filter((m) => !day || dayKey(m.at) === day);
     const used = [...new Set(D.matches.map((m) => m.sport))];
     let h = D.me ? `<div class="me"><div><div class="sub">نقاطك يا ${esc(D.me.name.split(" ")[0])}</div><b>${D.me.p}</b></div><div class="sub" style="text-align:left">توقّعات صح: ${D.me.w} من ${D.me.t}</div></div>`
       : `<div class="msg" style="margin-bottom:14px">لازم تفوت على حسابك بالمتجر لتقدر تتوقّع.<br><br><a class="btn" href="/ar/account" style="text-decoration:none;display:inline-block">فوت على حسابي</a></div>`;
     if (used.length > 1) h += `<div class="chips"><button class="${sport ? "" : "on"}" data-sp="">الكل</button>${used.map((s) => `<button class="${sport === s ? "on" : ""}" data-sp="${s}">${esc(D.sports[s])}</button>`).join("")}</div>`;
     if (D.owner) h += adminForm();
-    h += `<h2>المباريات الجاية</h2>` + (up.length ? up.map(card).join("") : `<div class="empty">ما في مباريات جاية هلق${D.owner ? " · ضيف وحدة من فوق" : ""}</div>`);
-    if (run.length) h += `<h2>عم تنلعب هلق</h2>` + run.map(card).join("");
-    if (done.length) h += `<h2>خلصت</h2>` + done.map(card).join("");
+    if (run.length) h += `<h2>🔴 عم تنلعب هلق</h2>` + run.map(card).join("");
+    h += `<h2>المباريات الجاية</h2>`;
+    if (dks.length > 1) h += `<div class="chips days"><button class="${day ? "" : "on"}" data-day="">كل الأيام</button>${dks.map((k) => `<button class="${day === k ? "on" : ""}" data-day="${k}">${esc(dayName(k))}</button>`).join("")}</div>`;
+    h += shown.length ? shown.map(card).join("") : `<div class="empty">ما في مباريات جاية هلق${D.owner ? " · ضيف وحدة من فوق" : ""}</div>`;
+    if (done.length) h += `<h2>خلصت</h2>` + done.slice(0, 40).map(card).join("");
     h += `<h2>🏆 الترتيب</h2><div class="board">${D.board.length ? D.board.map((r, i) => `<div class="${r.me ? "me1" : ""}"><span><span class="rk">${i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>${esc(r.n.split(" ").slice(0, 2).join(" "))}</span><span><b style="color:var(--gold)">${r.p}</b> نقطة</span></div>`).join("") : `<div class="empty" style="display:block">لسا ما في نتايج</div>`}</div>`;
+    if (D.sync) h += `<p class="sync">المواعيد والنتايج بتتحدّث لحالها · آخر تحديث ${hm(D.sync)}</p>`;
     app.innerHTML = h;
   }
 
   function adminForm() {
     const now = new Date(Date.now() + 3600e3 - new Date().getTimezoneOffset() * 60e3).toISOString().slice(0, 16);
-    return `<details class="adm"><summary>➕ ضيف مباراة (المالك بس)</summary><div class="f">
-      <label>الرياضة<select id="a_sp">${Object.entries(D.sports).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select></label>
-      <label>الدوري / البطولة<input id="a_lg" placeholder="مثلاً: الدوري الإسباني"></label>
-      <label>الطرف الأول<input id="a_a" placeholder="مثلاً: ريال مدريد"></label>
-      <label>الطرف التاني<input id="a_b" placeholder="مثلاً: برشلونة"></label>
+    return `<details class="adm"><summary>⚙️ لوحة المالك</summary>
+      <p style="color:var(--mut);font-size:.85rem;margin:10px 0 4px">البطولات يلي بتنجاب لحالها (مواعيد، صور، نتايج):</p>
+      <div class="lgs">${D.leagues.map((l) => `<label><input type="checkbox" data-lg="${l.k}" ${l.on ? "checked" : ""}>${esc(l.n)}</label>`).join("")}</div>
+      <button class="btn sm" id="lg_go">احفظ البطولات وحدّث</button> <button class="btn sm ghost" id="sy_go">حدّث هلق</button>
+      <p style="color:var(--mut);font-size:.85rem;margin:16px 0 0">➕ ضيف مباراة بإيدك (متل الملاكمة):</p>
+      <div class="f">
+      <label>الرياضة<select id="a_sp">${Object.entries(D.sports).map(([k, v]) => `<option value="${k}" ${k === "boxing" ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>
+      <label>الدوري / البطولة<input id="a_lg" placeholder="مثلاً: بطولة العالم"></label>
+      <label>الطرف الأول<input id="a_a" placeholder="الاسم"></label>
+      <label>الطرف التاني<input id="a_b" placeholder="الاسم"></label>
       <label>وقت البداية (بتوقيت سوريا)<input id="a_at" type="datetime-local" value="${now}"></label>
       <label>نقاط التوقّع الصح<input id="a_pts" type="number" min="1" max="1000" value="10"></label>
-      <label class="chk w"><input id="a_d" type="checkbox" checked> في تعادل؟ (كرة القدم عادةً إي)</label>
+      <label class="chk w"><input id="a_d" type="checkbox"> في تعادل؟</label>
       <button class="btn w" id="a_go" style="grid-column:1/-1">ضيف المباراة</button></div></details>`;
   }
 
@@ -165,9 +205,13 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
     const b = e.target.closest("button"); if (!b || busy) return;
     try {
       busy = true;
-      if (b.dataset.sp !== undefined) { sport = b.dataset.sp; draw(); return; }
+      if (b.dataset.sp !== undefined) { sport = b.dataset.sp; day = ""; draw(); return; }
+      if (b.dataset.day !== undefined) { day = b.dataset.day; draw(); return; }
+      if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "10"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
+      if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(); }
+      if (b.id === "lg_go") { toast("عم حدّث…"); const ks = [...document.querySelectorAll("[data-lg]")].filter((x) => x.checked).map((x) => x.dataset.lg); const r = await api("/api/pred/admin", { action: "leagues", leagues: ks }); toast(`انحفظت ✓ (${r.total} مباراة)`); return await load(); }
       if (b.dataset.pick) { await api("/api/pred/pick", { id: b.dataset.id, k: b.dataset.pick }); toast("انحفظ توقّعك ✓"); return await load(); }
-      if (b.dataset.res !== undefined) { await api("/api/pred/admin", { action: "result", id: b.dataset.id, res: b.dataset.res }); toast(b.dataset.res ? "انحطّت النتيجة وتوزّعت النقاط ✓" : "انشالت النتيجة"); return await load(); }
+      if (b.dataset.res !== undefined) { await api("/api/pred/admin", { action: "result", id: b.dataset.id, res: b.dataset.res }); toast(b.dataset.res === "x" ? "انعلّمت مأجّلة" : b.dataset.res ? "انحطّت النتيجة وتوزّعت النقاط ✓" : "انشالت النتيجة"); return await load(); }
       if (b.dataset.del) { if (!confirm("أكيد بدك تحذف هالمباراة مع توقّعاتها؟")) return; await api("/api/pred/admin", { action: "del", id: b.dataset.del }); toast("انحذفت"); return await load(); }
       if (b.id === "a_go") {
         const at = new Date($("#a_at").value).getTime();

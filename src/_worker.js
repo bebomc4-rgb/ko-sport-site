@@ -1052,38 +1052,120 @@ async function subsTick(env, force) {
   return { sent };
 }
 // ---------- التوقعات (تجريبي، صاحب المتجر 16 تشرين التاني 2026) ----------
-// مباريات (كرة قدم، سلة، UFC، ملاكمة…). الزبون بيختار الفايز قبل البداية، وصاحب المتجر بيحط النتيجة، ويلي توقّع صح بياخد نقاط بحسابو.
-// هلق تجريبي: ما حدا بيشوف الصفحة غير المالك (كلمة سر لوحة التحكم + حسابو بالمتجر). بعدين منفتحها للكل من «pred:cfg».
+// مباريات (كرة قدم، سلة، UFC، ملاكمة…). الزبون بيختار الفايز قبل البداية، ويلي توقّع صح بياخد نقاط بحسابو.
+// المباريات والصور والنتايج بتجي لحالها من ESPN (site.api.espn.com، مجاني وبلا مفتاح) كل 20 دقيقة تقريباً، والنقاط بتنزل لحالها لما تخلص المباراة.
+// الملاكمة مو موجودة عند ESPN: صاحب المتجر بيضيفها بإيدو من الصفحة.
+// هلق تجريبي: ما حدا بيشوف الصفحة غير المالك (كلمة سر لوحة التحكم + حسابو بالمتجر). بعدين منفتحها للكل من «pred:cfg».live
+// المفاتيح: pred:matches (كل المباريات المعروضة)، pred:picks:<id> (توقعات مباراة)، pred:u:<رقم> (توقعات زبون)، pred:cnt (عدّ التوقعات)، pred:board (النقاط)، pred:cfg، pred:sync
 const PRED_SPORTS = { football: "كرة قدم", basketball: "كرة سلة", ufc: "UFC", boxing: "ملاكمة", tennis: "تنس", other: "غير" };
+const PRED_LEAGUES = [
+  { k: "uefa.champions", p: "soccer/uefa.champions", sp: "football", n: "دوري أبطال أوروبا" },
+  { k: "eng.1", p: "soccer/eng.1", sp: "football", n: "الدوري الإنكليزي" },
+  { k: "esp.1", p: "soccer/esp.1", sp: "football", n: "الدوري الإسباني" },
+  { k: "ita.1", p: "soccer/ita.1", sp: "football", n: "الدوري الإيطالي" },
+  { k: "ger.1", p: "soccer/ger.1", sp: "football", n: "الدوري الألماني" },
+  { k: "fra.1", p: "soccer/fra.1", sp: "football", n: "الدوري الفرنسي" },
+  { k: "ksa.1", p: "soccer/ksa.1", sp: "football", n: "الدوري السعودي" },
+  { k: "nba", p: "basketball/nba", sp: "basketball", n: "NBA", daily: true },
+  { k: "ufc", p: "mma/ufc", sp: "ufc", n: "UFC" },
+];
+const PRED_AR = { "Real Madrid": "ريال مدريد", "Barcelona": "برشلونة", "Atlético Madrid": "أتلتيكو مدريد", "Atletico Madrid": "أتلتيكو مدريد", "Sevilla": "إشبيلية", "Valencia": "فالنسيا", "Villarreal": "فياريال", "Real Betis": "ريال بيتيس", "Real Sociedad": "ريال سوسيداد", "Athletic Club": "أتلتيك بلباو",
+  "Manchester United": "مانشستر يونايتد", "Manchester City": "مانشستر سيتي", "Liverpool": "ليفربول", "Arsenal": "آرسنال", "Chelsea": "تشيلسي", "Tottenham Hotspur": "توتنهام", "Newcastle United": "نيوكاسل", "Aston Villa": "أستون فيلا", "West Ham United": "وست هام", "Everton": "إيفرتون",
+  "Bayern Munich": "بايرن ميونخ", "Borussia Dortmund": "بوروسيا دورتموند", "Bayer Leverkusen": "باير ليفركوزن", "RB Leipzig": "لايبزيغ", "Paris Saint-Germain": "باريس سان جيرمان", "Marseille": "مارسيليا", "Lyon": "ليون", "Monaco": "موناكو", "AS Monaco": "موناكو",
+  "Juventus": "يوفنتوس", "Internazionale": "إنتر ميلان", "Inter Milan": "إنتر ميلان", "AC Milan": "ميلان", "Napoli": "نابولي", "AS Roma": "روما", "Lazio": "لاتسيو", "Atalanta": "أتالانتا",
+  "Al Hilal": "الهلال", "Al Nassr": "النصر", "Al Ittihad": "الاتحاد", "Al Ahli": "الأهلي", "Al Shabab": "الشباب", "Al Ettifaq": "الاتفاق", "Al Qadsiah": "القادسية", "Al Fateh": "الفتح", "Al Taawoun": "التعاون",
+  "Galatasaray": "غلطة سراي", "Fenerbahce": "فنربخشة", "Benfica": "بنفيكا", "Porto": "بورتو", "FC Porto": "بورتو", "Sporting CP": "سبورتينغ لشبونة", "Ajax": "أياكس", "PSV Eindhoven": "آيندهوفن", "Celtic": "سلتيك", "Club Brugge": "كلوب بروج",
+  "Los Angeles Lakers": "ليكرز", "Golden State Warriors": "غولدن ستيت", "Boston Celtics": "بوسطن سلتيكس", "Chicago Bulls": "شيكاغو بولز", "Miami Heat": "ميامي هيت", "New York Knicks": "نيويورك نيكس", "Dallas Mavericks": "دالاس مافريكس", "Denver Nuggets": "دنفر ناغتس", "Milwaukee Bucks": "ميلووكي باكس", "Oklahoma City Thunder": "أوكلاهوما ثاندر", "Phoenix Suns": "فينيكس صنز", "Philadelphia 76ers": "فيلادلفيا", "Los Angeles Clippers": "كليبرز", "LA Clippers": "كليبرز", "San Antonio Spurs": "سان أنطونيو سبيرز", "Cleveland Cavaliers": "كليفلاند" };
+const PRED_W = { Flyweight: "وزن الذبابة", Bantamweight: "وزن الديك", Featherweight: "وزن الريشة", Lightweight: "الوزن الخفيف", Welterweight: "وزن الويلتر", Middleweight: "الوزن المتوسط", "Light Heavyweight": "الثقيل الخفيف", Heavyweight: "الوزن الثقيل", "Women's Strawweight": "وزن القشة (سيدات)", "Women's Flyweight": "وزن الذبابة (سيدات)", "Women's Bantamweight": "وزن الديك (سيدات)", "Women's Featherweight": "وزن الريشة (سيدات)", "Catch Weight": "وزن متّفق عليه" };
 const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L : []; };
-async function predOpen(env) { const c = await env.STORE.get("pred:cfg", "json").catch(() => null); return !!(c && c.live); }
-async function predBoard(env, matches) {
-  // بنعيد حساب الترتيب من كل المباريات يلي إلها نتيجة (أضمن من الجمع والطرح إذا صاحب المتجر صحّح نتيجة)
-  const B = {};
-  for (const mt of matches.filter((x) => x.res)) {
-    const P = (await env.STORE.get("pred:picks:" + mt.id, "json").catch(() => null)) || {};
-    for (const [ph, v] of Object.entries(P)) {
-      const r = (B[ph] ||= { n: v.n || "", p: 0, w: 0, t: 0 }); r.n = v.n || r.n; r.t++;
-      if (v.k === mt.res) { r.w++; r.p += +mt.pts || 0; }
-    }
+async function predCfg(env) { const c = await env.STORE.get("pred:cfg", "json").catch(() => null); return c && typeof c === "object" ? c : {}; }
+const predKeyOk = (k) => k === "a" || k === "b" || k === "d";
+// تطبيق نتيجة على النقاط: بنطرح أثر النتيجة القديمة (إذا في) وبنزيد أثر الجديدة، فتصحيح النتيجة ما بيعدّ النقاط مرتين
+async function predSettle(env, B, mt, oldRes, newRes) {
+  if ((oldRes || "") === (newRes || "")) return false;
+  const P = (await env.STORE.get("pred:picks:" + mt.id, "json").catch(() => null)) || {};
+  if (!Object.keys(P).length) return false;
+  const pts = +mt.pts || 0, real = (r) => predKeyOk(r || "");
+  for (const [ph, v] of Object.entries(P)) {
+    const r = (B[ph] ||= { n: v.n || "", p: 0, w: 0, t: 0 }); if (v.n) r.n = v.n;
+    if (real(oldRes)) { r.t--; if (v.k === oldRes) { r.w--; r.p -= pts; } }
+    if (real(newRes)) { r.t++; if (v.k === newRes) { r.w++; r.p += pts; } }
   }
-  await env.STORE.put("pred:board", JSON.stringify(B));
-  return B;
+  return true;
 }
-const predOut = (mt, P, ph) => {
-  const c = { a: 0, b: 0, d: 0 }; for (const v of Object.values(P || {})) if (c[v.k] !== undefined) c[v.k]++;
-  return { id: mt.id, sport: mt.sport, league: mt.league || "", a: mt.a, b: mt.b, at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", counts: c, mine: ph && P && P[ph] ? P[ph].k : "" };
-};
-async function predApi(request, env, path, m) {
-  const owner = env.__role === "owner", live = await predOpen(env);
+const predIso = (ms) => new Date(ms).toISOString().slice(0, 10).replace(/-/g, "");
+function predFromEspn(lg, ev) {
+  const out = [], name = (c) => (c.team && (c.team.displayName || c.team.name)) || (c.athlete && (c.athlete.displayName || c.athlete.fullName)) || "";
+  const pic = (c) => c.team ? (c.team.logo || "") : c.athlete ? ((c.athlete.headshot && c.athlete.headshot.href) || `https://a.espncdn.com/i/headshots/mma/players/full/${c.id}.png`) : "";
+  for (const comp of (ev.competitions || [])) {
+    const cs = comp.competitors || []; if (cs.length !== 2) continue;
+    // كرة القدم والسلة: صاحب الأرض أول (الفريق الأول = home)؛ UFC بالترتيب يلي جاي
+    const [A, Bc] = cs[0].homeAway === "away" ? [cs[1], cs[0]] : [cs[0], cs[1]];
+    const st = (comp.status && comp.status.type) || (ev.status && ev.status.type) || {}, sn = String(st.name || "");
+    let res = "";
+    if (/POSTPON|CANCEL|ABANDON|SUSPEND/.test(sn)) res = "x";
+    else if (st.completed) res = A.winner ? "a" : Bc.winner ? "b" : lg.sp === "football" ? "d" : "";
+    const nm = (c) => { const s = name(c); return PRED_AR[s] || s; };
+    out.push({
+      id: "e" + (comp.id || ev.id), src: lg.k, sport: lg.sp, league: lg.n + (lg.sp === "ufc" && comp.type && comp.type.abbreviation ? " · " + (PRED_W[comp.type.abbreviation] || comp.type.abbreviation) : ""),
+      ev: lg.sp === "ufc" ? String(ev.shortName || ev.name || "") : "",
+      a: nm(A), b: nm(Bc), ai: pic(A), bi: pic(Bc), ar: (A.records && A.records[0] && A.records[0].summary) || "", br: (Bc.records && Bc.records[0] && Bc.records[0].summary) || "",
+      af: A.athlete && A.athlete.flag ? A.athlete.flag.href : "", bf: Bc.athlete && Bc.athlete.flag ? Bc.athlete.flag.href : "",
+      sc: st.completed && lg.sp !== "ufc" ? `${A.score ?? ""}-${Bc.score ?? ""}` : "", at: Date.parse(comp.date || ev.date), draw: lg.sp === "football", pts: 10, res,
+    });
+  }
+  return out;
+}
+async function predSync(env, force) {
+  const now = Date.now(), last = +(await env.STORE.get("pred:sync").catch(() => 0)) || 0;
+  if (!force && now - last < 20 * 60e3) return { skipped: true };
+  await env.STORE.put("pred:sync", String(now)); // قفل: طلب تاني بنفس الوقت ما بيعيد المزامنة
+  const cfg = await predCfg(env), on = Array.isArray(cfg.leagues) ? new Set(cfg.leagues) : null;
+  const from = now - 2 * 864e5, to = now + 8 * 864e5, got = [], errs = [];
+  const months = [...new Set([now, to].map((t) => predIso(t).slice(0, 6)))];
+  const days = []; for (let t = now - 864e5; t <= to; t += 864e5) days.push(predIso(t));
+  await Promise.all(PRED_LEAGUES.filter((lg) => !on || on.has(lg.k)).map(async (lg) => {
+    for (const d of lg.daily ? days : months) {
+      try {
+        const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${lg.p}/scoreboard?dates=${d}&limit=200`, { signal: AbortSignal.timeout(8000), cf: { cacheTtl: 600 } });
+        if (!r.ok) { errs.push(lg.k + ":" + r.status); continue; }
+        const j = await r.json();
+        for (const ev of (j.events || [])) for (const mt of predFromEspn(lg, ev)) if (mt.at >= from && mt.at <= to) got.push(mt);
+      } catch (e) { errs.push(lg.k + ":" + (e && e.name || "err")); }
+    }
+  }));
+  const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
+  let boardDirty = false;
+  const hidden = new Set(cfg.hide || []);
+  for (const g of got) {
+    if (hidden.has(g.id)) continue;
+    const cur = byId.get(g.id);
+    if (!cur) { byId.set(g.id, g); continue; }
+    if (cur.lock) { if (!cur.res && g.res) { boardDirty = (await predSettle(env, B, cur, cur.res, g.res)) || boardDirty; cur.res = g.res; cur.sc = g.sc; } continue; } // المالك صحّح النتيجة بإيدو: منترك قرارو
+    const oldRes = cur.res || "";
+    Object.assign(cur, { ...g, pts: cur.pts || g.pts });
+    if (oldRes !== (g.res || "")) boardDirty = (await predSettle(env, B, cur, oldRes, g.res)) || boardDirty;
+  }
+  // منشيل يلي خلص من أكتر من 3 أيام (النقاط بتضل محفوظة بالترتيب)
+  const keep = [...byId.values()].filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
+  await env.STORE.put("pred:matches", JSON.stringify(keep));
+  if (boardDirty) await env.STORE.put("pred:board", JSON.stringify(B));
+  return { ok: true, fetched: got.length, total: keep.length, errs };
+}
+const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, league: mt.league || "", ev: mt.ev || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: mine || "" });
+async function predApi(request, env, path, m, ctx) {
+  const owner = env.__role === "owner", cfg = await predCfg(env), live = !!cfg.live;
   if (!owner && !live) return json({ error: "الصفحة لسا تجريبية" }, 403);
   const acct = await acctFromReq(request, env);
   if (path === "/api/pred" && m === "GET") {
-    const L = (await predMatches(env)).sort((x, y) => x.at - y.at);
-    const picks = await Promise.all(L.map((mt) => env.STORE.get("pred:picks:" + mt.id, "json").catch(() => null)));
-    const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
-    const board = Object.entries(B).map(([ph, r]) => ({ n: r.n || "زبون", p: r.p, w: r.w, t: r.t, me: !!(acct && acct.phone === ph) })).sort((x, y) => y.p - x.p || y.w - x.w).slice(0, 30);
-    return json({ owner, live, now: Date.now(), sports: PRED_SPORTS, me: acct ? { name: acct.name, ...(B[acct.phone] || { p: 0, w: 0, t: 0 }) } : null, matches: L.map((mt, i) => predOut(mt, picks[i], acct && acct.phone)), board });
+    const last = +(await env.STORE.get("pred:sync").catch(() => 0)) || 0;
+    if (Date.now() - last > 20 * 60e3) { if (last === 0) await predSync(env, true).catch(() => {}); else if (ctx && ctx.waitUntil) ctx.waitUntil(predSync(env).catch(() => {})); }
+    const [L, B, C, U] = await Promise.all([predMatches(env), env.STORE.get("pred:board", "json").catch(() => null), env.STORE.get("pred:cnt", "json").catch(() => null), acct ? env.STORE.get("pred:u:" + acct.phone, "json").catch(() => null) : null]);
+    const board = Object.entries(B || {}).filter(([, r]) => r.t > 0).map(([ph, r]) => ({ n: r.n || "زبون", p: r.p, w: r.w, t: r.t, me: !!(acct && acct.phone === ph) })).sort((x, y) => y.p - x.p || y.w - x.w).slice(0, 30);
+    const mine = (U && U.k) || {};
+    return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n, on: !Array.isArray(cfg.leagues) || cfg.leagues.includes(x.k) })),
+      me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
+      matches: L.map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
   }
   if (path === "/api/pred/pick" && m === "POST") {
     if (!acct) return json({ error: "لازم تفوت على حسابك بالمتجر أول" }, 401);
@@ -1092,30 +1174,45 @@ async function predApi(request, env, path, m) {
     if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
     if (mt.res || Date.now() >= mt.at) return json({ error: "التوقعات انقفلت لهالمباراة" }, 409);
     const k = String(b.k || ""); if (!["a", "b"].includes(k) && !(k === "d" && mt.draw)) return json({ error: "اختيار غلط" }, 400);
-    const P = (await env.STORE.get("pred:picks:" + mt.id, "json").catch(() => null)) || {};
-    P[acct.phone] = { k, n: clip(acct.name, 60), at: Date.now() };
-    await env.STORE.put("pred:picks:" + mt.id, JSON.stringify(P));
-    return json({ ok: true, match: predOut(mt, P, acct.phone) });
+    const [P, U, C] = await Promise.all([env.STORE.get("pred:picks:" + mt.id, "json").catch(() => null), env.STORE.get("pred:u:" + acct.phone, "json").catch(() => null), env.STORE.get("pred:cnt", "json").catch(() => null)]);
+    const picks = P || {}, user = U && U.k ? U : { k: {} }, cnt = C || {}, old = picks[acct.phone] && picks[acct.phone].k;
+    picks[acct.phone] = { k, n: clip(acct.name, 60), at: Date.now() }; user.k[mt.id] = k;
+    const c = (cnt[mt.id] ||= { a: 0, b: 0, d: 0 }); if (old && c[old] > 0) c[old]--; c[k]++;
+    // التوقعات القديمة كتير: منخلّي آخر 300 بحساب الزبون
+    const ks = Object.keys(user.k); if (ks.length > 300) for (const x of ks.slice(0, ks.length - 300)) delete user.k[x];
+    await Promise.all([env.STORE.put("pred:picks:" + mt.id, JSON.stringify(picks)), env.STORE.put("pred:u:" + acct.phone, JSON.stringify(user)), env.STORE.put("pred:cnt", JSON.stringify(cnt)).catch(() => {})]);
+    return json({ ok: true, match: predOut(mt, c, k) });
   }
   if (path === "/api/pred/admin" && m === "POST") {
     if (!owner) return denied();
     const b = await request.json().catch(() => ({}));
+    if (b.action === "sync") return json(await predSync(env, true));
+    if (b.action === "leagues") { const ks = (Array.isArray(b.leagues) ? b.leagues : []).filter((k) => PRED_LEAGUES.some((x) => x.k === k)); await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, leagues: ks })); return json({ ok: true, ...(await predSync(env, true)) }); }
+    if (b.action === "live") { await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, live: !!b.live })); return json({ ok: true, live: !!b.live }); }
     let L = await predMatches(env);
     if (b.action === "add") {
       const sport = PRED_SPORTS[b.sport] ? b.sport : "other", a = clip(b.a, 60), bb = clip(b.b, 60), at = +b.at;
       if (!a || !bb || !(at > 0)) return json({ error: "عبّي الطرفين والوقت" }, 400);
-      L.push({ id: newKey().slice(0, 12), sport, league: clip(b.league, 60), a, b: bb, at, draw: !!b.draw, pts: Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), res: "" });
-    } else if (b.action === "result") {
+      L.push({ id: "m" + newKey().slice(0, 12), sport, league: clip(b.league, 60), a, b: bb, at, draw: !!b.draw, pts: Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), res: "" });
+      L.sort((x, y) => x.at - y.at);
+    } else if (b.action === "result" || b.action === "pts") {
       const mt = L.find((x) => x.id === b.id); if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
-      const r = String(b.res || ""); if (r && !["a", "b"].includes(r) && !(r === "d" && mt.draw)) return json({ error: "نتيجة غلط" }, 400);
-      mt.res = r;
+      const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
+      if (b.action === "pts") {
+        const np = Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), r = mt.res;
+        if (predKeyOk(r)) await predSettle(env, B, mt, r, ""); mt.pts = np; if (predKeyOk(r)) await predSettle(env, B, mt, "", r);
+      } else {
+        const r = String(b.res || ""); if (r && !["a", "b", "x"].includes(r) && !(r === "d" && mt.draw)) return json({ error: "نتيجة غلط" }, 400);
+        await predSettle(env, B, mt, mt.res, r); mt.res = r; mt.lock = true;
+      }
+      await env.STORE.put("pred:board", JSON.stringify(B));
     } else if (b.action === "del") {
+      const mt = L.find((x) => x.id === b.id);
+      if (mt && mt.res) { const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {}; if (await predSettle(env, B, mt, mt.res, "")) await env.STORE.put("pred:board", JSON.stringify(B)); }
       L = L.filter((x) => x.id !== b.id); await env.STORE.delete("pred:picks:" + b.id).catch(() => {});
-    } else if (b.action === "live") {
-      await env.STORE.put("pred:cfg", JSON.stringify({ live: !!b.live })); return json({ ok: true, live: !!b.live });
+      if (mt && mt.src) await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, hide: [...(cfg.hide || []), mt.id].slice(-500) })); // ما ترجع مع المزامنة الجاية
     } else return json({ error: "؟" }, 400);
     await env.STORE.put("pred:matches", JSON.stringify(L));
-    if (b.action !== "add") await predBoard(env, L);
     return json({ ok: true });
   }
   return json({ error: "Not found" }, 404);
@@ -3887,7 +3984,7 @@ const koMain = {
         return json({ error: "Method not allowed" }, 405);
       }
       if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
-      if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m);
+      if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m, ctx);
       if (path.startsWith("/api/acct/")) {
         if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
         const r = await acctApi(request, env, path, m);
