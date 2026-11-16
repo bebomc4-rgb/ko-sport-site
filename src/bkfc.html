@@ -72,7 +72,7 @@ a{color:var(--gold2)}
     const o = document.createElement("div"); o.className = "ov";
     o.innerHTML = `<div class="sh"><button class="x">✕</button><div class="hd">${x.img ? `<img src="${esc(x.img)}" referrerpolicy="no-referrer" alt="">` : `<div class="av">${ini(x.n)}</div>`}<div><b>${esc(x.n)}</b>${f.nick ? `<i>«${esc(f.nick)}»</i>` : ""}</div></div>
       <div class="kv">${kv.map((k) => `<div><small>${k[0]}</small>${esc(k[1])}</div>`).join("")}</div>
-      ${(f.fights || []).length ? `<b style="color:var(--gold2);font-size:.85rem">آخر النزالات</b><div class="fl">${f.fights.map((z) => { const r = String(z.r || "").charAt(0).toUpperCase(); return `<div><span class="wl ${r}">${r === "W" ? "ف" : r === "L" ? "خ" : r === "D" ? "ت" : "•"}</span><b style="flex:1">${esc(z.vs)}</b><span>${esc(z.inf || "")}${z.inf ? " · " : ""}${esc(String(z.dt || "").replace(/\s+\d{1,2}:\d{2}\s*[AP]M.*$/i, ""))}</span></div>`; }).join("")}</div>` : ""}
+      ${(f.fights || []).length ? `<b style="color:var(--gold2);font-size:.85rem">آخر النزالات</b><div class="fl">${f.fights.map((z) => { const r = String(z.r || "").charAt(0).toUpperCase(); return `<div><span class="wl ${r}">${r === "W" ? "ف" : r === "L" ? "خ" : r === "D" ? "ت" : "•"}</span><b style="flex:1">${esc(z.vs)}</b><span>${esc(z.inf || "")}${z.inf ? " · " : ""}${esc((String(z.dt || "").match(/[A-Za-z]+ \d{1,2}, \d{4}/) || [z.dt || ""])[0])}</span></div>`; }).join("")}</div>` : ""}
       <p style="text-align:center;margin:12px 0 0"><a href="https://www.bkfc.com/fighters/${esc(slug)}" target="_blank" rel="noopener">الملف الكامل على bkfc.com ↗</a></p></div>`;
     o.addEventListener("click", (e) => { if (e.target === o || e.target.closest(".x")) o.remove(); });
     document.body.appendChild(o);
