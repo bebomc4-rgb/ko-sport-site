@@ -2083,9 +2083,9 @@ body.gated main,body.gated #app{background:radial-gradient(120% 60% at 50% 0%,co
 /* الشعار الأصفر بفخامة: حلقة ذهبية بتتنفّس ولمعة بتمرق عليه كل شوي */
 .gate-logo.img{position:relative;border-radius:50%;overflow:hidden;animation:koPulse 4.8s ease-in-out infinite;box-shadow:0 0 0 3px #f5c518,0 0 0 7px rgba(245,197,24,.18),0 16px 36px -12px rgba(201,151,28,.6)}
 .gate-logo.img img{width:92px;height:92px;box-shadow:none}
-.gate-logo.img::after,html[data-logo-round=on] header.top .logo:has(>img)::after{content:"";position:absolute;inset:-25%;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.35) 44%,rgba(255,255,255,.95) 50%,rgba(255,255,255,.35) 56%,transparent 68%);transform:translateX(-130%);animation:koShine 2s ease-in-out .3s infinite;pointer-events:none}
+.gate-logo.img::after,html[data-logo-round=on] header.top .logo:has(>img)::after{content:"";position:absolute;inset:-25%;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.35) 44%,rgba(255,255,255,.95) 50%,rgba(255,255,255,.35) 56%,transparent 68%);transform:translateX(-130%);animation:koShine 4.8s ease-in-out infinite;pointer-events:none}
 html[data-logo-round=on] header.top .logo:has(>img){position:relative;overflow:hidden;border-radius:50%}
-html[data-logo-round=on] header.top .logo>img{animation:koGlow 2s ease-in-out .3s infinite}
-@keyframes koShine{0%{transform:translateX(-130%)}40%,100%{transform:translateX(130%)}}
+html[data-logo-round=on] header.top .logo>img{animation:koGlow 4.8s ease-in-out infinite}
+@keyframes koShine{0%,62%{transform:translateX(-130%)}88%,100%{transform:translateX(130%)}}
 @keyframes koPulse{0%,100%{box-shadow:0 0 0 3px #f5c518,0 0 0 7px rgba(245,197,24,.16),0 16px 36px -12px rgba(201,151,28,.55)}50%{box-shadow:0 0 0 3px #f5c518,0 0 0 12px rgba(245,197,24,.08),0 16px 44px -8px rgba(201,151,28,.85)}}
-@keyframes koGlow{0%,45%,100%{filter:none}20%{filter:brightness(1.15) drop-shadow(0 0 6px rgba(245,197,24,.8))}}
+@keyframes koGlow{0%,70%,100%{filter:none}82%{filter:brightness(1.15) drop-shadow(0 0 6px rgba(245,197,24,.8))}}
