@@ -80,6 +80,10 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
 .mid{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--mut);font-size:.8rem;padding-top:20px}
 .mid b{color:var(--ink);font-size:1.35rem}
 .vs2{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.evc{background:var(--goldbg);border:1px solid var(--gold,#c9a45c);border-radius:18px;padding:14px 14px 4px;margin:14px 0 18px;box-shadow:0 6px 22px rgba(201,164,92,.12)}
+.evc>.eh{text-align:center;margin-bottom:10px}.evc>.eh b{display:block;font-size:1.05rem;color:var(--gold2,#a8853f)}.evc>.eh small{color:var(--mut);font-size:.78rem}
+.evc h4{margin:14px 0 8px;font-size:.85rem;color:var(--mut);display:flex;align-items:center;gap:8px}.evc h4:after{content:"";flex:1;height:1px;background:var(--line,#e8e1d3)}
+.mevb{display:inline-block;background:var(--gold,#c9a45c);color:#111;font-weight:700;font-size:.7rem;border-radius:99px;padding:2px 10px;margin:0 auto 6px}
 .evn{color:var(--mut);font-size:.75rem;margin:-4px 0 8px;text-align:center}
 .sync{color:var(--mut);font-size:.75rem;text-align:center;margin:14px 0 0}
 .lgs{display:flex;flex-wrap:wrap;gap:8px 14px;margin:10px 0}
@@ -283,11 +287,28 @@ body.lock{overflow:hidden}
       <button class="btn sm red" data-del="${m.id}">احذف</button>
       <span style="color:var(--mut);font-size:.75rem;width:100%">توقّعات: ${tot}</span></div>` : "";
     const mid = m.res && m.res !== "x" && m.ra !== undefined ? `<b>${m.ra}-${m.rb}</b>` : `<span>${hm(m.at)}</span><span>ضد</span>`;
-    return `<div class="m"><div class="hd"><span class="sp">${esc(m.league || D.sports[m.sport] || "")}</span><span>${when(m.at)}</span></div>
-      ${m.ev ? `<div class="evn">${esc(m.ev)}</div>` : ""}
+    const inEv = !!(m.eid && m.seg);
+    return `<div class="m">${inEv && m.mev ? `<div style="text-align:center"><span class="mevb">⭐ النزال الرئيسي</span></div>` : ""}<div class="hd"><span class="sp">${esc(inEv ? (m.league.split(" · ")[1] || m.league) : (m.league || D.sports[m.sport] || ""))}</span><span>${inEv ? hm(m.at) : when(m.at)}</span></div>
+      ${m.ev && !inEv ? `<div class="evn">${esc(m.ev)}</div>` : ""}
       <div class="vs2">${side(m, "a")}<div class="mid">${mid}</div>${side(m, "b")}</div>
       ${body}${st}
       ${m.auto ? `<button class="stb" data-info="${m.id}">📊 الإحصائيات</button>` : ""}${adm}</div>`;
+  }
+
+  // نزالات MMA بتنجمع ببطاقة الحدث متل UFC: اسم البطاقة، المكان، وأقسام (الرئيسية، التمهيدية، المبكرة)، والنزال الرئيسي فوق
+  const SEG = [["main", "البطاقة الرئيسية"], ["prelim", "التمهيدية"], ["early", "التمهيدية المبكرة"]];
+  function list(arr) {
+    const out = [], seen = new Map();
+    for (const m of arr) {
+      if (!(m.eid && m.seg)) { out.push(card(m)); continue; }
+      if (!seen.has(m.eid)) { seen.set(m.eid, []); out.push({ eid: m.eid }); }
+      seen.get(m.eid).push(m);
+    }
+    return out.map((x) => typeof x === "string" ? x : (() => {
+      const L = seen.get(x.eid), f = L[0], segs = SEG.filter(([k]) => L.some((m) => m.seg === k));
+      return `<div class="evc"><div class="eh"><b>${esc(f.evn || f.ev || f.org)}</b><small>${esc(when(Math.min(...L.map((m) => m.at))))}${f.ven ? " · " + esc(f.ven) : ""} · ${L.length} نزال</small></div>` +
+        segs.map(([k, t]) => (segs.length > 1 ? `<h4>${t}</h4>` : "") + L.filter((m) => m.seg === k).sort((a, b) => b.ord - a.ord).map(card).join("")).join("") + `</div>`;
+    })()).join("");
   }
 
   function draw() {
@@ -309,11 +330,11 @@ body.lock{overflow:hidden}
     if (VISITOR) h += `<div class="msg" style="padding:10px;margin-bottom:12px;font-size:.85rem">👁 عم تشوف الصفحة متل الزبون · <a href="/predict">رجوع للوحة المالك</a></div>`;
     else if (D.owner) h += `<div style="text-align:center;margin:-4px 0 10px"><a class="btn sm ghost" href="/predict?visitor" style="text-decoration:none;display:inline-block">👁 شوف الصفحة متل الزبون</a></div>`;
     if (D.owner) h += adminForm();
-    if (run.length) h += `<h2>🔴 عم تنلعب هلق</h2>` + run.map(card).join("");
+    if (run.length) h += `<h2>🔴 عم تنلعب هلق</h2>` + list(run);
     h += `<h2>المباريات الجاية</h2>`;
     if (dks.length > 1) h += `<div class="chips days"><button class="${day ? "" : "on"}" data-day="">كل الأيام</button>${dks.map((k) => `<button class="${day === k ? "on" : ""}" data-day="${k}">${esc(dayName(k))}</button>`).join("")}</div>`;
-    h += shown.length ? shown.map(card).join("") : `<div class="empty">ما في مباريات جاية هلق${D.owner ? " · ضيف وحدة من فوق" : ""}</div>`;
-    if (done.length) h += `<h2>خلصت</h2>` + done.slice(0, 40).map(card).join("");
+    h += shown.length ? list(shown) : `<div class="empty">ما في مباريات جاية هلق${D.owner ? " · ضيف وحدة من فوق" : ""}</div>`;
+    if (done.length) h += `<h2>خلصت</h2>` + list(done.slice(0, 40));
     h += `<h2>🏆 الترتيب</h2><div class="board">${D.board.length ? D.board.map((r, i) => `<div class="${r.me ? "me1" : ""}"><span><span class="rk">${i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>${esc(r.n.split(" ").slice(0, 2).join(" "))}</span><span><b style="color:var(--gold)">${r.p}</b> نقطة</span></div>`).join("") : `<div class="empty" style="display:block">لسا ما في نتايج</div>`}</div>`;
     if (D.sync) h += `<p class="sync">المواعيد والنتايج بتتحدّث لحالها · آخر تحديث ${hm(D.sync)}</p>`;
     app.innerHTML = h;

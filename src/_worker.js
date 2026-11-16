@@ -1158,7 +1158,9 @@ function predFromEspn(lg, ev) {
   const out = [], name = (c) => (c.team && (c.team.displayName || c.team.name)) || (c.athlete && (c.athlete.displayName || c.athlete.fullName)) || "";
   const pic = (c) => c.team ? (c.team.logo || "") : c.athlete ? ((c.athlete.headshot && c.athlete.headshot.href) || `https://a.espncdn.com/i/headshots/mma/players/full/${c.id}.png`) : "";
   if (lg.k === "mma-other" && /\bPFL\b/i.test([ev.name, ev.shortName].join(" "))) return out; // PFL الأساسي بس (من mma/pfl)، بلا PFL MENA وAfrica
-  for (const comp of (ev.competitions || [])) {
+  const CMP = ev.competitions || [], tms = [...new Set(CMP.map((c) => Date.parse(c.date || ev.date)).filter((x) => x > 0))].sort((x, y) => y - x);
+  const segOf = (c) => { const i = tms.indexOf(Date.parse(c.date || ev.date)); return i <= 0 ? "main" : i === 1 ? "prelim" : "early"; }; // متل UFC: آخر توقيت = البطاقة الرئيسية، قبلو التمهيدية، وقبلو التمهيدية المبكرة
+  for (const [ci, comp] of CMP.entries()) {
     const cs = comp.competitors || []; if (cs.length !== 2) continue;
     // صاحب المتجر: ولا فرق نسائية ولا لاعبات نساء أبداً
     if (PRED_FEM.test([ev.name, ev.shortName, comp.type && comp.type.abbreviation, comp.type && comp.type.text, ...cs.map((c) => [name(c), c.athlete && c.athlete.gender, c.team && c.team.name].join(" "))].join(" "))) continue;
@@ -1175,6 +1177,7 @@ function predFromEspn(lg, ev) {
     out.push({
       id: "e" + (comp.id || ev.id), src: lg.k, sport: lg.sp, org: lg.evName ? String(ev.shortName || ev.name || "MMA").replace(/:.*/, "").replace(/\s+\d+$/, "").trim() : lg.n, league: (lg.evName ? String(ev.shortName || ev.name || "MMA").replace(/:.*/, "") : lg.n) + (lg.sp === "ufc" && comp.type && comp.type.abbreviation ? " · " + (PRED_W[comp.type.abbreviation] || comp.type.abbreviation) : ""),
       ev: lg.sp === "ufc" ? String(ev.shortName || ev.name || "") : "",
+      ...(lg.sp === "ufc" ? { evn: String(ev.name || ev.shortName || ""), seg: segOf(comp), ord: ci, mev: ci === CMP.length - 1, ven: [comp.venue && comp.venue.fullName, comp.venue && comp.venue.address && (comp.venue.address.city || comp.venue.address.country)].filter(Boolean).join("، ") } : {}),
       a: nm(A), b: nm(Bc), ai: pic(A), bi: pic(Bc), aid: String((A.team && A.team.id) || A.id || ""), bid: String((Bc.team && Bc.team.id) || Bc.id || ""), eid: String(ev.id || ""), ar: (A.records && A.records[0] && A.records[0].summary) || "", br: (Bc.records && Bc.records[0] && Bc.records[0].summary) || "",
       af: A.athlete && A.athlete.flag ? A.athlete.flag.href : "", bf: Bc.athlete && Bc.athlete.flag ? Bc.athlete.flag.href : "",
       sc: st.completed && lg.sp !== "ufc" ? `${A.score ?? ""}-${Bc.score ?? ""}` : "", at: Date.parse(comp.date || ev.date), draw: lg.sp === "football" || lg.sp === "ufc", pts: 10, res, meth,
@@ -1393,7 +1396,7 @@ async function predSync(env, force) {
   return { ok: true, fetched: got.length, total: keep.length, errs };
 }
 const predMine = (v) => !v ? null : typeof v === "string" ? { k: v } : v;
-const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, org: mt.org || (mt.league || "").split(" · ")[0] || "", league: mt.league || "", ev: mt.ev || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", meth: mt.meth || "", ra: mt.ra, rb: mt.rb, auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: predMine(mine), got: mine && predKeyOk(mt.res) ? predPts(mt, predMine(mine), predR(mt)).p : null });
+const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, org: mt.org || (mt.league || "").split(" · ")[0] || "", league: mt.league || "", ev: mt.ev || "", evn: mt.evn || "", eid: mt.eid || "", seg: mt.seg || "", ord: mt.ord ?? 0, mev: !!mt.mev, ven: mt.ven || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", meth: mt.meth || "", ra: mt.ra, rb: mt.rb, auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: predMine(mine), got: mine && predKeyOk(mt.res) ? predPts(mt, predMine(mine), predR(mt)).p : null });
 async function predApi(request, env, path, m, ctx) {
   if (path === "/api/pred/probe" && m === "GET") {
     const ev = clip(new URL(request.url).searchParams.get("ev") || "401878755", 20), lg = clip(new URL(request.url).searchParams.get("lg") || "soccer/eng.1", 30), out = {};
