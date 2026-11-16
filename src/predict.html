@@ -148,6 +148,21 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--btn);color:var(--btnfg);padding:10px 18px;border-radius:99px;transition:.25s;z-index:60;font-size:.92rem;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 #toast.on{transform:translateX(-50%) translateY(0)}
 body.lock{overflow:hidden}
+.bkf{border:1px solid var(--gold);border-radius:var(--r);background:linear-gradient(135deg,var(--goldbg),var(--card) 60%);padding:0 14px;margin:18px 0}
+.bkf summary{cursor:pointer;font-weight:800;padding:14px 0;color:var(--gold2);list-style:none}
+.bkf summary::-webkit-details-marker{display:none}
+.bkf summary::after{content:"＋";float:left}.bkf[open] summary::after{content:"－"}
+.bkf h5{margin:6px 0 8px;font-size:.9rem;color:var(--gold2)}
+.bkf-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-bottom:12px}
+.bkf-c{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+.bkf-i{flex:0 0 44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#100f14;background:radial-gradient(circle at 30% 25%,#ffe58a,#f5c518 55%,#c9971c);box-shadow:0 0 0 2px var(--gold)}
+.bkf-c p,.bkf-m p{margin:3px 0 0;font-size:.82rem;color:var(--mut);line-height:1.6}
+.bkf-c small{color:var(--gold2)}
+.bkf-l{display:grid;gap:8px;margin-bottom:10px}
+.bkf-m{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.bkf-m b i{color:var(--gold2);font-style:normal;font-size:.8em;margin:0 4px}
+.bkf-m small{display:block;color:var(--gold2);font-size:.75rem;margin-top:2px}
+.bkf-m a{font-size:.8rem;font-weight:700;text-decoration:none}
 </style>
 </head>
 <body>
@@ -330,6 +345,43 @@ body.lock{overflow:hidden}
     })()).join("");
   }
 
+  // صاحب المتجر (16 تشرين التاني 2026): قسم ثابت «BKFC: أشهر المقاتلين وأشهر النزالات». معلومات عامة مكتوبة بإيدنا، بلا صور وبلا سحب من bkfc.com
+  const BK_F = [
+    ["Mike Perry", "Platinum", "نجم BKFC الأول. فاز على Michael Page و Luke Rockhold و Eddie Alvarez و Thiago Alves."],
+    ["Ben Rothwell", "Big Ben", "أخد لقب الوزن التقيل بالضربة القاضية من الجولة الأولى بـ KnuckleMania V."],
+    ["Chris Camozzi", "", "أخد لقب الكروزر بضربة قاضية بالجولة الأولى بـ BKFC 67."],
+    ["Lorenzo Hunt", "The Juggernaut", "حمل لقبين بنفس الوقت: الكروزر والخفيف التقيل."],
+    ["Julian Lane", "", "دخل 2026 وهو بطل الويلتر، ومن أكتر الأسماء يلي لعبت نزالات بـ BKFC."],
+    ["Christine Ferea", "", "فازت بأول لقب فلاي وايت للسيدات بـ KnuckleMania II."],
+    ["Britain Hart", "", "من أشهر مقاتلات BKFC، وفازت على Paige VanZant بـ KnuckleMania الأولى."],
+    ["Paige VanZant", "", "نجمة جاية من UFC، وتوقيعها مع BKFC عمل ضجة كبيرة."],
+    ["Artem Lobov", "The Russian Hammer", "من أوائل نجوم BKFC، وفاز على بطل الملاكمة Paulie Malignaggi."],
+    ["Thiago Alves", "Pitbull", "نجم UFC سابق، وحمل لقب بـ BKFC."],
+    ["Andrei Arlovski", "", "بطل UFC للوزن التقيل سابقاً، وانضم لـ BKFC."],
+    ["Austin Trout", "", "بطل عالم سابق بالملاكمة، ومن أبطال BKFC."],
+    ["Chad Mendes", "", "نجم UFC سابق، لعب بـ BKFC."],
+    ["Hector Lombard", "", "بطل جودو ونجم MMA سابق، وحمل لقب بـ BKFC."],
+  ];
+  const BK_M = [
+    ["Mike Perry", "Thiago Alves", "KnuckleMania IV · 2024", "Perry خلّصها بالجولة الأولى. أكتر حدث انشاف بتاريخ BKFC."],
+    ["Mike Perry", "Michael Page", "BKFC 27 لندن · 2022", "نزال متقارب راح لجولة إضافية، وفاز فيه Perry بالنقاط."],
+    ["Mike Perry", "Luke Rockhold", "BKFC 41 · 2023", "Perry فاز بالجولة التانية على بطل UFC السابق."],
+    ["Mike Perry", "Eddie Alvarez", "BKFC 56 · 2023", "Perry فاز بعد ما وقّف ركن Alvarez النزال."],
+    ["Mike Perry", "Jeremy Stephens", "BKFC 82 · 2025", "حدث رئيسي كبير بين اسمين معروفين من UFC."],
+    ["Ben Rothwell", "Mick Terrill", "KnuckleMania V · 2025", "Rothwell أخد لقب الوزن التقيل بضربة قاضية بالجولة الأولى."],
+    ["Christine Ferea", "Britain Hart", "KnuckleMania II · 2022", "أول نزال على لقب الفلاي وايت للسيدات."],
+    ["Britain Hart", "Paige VanZant", "KnuckleMania · 2021", "أول نزال لـ VanZant بـ BKFC، وفازت فيه Hart بالنقاط."],
+    ["Artem Lobov", "Paulie Malignaggi", "BKFC 6 · 2019", "النزال يلي عرّف العالم على BKFC. فاز فيه Lobov بالنقاط."],
+    ["Julian Lane", "Thiago Alves", "BKFC 12 · 2020", "محسوب من أعنف نزالات BKFC."],
+  ];
+  let bkOpen = false;
+  const ini = (n) => n.split(" ").map((w) => w[0]).slice(0, 2).join("");
+  function bkFame() {
+    return `<details class="bkf" ${bkOpen ? "open" : ""}><summary>🥊 BKFC: أشهر المقاتلين وأشهر النزالات</summary>
+      <h5>أشهر المقاتلين</h5><div class="bkf-g">${BK_F.map(([n, k, t]) => `<div class="bkf-c"><span class="bkf-i">${esc(ini(n))}</span><div><b dir="ltr">${esc(n)}</b>${k ? ` <small dir="ltr">“${esc(k)}”</small>` : ""}<p>${esc(t)}</p></div></div>`).join("")}</div>
+      <h5>أشهر النزالات</h5><div class="bkf-l">${BK_M.map(([a, b, ev, t]) => `<div class="bkf-m"><b dir="ltr">${esc(a)} <i>vs</i> ${esc(b)}</b><small>${esc(ev)}</small><p>${esc(t)}</p><a href="https://www.youtube.com/results?search_query=${encodeURIComponent("BKFC " + a + " vs " + b)}" target="_blank" rel="noopener">▶ شوف النزال</a></div>`).join("")}</div>
+      <p class="sync">معلومات عامة للتسلية · الصفحات الرسمية للمقاتلين على <a href="https://www.bkfc.com/fighters" target="_blank" rel="noopener">bkfc.com</a></p></details>`;
+  }
   function draw() {
     $("#tag").hidden = D.live;
     if (sport && !D.matches.some((m) => m.sport === sport)) sport = "";
@@ -354,9 +406,11 @@ body.lock{overflow:hidden}
     if (dks.length > 1) h += `<div class="chips days"><button class="${day ? "" : "on"}" data-day="">كل الأيام</button>${dks.map((k) => `<button class="${day === k ? "on" : ""}" data-day="${k}">${esc(dayName(k))}</button>`).join("")}</div>`;
     h += shown.length ? list(shown) : `<div class="empty">ما في مباريات جاية هلق${D.owner ? " · ضيف وحدة من فوق" : ""}</div>`;
     if (done.length) h += `<h2>خلصت</h2>` + list(done.slice(0, 40));
+    if (!sport || sport === "boxing") h += bkFame();
     h += `<h2>🏆 الترتيب</h2><div class="board">${D.board.length ? D.board.map((r, i) => `<div class="${r.me ? "me1" : ""}"><span><span class="rk">${i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>${esc(r.n.split(" ").slice(0, 2).join(" "))}</span><span><b style="color:var(--gold)">${r.p}</b> نقطة</span></div>`).join("") : `<div class="empty" style="display:block">لسا ما في نتايج</div>`}</div>`;
     if (D.sync) h += `<p class="sync">المواعيد والنتايج بتتحدّث لحالها · آخر تحديث ${hm(D.sync)}</p>`;
     app.innerHTML = h;
+    const bk = app.querySelector("details.bkf"); if (bk) bk.addEventListener("toggle", () => { bkOpen = bk.open; });
   }
 
   function adminForm() {
