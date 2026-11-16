@@ -252,7 +252,7 @@ body.lock{overflow:hidden}
     if ((v.belts || []).length) h += `<div class="meta">🏆 ${v.belts.map(esc).join(" · ")}</div>`;
     const wmb = (X) => { const t = (+X.ko || 0) + (+X.sub || 0) + (+X.dec || 0); if (!t) return `<div class="wm"></div>`; const p = (n) => Math.round((+n || 0) * 100 / t); return `<div class="wm"><span class="k" style="width:${p(X.ko)}%"></span><span class="s" style="width:${p(X.sub)}%"></span><span class="d" style="width:${p(X.dec)}%"></span></div>`; };
     h += sec("كيف بيربح كل واحد") + `<div class="two"><div><b style="font-size:.8rem">${esc(m.a)}</b>${wmb(A)}</div><div><b style="font-size:.8rem">${esc(m.b)}</b>${wmb(B)}</div></div><div class="wml"><span><i style="background:#c62828"></i>ضربة قاضية</span>${v.box ? "" : `<span><i style="background:#c9a45c"></i>إخضاع</span>`}<span><i style="background:#5f5c56"></i>قرار حكام</span></div>`;
-    h += sec("السجل وطرق الفوز") + row(`${A.w}-${A.l}-${A.d}`, "السجل (فوز-خسارة-تعادل)", `${B.w}-${B.l}-${B.d}`)
+    h += sec("السجل وطرق الفوز") + row(A.w === undefined ? null : `${A.w}-${A.l}-${A.d}`, "السجل (فوز-خسارة-تعادل)", B.w === undefined ? null : `${B.w}-${B.l}-${B.d}`)
       + row(A.ko, "الفوز بالضربة القاضية (KO/TKO)", B.ko) + row(v.box ? "—" : A.sub, "الفوز بالإخضاع (Submission)", v.box ? "—" : B.sub) + row(A.dec, "الفوز بقرار الحكام (Decision)", B.dec);
     if (has(A.kop, B.kop)) h += row(A.kop !== undefined ? A.kop + "%" : null, "نسبة الفوز بالضربة القاضية", B.kop !== undefined ? B.kop + "%" : null);
     if (has(A.kol, B.kol)) h += row(A.kol, v.box ? "انوقف (خسر بالضربة القاضية)" : "خسر بالضربة القاضية", B.kol, true);

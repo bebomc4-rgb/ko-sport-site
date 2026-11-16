@@ -1106,7 +1106,7 @@ const PRED_LEAGUES = [
   { k: "ufc", p: "mma/ufc", sp: "ufc", n: "UFC" },
   { k: "pfl", p: "mma/pfl", sp: "ufc", n: "PFL" },
   { k: "mma-other", p: "mma/other", sp: "ufc", n: "", evName: true }, // منظمات MMA تانية من ESPN (UAE Warriors، Brave، ONE…)؛ PFL مستبعد منها
-  { k: "bkfc", sp: "ufc", n: "BKFC (من ويكيبيديا)", wiki: "Bare Knuckle Fighting Championship", org: "BKFC" },
+  { k: "bkfc", sp: "boxing", n: "BKFC ملاكمة بلا قفازات (من ويكيبيديا)", wiki: "Bare Knuckle Fighting Championship", org: "BKFC" },
   { k: "one", sp: "ufc", n: "ONE Championship (من ويكيبيديا)", wiki: "ONE Championship", org: "ONE" },
   { k: "brave", sp: "ufc", n: "Brave CF (من ويكيبيديا)", wiki: "Brave Combat Federation", org: "Brave CF" },
   { k: "boxing", sp: "boxing", n: "ملاكمة (Box.live)", box: true },
@@ -1245,13 +1245,14 @@ function wkEvents(html, lg) {
       const nm = (c) => wkTxt(c).replace(/\((c|ic)\)/gi, "").replace(/\s+/g, " ").trim();
       const flag = (c) => ((c.match(/<img[^>]+src="([^"]+)"/) || [])[1] || "").replace(/^\/\//, "https://");
       const a = nm(tds[1]), b = nm(tds[3]), M = wkTxt(tds[4]);
+      const wt = (c) => { const h = (c.match(/<a href="\/wiki\/([^"#]+)"[^>]*>(?!<img)/) || [])[1]; return h && !/^(File|Special):/.test(h) ? decodeURIComponent(h).replace(/_/g, " ") : ""; };
       let res = "", meth = "";
-      if (/^def/.test(rel)) { res = "a"; meth = /submission/i.test(M) ? "sub" : /\bko\b|tko|knockout|stoppage|retire|rtd/i.test(M) ? "ko" : /decision/i.test(M) ? "dec" : ""; if (/no contest/i.test(M)) res = "x"; }
+      if (/^def/.test(rel)) { res = "a"; meth = /submission/i.test(M) && lg.sp !== "boxing" ? "sub" : /retire|rtd|corner/i.test(M) && lg.sp === "boxing" ? "rtd" : /\bko\b|tko|knockout|stoppage|retire|rtd/i.test(M) ? "ko" : /decision/i.test(M) ? "dec" : ""; if (/no contest/i.test(M)) res = "x"; }
       else if (/draw|drew/.test(rel) || /^draw/i.test(M)) res = "d";
       else if (/no contest/i.test(M)) res = "x";
       const wb = w.replace(/\s*\d+(\.\d+)?\s*kg/i, "").trim(), disc = Object.keys(WK_DISC).find((d) => wb.endsWith(d)), base = disc ? wb.slice(0, -disc.length).trim() : wb;
       const wl = [PRED_W[base.replace(/\bheavyweight\b/, "Heavyweight")] || base, disc && WK_DISC[disc]].filter(Boolean).join(" · ");
-      rows.push({ id: "w" + wkHash(lg.k + "|" + day + "|" + [a, b].map((x) => x.toLowerCase()).sort().join("|")), src: lg.k, sport: "ufc", org: lg.org, league: lg.org + (wl ? " · " + wl : ""), ev: name, evn: name, eid, seg, ord: ord++, ven,
+      rows.push({ id: "w" + wkHash(lg.k + "|" + day + "|" + [a, b].map((x) => x.toLowerCase()).sort().join("|")), src: lg.k, sport: lg.sp, org: lg.org, aw: wt(tds[1]), bw: wt(tds[3]), league: lg.org + (wl ? " · " + wl : ""), ev: name, evn: name, eid, seg, ord: ord++, ven,
         a, b, ai: "", bi: "", af: flag(tds[1]), bf: flag(tds[3]), ar: "", br: "", sc: "", at, draw: true, pts: 10, res, meth, dOnly: true, ns: true });
     }
     // ويكيبيديا بتحط النزال الرئيسي أول: منقلب الترتيب حتى يصير «ord» الأكبر = الرئيسي (متل ESPN)
@@ -1370,7 +1371,7 @@ async function predInfo(env, mt) {
     if (inj[0].length || inj[1].length) out.inj = inj;
     return out;
   }
-  if (mt.sport === "ufc" && mt.aid && mt.bid) {
+  if ((mt.sport === "ufc" && mt.aid && mt.bid) || (mt.dOnly && (mt.aid || mt.bid))) {
     const one = async (id) => {
       const [rec, ath, stx] = await Promise.all([
         predJ(`https://sports.core.api.espn.com/v2/sports/mma/athletes/${encodeURIComponent(id)}/records`).catch(() => null),
@@ -1395,8 +1396,8 @@ async function predInfo(env, mt) {
       if (nf) { const ssl = sum(stk, "SSL"), ssa = sum(stk, "SSA"), tdl = sum(cl, "TDL"), tda = sum(cl, "TDA"); o.fights = nf; o.ssAcc = ssa ? Math.round(ssl * 100 / ssa) : null; o.ssPer = Math.round(ssl / nf * 10) / 10; o.kd = sum(stk, "KD"); o.tdAcc = tda ? Math.round(tdl * 100 / tda) : null; o.td = tdl; o.subAtt = sum(gr, "SM"); }
       return o;
     };
-    const [A, Bc] = await Promise.all([one(mt.aid), one(mt.bid)]);
-    return { kind: "fight", a: A, b: Bc };
+    const [A, Bc] = await Promise.all([mt.aid ? one(mt.aid) : {}, mt.bid ? one(mt.bid) : {}]);
+    return { kind: "fight", a: A, b: Bc, box: mt.sport === "boxing" };
   }
   if (mt.sport === "boxing" && /^bx-/.test(mt.id)) {
     const r = await fetch(`https://box.live/fights/${encodeURIComponent(mt.id.slice(3))}/`, { headers: BX_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtlByStatus: { "200-299": 3600, "300-599": 0 } } });
@@ -1429,16 +1430,31 @@ async function predSync(env, force) {
       } catch (e) { errs.push(lg.k + ":" + (e && e.message || e && e.name || "err")); }
     }
   }));
+  // نزالات ويكيبيديا (BKFC، ONE، Brave): منلاقي المقاتل بـ ESPN من اسمو (صورة، جنس، إحصائيات)، وإذا ما لقيناه منجيب صورتو من صفحتو بويكيبيديا
+  { const W = got.filter((g) => g.dOnly), NM = (await env.STORE.get("pred:nm", "json").catch(() => null)) || {}, nk = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    const need = [...new Set(W.flatMap((g) => [g.a, g.b]).filter((n) => n && !(NM[nk(n)] && NM[nk(n)].t > now - 7 * 864e5)))].slice(0, 120);
+    for (let i = 0; i < need.length; i += 8) await Promise.all(need.slice(i, i + 8).map(async (n) => {
+      try { const r = await fetch(`https://site.api.espn.com/apis/common/v3/search?query=${encodeURIComponent(n)}&type=player&limit=5`, { signal: AbortSignal.timeout(6000), cf: { cacheTtlByStatus: { "200-299": 86400, "300-599": 0 } } }); if (!r.ok) return;
+        const it = (((await r.json()) || {}).items || []).find((x) => x.sport === "mma" && nk(x.displayName) === nk(n)); NM[nk(n)] = { id: it ? String(it.id) : "", t: now }; } catch {} }));
+    const ti = [...new Set(W.flatMap((g) => [g.aw, g.bw]).filter(Boolean))], WI = (await env.STORE.get("pred:wimg", "json").catch(() => null)) || {}, tn = ti.filter((t) => !(t in WI)).slice(0, 150);
+    for (let i = 0; i < tn.length; i += 50) { try { const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&piprop=thumbnail&pithumbsize=240&redirects=1&titles=${encodeURIComponent(tn.slice(i, i + 50).join("|"))}`, { signal: AbortSignal.timeout(10000), headers: { "user-agent": "KO-SPORT-predictions/1.0 (https://ko-sport.online)" } }); if (!r.ok) continue;
+        const q = ((await r.json()) || {}).query || {}, map = {}; for (const x of (q.normalized || []).concat(q.redirects || [])) map[x.to] = (map[x.to] || []).concat(x.from);
+        for (const pg of Object.values(q.pages || {})) { const u = (pg.thumbnail && pg.thumbnail.source) || ""; for (const t of [pg.title, ...(map[pg.title] || [])]) WI[t] = u; }
+        for (const t of tn.slice(i, i + 50)) if (!(t in WI)) WI[t] = ""; } catch {} }
+    if (need.length) await env.STORE.put("pred:nm", JSON.stringify(NM)).catch(() => {});
+    if (tn.length) await env.STORE.put("pred:wimg", JSON.stringify(WI)).catch(() => {});
+    for (const g of W) { const x = NM[nk(g.a)], y = NM[nk(g.b)]; g.aid = (x && x.id) || ""; g.bid = (y && y.id) || ""; g.wai = WI[g.aw] || ""; g.wbi = WI[g.bw] || ""; g.ns = !(g.aid || g.bid); } }
   // MMA: ESPN ما بيكتب «Women's» بنوع النزال دايماً، فمنسأل عن جنس كل مقاتل (ومنحفظو للأبد) ومنجيب صورتو الحقيقية.
   // ما منعرض نزال إلا إذا الطرفين معروفين رجال.
   const ATH = (await env.STORE.get("pred:ath", "json").catch(() => null)) || {}; let athErr = "";
-  { const need = [...new Set(got.filter((g) => g.sport === "ufc").flatMap((g) => [g.aid, g.bid]).filter((id) => id && !ATH[id]))].slice(0, 300);
+  { const need = [...new Set(got.filter((g) => g.sport === "ufc" || g.dOnly).flatMap((g) => [g.aid, g.bid]).filter((id) => id && !ATH[id]))].slice(0, 300);
     for (let i = 0; i < need.length; i += 10) await Promise.all(need.slice(i, i + 10).map(async (id) => {
       try { let r; for (let k = 0; k < 2; k++) { r = await fetch(`https://site.api.espn.com/apis/common/v3/sports/mma/athletes/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(7000), headers: { accept: "application/json" }, cf: { cacheTtlByStatus: { "200-299": 86400, "300-599": 0 } } }); if (r.ok) break; athErr = "http " + r.status; await new Promise((z) => setTimeout(z, 800)); } if (!r.ok) return; const j = ((await r.json()) || {}).athlete || {};
         const st = (j.images || []).find((x) => x && x.href) ; ATH[id] = { g: String(j.gender || "").toUpperCase() === "FEMALE" ? "F" : String(j.gender || "").toUpperCase() === "MALE" ? "M" : "?", h: (j.headshot && j.headshot.href) || (st && st.href) || "" };
       } catch (e) { athErr = String(e && e.name || e); } }));
     if (need.length) await env.STORE.put("pred:ath", JSON.stringify(ATH)).catch(() => {}); if (athErr) errs.push("ath:" + athErr); }
-  for (const g of got) if (g.sport === "ufc" && g.aid) { const x = ATH[g.aid], y = ATH[g.bid]; if (x) g.ai = x.h; if (y) g.bi = y.h; g.men = !!(x && y && x.g === "M" && y.g === "M"); }
+  for (const g of got) if (g.dOnly) { const x = ATH[g.aid], y = ATH[g.bid]; g.ai = (x && x.h) || g.wai || ""; g.bi = (y && y.h) || g.wbi || ""; }
+    else if (g.sport === "ufc" && g.aid) { const x = ATH[g.aid], y = ATH[g.bid]; if (x) g.ai = x.h; if (y) g.bi = y.h; g.men = !!(x && y && x.g === "M" && y.g === "M"); }
   for (const lg of PRED_LEAGUES.filter((x) => x.wiki && on.has(x.k))) for (const mt of await wkFetch(lg, errs)) if (mt.at >= from) got.push(mt);
   if (on.has("boxing")) for (const mt of await bxFetch(errs)) if (mt.at >= from && mt.at <= now + 35 * 864e5) got.push(mt);
   const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
@@ -1457,7 +1473,7 @@ async function predSync(env, force) {
     if (!predSameR(oldR, newR)) boardDirty = (await predSettle(env, B, cur, oldR, newR)) || boardDirty;
   }
   // منشيل يلي خلص من أكتر من 3 أيام (النقاط بتضل محفوظة بالترتيب)
-  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.src && predTba(x))).filter((x) => !(x.sport === "ufc" && x.src && x.aid && (ATH[x.aid] ? ATH[x.aid].g !== "M" : true) || x.sport === "ufc" && x.src && x.bid && (ATH[x.bid] ? ATH[x.bid].g !== "M" : true))).filter((x) => !(x.src === "mma-other" && /\bPFL\b/i.test((x.org || "") + " " + (x.league || "") + " " + (x.ev || "")))).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
+  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.src && predTba(x))).filter((x) => x.dOnly ? !((x.aid && ATH[x.aid] && ATH[x.aid].g === "F") || (x.bid && ATH[x.bid] && ATH[x.bid].g === "F")) : !(x.sport === "ufc" && x.src && x.aid && (ATH[x.aid] ? ATH[x.aid].g !== "M" : true) || x.sport === "ufc" && x.src && x.bid && (ATH[x.bid] ? ATH[x.bid].g !== "M" : true))).filter((x) => !(x.src === "mma-other" && /\bPFL\b/i.test((x.org || "") + " " + (x.league || "") + " " + (x.ev || "")))).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
   await env.STORE.put("pred:matches", JSON.stringify(keep));
   if (boardDirty) await env.STORE.put("pred:board", JSON.stringify(B));
   await env.STORE.put("pred:errs", JSON.stringify(errs.slice(0, 20))).catch(() => {});
@@ -1493,7 +1509,7 @@ async function predApi(request, env, path, m, ctx) {
     let mt = (await predMatches(env)).find((x) => x.id === id);
     if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
     // مباراة انحفظت قبل ما نصير نخزّن أرقام الفرق/المقاتلين: منحدّث هلق ومنرجع نقراها
-    if (mt.src && mt.src !== "boxing" && !mt.aid) { await predSync(env, true).catch(() => {}); mt = (await predMatches(env)).find((x) => x.id === id) || mt; }
+    if (mt.src && mt.src !== "boxing" && !mt.dOnly && !mt.aid) { await predSync(env, true).catch(() => {}); mt = (await predMatches(env)).find((x) => x.id === id) || mt; }
     const ck = "pred:info3:" + id, hit = await env.STORE.get(ck, "json").catch(() => null);
     if (hit && hit.t > Date.now() - 6 * 3600e3) return json(hit.v);
     let v; try { v = await predInfo(env, mt); } catch (e) { v = { kind: "none" }; await env.STORE.put("pred:infoerr", JSON.stringify({ t: Date.now(), sport: mt.sport, e: String(e && e.message || e).slice(0, 120) })).catch(() => {}); }
