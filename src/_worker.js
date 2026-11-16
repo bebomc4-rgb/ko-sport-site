@@ -1276,8 +1276,8 @@ async function predInfo(env, mt) {
     const one = async (id) => {
       const [rec, ath, stx] = await Promise.all([
         predJ(`https://sports.core.api.espn.com/v2/sports/mma/athletes/${encodeURIComponent(id)}/records`).catch(() => null),
-        predJ(`https://site.web.api.espn.com/apis/common/v3/sports/mma/athletes/${encodeURIComponent(id)}`).catch(() => null),
-        predJ(`https://site.web.api.espn.com/apis/common/v3/sports/mma/athletes/${encodeURIComponent(id)}/stats`).catch(() => null)]);
+        predJ(`https://site.api.espn.com/apis/common/v3/sports/mma/athletes/${encodeURIComponent(id)}`).catch(() => null),
+        predJ(`https://site.api.espn.com/apis/common/v3/sports/mma/athletes/${encodeURIComponent(id)}/stats`).catch(() => null)]);
       const S = {}; for (const x of ((rec && rec.items && rec.items[0] && rec.items[0].stats) || [])) S[x.name] = +x.value || 0;
       const A = (ath && ath.athlete) || {};
       const o = { w: S.wins || 0, l: S.losses || 0, d: S.draws || 0, ko: S.tkos || 0, sub: S.submissions || 0, dec: Math.max(0, (S.wins || 0) - (S.tkos || 0) - (S.submissions || 0)), kol: S.tkoLosses || 0, subl: S.submissionLosses || 0,

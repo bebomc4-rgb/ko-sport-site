@@ -159,3 +159,4 @@
 - 2026-11-16 (ko-sport-site v261): التوقعات: صور الملاكمين عبر `/pimg`، لوغو المتجر بالنافذة، الأرقام الأحسن أخضر والأسوأ أحمر، الصفحة بتتذكّر القسم المختار، وزدنا PFL وPFL MENA/Africa (قسم MMA).
 - 2026-11-16 (ko-sport-site v262): التوقعات: بعد كل رفع للموقع، أول زيارة للمتجر بتعمل مزامنة فوراً (`pred:build`)، بلا انتظار 20 دقيقة.
 - 2026-11-16 (ko-sport-site v263): الإحصائيات: ESPN summary كان يرجّع 403 من السيرفر؛ صار يجرّب `site.api` و`site.web.api` مع region/lang. فحص: `/api/pred/probe`.
+- 2026-11-16 (ko-sport-site v264): `site.web.api.espn.com` بيرفض سيرفرات Cloudflare (403)؛ معلومات مقاتلي MMA صارت من `site.api.espn.com/apis/common/v3`.
