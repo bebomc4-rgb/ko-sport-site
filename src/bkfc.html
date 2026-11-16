@@ -32,6 +32,16 @@ h1{font-size:1.2rem;margin:4px 0 2px;color:var(--gold2)}
 input,button{font:inherit;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--ink)}
 button{background:var(--gold);color:#111;font-weight:700;border:0;cursor:pointer}
 a{color:var(--gold2)}
+.f{cursor:pointer}
+.ov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);backdrop-filter:blur(7px)}
+.sh{width:min(520px,100%);max-height:88vh;overflow:auto;background:var(--card);border:1px solid var(--gold);border-radius:20px;padding:18px;position:relative}
+.sh .x{position:absolute;top:10px;left:10px;width:34px;height:34px;border-radius:50%;padding:0;background:var(--card2);color:var(--ink);border:1px solid var(--line)}
+.sh .hd{display:flex;gap:14px;align-items:center;margin-bottom:12px}.sh .hd img,.sh .hd .av{width:110px;height:146px;object-fit:cover;object-position:top;border-radius:14px;border:1px solid var(--gold)}
+.sh .hd .av{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.6rem;color:var(--gold2);background:var(--card2)}
+.sh .hd b{font-size:1.15rem;display:block}.sh .hd i{color:var(--gold2);font-style:normal;font-size:.85rem}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.kv div{background:var(--card2);border-radius:10px;padding:8px}.kv small{display:block;color:var(--mut);font-size:.7rem}
+.fl{margin-top:10px}.fl div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:7px 0;font-size:.82rem}.fl span{color:var(--mut);font-size:.75rem}
+.wl{font-weight:800;min-width:22px;text-align:center}.wl.W{color:#3fbf73}.wl.L{color:var(--red)}
 </style>
 </head>
 <body>
@@ -51,11 +61,24 @@ a{color:var(--gold2)}
     $("#go").onclick = () => { const v = $("#pw").value.trim(); if (v) { ls.set("ko_admin", v); load(); } };
   }
   const fighter = (x) => { const f = x.f || {};
-    return `<div class="f">${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;av&quot;>${ini(x.n)}</div>'">` : `<div class="av">${ini(x.n)}</div>`}
+    return `<div class="f" data-f="${esc(x.s)}">${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;av&quot;>${ini(x.n)}</div>'">` : `<div class="av">${ini(x.n)}</div>`}
       <b>${esc(x.n)}</b>${f.w !== undefined && f.w !== "" && f.l !== "" ? `<span class="rec"><span class="w">${esc(f.w)}</span>-<span class="l">${esc(f.l)}</span>-${esc(f.d)}</span>` : ""}
       <small>${[f.nat, f.age ? f.age + " سنة" : "", f.ht].filter(Boolean).map(esc).join(" · ")}</small>
       <a href="https://www.bkfc.com/fighters/${esc(x.s)}" target="_blank" rel="noopener" style="font-size:.72rem">ملفو ↗</a></div>`; };
-  function draw(D) {
+  let D0 = null;
+  function profile(slug) {
+    let x = null; for (const e of D0.events) for (const b of e.bouts) for (const y of [b.a, b.b]) if (y.s === slug) x = y; if (!x) return;
+    const f = x.f || {}, kv = [["السجل", f.w !== "" && f.w !== undefined ? `${f.w}-${f.l}-${f.d}` : ""], ["الجنسية", f.nat], ["العمر", f.age ? f.age + " سنة" : ""], ["الطول", f.ht], ["مدى الذراع", f.reach], ["الحالة", f.status], ["الفئة", f.div]].filter((k) => k[1]);
+    const o = document.createElement("div"); o.className = "ov";
+    o.innerHTML = `<div class="sh"><button class="x">✕</button><div class="hd">${x.img ? `<img src="${esc(x.img)}" referrerpolicy="no-referrer" alt="">` : `<div class="av">${ini(x.n)}</div>`}<div><b>${esc(x.n)}</b>${f.nick ? `<i>«${esc(f.nick)}»</i>` : ""}</div></div>
+      <div class="kv">${kv.map((k) => `<div><small>${k[0]}</small>${esc(k[1])}</div>`).join("")}</div>
+      ${(f.fights || []).length ? `<b style="color:var(--gold2);font-size:.85rem">آخر النزالات</b><div class="fl">${f.fights.map((z) => { const r = String(z.r || "").charAt(0).toUpperCase(); return `<div><span class="wl ${r}">${r === "W" ? "ف" : r === "L" ? "خ" : r === "D" ? "ت" : "•"}</span><b style="flex:1">${esc(z.vs)}</b><span>${esc(z.inf || "")}${z.inf ? " · " : ""}${esc(z.dt)}</span></div>`; }).join("")}</div>` : ""}
+      <p style="text-align:center;margin:12px 0 0"><a href="https://www.bkfc.com/fighters/${esc(slug)}" target="_blank" rel="noopener">الملف الكامل على bkfc.com ↗</a></p></div>`;
+    o.addEventListener("click", (e) => { if (e.target === o || e.target.closest(".x")) o.remove(); });
+    document.body.appendChild(o);
+  }
+  document.addEventListener("click", (e) => { const t = e.target.closest("[data-f]"); if (t && D0 && !e.target.closest("a")) profile(t.dataset.f); });
+  function draw(D) { D0 = D;
     if (!D.events.length) { app.innerHTML = `<div class="msg">ما في أحداث جاية</div>`; return; }
     app.innerHTML = D.events.map((e) => { const segs = [...new Set(e.bouts.map((b) => b.seg))];
       return `<div class="ev"><div class="eh"><b>${esc(e.name)}</b><small>${esc(e.date)} · ${e.bouts.length} نزال</small></div>` +
