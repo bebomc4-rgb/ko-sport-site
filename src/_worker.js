@@ -1796,7 +1796,7 @@ async function acctApi(request, env, path, m) {
     const why = {}, a = await acctFromReq(request, env, why);
     // بس الحساب الموقوف أو كلمة سر تغيّرت بيطلّعو الزبون. غير هيك (ضغط أو حساب لسا عم يوصل) بيضل داخل
     if (!a) return json({ error: "سجّل دخول من جديد", reason: why.reason || "", logout: why.reason === "blocked" || why.reason === "password" || why.reason === "token" }, 401);
-    if (m === "GET") { await acctTouch(env, request, a); return json({ ok: true, account: acctOut(a), token: await acctToken(env, a) }); } // تجديد الدخول مع كل زيارة: بيضل داخل للأبد
+    if (m === "GET") { await acctTouch(env, request, a); const _pc = await predCfg(env); const _pt = !!_pc.live || [...PRED_TESTERS, ...(Array.isArray(_pc.testers) ? _pc.testers : [])].includes(a.phone); return json({ ok: true, account: { ...acctOut(a), predOpen: _pt }, token: await acctToken(env, a) }); } // predOpen: يشوف قسم التوقعات (live أو تستر)
     if (m === "PUT") {
       const b = await request.json().catch(() => ({}));
       if (b.governorate) { if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة" }, 400); a.governorate = b.governorate; }
