@@ -1547,6 +1547,8 @@ async function predApi(request, env, path, m, ctx) {
   if (path === "/api/pred/redeem" && m === "POST") {
     if (!acct) return json({ error: "لازم تفوت على حسابك بالمتجر أول" }, 401);
     if (await throttle(request, "predrd", 10, 3600)) return json({ error: "محاولات كتير، جرّب بعد شوي" }, 429);
+    // قفل لكل حساب (صاحب المتجر 16 تشرين التاني 2026): يمنع إنو حدا يبعت طلبين بنفس اللحظة وياخد كودين بنفس النقاط (KV مو transactional)
+    if (await throttle(request, "predlock:" + acct.phone, 1, 12)) return json({ error: "استنى شوي وجرّب" }, 429);
     const b = await request.json().catch(() => ({})), tier = PRED_TIERS.find((t) => t[0] === +b.pts);
     if (!tier) return json({ error: "الجايزة مو موجودة" }, 400);
     const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {}, r = B[acct.phone];
