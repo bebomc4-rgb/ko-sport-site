@@ -375,8 +375,6 @@ body.lock{overflow:hidden}
     if (used.length > 1) h += `<div class="chips"><button class="${sport ? "" : "on"}" data-sp="">الكل</button>${used.map((s) => `<button class="${sport === s ? "on" : ""}" data-sp="${s}">${esc(D.sports[s])}</button>`).join("")}</div>`;
     if (orgs.length > 1) { const cnt = (o) => D.matches.filter((m) => m.sport === sport && m.org === o && !m.res).length;
       h += `<div class="chips orgs"><button class="${org ? "" : "on"}" data-org="">${sport === "football" ? "كل البطولات" : sport === "boxing" ? "كل البلدان" : "كل المنظمات"}</button>${orgs.sort((a, b) => cnt(b) - cnt(a)).map((o) => `<button class="${org === o ? "on" : ""}" data-org="${esc(o)}">${esc(o)} <small style="opacity:.6">${cnt(o)}</small></button>`).join("")}</div>`; }
-    if (VISITOR) h += `<div class="msg" style="padding:10px;margin-bottom:12px;font-size:.85rem">👁 عم تشوف الصفحة متل الزبون · <a href="/predict">رجوع للوحة المالك</a></div>`;
-    else if (D.owner) h += `<div style="text-align:center;margin:-4px 0 10px"><a class="btn sm ghost" href="/predict?visitor" style="text-decoration:none;display:inline-block">👁 شوف الصفحة متل الزبون</a></div>`;
     if (D.owner) h += adminForm();
     if (run.length) h += `<h2>🔴 عم تنلعب هلق</h2>` + list(run);
     h += `<h2>المباريات الجاية</h2>`;
