@@ -619,7 +619,7 @@ async function ordersPost(request, env, ctx) {
   if (ck && custs[ck] && custs[ck].blocked) return json({ error: "ما فينا نستقبل طلبات من هالحساب حالياً، تواصل معنا على واتساب" }, 403);
   const used = (await env.STORE.get("disc_used", "json").catch(() => null)) || {};
   const full = items.map((i) => ({ ...i, category: byId.get(i.id).category, also: byId.get(i.id).also || [] }));
-  const pd = pickDiscount(settings.discounts, full, subtotal, body.coupon, used);
+  const pd = pickDiscount([...(settings.discounts || []), ...(await predCpList(env, body.coupon, customer.phone))], full, subtotal, body.coupon, used);
   if (pd.wanted && !pd.coupon) return json({ error: "كود الخصم مو صالح أو انتهى" }, 400);
   const disc = pd.best;
   const free = (settings.delivery.freeOver > 0 && subtotal >= settings.delivery.freeOver) || (disc && disc.freeShip);
@@ -788,7 +788,7 @@ async function couponCheck(request, env) {
   const items = b.items.slice(0, 50).map((i) => { const p = byId.get(i.id); return p && { id: p.id, price: p.price, qty: Math.max(1, Math.min(99, parseInt(i.qty) || 1)), category: p.category, also: p.also || [] }; }).filter(Boolean);
   const subtotal = items.reduce((a, i) => a + i.price * i.qty, 0);
   const used = (await env.STORE.get("disc_used", "json").catch(() => null)) || {};
-  const pd = pickDiscount(settings.discounts, items, subtotal, b.code, used);
+  const pd = pickDiscount([...(settings.discounts || []), ...(await predCpList(env, b.code))], items, subtotal, b.code, used);
   if (!pd.coupon) {
     const d = (settings.discounts || []).find((x) => x.type === "code" && String(x.code || "").toUpperCase() === String(b.code || "").trim().toUpperCase() && x.on !== false);
     return json({ error: d && +d.min > subtotal ? `الكود بيشتغل للطلبات فوق ${settings.currency}${d.min}` : "كود الخصم مو صالح أو انتهى" }, 404);
@@ -1157,6 +1157,16 @@ function predPts(mt, v, R) {
   return { p, w: 1 };
 }
 // تطبيق نتيجة على النقاط: بنطرح أثر النتيجة القديمة (إذا في) وبنزيد أثر الجديدة، فتصحيح النتيجة ما بيعدّ النقاط مرتين
+// ---------- جوايز التوقعات (صاحب المتجر، 16 تشرين التاني 2026: ربحو بالقطعة 40% وتحت) ----------
+// الجايزة خصم بس: 300 نقطة = 5%، 600 = 7%، 1000 = 10%. النقاط المصروفة بتنحفظ بـ r.s (الرصيد = r.p - r.s) فالترتيب ما بينزل.
+// الكود (KO + 6 أحرف) لطلب واحد، لصاحب الحساب بس، صالح 14 يوم، وما بينجمع مع خصم تاني (pickDiscount بياخد الأحسن). محفوظ بـ pred:cp:<CODE>.
+const PRED_TIERS = [[300, 5], [600, 7], [1000, 10]], PRED_CP_DAYS = 14;
+async function predCpList(env, code, phone) {
+  const c = String(code || "").trim().toUpperCase(); if (!/^KO[A-Z0-9]{6}$/.test(c)) return [];
+  const x = await env.STORE.get("pred:cp:" + c, "json").catch(() => null);
+  if (!x || Date.now() > x.exp || (phone && x.phone !== phone)) return [];
+  return [{ id: "pc-" + c, on: true, type: "code", code: c, kind: "percent", value: x.pct, scope: "all", limit: 1, name: "خصم التوقعات " + x.pct + "%" }];
+}
 async function predSettle(env, B, mt, oldR, newR) {
   oldR = typeof oldR === "string" ? { res: oldR } : oldR || { res: "" }; newR = typeof newR === "string" ? { res: newR } : newR || { res: "" };
   if (predSameR({ ra: undefined, rb: undefined, meth: "", ...oldR }, { ra: undefined, rb: undefined, meth: "", ...newR })) return false;
@@ -1513,7 +1523,7 @@ async function predApi(request, env, path, m, ctx) {
     const board = Object.entries(B || {}).filter(([, r]) => r.t > 0).map(([ph, r]) => ({ n: r.n || "زبون", p: r.p, w: r.w, t: r.t, me: !!(acct && acct.phone === ph) })).sort((x, y) => y.p - x.p || y.w - x.w).slice(0, 30);
     const mine = (U && U.k) || {}, hideO = new Set(cfg.hideOrgs || []);
     const boxAll = !!cfg.impAll || !L.some((mt) => mt.sport === "boxing" && mt.imp), impOk = (mt) => !!cfg.impAll || !!mine[mt.id] || predImp(mt, boxAll); // بالملاكمة: إذا المصدر ما عطى ولا إشارة لقب، منعرض الكل أحسن ما يفضى القسم
-    return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (منظمات تانية)", sp: x.sp, on: on.has(x.k) })); })(),
+    return json({ owner, live, now: Date.now(), sync: last, tiers: PRED_TIERS, cpDays: PRED_CP_DAYS, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (منظمات تانية)", sp: x.sp, on: on.has(x.k) })); })(),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
       orgsAll: owner ? [...new Map(L.filter((mt) => !predFem(mt)).map((mt) => { const o = predOut(mt); return [o.sport + "|" + o.org, { k: o.sport + "|" + o.org, sp: o.sport, n: o.org, hid: hideO.has(o.sport + "|" + o.org) }]; })).values()] : undefined,
       matches: L.filter((mt) => !predFem(mt) && !(mt.src && predTba(mt))).filter(impOk).filter((mt) => !hideO.has(mt.sport + "|" + (mt.org || (mt.league || "").split(" · ")[0] || ""))).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
@@ -1530,6 +1540,22 @@ async function predApi(request, env, path, m, ctx) {
     if (v.kind === "none" && !mt.aid && mt.src !== "boxing") await env.STORE.put("pred:infoerr", JSON.stringify({ t: Date.now(), sport: mt.sport, e: "no ids" })).catch(() => {});
     if (v.kind !== "none") await env.STORE.put(ck, JSON.stringify({ t: Date.now(), v }), { expirationTtl: 7 * 86400 }).catch(() => {});
     return json(v);
+  }
+  if (path === "/api/pred/redeem" && m === "POST") {
+    if (!acct) return json({ error: "لازم تفوت على حسابك بالمتجر أول" }, 401);
+    if (await throttle(request, "predrd", 10, 3600)) return json({ error: "محاولات كتير، جرّب بعد شوي" }, 429);
+    const b = await request.json().catch(() => ({})), tier = PRED_TIERS.find((t) => t[0] === +b.pts);
+    if (!tier) return json({ error: "الجايزة مو موجودة" }, 400);
+    const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {}, r = B[acct.phone];
+    const now = Date.now(), bal = r ? (r.p || 0) - (r.s || 0) : 0;
+    if (!r || bal < tier[0]) return json({ error: "نقاطك لسا ما بتكفي لهالخصم" }, 400);
+    if ((r.cp || []).some((x) => x.exp > now && !x.u && now - (x.at || 0) < 60e3)) return json({ error: "استنى شوي وجرّب" }, 429);
+    const AB = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", rnd = crypto.getRandomValues(new Uint8Array(6)), code = "KO" + [...rnd].map((x) => AB[x % AB.length]).join("");
+    const exp = now + PRED_CP_DAYS * 864e5;
+    await env.STORE.put("pred:cp:" + code, JSON.stringify({ pct: tier[1], phone: acct.phone, exp, at: now }), { expirationTtl: (PRED_CP_DAYS + 3) * 86400 });
+    r.s = (r.s || 0) + tier[0]; r.cp = [{ c: code, pct: tier[1], exp, at: now }, ...(r.cp || [])].slice(0, 5);
+    await env.STORE.put("pred:board", JSON.stringify(B));
+    return json({ ok: true, code, pct: tier[1], exp, me: { name: acct.name, ...r } });
   }
   if (path === "/api/pred/pick" && m === "POST") {
     if (!acct) return json({ error: "لازم تفوت على حسابك بالمتجر أول" }, 401);

@@ -148,6 +148,11 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--btn);color:var(--btnfg);padding:10px 18px;border-radius:99px;transition:.25s;z-index:60;font-size:.92rem;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 #toast.on{transform:translateX(-50%) translateY(0)}
 body.lock{overflow:hidden}
+.pz{border:1px solid var(--line);border-radius:var(--r);background:var(--card);padding:12px 14px;margin:10px 0 14px}
+.pz-h{display:flex;justify-content:space-between;align-items:center;font-size:.9rem}.pz-h span b{color:var(--gold2)}
+.pz-bar{height:10px;border-radius:99px;background:var(--card2);overflow:hidden;margin:10px 0 6px}.pz-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:99px;transition:width .6s}
+.pz-t{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.pz-t .btn{flex:1;min-width:90px}.pz-t .btn small{display:block;font-weight:500;opacity:.8}.pz-t .btn:disabled{opacity:.55;cursor:default}
+.pz-c{border:1px dashed var(--gold);border-radius:10px;padding:8px 10px;margin:6px 0;font-size:.9rem}.pz-c b{color:var(--gold2);letter-spacing:1px}.pz-c small{display:block;color:var(--mut);font-size:.75rem;margin-top:2px}
 </style>
 </head>
 <body>
@@ -330,6 +335,19 @@ body.lock{overflow:hidden}
     })()).join("");
   }
 
+  // جوايز النقاط (16 تشرين التاني 2026): خصم بس. الرصيد = النقاط − المصروف.
+  const rank = (p) => "🎖 " + (p >= 1000 ? "أسطورة" : p >= 600 ? "خبير" : p >= 300 ? "محترف" : p >= 100 ? "هاوي" : "مبتدئ");
+  function prizes() {
+    const T = D.tiers || []; if (!D.me || !T.length) return "";
+    const bal = Math.max(0, (D.me.p || 0) - (D.me.s || 0)), next = T.find((t) => bal < t[0]), top = T[T.length - 1][0];
+    const cps = (D.me.cp || []).filter((x) => x.exp > Date.now());
+    return `<div class="pz"><div class="pz-h"><b>🎁 جوايزك</b><span>رصيدك: <b>${bal}</b> نقطة</span></div>
+      <div class="pz-bar"><i style="width:${Math.min(100, Math.round((bal / (next ? next[0] : top)) * 100))}%"></i></div>
+      <p class="sub">${next ? `باقيلك <b>${next[0] - bal}</b> نقطة لخصم ${next[1]}%` : "وصلت لأعلى خصم 👑"}</p>
+      <div class="pz-t">${T.map(([n, pc]) => `<button class="btn sm ${bal >= n ? "" : "ghost"}" data-rd="${n}" data-pc="${pc}" ${bal >= n ? "" : "disabled"}>خصم ${pc}%<small>${n} نقطة</small></button>`).join("")}</div>
+      ${cps.map((x) => `<div class="pz-c">كود خصم ${x.pct}%: <b dir="ltr">${esc(x.c)}</b><small>اكتبو بخانة كود الخصم وقت الطلب · لطلب واحد · صالح لـ ${new Date(x.exp).toLocaleDateString("ar-SY", { timeZone: "Asia/Damascus", day: "numeric", month: "long" })}</small></div>`).join("")}
+      <p class="sub">الفايز صح = 10 نقاط، والنتيجة بالزبط = 10 كمان. الخصم ما بينجمع مع خصم تاني.</p></div>`;
+  }
   function draw() {
     $("#tag").hidden = D.live;
     if (sport && !D.matches.some((m) => m.sport === sport)) sport = "";
@@ -341,7 +359,7 @@ body.lock{overflow:hidden}
     if (day && !dks.includes(day)) day = "";
     const shown = up.filter((m) => !day || dayKey(m.at) === day);
     const used = [...new Set(D.matches.map((m) => m.sport))];
-    let h = D.me ? `<div class="me"><div><div class="sub">نقاطك يا ${esc(D.me.name.split(" ")[0])}</div><b>${D.me.p}</b></div><div class="sub" style="text-align:left">توقّعات صح: ${D.me.w} من ${D.me.t}</div></div>`
+    let h = D.me ? `<div class="me"><div><div class="sub">نقاطك يا ${esc(D.me.name.split(" ")[0])}</div><b>${D.me.p}</b></div><div class="sub" style="text-align:left">${rank(D.me.p)}<br>توقّعات صح: ${D.me.w} من ${D.me.t}</div></div>${prizes()}`
       : `<div class="msg" style="margin-bottom:14px">لازم تفوت على حسابك بالمتجر لتقدر تتوقّع.<br><br><a class="btn" href="/ar/account" style="text-decoration:none;display:inline-block">فوت على حسابي</a></div>`;
     if (used.length > 1) h += `<div class="chips"><button class="${sport ? "" : "on"}" data-sp="">الكل</button>${used.map((s) => `<button class="${sport === s ? "on" : ""}" data-sp="${s}">${esc(D.sports[s])}</button>`).join("")}</div>`;
     if (orgs.length > 1) { const cnt = (o) => D.matches.filter((m) => m.sport === sport && m.org === o && !m.res).length;
@@ -357,6 +375,11 @@ body.lock{overflow:hidden}
     h += `<h2>🏆 الترتيب</h2><div class="board">${D.board.length ? D.board.map((r, i) => `<div class="${r.me ? "me1" : ""}"><span><span class="rk">${i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>${esc(r.n.split(" ").slice(0, 2).join(" "))}</span><span><b style="color:var(--gold)">${r.p}</b> نقطة</span></div>`).join("") : `<div class="empty" style="display:block">لسا ما في نتايج</div>`}</div>`;
     if (D.sync) h += `<p class="sync">المواعيد والنتايج بتتحدّث لحالها · آخر تحديث ${hm(D.sync)}</p>`;
     app.innerHTML = h;
+    app.querySelectorAll("[data-rd]").forEach((bt) => { bt.onclick = async () => {
+      if (!confirm(`بدك تبدّل ${bt.dataset.rd} نقطة بكود خصم ${bt.dataset.pc}%؟`)) return;
+      bt.disabled = true;
+      try { const j = await api("/api/pred/redeem", { pts: +bt.dataset.rd }); D.me = j.me; toast("مبروك 🎉 كود الخصم: " + j.code); draw(); } catch (er) { toast(er.message || "ما زبط"); bt.disabled = false; }
+    }; });
   }
 
   function adminForm() {
