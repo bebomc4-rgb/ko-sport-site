@@ -166,3 +166,4 @@
 - 2026-11-16 (ko-sport-site v268): نافذة MMA بالمزامنة صارت 30 يوم بدل 8 (مشان UAE Warriors وBrave وONE يطلعوا)؛ BKFC: ما في مصدر فيه جنس المقاتل (ufcalendar بلا جنس، وبحاجة مفتاح)، لسا يدوي.
 - 2026-11-16 (ko-sport-site v269): شلنا PFL MENA وPFL Africa؛ بقي PFL الأساسي (mma/pfl) بس. فلتر يشيل أي حدث PFL جاي من mma/other، ويمسح القديم المخزّن.
 - 2026-11-16 (ko-sport-site v270): لوحة المالك بالتوقعات: قائمة منظمات/بطولات بعلامات (إظهار/إخفاء فوري، محفوظة بـ pred:cfg.hideOrgs بالـ KV بلا نشر). action=orgs بـ /api/pred/admin.
+- 2026-11-16 (ko-sport-site v271): نافذة MMA 45 يوم (PFL Lyon يوم 19/12 كان برّا الـ30). تحقّقت من ESPN: mma/pfl فيه PFL Dubai 14/11 وPFL Lyon 19/12.
