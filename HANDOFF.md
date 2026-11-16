@@ -165,3 +165,4 @@
 - 2026-11-16 (ko-sport-site v267): طلبات ESPN/Box.live صارت `cacheTtlByStatus` (الكاش للنجاح بس)؛ `cacheTtl` كان يحفظ أخطاء 403 ويعيدها.
 - 2026-11-16 (ko-sport-site v268): نافذة MMA بالمزامنة صارت 30 يوم بدل 8 (مشان UAE Warriors وBrave وONE يطلعوا)؛ BKFC: ما في مصدر فيه جنس المقاتل (ufcalendar بلا جنس، وبحاجة مفتاح)، لسا يدوي.
 - 2026-11-16 (ko-sport-site v269): شلنا PFL MENA وPFL Africa؛ بقي PFL الأساسي (mma/pfl) بس. فلتر يشيل أي حدث PFL جاي من mma/other، ويمسح القديم المخزّن.
+- 2026-11-16 (ko-sport-site v270): لوحة المالك بالتوقعات: قائمة منظمات/بطولات بعلامات (إظهار/إخفاء فوري، محفوظة بـ pred:cfg.hideOrgs بالـ KV بلا نشر). action=orgs بـ /api/pred/admin.

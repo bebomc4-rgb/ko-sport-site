@@ -324,6 +324,9 @@ body.lock{overflow:hidden}
     return `<details class="adm"><summary>⚙️ لوحة المالك</summary>
       <p style="color:var(--mut);font-size:.85rem;margin:10px 0 4px">البطولات يلي بتنجاب لحالها (مواعيد، صور، نتايج):</p>
       <div class="lgs">${["football", "basketball", "ufc", "boxing"].map((sp) => `<h5>${esc(D.sports[sp])}</h5>` + D.leagues.filter((l) => l.sp === sp).map((l) => `<label><input type="checkbox" data-lg="${l.k}" ${l.on ? "checked" : ""}>${esc(l.n)}</label>`).join("")).join("")}</div>
+      <p style="color:var(--mut);font-size:.85rem;margin:16px 0 4px">المنظمات والبطولات يلي بتبيّن بالصفحة (شيل العلامة لتخبّيها فوراً):</p>
+      <div class="lgs">${["football", "basketball", "ufc", "boxing"].map((sp) => { const L = (D.orgsAll || []).filter((o) => o.sp === sp); return L.length ? `<h5>${esc(D.sports[sp])}</h5>` + L.map((o) => `<label><input type="checkbox" data-og="${esc(o.k)}" ${o.hid ? "" : "checked"}>${esc(o.n)}</label>`).join("") : ""; }).join("")}</div>
+      <button class="btn sm" id="og_go">احفظ الإظهار</button>
       <button class="btn sm" id="lg_go">احفظ البطولات وحدّث</button> <button class="btn sm ghost" id="sy_go">حدّث هلق</button>
       <p style="color:var(--mut);font-size:.85rem;margin:16px 0 0">➕ ضيف مباراة بإيدك (متل الملاكمة):</p>
       <div class="f">
@@ -349,6 +352,7 @@ body.lock{overflow:hidden}
       if (b.dataset.info) { busy = false; openInfo(b.dataset.info); return; }
       if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "10"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
       if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(); }
+      if (b.id === "og_go") { const hide = [...document.querySelectorAll("[data-og]")].filter((x) => !x.checked).map((x) => x.dataset.og); await api("/api/pred/admin", { action: "orgs", hide }); toast("انحفظت ✓"); return await load(); }
       if (b.id === "lg_go") { toast("عم حدّث…"); const ks = [...document.querySelectorAll("[data-lg]")].filter((x) => x.checked).map((x) => x.dataset.lg); const r = await api("/api/pred/admin", { action: "leagues", leagues: ks }); toast(`انحفظت ✓ (${r.total} مباراة)`); return await load(); }
       if (b.dataset.k) { const id = b.dataset.id, m = D.matches.find((x) => x.id === id), d = DR[id] || (m.mine ? { ...m.mine } : {}); d.k = b.dataset.k; if (d.k === "d") delete d.m; DR[id] = d; draw(); return; }
       if (b.dataset.m) { const id = b.dataset.id, d = DR[id] || {}; d.m = b.dataset.m; DR[id] = d; draw(); return; }
