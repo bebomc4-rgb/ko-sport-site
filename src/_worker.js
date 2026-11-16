@@ -1180,6 +1180,9 @@ const predImp = (mt, boxAll) => {
 };
 const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L : []; }; // صاحب المتجر (17 تشرين التاني 2026): رجعو BKFC وONE وPFL
 async function predCfg(env) { const c = await env.STORE.get("pred:cfg", "json").catch(() => null); return c && typeof c === "object" ? c : {}; }
+const predNk = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+// صور المقاتلين يلي رفعها صاحب المتجر بإيدو (cfg.pics: الاسم → /img/<key>) بتغلب أي صورة تانية
+const predPic = (cfg, o) => { const P = cfg.pics || {}; if (!P) return o; const pa = P[predNk(o.a)], pb = P[predNk(o.b)]; if (pa) o.ai = pa; if (pb) o.bi = pb; return o; };
 const predKeyOk = (k) => k === "a" || k === "b" || k === "d";
 // شو بيتوقّع الزبون (صاحب المتجر 16 تشرين التاني 2026):
 //  - كرة قدم وسلة: النتيجة بالأرقام (sa-sb)، والفايز بينحسب منها.
@@ -1551,6 +1554,19 @@ async function predSync(env, force) {
     else if (g.sport === "ufc" && g.aid) { const x = ATH[g.aid], y = ATH[g.bid]; if (x) g.ai = x.h; if (y) g.bi = y.h; g.men = !!(x && y && x.g === "M" && y.g === "M"); }
   for (const lg of PRED_LEAGUES.filter((x) => x.sp === "esports" && on.has(x.k))) got.push(...await psFetch(env, lg, from, to, errs));
   if (on.has("boxing")) for (const mt of await bxFetch(errs)) if (mt.at >= from && mt.at <= now + 35 * 864e5) got.push(mt);
+  // صاحب المتجر (17 تشرين التاني 2026): «ما تترك ولا لاعب بلا صورة» — للمقاتل يلي لسا بلا صورة: منفتّش باسمو بويكيبيديا، ومنقبل بس صورة رخصتها حرة (pilicense=free، من ويكيميديا)
+  // وبس إذا عنوان الصفحة نفس الاسم ووصفها مقاتل/ملاكم. الجواب بينحفظ بـ pred:wn (الفاضي بينعاد فحصو بعد 14 يوم).
+  { const WN = (await env.STORE.get("pred:wn", "json").catch(() => null)) || {}, FIGHT = /fight|martial|boxer|boxing|kickbox|wrestl|karate|muay|judo|grappl|mma/i;
+    const fs = got.filter((g) => (g.sport === "ufc" || g.sport === "boxing")), miss = [...new Set(fs.flatMap((g) => [!g.ai && g.a, !g.bi && g.b]).filter(Boolean))];
+    const need = miss.filter((n) => { const x = WN[predNk(n)]; return !x || (!x.u && x.t < now - 14 * 864e5); }).slice(0, 80);
+    for (let i = 0; i < need.length; i += 6) await Promise.all(need.slice(i, i + 6).map(async (n) => {
+      try { const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrlimit=4&gsrsearch=${encodeURIComponent('"' + n + '"')}&prop=pageimages|description&piprop=thumbnail&pithumbsize=240&pilicense=free&redirects=1`, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "KO-SPORT-predictions/1.0 (https://ko-sport.online)" } });
+        if (!r.ok) { errs.push("wn:" + r.status); return; }
+        const pg = Object.values((((await r.json()) || {}).query || {}).pages || {}).find((p) => predNk(String(p.title || "").replace(/\s*\(.*?\)\s*$/, "")) === predNk(n) && FIGHT.test(String(p.description || "") + " " + String(p.title || "")) && p.thumbnail && p.thumbnail.source);
+        WN[predNk(n)] = { u: pg ? pg.thumbnail.source : "", t: now };
+      } catch (e) { errs.push("wn:" + (e && e.name || e)); } }));
+    if (need.length) await env.STORE.put("pred:wn", JSON.stringify(WN)).catch(() => {});
+    for (const g of fs) { if (!g.ai) g.ai = (WN[predNk(g.a)] || {}).u || ""; if (!g.bi) g.bi = (WN[predNk(g.b)] || {}).u || ""; } }
   const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
   let boardDirty = false;
   const hidden = new Set(cfg.hide || []);
@@ -1581,7 +1597,7 @@ async function predApi(request, env, path, m, ctx) {
     for (const h of ESPN_HOSTS) for (const q of ["", "?region=us&lang=en&contentorigin=espn"]) { try { const r = await fetch(`https://${h}/apis/site/v2/sports/${lg}/summary?event=${ev}${q ? "&" + q.slice(1) : ""}`, { headers: { accept: "application/json" } }); out[h + (q ? "+q" : "")] = r.status; } catch (e) { out[h] = String(e); } }
     return json(out);
   }
-  if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, esKey: !!env.PANDASCORE_TOKEN, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null), nm: await env.STORE.get("pred:nm", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, id: v.filter((x) => x.id).length }; }).catch(() => null), wimg: await env.STORE.get("pred:wimg", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, pic: v.filter(Boolean).length }; }).catch(() => null), ath: await env.STORE.get("pred:ath", "json").then((A) => { const o = { M: 0, F: 0, "?": 0, pic: 0 }; for (const x of Object.values(A || {})) { o[x.g] = (o[x.g] || 0) + 1; if (x.h) o.pic++; } return o; }).catch(() => null) }); }
+  if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, esKey: !!env.PANDASCORE_TOKEN, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null), nm: await env.STORE.get("pred:nm", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, id: v.filter((x) => x.id).length }; }).catch(() => null), wn: await env.STORE.get("pred:wn", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, pic: v.filter((x) => x.u).length }; }).catch(() => null), wimg: await env.STORE.get("pred:wimg", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, pic: v.filter(Boolean).length }; }).catch(() => null), ath: await env.STORE.get("pred:ath", "json").then((A) => { const o = { M: 0, F: 0, "?": 0, pic: 0 }; for (const x of Object.values(A || {})) { o[x.g] = (o[x.g] || 0) + 1; if (x.h) o.pic++; } return o; }).catch(() => null) }); }
   const owner = env.__role === "owner", cfg = await predCfg(env), live = cfg.live !== false; // صاحب المتجر (16 تشرين التاني 2026): «خلي التوقعات مفتوحة للكل» — مفتوحة افتراضياً إلا إذا قفلها صراحة
   const acct = await acctFromReq(request, env);
   // وقت التجربة: صاحب المتجر بيشوف الصفحة متل أي زبون من حسابو بالمتجر (بلا كلمة سر اللوحة)
@@ -1597,7 +1613,7 @@ async function predApi(request, env, path, m, ctx) {
     return json({ owner, live, now: Date.now(), sync: last, tiers: PRED_TIERS, cpDays: PRED_CP_DAYS, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (منظمات تانية)", sp: x.sp, on: on.has(x.k) })); })(),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
       orgsAll: owner ? [...new Map(L.filter((mt) => !predFem(mt)).map((mt) => { const o = predOut(mt); return [o.sport + "|" + o.org, { k: o.sport + "|" + o.org, sp: o.sport, n: o.org, hid: hideO.has(o.sport + "|" + o.org) }]; })).values()] : undefined,
-      matches: L.filter((mt) => !predFem(mt) && !(mt.src && predTba(mt))).filter(impOk).filter((mt) => !hideO.has(mt.sport + "|" + (mt.org || (mt.league || "").split(" · ")[0] || ""))).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
+      matches: L.filter((mt) => !predFem(mt) && !(mt.src && predTba(mt))).filter(impOk).filter((mt) => !hideO.has(mt.sport + "|" + (mt.org || (mt.league || "").split(" · ")[0] || ""))).map((mt) => predPic(cfg, predOut(mt, C && C[mt.id], mine[mt.id]))), board });
   }
   if (path === "/api/pred/info" && m === "GET") {
     const id = clip(new URL(request.url).searchParams.get("id"), 80);
@@ -1666,6 +1682,8 @@ async function predApi(request, env, path, m, ctx) {
     const b = await request.json().catch(() => ({}));
     if (b.action === "sync") return json(await predSync(env, true));
     if (b.action === "leagues") { const ks = (Array.isArray(b.leagues) ? b.leagues : []).filter((k) => PRED_LEAGUES.some((x) => x.k === k)); await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, leagues: ks })); return json({ ok: true, ...(await predSync(env, true)) }); }
+    if (b.action === "pic") { const n = predNk(b.name), u = String(b.url || ""); if (!n) return json({ error: "الاسم ناقص" }, 400); if (u && !/^\/img\/[A-Za-z0-9_-]{6,64}$/.test(u)) return json({ error: "رابط الصورة غلط" }, 400);
+      const P = { ...(cfg.pics || {}) }; if (u) P[n] = u; else delete P[n]; await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, pics: P })); return json({ ok: true }); }
     if (b.action === "orgs") { const ks = (Array.isArray(b.hide) ? b.hide : []).map((k) => clip(k, 80)).filter(Boolean).slice(0, 200); await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, hideOrgs: ks })); return json({ ok: true, hide: ks }); }
     if (b.action === "live") { await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, live: !!b.live })); return json({ ok: true, live: !!b.live }); }
     let L = await predMatches(env);

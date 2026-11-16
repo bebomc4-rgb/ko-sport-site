@@ -75,6 +75,7 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
 .side img.lg{width:58px;height:58px;object-fit:contain}
 .side img.ph{width:68px;height:68px;object-fit:cover;object-position:top;border-radius:50%;background:var(--card2);border:2px solid var(--gold)}
 .side .av{width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3rem;letter-spacing:1px;color:var(--gold2);background:radial-gradient(circle at 30% 25%,var(--goldbg),var(--card2));border:2px solid var(--gold)}
+.side{position:relative}.side .av.sil{font-size:0}.picb{position:absolute;top:-6px;inset-inline-start:-4px;z-index:2;border:1px solid var(--gold);background:var(--card);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:.85rem;line-height:1;padding:0}
 .sh-hd .side img.ph,.sh-hd .side .av{width:104px;height:104px;font-size:1.9rem;box-shadow:0 10px 26px -10px rgba(201,164,92,.8)}
 .sh-hd .side .nm{font-size:1.08rem}
 .evno{display:inline-block;margin-bottom:6px;background:var(--ink);color:var(--gold);font-weight:900;font-size:.95rem;letter-spacing:1px;border-radius:10px;padding:3px 12px;border:1px solid var(--gold)}
@@ -210,11 +211,14 @@ body.lock{overflow:hidden}
   let day = "", org = ""; try { const f = JSON.parse(localStorage.getItem("ko_pred_f") || "{}"); sport = f.sport || ""; day = f.day || ""; org = f.org || ""; } catch {}
   const saveF = () => { try { localStorage.setItem("ko_pred_f", JSON.stringify({ sport, day, org })); } catch {} };
   const INF = {}, OPEN = new Set(), DR = {};
+  const SIL = `<svg viewBox="0 0 64 64" width="70%" height="70%" aria-hidden="true"><defs><linearGradient id="kg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f1d58a"/><stop offset="1" stop-color="#b8893a"/></linearGradient></defs><circle cx="32" cy="17" r="10" fill="url(#kg)"/><path d="M14 58c0-12 6-21 18-21s18 9 18 21z" fill="url(#kg)"/><path d="M6 34c3-4 8-5 11-2l-3 7c-3 1-6 0-8-5zM58 34c-3-4-8-5-11-2l3 7c3 1 6 0 8-5z" fill="url(#kg)" opacity=".9"/></svg>`;
   function side(m, s) {
     const img = m[s + "i"], person = m.sport === "ufc" || m.sport === "boxing", flag = m[s + "f"], rec = m[s + "r"];
     const ini = esc(String(m[s] || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase());
-    const av = `<span class="av">${ini}</span>`;
-    return `<div class="side">${img ? `<img class="${person ? "ph" : "lg"}" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="${person ? `this.outerHTML='<span class=&quot;av&quot;>${ini}</span>'` : "this.remove()"}">` : person ? av : ""}
+    // صاحب المتجر (17 تشرين التاني 2026): المقاتل يلي ما إلو صورة بيطلع ظل مقاتل ذهبي بدل الأحرف
+    const av = `<span class="av sil">${SIL}</span>`, avEsc = av.replace(/"/g, "&quot;");
+    const pic = D && D.owner && person ? `<button class="picb" data-pic="${esc(m.id)}" data-s="${s}" title="ارفع صورة">📷</button>` : "";
+    return `<div class="side">${pic}${img ? `<img class="${person ? "ph" : "lg"}" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="${person ? `this.outerHTML='${avEsc.replace(/'/g, "&#39;")}'` : "this.remove()"}">` : person ? av : ""}
       <span class="nm">${esc(m[s])}</span>${flag || rec ? `<span class="inf">${flag ? `<img src="${esc(flag)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${rec ? `سجل ${esc(rec)}` : ""}</span>` : ""}</div>`;
   }
   function infoHtml(m) {
@@ -418,6 +422,15 @@ body.lock{overflow:hidden}
       if (b.dataset.org !== undefined) { org = b.dataset.org; day = ""; saveF(); draw(); return; }
       if (b.dataset.day !== undefined) { day = b.dataset.day; saveF(); draw(); return; }
       if (b.dataset.info) { busy = false; openInfo(b.dataset.info); return; }
+      if (b.dataset.pic) { // صاحب المتجر بيرفع صورة مقاتل بإيدو، وبتنحفظ لهالاسم بكل النزالات
+        busy = false; const mt = D.matches.find((x) => x.id === b.dataset.pic); if (!mt) return; const name = mt[b.dataset.s];
+        const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+        inp.onchange = async () => { const f = inp.files && inp.files[0]; if (!f) return;
+          try { toast("عم نرفع الصورة…"); const pw = ls.get("ko_admin"), r = await fetch("/api/images", { method: "POST", headers: { "content-type": f.type || "image/jpeg", ...(pw ? { authorization: "Bearer " + pw } : {}) }, body: f });
+            const j = await r.json().catch(() => ({})); if (!r.ok || !j.url) throw new Error(j.error || "ما زبط الرفع");
+            await api("/api/pred/admin", { action: "pic", name, url: j.url }); toast("انحفظت صورة " + name); await load(); } catch (er) { toast(er.message); } };
+        inp.click(); return;
+      }
       if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "100"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
       if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(); }
       if (b.id === "og_go") { const hide = [...document.querySelectorAll("[data-og]")].filter((x) => !x.checked).map((x) => x.dataset.og); await api("/api/pred/admin", { action: "orgs", hide }); toast("انحفظت ✓"); return await load(); }
