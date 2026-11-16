@@ -1119,6 +1119,8 @@ const PRED_AR = { "Real Madrid": "ريال مدريد", "Barcelona": "برشلو
 const PRED_W = { Flyweight: "وزن الذبابة", Bantamweight: "وزن الديك", Featherweight: "وزن الريشة", Lightweight: "الوزن الخفيف", Welterweight: "وزن الويلتر", Middleweight: "الوزن المتوسط", "Light Heavyweight": "الثقيل الخفيف", Heavyweight: "الوزن الثقيل", "Women's Strawweight": "وزن القشة (سيدات)", "Women's Flyweight": "وزن الذبابة (سيدات)", "Women's Bantamweight": "وزن الديك (سيدات)", "Women's Featherweight": "وزن الريشة (سيدات)", "Catch Weight": "وزن متّفق عليه" };
 const PRED_FEM = /women|woman|womens|female|féminin|femenin|femmin|frauen|ladies|girls|\(w\)|\bW\b(?= *$)|سيدات|نسائي|بنات/i;
 const predFem = (mt) => PRED_FEM.test([mt.league, mt.ev, mt.a, mt.b].join(" "));
+const PRED_TBA = /\b(TBA|TBD)\b|^\s*$/i; // نزال لسا ما انعرف أطرافو (ESPN بيحط «TBA» و«Opponent TBA»): ما منعرضو
+const predTba = (mt) => PRED_TBA.test(String(mt.a || "")) || PRED_TBA.test(String(mt.b || ""));
 const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L : []; };
 async function predCfg(env) { const c = await env.STORE.get("pred:cfg", "json").catch(() => null); return c && typeof c === "object" ? c : {}; }
 const predKeyOk = (k) => k === "a" || k === "b" || k === "d";
@@ -1384,7 +1386,7 @@ async function predSync(env, force) {
     if (!predSameR(oldR, newR)) boardDirty = (await predSettle(env, B, cur, oldR, newR)) || boardDirty;
   }
   // منشيل يلي خلص من أكتر من 3 أيام (النقاط بتضل محفوظة بالترتيب)
-  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.src === "mma-other" && /\bPFL\b/i.test((x.org || "") + " " + (x.league || "") + " " + (x.ev || "")))).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
+  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.src && predTba(x))).filter((x) => !(x.src === "mma-other" && /\bPFL\b/i.test((x.org || "") + " " + (x.league || "") + " " + (x.ev || "")))).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
   await env.STORE.put("pred:matches", JSON.stringify(keep));
   if (boardDirty) await env.STORE.put("pred:board", JSON.stringify(B));
   await env.STORE.put("pred:errs", JSON.stringify(errs.slice(0, 20))).catch(() => {});
@@ -1413,7 +1415,7 @@ async function predApi(request, env, path, m, ctx) {
     return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (PFL MENA وغيرها)", sp: x.sp, on: on.has(x.k) })); })(),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
       orgsAll: owner ? [...new Map(L.filter((mt) => !predFem(mt)).map((mt) => { const o = predOut(mt); return [o.sport + "|" + o.org, { k: o.sport + "|" + o.org, sp: o.sport, n: o.org, hid: hideO.has(o.sport + "|" + o.org) }]; })).values()] : undefined,
-      matches: L.filter((mt) => !predFem(mt)).filter((mt) => !hideO.has(mt.sport + "|" + (mt.org || (mt.league || "").split(" · ")[0] || ""))).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
+      matches: L.filter((mt) => !predFem(mt) && !(mt.src && predTba(mt))).filter((mt) => !hideO.has(mt.sport + "|" + (mt.org || (mt.league || "").split(" · ")[0] || ""))).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
   }
   if (path === "/api/pred/info" && m === "GET") {
     const id = clip(new URL(request.url).searchParams.get("id"), 80);
