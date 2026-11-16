@@ -1288,10 +1288,12 @@
         const io2 = new IntersectionObserver((es) => { if (es[0].isIntersecting) { loadMore(); if (st.shown >= list.length) io2.disconnect(); } }, { rootMargin: "0px 0px 900px 0px" });
         io2.observe(more);
       }
+      // بعد الكبسة: الشاشة بتضوي أول، وبعدها منرسم القائمة (INP)
+      const drawSoon = () => { let d = false; const go = () => { if (!d) { d = true; draw(); } }; requestAnimationFrame(() => setTimeout(go, 0)); setTimeout(go, 120); };
       app.onclick = (e) => {
         if (e.target.closest("[data-open-sort]")) {
           openSheet("ترتيب", `<div class="sh-opts">${[["default", "الترتيب الافتراضي"], ["low", "السعر: من الأقل للأعلى"], ["high", "السعر: من الأعلى للأقل"], ["name", "الاسم: أ - ي"]].map(([v, t]) => `<label class="sh-opt"><input type="radio" name="sort" value="${v}" ${st.sort === v ? "checked" : ""}><span>${t}</span></label>`).join("")}</div>`,
-            (box) => { box.addEventListener("change", () => { st.sort = box.querySelector("[name=sort]:checked").value; closeSheet(); draw(); }); });
+            (box) => { box.addEventListener("change", () => { st.sort = box.querySelector("[name=sort]:checked").value; closeSheet(); drawSoon(); }); });
           return;
         }
         if (e.target.closest("[data-open-filter]")) {
@@ -1313,10 +1315,10 @@
                 if (pk) { const L = pick[pk.dataset.fPick], v = pk.dataset.v, i = L.indexOf(v); if (i >= 0) L.splice(i, 1); else L.push(v); pk.classList.toggle("on", i < 0); }
                 const bd = ev.target.closest("[data-f-band]");
                 if (bd) { const [lo, hi] = bd.dataset.fBand.split("|"), on = !bd.classList.contains("on"); box.querySelectorAll("[data-f-band]").forEach((x) => x.classList.remove("on")); if (on) bd.classList.add("on"); box.querySelector("[data-f-min]").value = on && +lo ? lo : ""; box.querySelector("[data-f-max]").value = on ? hi : ""; }
-                if (ev.target.closest("[data-f-clear]")) { Object.assign(st, { hideOut: false, sub: "", min: "", max: "", brands: [], sizes: [], colors: [], shown: PAGE }); closeSheet(); draw(); }
+                if (ev.target.closest("[data-f-clear]")) { Object.assign(st, { hideOut: false, sub: "", min: "", max: "", brands: [], sizes: [], colors: [], shown: PAGE }); closeSheet(); drawSoon(); }
                 if (ev.target.closest("[data-f-apply]")) {
                   Object.assign(st, { hideOut: box.querySelector("[data-f-out]").checked, sub, min: box.querySelector("[data-f-min]").value.trim(), max: box.querySelector("[data-f-max]").value.trim(), ...pick, shown: PAGE });
-                  closeSheet(); draw();
+                  closeSheet(); drawSoon();
                 }
               });
             });
@@ -1325,14 +1327,14 @@
         if (e.target.closest("[data-more]")) loadMore();
         const dsc = e.target.closest("[data-desc]"); if (dsc) { dsc.classList.toggle("open"); return; }
         const rm = e.target.closest("[data-f-rm]");
-        if (rm) { const k = rm.dataset.fRm; if (k === "price") { st.min = ""; st.max = ""; } else st[k] = st[k].filter((x) => x !== rm.dataset.v); st.shown = PAGE; draw(); return; }
-        if (e.target.closest("[data-f-rmall]")) { Object.assign(st, { hideOut: false, sub: "", min: "", max: "", brands: [], sizes: [], colors: [], shown: PAGE }); draw(); return; }
+        if (rm) { const k = rm.dataset.fRm; if (k === "price") { st.min = ""; st.max = ""; } else st[k] = st[k].filter((x) => x !== rm.dataset.v); st.shown = PAGE; drawSoon(); return; }
+        if (e.target.closest("[data-f-rmall]")) { Object.assign(st, { hideOut: false, sub: "", min: "", max: "", brands: [], sizes: [], colors: [], shown: PAGE }); drawSoon(); return; }
         const s = e.target.closest("[data-sub]");
-        if (s) { st.sub = s.dataset.sub; st.shown = PAGE; draw(); }
+        if (s) { st.sub = s.dataset.sub; st.shown = PAGE; drawSoon(); }
       };
       app.onchange = (e) => {
-        if (e.target.matches("[data-sort]")) { st.sort = e.target.value; draw(); }
-        if (e.target.matches("[data-hideout]")) { st.hideOut = e.target.checked; st.shown = PAGE; draw(); }
+        if (e.target.matches("[data-sort]")) { st.sort = e.target.value; drawSoon(); }
+        if (e.target.matches("[data-hideout]")) { st.hideOut = e.target.checked; st.shown = PAGE; drawSoon(); }
       };
     };
     draw();
@@ -3019,7 +3021,16 @@ ${trustH()}
     const q = e.target.q.value.trim();
     if (q) navTo("#/search/" + encodeURIComponent(q));
   });
-  window.addEventListener("hashchange", route);
+  // صاحب المتجر (17 تشرين التاني 2026): سرعة رد الصفحة لما الزبون يكبس (INP كان 329). الكبسة بترسم أول (الزر بيضوي فوراً)،
+  // ورسم الصفحة الجديدة بيصير بعدها بلحظة بدل ما يصير جوّا الكبسة نفسها. الشاشة المخفية (ما في رسم) بتكمّل بعد 120ms.
+  let navRun = null;
+  window.addEventListener("hashchange", (e) => {
+    try { const [, a] = curRoute().split("/"); const nk = !a ? "home" : ["all", "c", "g", "search", "browse"].includes(a) ? "all" : ["cart", "checkout"].includes(a) ? "cart" : a === "account" ? "account" : a === "games" ? "games" : ""; document.querySelectorAll("[data-nav]").forEach((x) => x.classList.toggle("on", x.dataset.nav === nk)); } catch {}
+    if (navRun) navRun.done = true;
+    const job = { done: false }; navRun = job;
+    const go = () => { if (job.done) return; job.done = true; if (navRun === job) navRun = null; route(e); };
+    requestAnimationFrame(() => setTimeout(go, 0)); setTimeout(go, 120);
+  });
   // the whole product card opens the product (not only the photo or the name); buttons and links keep their own job
   document.addEventListener("click", (e) => {
     if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
