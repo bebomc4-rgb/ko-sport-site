@@ -1325,6 +1325,9 @@ async function predInfo(env, mt) {
         predJ(`https://site.api.espn.com/apis/common/v3/sports/mma/athletes/${encodeURIComponent(id)}/stats`).catch(() => null)]);
       const S = {}; for (const x of ((rec && rec.items && rec.items[0] && rec.items[0].stats) || [])) S[x.name] = +x.value || 0;
       const A = (ath && ath.athlete) || {};
+      // sports.core.api (records) بيرجّع 403 من Workers؛ منكمّل من statsSummary تبع site.api: «15-2-0»، «7-0» (KO-خسارة KO)، «3-1» (إخضاع-خسارة إخضاع)
+      if (!S.wins && !S.losses) for (const x of ((A.statsSummary && A.statsSummary.statistics) || [])) { const v = String(x.displayValue || "").split("-").map((n) => +n || 0);
+        if (x.name === "wins-losses-draws") { S.wins = v[0]; S.losses = v[1]; S.draws = v[2]; } else if (x.name === "tkos-tkoLosses") { S.tkos = v[0]; S.tkoLosses = v[1]; } else if (x.name === "submissions-submissionLosses") { S.submissions = v[0]; S.submissionLosses = v[1]; } }
       const o = { w: S.wins || 0, l: S.losses || 0, d: S.draws || 0, ko: S.tkos || 0, sub: S.submissions || 0, dec: Math.max(0, (S.wins || 0) - (S.tkos || 0) - (S.submissions || 0)), kol: S.tkoLosses || 0, subl: S.submissionLosses || 0,
         age: A.age, h: A.displayHeight, wt: A.displayWeight, reach: A.displayReach, stance: A.stance && A.stance.text && A.stance.text !== "--" ? (PRED_STANCE[A.stance.text] || A.stance.text) : "", nick: A.nickname, team: A.association && A.association.name, cty: A.citizenship, style: A.displayFightingStyle };
       // آخر النزالات
@@ -1436,7 +1439,7 @@ async function predApi(request, env, path, m, ctx) {
     if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
     // مباراة انحفظت قبل ما نصير نخزّن أرقام الفرق/المقاتلين: منحدّث هلق ومنرجع نقراها
     if (mt.src && mt.src !== "boxing" && !mt.aid) { await predSync(env, true).catch(() => {}); mt = (await predMatches(env)).find((x) => x.id === id) || mt; }
-    const ck = "pred:info2:" + id, hit = await env.STORE.get(ck, "json").catch(() => null);
+    const ck = "pred:info3:" + id, hit = await env.STORE.get(ck, "json").catch(() => null);
     if (hit && hit.t > Date.now() - 6 * 3600e3) return json(hit.v);
     let v; try { v = await predInfo(env, mt); } catch (e) { v = { kind: "none" }; await env.STORE.put("pred:infoerr", JSON.stringify({ t: Date.now(), sport: mt.sport, e: String(e && e.message || e).slice(0, 120) })).catch(() => {}); }
     if (v.kind === "none" && !mt.aid && mt.src !== "boxing") await env.STORE.put("pred:infoerr", JSON.stringify({ t: Date.now(), sport: mt.sport, e: "no ids" })).catch(() => {});
