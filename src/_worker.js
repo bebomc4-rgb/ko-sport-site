@@ -1430,6 +1430,7 @@ async function predSync(env, force) {
       } catch (e) { errs.push(lg.k + ":" + (e && e.message || e && e.name || "err")); }
     }
   }));
+  for (const lg of PRED_LEAGUES.filter((x) => x.wiki && on.has(x.k))) for (const mt of await wkFetch(lg, errs)) if (mt.at >= from) got.push(mt);
   // نزالات ويكيبيديا (BKFC، ONE، Brave): منلاقي المقاتل بـ ESPN من اسمو (صورة، جنس، إحصائيات)، وإذا ما لقيناه منجيب صورتو من صفحتو بويكيبيديا
   { const W = got.filter((g) => g.dOnly), NM = (await env.STORE.get("pred:nm", "json").catch(() => null)) || {}, nk = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
     const need = [...new Set(W.flatMap((g) => [g.a, g.b]).filter((n) => n && !(NM[nk(n)] && NM[nk(n)].t > now - 7 * 864e5)))].slice(0, 120);
@@ -1455,7 +1456,6 @@ async function predSync(env, force) {
     if (need.length) await env.STORE.put("pred:ath", JSON.stringify(ATH)).catch(() => {}); if (athErr) errs.push("ath:" + athErr); }
   for (const g of got) if (g.dOnly) { const x = ATH[g.aid], y = ATH[g.bid]; g.ai = (x && x.h) || g.wai || ""; g.bi = (y && y.h) || g.wbi || ""; }
     else if (g.sport === "ufc" && g.aid) { const x = ATH[g.aid], y = ATH[g.bid]; if (x) g.ai = x.h; if (y) g.bi = y.h; g.men = !!(x && y && x.g === "M" && y.g === "M"); }
-  for (const lg of PRED_LEAGUES.filter((x) => x.wiki && on.has(x.k))) for (const mt of await wkFetch(lg, errs)) if (mt.at >= from) got.push(mt);
   if (on.has("boxing")) for (const mt of await bxFetch(errs)) if (mt.at >= from && mt.at <= now + 35 * 864e5) got.push(mt);
   const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
   let boardDirty = false;
