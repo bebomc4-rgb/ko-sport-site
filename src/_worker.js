@@ -1375,13 +1375,13 @@ async function predSync(env, force) {
   }));
   // MMA: ESPN ما بيكتب «Women's» بنوع النزال دايماً، فمنسأل عن جنس كل مقاتل (ومنحفظو للأبد) ومنجيب صورتو الحقيقية.
   // ما منعرض نزال إلا إذا الطرفين معروفين رجال.
-  const ATH = (await env.STORE.get("pred:ath", "json").catch(() => null)) || {};
+  const ATH = (await env.STORE.get("pred:ath", "json").catch(() => null)) || {}; let athErr = "";
   { const need = [...new Set(got.filter((g) => g.sport === "ufc").flatMap((g) => [g.aid, g.bid]).filter((id) => id && !ATH[id]))].slice(0, 300);
     for (let i = 0; i < need.length; i += 10) await Promise.all(need.slice(i, i + 10).map(async (id) => {
-      try { const r = await fetch(`https://sports.core.api.espn.com/v2/sports/mma/athletes/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(6000) }); if (!r.ok) return; const j = await r.json();
+      try { let r; for (let k = 0; k < 2; k++) { r = await fetch(`https://sports.core.api.espn.com/v2/sports/mma/athletes/${encodeURIComponent(id)}?lang=en&region=us`, { signal: AbortSignal.timeout(7000), headers: { accept: "application/json" }, cf: { cacheTtlByStatus: { "200-299": 86400, "300-599": 0 } } }); if (r.ok) break; athErr = "http " + r.status; await new Promise((z) => setTimeout(z, 800)); } if (!r.ok) return; const j = await r.json();
         const st = (j.images || []).find((x) => x && x.href) ; ATH[id] = { g: String(j.gender || "").toUpperCase() === "FEMALE" ? "F" : String(j.gender || "").toUpperCase() === "MALE" ? "M" : "?", h: (j.headshot && j.headshot.href) || (st && st.href) || "" };
-      } catch {} }));
-    if (need.length) await env.STORE.put("pred:ath", JSON.stringify(ATH)).catch(() => {}); }
+      } catch (e) { athErr = String(e && e.name || e); } }));
+    if (need.length) await env.STORE.put("pred:ath", JSON.stringify(ATH)).catch(() => {}); if (athErr) errs.push("ath:" + athErr); }
   for (const g of got) if (g.sport === "ufc" && g.aid) { const x = ATH[g.aid], y = ATH[g.bid]; if (x) g.ai = x.h; if (y) g.bi = y.h; g.men = !!(x && y && x.g === "M" && y.g === "M"); }
   if (on.has("boxing")) for (const mt of await bxFetch(errs)) if (mt.at >= from && mt.at <= now + 35 * 864e5) got.push(mt);
   const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
@@ -1413,7 +1413,7 @@ async function predApi(request, env, path, m, ctx) {
     for (const h of ESPN_HOSTS) for (const q of ["", "?region=us&lang=en&contentorigin=espn"]) { try { const r = await fetch(`https://${h}/apis/site/v2/sports/${lg}/summary?event=${ev}${q ? "&" + q.slice(1) : ""}`, { headers: { accept: "application/json" } }); out[h + (q ? "+q" : "")] = r.status; } catch (e) { out[h] = String(e); } }
     return json(out);
   }
-  if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null) }); }
+  if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null), ath: await env.STORE.get("pred:ath", "json").then((A) => { const o = { M: 0, F: 0, "?": 0, pic: 0 }; for (const x of Object.values(A || {})) { o[x.g] = (o[x.g] || 0) + 1; if (x.h) o.pic++; } return o; }).catch(() => null) }); }
   const owner = env.__role === "owner", cfg = await predCfg(env), live = !!cfg.live;
   const acct = await acctFromReq(request, env);
   // وقت التجربة: صاحب المتجر بيشوف الصفحة متل أي زبون من حسابو بالمتجر (بلا كلمة سر اللوحة)
