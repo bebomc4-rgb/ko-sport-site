@@ -1615,7 +1615,7 @@ const BK = "https://www.bkfc.com", BK_HDR = { "user-agent": "Mozilla/5.0 (Window
 const bkT = (h) => String(h || "").replace(/<svg[\s\S]*?<\/svg>/g, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ").trim();
 const bkGet = async (path) => { const r = await fetch(BK + path, { headers: BK_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtlByStatus: { "200-299": 1800, "300-599": 0 } } }); if (!r.ok) throw new Error("bkfc " + r.status); return r.text(); };
 async function bkFighter(env, slug) {
-  const ck = "bk:f3:" + slug, hit = await env.STORE.get(ck, "json").catch(() => null); if (hit) return hit;
+  const ck = "bk:f4:" + slug, hit = await env.STORE.get(ck, "json").catch(() => null); if (hit) return hit;
   const h = await bkGet("/fighters/" + slug).catch(() => ""); if (!h) return null;
   const nums = [...h.matchAll(/class="(hero_record_number[^"]*)"[^>]*>([^<]*)</g)].filter((x) => !/w-condition-invisible/.test(x[1])).map((x) => x[2].trim()).filter((x) => /^\d+$/.test(x)); // بيتجاهل الأرقام المخفية
   const lab = (k) => { const i = h.search(new RegExp(`stat_list-item_label[^>]*>\\s*${k}`, "i")); return i < 0 ? "" : h.slice(i, i + 1500); };
@@ -1624,10 +1624,10 @@ async function bkFighter(env, slug) {
   const hv = parseFloat(((lab("height").match(/height-metric[^>]*>([^<]*)</) || [])[1] || "").trim()), ht = hv > 0 ? Math.round(hv > 3 ? hv * 2.54 : hv * 100) + " سم" : ""; // أحياناً إنش وأحياناً متر
   const div = bkT((lab("Division").match(/<div[^>]*>\s*([A-Za-z' ]{3,30})\s*<\/div>/) || [])[1]);
   // قيمة كل خانة: النص بين عنوانها والعنوان يلي بعدو
-  const val = (k) => { const i = h.search(new RegExp(`stat_list-item_label[^>]*>\\s*${k}`, "i")); if (i < 0) return ""; const j = h.indexOf("stat_list-item_label", i + 30); return bkT(h.slice(h.indexOf(">", i) + 1, j < 0 ? i + 1500 : j).replace(/<[^>]*w-condition-invisible[^>]*>[^<]*</g, "<")).replace(new RegExp("^" + k, "i"), "").replace(/<\/?[a-z]*$/i, "").trim().slice(0, 40); };
+  const val = (k) => { const i = h.search(new RegExp(`stat_list-item_label[^>]*>\\s*${k}`, "i")); if (i < 0) return ""; const j = h.indexOf("stat_list-item_label", i + 30); return bkT(h.slice(h.indexOf(">", i) + 1, j < 0 ? i + 1500 : h.lastIndexOf("<", j)).replace(/<[^>]*w-condition-invisible[^>]*>[^<]*</g, "<")).replace(new RegExp("^" + k, "i"), "").replace(/<\/?[a-z]*$/i, "").trim().slice(0, 40); };
   const nick = val("nickname").replace(/^-+$/, ""), reach = val("Reach").replace(/^-+$/, ""), status = val("status").replace(/^-+$/, "");
   const fights = [];
-  for (const m2 of h.matchAll(/figher-record_fighter[^>]*>([\s\S]*?)<\/div>([\s\S]*?)(?=figher-record_fighter|<\/main>|$)/g)) {
+  for (const m2 of h.matchAll(/figher-record_fighter[^>]*>([^<]*)<([\s\S]*?)(?=figher-record_fighter|<\/main>|$)/g)) {
     const vs = bkT(m2[1]), blk = m2[2], dt = bkT((blk.match(/fight-record_date[^>]*>([\s\S]*?)<\/div>/) || [])[1]);
     const inf = [...blk.matchAll(/fight-card_info[^>]*>([^<]*)</g)].map((x) => x[1].trim()).filter((x) => x && !/^TB[CU]$/i.test(x));
     const wl = (blk.match(/>\s*(WIN|LOSS|DRAW|NO CONTEST|W|L|D|NC)\s*</) || [])[1] || "";
@@ -1638,7 +1638,7 @@ async function bkFighter(env, slug) {
   return o;
 }
 async function bkData(env) {
-  const hit = await env.STORE.get("bk:cache3", "json").catch(() => null); if (hit && Date.now() - hit.t < 30 * 60e3) return hit;
+  const hit = await env.STORE.get("bk:cache4", "json").catch(() => null); if (hit && Date.now() - hit.t < 30 * 60e3) return hit;
   const list = await bkGet("/events");
   const slugs = [...new Set([...list.matchAll(/href="\/events\/([a-z0-9-]+)"/g)].map((x) => x[1]))].slice(0, 8);
   const events = [];
@@ -1669,12 +1669,12 @@ async function bkData(env) {
   const F = {}; for (let i = 0; i < all.length; i += 6) await Promise.all(all.slice(i, i + 6).map(async (sl) => { F[sl] = await bkFighter(env, sl).catch(() => null); }));
   for (const e of events) for (const b of e.bouts) { b.a.f = F[b.a.s] || null; b.b.f = F[b.b.s] || null; }
   const out = { t: Date.now(), events };
-  await env.STORE.put("bk:cache3", JSON.stringify(out)).catch(() => {});
+  await env.STORE.put("bk:cache4", JSON.stringify(out)).catch(() => {});
   return out;
 }
 async function bkApi(request, env) {
   if (env.__role !== "owner") return json({ error: "هالصفحة إلك بس · اكتب كلمة سر لوحة التحكم" }, 403);
-  if (new URL(request.url).searchParams.get("fresh")) await env.STORE.delete("bk:cache3").catch(() => {});
+  if (new URL(request.url).searchParams.get("fresh")) await env.STORE.delete("bk:cache4").catch(() => {});
   try { return json(await bkData(env)); } catch (e) { return json({ error: "ما قدرت جيب من موقع BKFC هلق (" + (e && e.message || "خطأ") + ")" }, 502); }
 }
 async function bkPage(request, env) {
