@@ -108,7 +108,9 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
 .info .row{display:grid;grid-template-columns:1fr 2.2fr 1fr;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);text-align:center}
 .info .row:last-child{border-bottom:0}
 .info .row b{font-size:1.02rem;font-weight:800}
-.info .row b.hi{color:var(--gold2)}
+.info .row b.hi{color:var(--ok)}
+.info .row b.lo{color:var(--bad)}
+.sh-logo{display:block;width:54px;height:54px;border-radius:50%;margin:-2px auto 8px;box-shadow:0 0 0 3px var(--card),0 0 0 4px var(--gold),0 8px 20px -6px rgba(201,164,92,.7)}
 .info .row span{color:var(--mut);font-size:.8rem}
 .info .row b small{display:block;font-size:.7rem;color:var(--mut);font-weight:400}
 .info .sec{margin:16px 0 4px;color:var(--gold2);font-size:.82rem;font-weight:800;display:flex;align-items:center;gap:8px}
@@ -181,7 +183,9 @@ body.lock{overflow:hidden}
   const dayName = (k) => { const t = dayKey(Date.now()), tm = dayKey(Date.now() + 864e5); if (k === t) return "اليوم"; if (k === tm) return "بكرا";
     return new Date(k + "T12:00:00Z").toLocaleDateString("ar-SY", { weekday: "long", day: "numeric", month: "numeric" }); };
   const hm = (ms) => new Date(ms).toLocaleTimeString("ar-SY", { timeZone: "Asia/Damascus", hour: "numeric", minute: "2-digit" });
-  let day = ""; const INF = {}, OPEN = new Set(), DR = {};
+  let day = ""; try { const f = JSON.parse(localStorage.getItem("ko_pred_f") || "{}"); sport = f.sport || ""; day = f.day || ""; } catch {}
+  const saveF = () => { try { localStorage.setItem("ko_pred_f", JSON.stringify({ sport, day })); } catch {} };
+  const INF = {}, OPEN = new Set(), DR = {};
   function side(m, s) {
     const img = m[s + "i"], person = m.sport === "ufc" || m.sport === "boxing", flag = m[s + "f"], rec = m[s + "r"];
     return `<div class="side">${img ? `<img class="${person ? "ph" : "lg"}" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
@@ -194,7 +198,7 @@ body.lock{overflow:hidden}
     const num = (x) => { const n = parseFloat(String(x ?? "").replace(/[^\d.\-]/g, "")); return Number.isFinite(n) ? n : null; };
     const row = (x, label, y, low) => { const nx = num(x), ny = num(y), better = nx !== null && ny !== null && nx !== ny ? (low ? (nx < ny ? "a" : "b") : (nx > ny ? "a" : "b")) : "";
       const V = (z) => z === undefined || z === null || z === "" ? "—" : /^[\d\s+\-#.%:'"/]+$/.test(String(z)) ? `<bdi dir="ltr">${z}</bdi>` : z;
-      return `<div class="row"><b class="${better === "a" ? "hi" : ""}">${V(x)}</b><span>${label}</span><b class="${better === "b" ? "hi" : ""}">${V(y)}</b></div>`; };
+      return `<div class="row"><b class="${better === "a" ? "hi" : better === "b" ? "lo" : ""}">${V(x)}</b><span>${label}</span><b class="${better === "b" ? "hi" : better === "a" ? "lo" : ""}">${V(y)}</b></div>`; };
     const has = (x, y) => (x !== undefined && x !== null && x !== "") || (y !== undefined && y !== null && y !== "");
     const head = `<div class="row"><b style="font-size:.8rem">${esc(m.a)}</b><span></span><b style="font-size:.8rem">${esc(m.b)}</b></div>`;
     const sec = (t) => `<div class="sec">${t}</div>`, fmL = { W: "ف", D: "ت", L: "خ" };
@@ -285,6 +289,7 @@ body.lock{overflow:hidden}
 
   function draw() {
     $("#tag").hidden = D.live;
+    if (sport && !D.matches.some((m) => m.sport === sport)) sport = "";
     const bySport = D.matches.filter((m) => !sport || m.sport === sport);
     const up = bySport.filter((m) => !m.res && Date.now() < m.at), run = bySport.filter((m) => !m.res && Date.now() >= m.at), done = bySport.filter((m) => m.res).reverse();
     const dks = [...new Set(up.map((m) => dayKey(m.at)))];
@@ -331,8 +336,8 @@ body.lock{overflow:hidden}
     const b = e.target.closest("button"); if (!b || busy) return;
     try {
       busy = true;
-      if (b.dataset.sp !== undefined) { sport = b.dataset.sp; day = ""; draw(); return; }
-      if (b.dataset.day !== undefined) { day = b.dataset.day; draw(); return; }
+      if (b.dataset.sp !== undefined) { sport = b.dataset.sp; day = ""; saveF(); draw(); return; }
+      if (b.dataset.day !== undefined) { day = b.dataset.day; saveF(); draw(); return; }
       if (b.dataset.info) { busy = false; openInfo(b.dataset.info); return; }
       if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "10"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
       if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(); }
@@ -369,7 +374,7 @@ body.lock{overflow:hidden}
     closeInfo(true);
     const o = document.createElement("div"); o.className = "ov"; o.setAttribute("role", "dialog"); o.setAttribute("aria-modal", "true");
     const paint = () => { o.innerHTML = `<div class="sheet"><button class="sh-x" aria-label="سكّر">✕</button>
-      <div class="sh-hd"><div class="t">📊 الإحصائيات · ${esc(m.league || D.sports[m.sport] || "")}</div><div class="vs2">${side(m, "a")}<div class="mid"><span>${hm(m.at)}</span><span>ضد</span></div>${side(m, "b")}</div></div>
+      <div class="sh-hd"><img class="sh-logo" src="/brand/logo.webp?v=3" alt="KO SPORT" width="54" height="54"><div class="t">📊 الإحصائيات · ${esc(m.league || D.sports[m.sport] || "")}</div><div class="vs2">${side(m, "a")}<div class="mid"><span>${hm(m.at)}</span><span>ضد</span></div>${side(m, "b")}</div></div>
       <div class="sh-bd">${infoHtml(m)}</div></div>`; };
     paint(); document.body.appendChild(o); document.body.classList.add("lock"); OV = o;
     requestAnimationFrame(() => o.classList.add("on"));

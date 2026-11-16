@@ -1058,7 +1058,7 @@ async function subsTick(env, force) {
 // هلق تجريبي: ما حدا بيشوف الصفحة غير المالك (كلمة سر لوحة التحكم + حسابو بالمتجر). بعدين منفتحها للكل من «pred:cfg».live
 // المفاتيح: pred:matches (كل المباريات المعروضة)، pred:picks:<id> (توقعات مباراة)، pred:u:<رقم> (توقعات زبون)، pred:cnt (عدّ التوقعات)، pred:board (النقاط)، pred:cfg، pred:sync
 const PRED_TESTERS = ["0938986875"]; // رقم صاحب المتجر بحسابو بالمتجر
-const PRED_SPORTS = { football: "كرة قدم", basketball: "كرة سلة", ufc: "UFC", boxing: "ملاكمة", tennis: "تنس", other: "غير" };
+const PRED_SPORTS = { football: "كرة قدم", basketball: "كرة سلة", ufc: "MMA", boxing: "ملاكمة", tennis: "تنس", other: "غير" };
 const PRED_LEAGUES = [
   { k: "uefa.champions", p: "soccer/uefa.champions", sp: "football", n: "دوري أبطال أوروبا" },
   { k: "eng.1", p: "soccer/eng.1", sp: "football", n: "الدوري الإنكليزي" },
@@ -1069,6 +1069,8 @@ const PRED_LEAGUES = [
   { k: "ksa.1", p: "soccer/ksa.1", sp: "football", n: "الدوري السعودي" },
   { k: "nba", p: "basketball/nba", sp: "basketball", n: "NBA", daily: true },
   { k: "ufc", p: "mma/ufc", sp: "ufc", n: "UFC" },
+  { k: "pfl", p: "mma/pfl", sp: "ufc", n: "PFL" },
+  { k: "mma-other", p: "mma/other", sp: "ufc", n: "", evName: true }, // PFL MENA (مقاتلين عرب وسوريين)، PFL Africa، …
   { k: "boxing", sp: "boxing", n: "ملاكمة (Box.live)", box: true },
 ];
 const PRED_AR = { "Real Madrid": "ريال مدريد", "Barcelona": "برشلونة", "Atlético Madrid": "أتلتيكو مدريد", "Atletico Madrid": "أتلتيكو مدريد", "Sevilla": "إشبيلية", "Valencia": "فالنسيا", "Villarreal": "فياريال", "Real Betis": "ريال بيتيس", "Real Sociedad": "ريال سوسيداد", "Athletic Club": "أتلتيك بلباو",
@@ -1132,7 +1134,7 @@ function predFromEspn(lg, ev) {
     const num = (x) => (x === undefined || x === null || x === "" ? undefined : +x);
     const nm = (c) => { const s = name(c); return PRED_AR[s] || s; };
     out.push({
-      id: "e" + (comp.id || ev.id), src: lg.k, sport: lg.sp, league: lg.n + (lg.sp === "ufc" && comp.type && comp.type.abbreviation ? " · " + (PRED_W[comp.type.abbreviation] || comp.type.abbreviation) : ""),
+      id: "e" + (comp.id || ev.id), src: lg.k, sport: lg.sp, league: (lg.evName ? String(ev.shortName || ev.name || "MMA").replace(/:.*/, "") : lg.n) + (lg.sp === "ufc" && comp.type && comp.type.abbreviation ? " · " + (PRED_W[comp.type.abbreviation] || comp.type.abbreviation) : ""),
       ev: lg.sp === "ufc" ? String(ev.shortName || ev.name || "") : "",
       a: nm(A), b: nm(Bc), ai: pic(A), bi: pic(Bc), aid: String((A.team && A.team.id) || A.id || ""), bid: String((Bc.team && Bc.team.id) || Bc.id || ""), eid: String(ev.id || ""), ar: (A.records && A.records[0] && A.records[0].summary) || "", br: (Bc.records && Bc.records[0] && Bc.records[0].summary) || "",
       af: A.athlete && A.athlete.flag ? A.athlete.flag.href : "", bf: Bc.athlete && Bc.athlete.flag ? Bc.athlete.flag.href : "",
@@ -1158,7 +1160,7 @@ function bxMatch(e) {
   const slug = (String(e.url || "").match(/\/fights\/([^/]+)/) || [])[1]; if (!slug) return null;
   const at = Date.parse(e.startDate || ""); if (!(at > 0)) return null;
   const nm = (x) => String(x.name || "").replace(/\s+/g, " ").trim();
-  return { id: "bx-" + slug.slice(0, 60), src: "boxing", sport: "boxing", league: "ملاكمة", ev: "", a: nm(c[0]), b: nm(c[1]), ai: c[0].image || "", bi: c[1].image || "", ar: "", br: "", af: "", bf: "", sc: "", at, draw: true, pts: 10, res: "", meth: "", desc: String(e.description || "") };
+  return { id: "bx-" + slug.slice(0, 60), src: "boxing", sport: "boxing", league: "ملاكمة", ev: "", a: nm(c[0]), b: nm(c[1]), ai: c[0].image ? "/pimg?u=" + encodeURIComponent(c[0].image) : "", bi: c[1].image ? "/pimg?u=" + encodeURIComponent(c[1].image) : "", ar: "", br: "", af: "", bf: "", sc: "", at, draw: true, pts: 10, res: "", meth: "", desc: String(e.description || "") };
 }
 function bxResult(mt) {
   const d = mt.desc || "", n = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]+/g, " ").trim();
@@ -1443,6 +1445,19 @@ async function predTick(env) {
   if (!env.STORE) return;
   const last = +(await env.STORE.get("pred:sync", { cacheTtl: 300 }).catch(() => 0)) || 0;
   if (last && Date.now() - last > 20 * 60e3) await predSync(env).catch(() => {});
+}
+// صور الملاكمين من Box.live بتمرق من عنّا (بعض الأجهزة/الشبكات ما بتفتحها مباشرة)، ومنخزّنها أسبوع
+async function predImg(request, url, ctx) {
+  const u = url.searchParams.get("u") || "";
+  let t; try { t = new URL(u); } catch { return new Response("bad", { status: 400 }); }
+  if (t.protocol !== "https:" || !["box.live", "www.box.live", "a.espncdn.com"].includes(t.hostname) || !/\.(png|jpe?g|webp)$/i.test(t.pathname)) return new Response("no", { status: 403 });
+  const cache = typeof caches !== "undefined" ? caches.default : null, ck = new Request("https://ko-sport.online/pimg?u=" + encodeURIComponent(t.href));
+  if (cache) { const hit = await cache.match(ck); if (hit) return hit; }
+  const r = await fetch(t.href, { headers: { "user-agent": BX_HDR["user-agent"], accept: "image/*" }, cf: { cacheTtl: 604800, cacheEverything: true } }).catch(() => null);
+  if (!r || !r.ok || !/^image\//.test(r.headers.get("content-type") || "")) return new Response("not found", { status: 404 });
+  const out = new Response(r.body, { headers: { "content-type": r.headers.get("content-type"), "cache-control": "public, max-age=604800, immutable" } });
+  if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(ck, out.clone()).catch(() => {}));
+  return out;
 }
 async function predPage(request, env) {
   const r = await env.ASSETS.fetch(new URL("/predict.html", request.url));
@@ -4132,6 +4147,7 @@ const koMain = {
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
       if ((path === "/predict" || path === "/ar/predict") && m === "GET" && env.STORE) return predPage(request, env);
+      if (path === "/pimg" && m === "GET") return predImg(request, url, ctx);
       // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
       // أيقونات لوحة التحكم كمان (المتصفح، الشاشة الرئيسية، تطبيق اللوحة): التنين الأصفر بدل الـ KO الأحمر
       // اللوغو الرسمي (صورة صاحب المتجر 1280 بكسل، مقصوصة دائرية) بكل الأحجام: محفوظة جوّا الموقع بـ /assets/brand/
