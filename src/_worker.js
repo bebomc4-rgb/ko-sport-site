@@ -1149,7 +1149,7 @@ const predR = (mt) => ({ res: mt.res || "", ra: mt.ra, rb: mt.rb, meth: mt.meth 
 const predSameR = (x, y) => x.res === y.res && x.ra === y.ra && x.rb === y.rb && x.meth === y.meth;
 // نقاط المباراة (صاحب المتجر 16 تشرين التاني 2026: «المهمة عليها نقاط كبيرة مشان تحذبو»): المباراة المهمة (predImp) = 10، والعادية = 3.
 // إذا صاحب المتجر حط نقاط بإيدو (ptsO) أو ضاف المباراة بإيدو: منحترم رقمو.
-const predBase = (mt) => mt.ptsO || !mt.src ? (+mt.pts || 10) : predImp(mt, false) ? 10 : 3;
+const predBase = (mt) => mt.ptsO || !mt.src ? (+mt.pts || 100) : predImp(mt, false) ? 100 : 30; // صاحب المتجر: «زود صفر لكلشي» (كل النقاط والدرجات ×10)
 function predPts(mt, v, R) {
   if (!v || !predKeyOk(R.res)) return { p: 0, w: 0 };
   const base = predBase(mt); if (v.k !== R.res) return { p: 0, w: 0 };
@@ -1163,7 +1163,7 @@ function predPts(mt, v, R) {
 // ---------- جوايز التوقعات (صاحب المتجر، 16 تشرين التاني 2026: ربحو بالقطعة 40% وتحت) ----------
 // الجايزة خصم بس: 300 نقطة = 5%، 600 = 10%، 1200 = 20%، 2000 = 30% (صاحب المتجر: «عميل اكبر خصم 30 بالمية»). النقاط المصروفة بتنحفظ بـ r.s (الرصيد = r.p - r.s) فالترتيب ما بينزل.
 // الكود (KO + 6 أحرف) لطلب واحد، لصاحب الحساب بس، صالح 14 يوم، وما بينجمع مع خصم تاني (pickDiscount بياخد الأحسن). محفوظ بـ pred:cp:<CODE>.
-const PRED_TIERS = [[300, 5], [800, 10], [1800, 20], [3500, 30]], PRED_CP_DAYS = 14;
+const PRED_TIERS = [[3000, 5], [8000, 10], [18000, 20], [35000, 30]], PRED_CP_DAYS = 14;
 async function predCpList(env, code, phone) {
   const c = String(code || "").trim().toUpperCase(); if (!/^KO[A-Z0-9]{6}$/.test(c)) return [];
   const x = await env.STORE.get("pred:cp:" + c, "json").catch(() => null);
@@ -1603,13 +1603,13 @@ async function predApi(request, env, path, m, ctx) {
       const sport = PRED_SPORTS[b.sport] ? b.sport : "other", a = clip(b.a, 60), bb = clip(b.b, 60), at = +b.at;
       if (!a || !bb || !(at > 0)) return json({ error: "عبّي الطرفين والوقت" }, 400);
       if (predFem({ league: b.league, a, b: bb })) return json({ error: "ما منحط فرق أو لاعبات نساء" }, 400);
-      L.push({ id: "m" + newKey().slice(0, 12), sport, league: clip(b.league, 60), a, b: bb, at, draw: !!b.draw || sport === "boxing" || sport === "ufc", pts: Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), res: "" });
+      L.push({ id: "m" + newKey().slice(0, 12), sport, league: clip(b.league, 60), a, b: bb, at, draw: !!b.draw || sport === "boxing" || sport === "ufc", pts: Math.min(10000, Math.max(1, Math.round(+b.pts || 100))), res: "" });
       L.sort((x, y) => x.at - y.at);
     } else if (b.action === "result" || b.action === "pts") {
       const mt = L.find((x) => x.id === b.id); if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
       const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
       if (b.action === "pts") {
-        const np = Math.min(1000, Math.max(1, Math.round(+b.pts || 10))), r = mt.res;
+        const np = Math.min(10000, Math.max(1, Math.round(+b.pts || 100))), r = mt.res;
         const R = predR(mt); await predSettle(env, B, mt, R, { res: "" }); mt.pts = np; mt.ptsO = true; await predSettle(env, B, mt, { res: "" }, R);
       } else {
         const r = String(b.res || ""); if (r && !["a", "b", "x"].includes(r) && !(r === "d" && mt.draw)) return json({ error: "نتيجة غلط" }, 400);

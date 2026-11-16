@@ -336,7 +336,7 @@ body.lock{overflow:hidden}
   }
 
   // جوايز النقاط (16 تشرين التاني 2026): خصم بس. الرصيد = النقاط − المصروف.
-  const rank = (p) => "🎖 " + (p >= 1000 ? "أسطورة" : p >= 600 ? "خبير" : p >= 300 ? "محترف" : p >= 100 ? "هاوي" : "مبتدئ");
+  const rank = (p) => "🎖 " + (p >= 10000 ? "أسطورة" : p >= 6000 ? "خبير" : p >= 3000 ? "محترف" : p >= 1000 ? "هاوي" : "مبتدئ");
   function prizes() {
     const T = D.tiers || []; if (!D.me || !T.length) return "";
     const bal = Math.max(0, (D.me.p || 0) - (D.me.s || 0)), next = T.find((t) => bal < t[0]), top = T[T.length - 1][0];
@@ -346,7 +346,7 @@ body.lock{overflow:hidden}
       <p class="sub">${next ? `باقيلك <b>${next[0] - bal}</b> نقطة لخصم ${next[1]}%` : "وصلت لأعلى خصم 👑"}</p>
       <div class="pz-t">${T.map(([n, pc]) => `<button class="btn sm ${bal >= n ? "" : "ghost"}" data-rd="${n}" data-pc="${pc}" ${bal >= n ? "" : "disabled"}>خصم ${pc}%<small>${n} نقطة</small></button>`).join("")}</div>
       ${cps.map((x) => `<div class="pz-c">كود خصم ${x.pct}%: <b dir="ltr">${esc(x.c)}</b><small>اكتبو بخانة كود الخصم وقت الطلب · لطلب واحد · صالح لـ ${new Date(x.exp).toLocaleDateString("ar-SY", { timeZone: "Asia/Damascus", day: "numeric", month: "long" })}</small></div>`).join("")}
-      <p class="sub">الفايز صح = 10 نقاط، والنتيجة بالزبط = 10 كمان. الخصم ما بينجمع مع خصم تاني.</p></div>`;
+      <p class="sub">المباراة المهمة: الفايز صح = 100 نقطة والنتيجة بالزبط = 100 كمان. المباراة العادية: 30 و30. الخصم ما بينجمع مع خصم تاني.</p></div>`;
   }
   function draw() {
     $("#tag").hidden = D.live;
@@ -398,7 +398,7 @@ body.lock{overflow:hidden}
       <label>الطرف الأول<input id="a_a" placeholder="الاسم"></label>
       <label>الطرف التاني<input id="a_b" placeholder="الاسم"></label>
       <label>وقت البداية (بتوقيت سوريا)<input id="a_at" type="datetime-local" value="${now}"></label>
-      <label>نقاط التوقّع الصح<input id="a_pts" type="number" min="1" max="1000" value="10"></label>
+      <label>نقاط التوقّع الصح<input id="a_pts" type="number" min="1" max="10000" value="100"></label>
       <label class="chk w"><input id="a_d" type="checkbox"> في تعادل؟</label>
       <button class="btn w" id="a_go" style="grid-column:1/-1">ضيف المباراة</button></div></details>`;
   }
@@ -413,7 +413,7 @@ body.lock{overflow:hidden}
       if (b.dataset.org !== undefined) { org = b.dataset.org; day = ""; saveF(); draw(); return; }
       if (b.dataset.day !== undefined) { day = b.dataset.day; saveF(); draw(); return; }
       if (b.dataset.info) { busy = false; openInfo(b.dataset.info); return; }
-      if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "10"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
+      if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "100"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
       if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(); }
       if (b.id === "og_go") { const hide = [...document.querySelectorAll("[data-og]")].filter((x) => !x.checked).map((x) => x.dataset.og); await api("/api/pred/admin", { action: "orgs", hide }); toast("انحفظت ✓"); return await load(); }
       if (b.id === "lg_go") { toast("عم حدّث…"); const ks = [...document.querySelectorAll("[data-lg]")].filter((x) => x.checked).map((x) => x.dataset.lg); const r = await api("/api/pred/admin", { action: "leagues", leagues: ks }); toast(`انحفظت ✓ (${r.total} مباراة)`); return await load(); }
