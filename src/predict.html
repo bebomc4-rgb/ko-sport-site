@@ -163,7 +163,7 @@ body.lock{overflow:hidden}
   <a class="logo" href="/ar/" aria-label="KO SPORT"><img src="/brand/logo.webp?v=3" alt="KO SPORT" width="48" height="48"></a><span></span>
 </div></header>
 <div class="wrap">
-  <div class="ptitle"><div><h1>توقّعات KO</h1><small>توقّع مين بيربح، وكل توقّع صح بيعطيك نقاط بحسابك</small></div><span class="badge" id="tag" hidden>تجريبي</span></div>
+  <div class="ptitle"><div><h1>توقّعات KO</h1><small>توقّع مين بيربح، وكل توقّع صح بيعطيك نقاط بحسابك</small></div></div>
   <div id="app"><div class="empty">عم يحمّل…</div></div>
 </div>
 <div id="toast"></div>
@@ -360,7 +360,6 @@ body.lock{overflow:hidden}
       <p class="sub">المباراة المهمة: الفايز صح = 100 نقطة والنتيجة بالزبط = 100 كمان. المباراة العادية: 30 و30. الخصم ما بينجمع مع خصم تاني.</p></div>`;
   }
   function draw() {
-    $("#tag").hidden = D.live;
     if (sport && !D.matches.some((m) => m.sport === sport)) sport = "";
     const orgs = sport ? [...new Set(D.matches.filter((m) => m.sport === sport).map((m) => m.org || ""))].filter(Boolean) : [];
     if (org && !orgs.includes(org)) org = "";
