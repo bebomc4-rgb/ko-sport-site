@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>BKFC · صفحتي</title>
+<style>
+/* صفحة شخصية لصاحب المتجر بس: بيانات من bkfc.com (استعمال شخصي، مو منشورة لحدا) */
+:root{--bg:#0f0f12;--card:#1a1a20;--card2:#22222a;--ink:#f2f2f5;--mut:#a4a4af;--line:#2c2c34;--gold:#c9a45c;--gold2:#e0bd76;--red:#e23b3b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;line-height:1.5}
+.wrap{max-width:820px;margin:0 auto;padding:16px 12px 60px}
+h1{font-size:1.2rem;margin:4px 0 2px;color:var(--gold2)}
+.sub{color:var(--mut);font-size:.8rem;margin-bottom:14px}
+.ev{background:var(--card);border:1px solid var(--gold);border-radius:18px;padding:14px;margin:16px 0}
+.ev>.eh{text-align:center;margin-bottom:8px}.ev>.eh b{display:block;font-size:1.05rem;color:var(--gold2)}.ev>.eh small{color:var(--mut)}
+.ev h4{margin:14px 0 8px;font-size:.85rem;color:var(--mut);display:flex;gap:8px;align-items:center}.ev h4:after{content:"";flex:1;height:1px;background:var(--line)}
+.bt{background:var(--card2);border-radius:14px;padding:12px;margin:8px 0}
+.bt .top{display:flex;justify-content:space-between;font-size:.75rem;color:var(--mut);margin-bottom:6px}
+.badge{background:var(--gold);color:#111;font-weight:800;border-radius:99px;padding:1px 9px;font-size:.7rem}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+.f{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px}
+.f img,.f .av{width:92px;height:122px;object-fit:cover;object-position:top;border-radius:14px;background:var(--card);border:1px solid var(--line)}
+.f .av{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.4rem;color:var(--gold2)}
+.f b{font-size:.95rem}.f small{color:var(--mut);font-size:.72rem}
+.rec{font-weight:800;direction:ltr;font-size:1rem}.rec .w{color:#3fbf73}.rec .l{color:var(--red)}
+.mid{color:var(--mut);font-weight:800}
+.res{text-align:center;margin-top:8px;font-size:.8rem;color:var(--gold2)}
+.msg{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center}
+input,button{font:inherit;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--ink)}
+button{background:var(--gold);color:#111;font-weight:700;border:0;cursor:pointer}
+a{color:var(--gold2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🥊 BKFC · صفحتي الشخصية</h1>
+  <div class="sub">إلك بس (مقفولة بكلمة سر اللوحة) · البيانات من <a href="https://www.bkfc.com" target="_blank" rel="noopener">bkfc.com</a> · <a href="#" id="fresh">حدّث هلق</a></div>
+  <div id="app"><div class="msg">عم جيب…</div></div>
+</div>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s), app = $("#app");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const ls = { get: (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  const ini = (n) => esc(String(n || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase());
+  function gate(msg) {
+    app.innerHTML = `<div class="msg">${esc(msg || "اكتب كلمة سر لوحة التحكم")}<br><br><input id="pw" type="password" placeholder="كلمة السر"> <button id="go">فوت</button></div>`;
+    $("#go").onclick = () => { const v = $("#pw").value.trim(); if (v) { ls.set("ko_admin", v); load(); } };
+  }
+  const fighter = (x) => { const f = x.f || {};
+    return `<div class="f">${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;av&quot;>${ini(x.n)}</div>'">` : `<div class="av">${ini(x.n)}</div>`}
+      <b>${esc(x.n)}</b>${f.w !== undefined && f.w !== "" ? `<span class="rec"><span class="w">${esc(f.w)}</span>-<span class="l">${esc(f.l)}</span>-${esc(f.d)}</span>` : ""}
+      <small>${[f.nat, f.age ? f.age + " سنة" : "", f.ht].filter(Boolean).map(esc).join(" · ")}</small>
+      <a href="https://www.bkfc.com/fighters/${esc(x.s)}" target="_blank" rel="noopener" style="font-size:.72rem">ملفو ↗</a></div>`; };
+  function draw(D) {
+    if (!D.events.length) { app.innerHTML = `<div class="msg">ما في أحداث جاية</div>`; return; }
+    app.innerHTML = D.events.map((e) => { const segs = [...new Set(e.bouts.map((b) => b.seg))];
+      return `<div class="ev"><div class="eh"><b>${esc(e.name)}</b><small>${esc(e.date)} · ${e.bouts.length} نزال</small></div>` +
+        segs.map((s) => `<h4>${esc(s)}</h4>` + e.bouts.filter((b) => b.seg === s).map((b) => `<div class="bt"><div class="top"><span>${esc(b.wc)}</span>${b.mev ? `<span class="badge">${b.mev === "co" ? "النزال الرئيسي المساعد" : "⭐ النزال الرئيسي"}</span>` : ""}</div>
+          <div class="vs">${fighter(b.a)}<div class="mid">ضد</div>${fighter(b.b)}</div>${b.res ? `<div class="res">${esc(b.res)}</div>` : ""}</div>`).join("")).join("") + `</div>`; }).join("");
+  }
+  async function load(fresh) {
+    const pw = ls.get("ko_admin"); if (!pw) return gate();
+    app.innerHTML = `<div class="msg">عم جيب من موقع BKFC… (أول مرة بتاخد شوي)</div>`;
+    const r = await fetch("/api/my-bkfc" + (fresh ? "?fresh=1" : ""), { headers: { authorization: "Bearer " + pw } }).catch(() => null);
+    if (!r) return (app.innerHTML = `<div class="msg">ما في نت</div>`);
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 403 || r.status === 401) { ls.set("ko_admin", ""); return gate("كلمة السر غلط"); }
+    if (!r.ok) return (app.innerHTML = `<div class="msg">${esc(j.error || "صار خطأ")}</div>`);
+    draw(j);
+  }
+  $("#fresh").onclick = (e) => { e.preventDefault(); load(true); };
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1609,6 +1609,68 @@ async function predImg(request, url, ctx) {
   if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(ck, out.clone()).catch(() => {}));
   return out;
 }
+// ---------- صفحة BKFC الشخصية (صاحب المتجر بس، 16 تشرين التاني 2026) ----------
+// شروط bkfc.com بتسمح بالاستعمال الشخصي وغير التجاري بس: هالصفحة مقفولة بكلمة سر اللوحة، مو مربوطة بالمتجر ولا بالتوقعات، وما بتنعرض لحدا غير المالك.
+const BK = "https://www.bkfc.com", BK_HDR = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", accept: "text/html" };
+const bkT = (h) => String(h || "").replace(/<svg[\s\S]*?<\/svg>/g, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ").trim();
+const bkGet = async (path) => { const r = await fetch(BK + path, { headers: BK_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtlByStatus: { "200-299": 1800, "300-599": 0 } } }); if (!r.ok) throw new Error("bkfc " + r.status); return r.text(); };
+async function bkFighter(env, slug) {
+  const ck = "bk:f:" + slug, hit = await env.STORE.get(ck, "json").catch(() => null); if (hit) return hit;
+  const h = await bkGet("/fighters/" + slug).catch(() => ""); if (!h) return null;
+  const nums = [...h.matchAll(/class="hero_record_number[^"]*"[^>]*>([^<]*)</g)].map((x) => x[1].trim());
+  const lab = (k) => { const i = h.search(new RegExp(`stat_list-item_label[^>]*>\\s*${k}`, "i")); return i < 0 ? "" : h.slice(i, i + 1500); };
+  const nat = bkT((lab("Nationality").match(/paragraph-9[^>]*>([^<]*)</) || [])[1]);
+  const dob = ((lab("age").match(/(\d{1,2})\/(\d{4})/) || []));
+  const ht = ((lab("height").match(/height-metric[^>]*>([^<]*)</) || [])[1] || "").trim();
+  const div = bkT((lab("Division").match(/<div[^>]*>\s*([A-Za-z' ]{3,30})\s*<\/div>/) || [])[1]);
+  const o = { w: nums[0] || "", l: nums[1] || "", d: nums[2] || "", nat, age: dob[2] ? new Date().getUTCFullYear() - +dob[2] - (new Date().getUTCMonth() + 1 < +dob[1] ? 1 : 0) : "", ht, div };
+  await env.STORE.put(ck, JSON.stringify(o), { expirationTtl: 86400 }).catch(() => {});
+  return o;
+}
+async function bkData(env) {
+  const hit = await env.STORE.get("bk:cache", "json").catch(() => null); if (hit && Date.now() - hit.t < 30 * 60e3) return hit;
+  const list = await bkGet("/events");
+  const slugs = [...new Set([...list.matchAll(/href="\/events\/([a-z0-9-]+)"/g)].map((x) => x[1]))].slice(0, 8);
+  const events = [];
+  for (const sl of slugs) {
+    const h = await bkGet("/events/" + sl).catch(() => ""); if (!h) continue;
+    const name = bkT((h.match(/class="events_header-text"[^>]*>\s*<div[^>]*>([\s\S]*?)<\/div>/) || [])[1]) || sl;
+    const date = bkT((h.match(/data-event-date-est[^>]*>([\s\S]*?)<\/div>/) || [])[1]);
+    const heads = [...h.matchAll(/class="header_heading"[^>]*>([\s\S]*?)<\/h2>/g)].map((x) => ({ i: x.index, t: bkT(x[1]) }));
+    const parts = h.split(/(?=<div[^>]*class="fight-card_wrapper")/).slice(1), seen = new Set(), bouts = [];
+    let pos = h.indexOf(parts[0] || "\u0000");
+    for (const p of parts) {
+      const at = h.indexOf(p, pos); pos = at + 1;
+      const hd = [...p.matchAll(/class="fight-card_heading"[^>]*>([\s\S]*?)<\/h3>/g)].map((x) => bkT(x[1]));
+      const wcl = hd.find((x) => !/main event|co-main/i.test(x)) || "", mev = hd.some((x) => /main event/i.test(x)) ? (hd.some((x) => /co-main/i.test(x)) ? "co" : "main") : "";
+      if (/women|female|\bW\.\s/i.test(wcl + " " + hd.join(" "))) continue; // ولا نزال سيدات
+      const nm = [...p.matchAll(/class="fight-card_name[^"]*"[^>]*>([\s\S]*?)<\/div>/g)].map((x) => bkT(x[1])).filter(Boolean);
+      const sl2 = [...p.matchAll(/href="\/fighters\/([a-z0-9-]+)"/g)].map((x) => x[1]).filter((v, i, A) => A.indexOf(v) === i);
+      const img = [...p.matchAll(/fight-card_headshot[^>]*>\s*<img src="([^"]+)"/g)].map((x) => x[1]);
+      if (nm.length < 2 || sl2.length < 2) continue;
+      const key = sl2.slice(0, 2).sort().join("|"); if (seen.has(key)) continue; seen.add(key);
+      const res = [...p.matchAll(/class="(?:text-align-center|text-size-large)"[^>]*>([^<]*)</g)].map((x) => x[1].trim()).filter((x) => x && !/^TB[UC]$/i.test(x));
+      const seg = (heads.filter((x) => x.i < at).pop() || { t: "" }).t;
+      bouts.push({ wc: wcl, mev, seg: /free/i.test(seg) ? "فايتات مجانية" : /prelim/i.test(seg) ? "التمهيدية" : "البطاقة الرئيسية", a: { n: nm[0], s: sl2[0], img: img[0] || "" }, b: { n: nm[1], s: sl2[1], img: img[1] || "" }, res: res.slice(0, 3).join(" · ") });
+    }
+    if (bouts.length) events.push({ slug: sl, name, date, bouts });
+  }
+  const all = [...new Set(events.flatMap((e) => e.bouts.flatMap((b) => [b.a.s, b.b.s])))];
+  const F = {}; for (let i = 0; i < all.length; i += 6) await Promise.all(all.slice(i, i + 6).map(async (sl) => { F[sl] = await bkFighter(env, sl).catch(() => null); }));
+  for (const e of events) for (const b of e.bouts) { b.a.f = F[b.a.s] || null; b.b.f = F[b.b.s] || null; }
+  const out = { t: Date.now(), events };
+  await env.STORE.put("bk:cache", JSON.stringify(out)).catch(() => {});
+  return out;
+}
+async function bkApi(request, env) {
+  if (env.__role !== "owner") return json({ error: "هالصفحة إلك بس · اكتب كلمة سر لوحة التحكم" }, 403);
+  if (new URL(request.url).searchParams.get("fresh")) await env.STORE.delete("bk:cache").catch(() => {});
+  try { return json(await bkData(env)); } catch (e) { return json({ error: "ما قدرت جيب من موقع BKFC هلق (" + (e && e.message || "خطأ") + ")" }, 502); }
+}
+async function bkPage(request, env) {
+  const r = await env.ASSETS.fetch(new URL("/bkfc.html", request.url));
+  return new Response(r.body, { status: r.status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" } });
+}
 async function predPage(request, env) {
   const r = await env.ASSETS.fetch(new URL("/predict.html", request.url));
   return new Response(r.body, { status: r.status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" } });
@@ -4297,6 +4359,7 @@ const koMain = {
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
       if ((path === "/predict" || path === "/ar/predict") && m === "GET" && env.STORE) return predPage(request, env);
+      if (path === "/my-bkfc" && m === "GET" && env.STORE) return bkPage(request, env);
       if (path === "/pimg" && m === "GET") return predImg(request, url, ctx);
       // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
       // أيقونات لوحة التحكم كمان (المتصفح، الشاشة الرئيسية، تطبيق اللوحة): التنين الأصفر بدل الـ KO الأحمر
@@ -4378,6 +4441,7 @@ const koMain = {
       }
       if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
       if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m, ctx);
+      if (path === "/api/my-bkfc" && m === "GET") return bkApi(request, env);
       if (path.startsWith("/api/acct/")) {
         if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
         const r = await acctApi(request, env, path, m);
