@@ -68,6 +68,29 @@ async function saveProducts(env, list) {
   await snapshot(env, "products");
   await env.STORE.put("products", JSON.stringify(list));
   await purgeEdge("products");
+  imgWarmList(env, list);
+}
+// صاحب المتجر (17 تشرين التاني 2026): «السرعة أهم شي» — كل صورة جديدة بتتجهّز نسخها المصغّرة لحالها
+// (بالمقاسات يلي بيطلبها الموبايل) أول ما تنحفظ، فما في زبون بيستنّى تصغير بأول فتحة. أي طريقة رفع (اللوحة، البوت، GeminiKO) بتمرق من هون.
+const IMG_WARM_MAIN = ["540", "720", "900", "828", "240"], IMG_WARM_GAL = ["828", "1080", "240"];
+function imgWarmKeys(ctx, origin, items, env) {
+  if (!ctx || !ctx.waitUntil || !origin || !items.length) return;
+  ctx.waitUntil((async () => {
+    await new Promise((r) => setTimeout(r, 1500));
+    let i = 0; const jobs = items.flatMap(([k, ws]) => ws.map((w) => `${origin}/imgs/${w}/${k}`)).slice(0, 300);
+    const wk = async () => { while (i < jobs.length) { const u = jobs[i++]; try { const r = await fetch(u); await r.arrayBuffer(); } catch {} } };
+    await Promise.all([wk(), wk(), wk(), wk()]);
+    if (env && env.STORE) for (const [k] of items) { try { await env.STORE.put("imgw:" + k, "1"); } catch {} }
+  })());
+}
+function imgWarmList(env, list) {
+  const ctx = globalThis.__koCtx, origin = globalThis.__koOrigin; if (!ctx || !ctx.waitUntil || !origin || !env.STORE) return;
+  ctx.waitUntil((async () => {
+    const L = /^\/img\/([a-z0-9]+)$/, want = [];
+    for (const p of list) { if (p.hidden) continue; const m = L.exec(p.image || p.thumb || ""); if (m) want.push([m[1], IMG_WARM_MAIN]); for (const g of (p.images || []).slice(1)) { const x = L.exec(g || ""); if (x) want.push([x[1], IMG_WARM_GAL]); } }
+    const todo = []; for (const it of want.slice(0, 150)) { if (todo.length >= 40) break; try { if (!(await env.STORE.get("imgw:" + it[0]))) todo.push(it); } catch {} }
+    imgWarmKeys(ctx, origin, todo, env);
+  })());
 }
 
 // Short edge cache for the public JSON (products, settings): fast first byte, fewer KV reads.
@@ -2072,7 +2095,7 @@ async function imageUpload(request, env, ctx) {
   const key = newKey();
   await env.STORE.put(`img:${key}`, buf, { metadata: { type } });
   // صاحب المتجر (17 تشرين التاني 2026): «التطبيق بطيء بفتح الصور الجديدة» — منجهّز النسخ المصغّرة فوراً وقت الرفع، فأول زبون بيفتحها بتكون جاهزة
-  if (ctx && ctx.waitUntil) { const o = new URL(request.url).origin; ctx.waitUntil((async () => { await new Promise((r) => setTimeout(r, 1500)); for (const w of ["240", "300", "720", "900", "1080"]) { try { const r = await fetch(`${o}/imgs/${w}/${key}`); await r.arrayBuffer(); } catch {} } })()); }
+  imgWarmKeys(ctx, new URL(request.url).origin, [[key, [...new Set([...IMG_WARM_MAIN, ...IMG_WARM_GAL])]]], env);
   return json({ url: `/img/${key}` });
 }
 
@@ -4537,6 +4560,7 @@ const koMain = {
 const KO_CSP = "object-src 'none'; base-uri 'self'; frame-ancestors 'self'";
 export default {
   async fetch(request, rawEnv, ctx) {
+    try { globalThis.__koCtx = ctx; globalThis.__koOrigin = new URL(request.url).origin; } catch {}
     const res = await koMain.fetch(request, rawEnv, ctx);
     try {
       if (!res || res.status === 101 || res.webSocket) return res;
