@@ -1123,6 +1123,22 @@ const PRED_FEM = /women|woman|womens|female|féminin|femenin|femmin|frauen|ladie
 const predFem = (mt) => PRED_FEM.test([mt.league, mt.ev, mt.a, mt.b].join(" "));
 const PRED_TBA = /\b(TBA|TBD)\b|^\s*$/i; // نزال لسا ما انعرف أطرافو (ESPN بيحط «TBA» و«Opponent TBA»): ما منعرضو
 const predTba = (mt) => PRED_TBA.test(String(mt.a || "")) || PRED_TBA.test(String(mt.b || ""));
+// صاحب المتجر (16 تشرين التاني 2026): «بكرة القدم أهم المباريات فقط، والسلة كمان، والملاكمة كمان».
+// قدم: مباراة فيها نادي كبير أو منتخب كبير (أو سوريا)، وكل مباريات كأس العالم. سلة: NBA بين فريقين مشهورين، أو أي مباراة لليكرز/غولدن ستيت/بوسطن.
+// ملاكمة: نزال على لقب عالمي أو 12 جولة (من وصف Box.live وقت السحب → mt.imp)، أو فيه اسم ملاكم مشهور. الـ MMA ما تغيّر.
+// المباراة يلي الزبون توقّعها قبل، ويلي صاحب المتجر ضافها بإيدو، بيضلّوا طالعين. cfg.impAll = true بيرجّع كلشي متل قبل.
+const PRED_BIG_FB = new Set(["ريال مدريد", "برشلونة", "أتلتيكو مدريد", "مانشستر يونايتد", "مانشستر سيتي", "ليفربول", "آرسنال", "تشيلسي", "توتنهام", "بايرن ميونخ", "بوروسيا دورتموند", "باريس سان جيرمان", "يوفنتوس", "إنتر ميلان", "ميلان", "نابولي", "الهلال", "النصر", "الاتحاد", "الأهلي",
+  "Syria", "Brazil", "Argentina", "France", "Spain", "Germany", "England", "Portugal", "Italy", "Netherlands", "Belgium", "Croatia", "Saudi Arabia", "Morocco", "Egypt", "Algeria", "Qatar", "Iraq", "Jordan", "Tunisia", "United Arab Emirates", "Lebanon", "Palestine", "Uruguay", "Japan", "South Korea"]);
+const PRED_BIG_NBA = new Set(["ليكرز", "غولدن ستيت", "بوسطن سلتيكس", "نيويورك نيكس", "أوكلاهوما ثاندر", "دنفر ناغتس", "دالاس مافريكس", "ميلووكي باكس", "ميامي هيت", "شيكاغو بولز", "سان أنطونيو سبيرز", "كليفلاند"]);
+const PRED_TOP_NBA = new Set(["ليكرز", "غولدن ستيت", "بوسطن سلتيكس"]);
+const PRED_BIG_BOX = /Usyk|Tyson Fury|Anthony Joshua|Canelo|Saul Alvarez|Terence Crawford|Naoya Inoue|Dmitr\w+ Bivol|Beterbiev|David Benavidez|Devin Haney|Ryan Garcia|Gervonta Davis|Shakur Stevenson|Teofimo Lopez|Daniel Dubois|Joseph Parker|Deontay Wilder|Jake Paul|Jaron Ennis|Vergil Ortiz|Chris Eubank|Conor Benn|Moses Itauma|Agit Kabayel|Junto Nakatani|Jesse Rodriguez|Gilberto Ramirez|Jai Opetaia|Tim Tszyu|Sebastian Fundora|Jaime Munguia|Zhilei Zhang|Filip Hrgovic|Fabio Wardley/i;
+const predImp = (mt, boxAll) => {
+  if (!mt.src) return true; // مباراة ضافها صاحب المتجر بإيدو
+  if (mt.sport === "football") return mt.src === "fifa.world" || PRED_BIG_FB.has(mt.a) || PRED_BIG_FB.has(mt.b);
+  if (mt.sport === "basketball") return mt.src === "nba" && ((PRED_BIG_NBA.has(mt.a) && PRED_BIG_NBA.has(mt.b)) || PRED_TOP_NBA.has(mt.a) || PRED_TOP_NBA.has(mt.b));
+  if (mt.sport === "boxing") return boxAll || !!mt.imp || PRED_BIG_BOX.test(mt.a + " | " + mt.b);
+  return true;
+};
 const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L.filter((x) => x.src !== "bkfc" && x.org !== "BKFC") : []; }; // صاحب المتجر (16 تشرين التاني 2026): شلنا كلشي إلو علاقة بـ BKFC
 async function predCfg(env) { const c = await env.STORE.get("pred:cfg", "json").catch(() => null); return c && typeof c === "object" ? c : {}; }
 const predKeyOk = (k) => k === "a" || k === "b" || k === "d";
@@ -1207,7 +1223,7 @@ function bxMatch(e) {
   const nm = (x) => String(x.name || "").replace(/\s+/g, " ").trim();
   const pl = (Array.isArray(e.location) ? e.location : [e.location]).find((x) => x && x["@type"] === "Place"), ad = pl && pl.address;
   const ctry = String((ad && (ad.addressCountry || String(ad["@value"] || "").split(",").pop())) || "").trim();
-  return { id: "bx-" + slug.slice(0, 60), src: "boxing", sport: "boxing", org: BX_CTRY[ctry] || ctry || "ملاكمة", league: "ملاكمة" + (ctry ? " · " + (BX_CTRY[ctry] || ctry) : ""), ev: "", a: nm(c[0]), b: nm(c[1]), ai: c[0].image ? "/pimg?u=" + encodeURIComponent(c[0].image) : "", bi: c[1].image ? "/pimg?u=" + encodeURIComponent(c[1].image) : "", ar: "", br: "", af: "", bf: "", sc: "", at, draw: true, pts: 10, res: "", meth: "", desc: String(e.description || "") };
+  return { id: "bx-" + slug.slice(0, 60), src: "boxing", sport: "boxing", org: BX_CTRY[ctry] || ctry || "ملاكمة", league: "ملاكمة" + (ctry ? " · " + (BX_CTRY[ctry] || ctry) : ""), ev: "", a: nm(c[0]), b: nm(c[1]), ai: c[0].image ? "/pimg?u=" + encodeURIComponent(c[0].image) : "", bi: c[1].image ? "/pimg?u=" + encodeURIComponent(c[1].image) : "", ar: "", br: "", af: "", bf: "", sc: "", at, draw: true, pts: 10, res: "", meth: "", imp: /world|championship|title|\b12[- ]rounds?/i.test(String(e.description || "") + " " + String(e.name || "")), desc: String(e.description || "") };
 }
 function bxResult(mt) {
   const d = mt.desc || "", n = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]+/g, " ").trim();
@@ -1467,7 +1483,7 @@ async function predSync(env, force) {
     if (cur.lock) continue; // المالك حط النتيجة بإيدو: منترك قرارو
     if (g.dOnly && cur.a !== g.a && cur.a === g.b) { [g.a, g.b, g.af, g.bf] = [g.b, g.a, g.bf, g.af]; if (g.res === "a") g.res = "b"; else if (g.res === "b") g.res = "a"; g.ord = cur.ord; g.mev = cur.mev; }
     const oldR = predR(cur);
-    Object.assign(cur, { ...g, pts: cur.pts || g.pts });
+    Object.assign(cur, { ...g, pts: cur.pts || g.pts, ...(g.src === "boxing" ? { imp: !!(cur.imp || g.imp) } : {}) });
     const newR = predR(cur);
     if (!predSameR(oldR, newR)) boardDirty = (await predSettle(env, B, cur, oldR, newR)) || boardDirty;
   }
@@ -1498,10 +1514,11 @@ async function predApi(request, env, path, m, ctx) {
     const [L, B, C, U] = await Promise.all([predMatches(env), env.STORE.get("pred:board", "json").catch(() => null), env.STORE.get("pred:cnt", "json").catch(() => null), acct ? env.STORE.get("pred:u:" + acct.phone, "json").catch(() => null) : null]);
     const board = Object.entries(B || {}).filter(([, r]) => r.t > 0).map(([ph, r]) => ({ n: r.n || "زبون", p: r.p, w: r.w, t: r.t, me: !!(acct && acct.phone === ph) })).sort((x, y) => y.p - x.p || y.w - x.w).slice(0, 30);
     const mine = (U && U.k) || {}, hideO = new Set(cfg.hideOrgs || []);
+    const boxAll = !!cfg.impAll || !L.some((mt) => mt.sport === "boxing" && mt.imp), impOk = (mt) => !!cfg.impAll || !!mine[mt.id] || predImp(mt, boxAll); // بالملاكمة: إذا المصدر ما عطى ولا إشارة لقب، منعرض الكل أحسن ما يفضى القسم
     return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (PFL MENA وغيرها)", sp: x.sp, on: on.has(x.k) })); })(),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
       orgsAll: owner ? [...new Map(L.filter((mt) => !predFem(mt)).map((mt) => { const o = predOut(mt); return [o.sport + "|" + o.org, { k: o.sport + "|" + o.org, sp: o.sport, n: o.org, hid: hideO.has(o.sport + "|" + o.org) }]; })).values()] : undefined,
-      matches: L.filter((mt) => !predFem(mt) && !(mt.src && predTba(mt))).filter((mt) => !hideO.has(mt.sport + "|" + (mt.org || (mt.league || "").split(" · ")[0] || ""))).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
+      matches: L.filter((mt) => !predFem(mt) && !(mt.src && predTba(mt))).filter(impOk).filter((mt) => !hideO.has(mt.sport + "|" + (mt.org || (mt.league || "").split(" · ")[0] || ""))).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
   }
   if (path === "/api/pred/info" && m === "GET") {
     const id = clip(new URL(request.url).searchParams.get("id"), 80);
