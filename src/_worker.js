@@ -1182,13 +1182,44 @@ async function bxFetch(errs) {
   }
   return got;
 }
-// إحصائيات المباراة (بتنجاب لما الزبون يكبس «📊 إحصائيات»، وبتنحفظ بالـ KV كم ساعة):
-// كرة قدم وسلة: تاريخ مواجهات الفريقين من ESPN (summary → seasonseries). UFC: طرق الفوز من سجل المقاتل (ESPN core). ملاكمة: من صفحة النزال بـ Box.live.
+// إحصائيات المباراة (بتنجاب لما الزبون يكبس «📊 إحصائيات»، وبتنحفظ بالـ KV كم ساعة).
+const PRED_LBL = { "Goal Difference": "فرق الأهداف بالموسم", "Total Goals": "أهداف الموسم", "Assists": "تمريرات حاسمة", "Goals Against": "أهداف عليه بالموسم",
+  "Streak": "السلسلة الحالية", "Points Against": "معدّل النقاط عليه", "Last Ten Games": "آخر 10 مباريات", "Points Per Game": "معدّل النقاط", "Field Goal %": "دقة التسديد %", "Three Point %": "دقة الثلاثيات %",
+  "Rebounds Per Game": "معدّل الريباوند", "Assists Per Game": "معدّل التمريرات الحاسمة", "Blocks Per Game": "معدّل الصدّات", "Steals Per Game": "معدّل الاستخلاص", "Total Turnovers Per Game": "معدّل الكرات الضايعة",
+  "Goals": "الهدّاف", "Total Shots": "الأكتر تسديد", "Accurate Passes": "الأكتر تمرير صحيح", "Saves": "الحارس (تصدّيات)", "Points": "الأكتر نقاط", "Rebounds": "الأكتر ريباوند" };
+const PRED_STANCE = { Orthodox: "يميني", Southpaw: "يساري", Switch: "متبدّل" };
 const predJ = async (u) => { const r = await fetch(u, { headers: BX_HDR, signal: AbortSignal.timeout(9000), cf: { cacheTtl: 3600 } }); if (!r.ok) throw new Error("http " + r.status); return r.json(); };
+const pd = (x) => { const d = Date.parse(x || ""); return d > 0 ? d : 0; };
+function bxTape(html) {
+  const tk = String(html).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, " ").replace(/<[^>]+>/g, "|")
+    .replace(/&#0?39;|&rsquo;|&#8217;/g, "'").replace(/&quot;|&#8221;|&#8243;/g, '"').replace(/&amp;/g, "&").replace(/&nbsp;/g, " ")
+    .split("|").map((x) => x.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const at = (label, from) => tk.indexOf(label, from || 0);
+  const pair = (label, from) => { const i = at(label, from); return i > 0 && i < tk.length - 1 ? [tk[i - 1], tk[i + 1]] : null; };
+  const t0 = at("The tape"); if (t0 < 0) return null;
+  const out = {};
+  for (const [k, l] of [["age", "Age"], ["height", "Height"], ["reach", "Reach"], ["stance", "Stance"], ["wins", "Wins"], ["ko", "By KO"], ["kop", "KO%"], ["losses", "Losses"], ["stopped", "Stopped"], ["draws", "Draws"], ["debut", "Debut"], ["rounds", "Pro rounds"]]) {
+    const p = pair(l, t0); if (p) out[k] = p;
+  }
+  const rk = tk.findIndex((x, i) => i > t0 && /^Current rankings/i.test(x));
+  if (rk > 0) {
+    out.rankAt = tk[rk].replace(/^Current rankings @\s*/i, "");
+    const R = [];
+    const bl2 = at(".Live", rk); if (bl2 > 0 && bl2 < rk + 10) R.push(["Box.Live", tk[bl2 - 2], tk[bl2 + 1]]);
+    for (const org of ["The Ring", "WBA", "WBC", "WBO", "IBF"]) { const i = at(org, rk); if (i > 0 && i < rk + 40) R.push([org, tk[i - 1], tk[i + 1]]); }
+    out.ranks = R;
+  }
+  const bl = at("Belts on The Line"); if (bl > 0 && bl < t0) out.belts = tk.slice(bl + 1, t0).filter((x) => x.length > 6).slice(0, 4);
+  const rc = tk.findIndex((x) => /^\d+ round contest$/i.test(x)); if (rc > 0) { out.sched = tk[rc]; if (tk[rc + 1] === "@") out.weight = tk[rc + 2]; }
+  return out;
+}
+
 async function predInfo(env, mt) {
   const lg = PRED_LEAGUES.find((x) => x.k === mt.src);
   if ((mt.sport === "football" || mt.sport === "basketball") && lg && lg.p && mt.aid) {
     const j = await predJ(`https://site.api.espn.com/apis/site/v2/sports/${lg.p}/summary?event=${encodeURIComponent(mt.eid || mt.id.slice(1))}`);
+    const sideOf = (id) => String(id) === mt.aid ? 0 : String(id) === mt.bid ? 1 : -1, out = { kind: "team" };
+    // 1) تاريخ المواجهات
     const games = [];
     for (const ss of (j.seasonseries || [])) for (const e of (ss.events || [])) {
       const cs = e.competitors || [], A = cs.find((c) => String(c.team && c.team.id) === mt.aid), Bc = cs.find((c) => String(c.team && c.team.id) === mt.bid);
@@ -1199,24 +1230,70 @@ async function predInfo(env, mt) {
     games.sort((x, y) => y.d - x.d);
     const G = games.slice(0, 10), t = { aw: 0, bw: 0, d: 0, ag: 0, bg: 0 };
     for (const g of G) { if (g.w === "a") t.aw++; else if (g.w === "b") t.bw++; else t.d++; t.ag += g.sa; t.bg += g.sb; }
-    return { kind: "h2h", unit: mt.sport === "basketball" ? "النقاط" : "الأهداف", n: G.length, ...t, games: G.map((g) => ({ d: g.d, sa: g.sa, sb: g.sb, w: g.w })) };
+    out.h2h = { unit: mt.sport === "basketball" ? "النقاط" : "الأهداف", n: G.length, ...t, games: G.map((g) => ({ d: g.d, sa: g.sa, sb: g.sb, w: g.w })) };
+    // 2) الملعب
+    const v = j.gameInfo && j.gameInfo.venue; if (v) out.venue = [v.fullName, v.address && v.address.city, v.address && v.address.country].filter(Boolean).join("، ");
+    if (j.gameInfo && j.gameInfo.attendance) out.att = j.gameInfo.attendance;
+    // 3) السجل والفورمة من رأس المباراة
+    const hc = (j.header && j.header.competitions && j.header.competitions[0] && j.header.competitions[0].competitors) || [], rec = [null, null], form = [null, null], rh = [null, null];
+    for (const c of hc) { const i = sideOf(c.team && c.team.id || c.id); if (i < 0) continue; const R = c.record || []; rec[i] = (R.find((r) => r.type === "total") || {}).summary || ""; rh[i] = (R.find((r) => r.type === "home" || r.type === "road") || {}); form[i] = c.form || ""; }
+    out.rec = rec; out.form = form; out.split = rh.map((x) => x && x.summary ? (x.type === "home" ? "بأرضو " : "برّا أرضو ") + x.summary : "");
+    // 4) الترتيب
+    const st = [null, null], grp = (j.standings && j.standings.groups) || [];
+    for (const g of grp) { const E = (g.standings && g.standings.entries) || []; E.forEach((e, idx) => { const i = sideOf(e.id); if (i < 0) return; const S = {}; for (const x of (e.stats || [])) S[x.abbreviation || x.name] = x.displayValue; st[i] = { pos: +S.R || idx + 1, grp: (g.header || "").replace(/^\d{4}-\d{2}\s*/, "").replace(/\s*Standings$/i, "").replace(/^English Premier League$/i, "الدوري الإنكليزي"), pts: S.P, gp: S.GP, w: S.W, d: S.D, l: S.L, gd: S.GD, pct: S.PCT, gb: S.GB }; }); }
+    out.stand = st;
+    // 5) أرقام الموسم
+    const bx = (j.boxscore && j.boxscore.teams) || [], ss = {};
+    for (const tm of bx) { const i = sideOf(tm.team && tm.team.id); if (i < 0) continue; for (const x of (tm.statistics || [])) { const L = x.label || x.displayName || x.name; if (!PRED_LBL[L]) continue; (ss[L] ||= ["", ""])[i] = x.displayValue; } }
+    out.season = Object.entries(ss).map(([L, v2]) => [PRED_LBL[L], v2[0], v2[1]]);
+    // 6) أفضل اللاعبين
+    const ld = {};
+    for (const tm of (j.leaders || [])) { const i = sideOf(tm.team && tm.team.id); if (i < 0) continue; for (const c of (tm.leaders || [])) { const L = PRED_LBL[c.displayName]; const x = c.leaders && c.leaders[0]; if (!L || !x) continue; (ld[L] ||= [null, null])[i] = { n: x.athlete && x.athlete.displayName, v: String(x.displayValue || "").replace(/Matches: \d+, /, "").replace(/^(Goals|Assists): /, "") }; } }
+    out.leaders = Object.entries(ld).map(([L, v2]) => [L, v2[0], v2[1]]);
+    // 7) آخر 5 مباريات لكل فريق
+    const l5 = [[], []];
+    for (const tm of (j.lastFiveGames || [])) { const i = sideOf(tm.team && tm.team.id); if (i < 0) continue; l5[i] = (tm.events || []).slice(-5).reverse().map((e) => { const home = String(e.homeTeamId) === String(tm.team.id); return { r: e.gameResult, s: home ? `${e.homeTeamScore}-${e.awayTeamScore}` : `${e.awayTeamScore}-${e.homeTeamScore}`, o: e.opponent && (PRED_AR[e.opponent.displayName] || e.opponent.displayName), h: home, d: pd(e.gameDate) }; }); }
+    out.last5 = l5;
+    // 8) نسبة الفوز المتوقعة (ESPN، سلة) والإصابات
+    const pr = j.predictor;
+    if (pr && pr.homeTeam && pr.awayTeam) { const p = [null, null]; for (const x of [pr.homeTeam, pr.awayTeam]) { const i = sideOf(x.id); if (i >= 0) p[i] = +x.gameProjection; } if (p[0] !== null) out.prob = p; }
+    const inj = [[], []]; for (const tm of (j.injuries || [])) { const i = sideOf(tm.team && tm.team.id); if (i < 0) continue; inj[i] = (tm.injuries || []).slice(0, 8).map((x) => ({ n: x.athlete && x.athlete.displayName, s: x.status === "Out" ? "غايب" : x.status === "Day-To-Day" ? "مشكوك فيه" : x.status })); }
+    if (inj[0].length || inj[1].length) out.inj = inj;
+    return out;
   }
   if (mt.sport === "ufc" && mt.aid && mt.bid) {
-    const rec = async (id) => { const j = await predJ(`https://sports.core.api.espn.com/v2/sports/mma/athletes/${encodeURIComponent(id)}/records`); const st = {}; for (const x of ((j.items && j.items[0] && j.items[0].stats) || [])) st[x.name] = +x.value || 0; return st; };
-    const [A, Bc] = await Promise.all([rec(mt.aid), rec(mt.bid)]);
-    const f = (x) => ({ w: x.wins || 0, l: x.losses || 0, d: x.draws || 0, ko: x.tkos || 0, sub: x.submissions || 0, dec: Math.max(0, (x.wins || 0) - (x.tkos || 0) - (x.submissions || 0)) });
-    return { kind: "fight", a: f(A), b: f(Bc) };
+    const one = async (id) => {
+      const [rec, ath, stx] = await Promise.all([
+        predJ(`https://sports.core.api.espn.com/v2/sports/mma/athletes/${encodeURIComponent(id)}/records`).catch(() => null),
+        predJ(`https://site.web.api.espn.com/apis/common/v3/sports/mma/athletes/${encodeURIComponent(id)}`).catch(() => null),
+        predJ(`https://site.web.api.espn.com/apis/common/v3/sports/mma/athletes/${encodeURIComponent(id)}/stats`).catch(() => null)]);
+      const S = {}; for (const x of ((rec && rec.items && rec.items[0] && rec.items[0].stats) || [])) S[x.name] = +x.value || 0;
+      const A = (ath && ath.athlete) || {};
+      const o = { w: S.wins || 0, l: S.losses || 0, d: S.draws || 0, ko: S.tkos || 0, sub: S.submissions || 0, dec: Math.max(0, (S.wins || 0) - (S.tkos || 0) - (S.submissions || 0)), kol: S.tkoLosses || 0, subl: S.submissionLosses || 0,
+        age: A.age, h: A.displayHeight, wt: A.displayWeight, reach: A.displayReach, stance: A.stance && A.stance.text && A.stance.text !== "--" ? (PRED_STANCE[A.stance.text] || A.stance.text) : "", nick: A.nickname, team: A.association && A.association.name, cty: A.citizenship, style: A.displayFightingStyle };
+      // آخر النزالات
+      o.last = ((ath && ath.events) || []).slice(0, 5).map((k) => ath.eventsMap && ath.eventsMap[k]).filter(Boolean).map((e) => ({ r: e.gameResult, o: e.opponent && e.opponent.displayName, d: pd(e.gameDate) }));
+      // أرقام الضربات من كل نزالاتو
+      const cat = (n) => ((stx && stx.categories) || []).find((c) => String(c.displayName).toLowerCase() === n);
+      // بس النزالات يلي إلها أرقام (بعض النزالات القديمة أو برّا UFC أرقامها صفر)
+      const stk0 = cat("striking"), iSSA = stk0 ? stk0.labels.map((x) => x.trim()).indexOf("SSA") : -1;
+      const okEv = new Set(((stk0 && stk0.statistics) || []).filter((r) => iSSA >= 0 && (parseFloat(r.stats[iSSA]) || 0) > 0).map((r) => r.eventId));
+      const sum = (c, lab) => { if (!c) return 0; const i = c.labels.map((x) => x.trim()).indexOf(lab); if (i < 0) return 0; return c.statistics.filter((r) => okEv.has(r.eventId)).reduce((t2, r) => t2 + (parseFloat(r.stats[i]) || 0), 0); };
+      const stk = stk0, cl = cat("clinch"), gr = cat("ground"), nf = okEv.size;
+      if (nf) { const ssl = sum(stk, "SSL"), ssa = sum(stk, "SSA"), tdl = sum(cl, "TDL"), tda = sum(cl, "TDA"); o.fights = nf; o.ssAcc = ssa ? Math.round(ssl * 100 / ssa) : null; o.ssPer = Math.round(ssl / nf * 10) / 10; o.kd = sum(stk, "KD"); o.tdAcc = tda ? Math.round(tdl * 100 / tda) : null; o.td = tdl; o.subAtt = sum(gr, "SM"); }
+      return o;
+    };
+    const [A, Bc] = await Promise.all([one(mt.aid), one(mt.bid)]);
+    return { kind: "fight", a: A, b: Bc };
   }
   if (mt.sport === "boxing" && /^bx-/.test(mt.id)) {
     const r = await fetch(`https://box.live/fights/${encodeURIComponent(mt.id.slice(3))}/`, { headers: BX_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtl: 3600 } });
     if (!r.ok) throw new Error("http " + r.status);
-    const txt = (await r.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&#0?39;|&rsquo;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
-    // جدول «الشريط»: «30 Wins 36 · 27 By KO 25 · … 4 Losses 2 · … 0 Draws 1» (اليسار = الملاكم الأول)
-    const m = txt.match(/(\d+) Wins (\d+) (\d+) By KO (\d+)[\s\S]{0,80}?(\d+) Losses (\d+)[\s\S]{0,80}?(\d+) Draws (\d+)/);
-    if (!m) return { kind: "none" };
-    const f = (w, ko, l, d) => ({ w: +w, l: +l, d: +d, ko: +ko, sub: null, dec: Math.max(0, +w - +ko) });
-    const out = { a: f(m[1], m[3], m[5], m[7]), b: f(m[2], m[4], m[6], m[8]) };
-    return { kind: "fight", a: out.a, b: out.b, box: true };
+    const T = bxTape(await r.text()); if (!T || !T.wins) return { kind: "none" };
+    const P = (k, i) => (T[k] ? T[k][i] : undefined), N = (k, i) => (P(k, i) === undefined || P(k, i) === "-" ? undefined : +P(k, i));
+    const f = (i) => ({ w: N("wins", i) || 0, l: N("losses", i) || 0, d: N("draws", i) || 0, ko: N("ko", i) || 0, sub: null, dec: Math.max(0, (N("wins", i) || 0) - (N("ko", i) || 0)), kop: N("kop", i), kol: N("stopped", i),
+      age: P("age", i), h: P("height", i), reach: P("reach", i) === "-" ? "" : P("reach", i), stance: String(P("stance", i) || "").replace(/^Orthodox.*/, "يميني").replace(/^Southpaw.*/, "يساري"), debut: P("debut", i), rounds: P("rounds", i) });
+    return { kind: "fight", box: true, a: f(0), b: f(1), weight: T.weight, sched: T.sched, belts: T.belts || [], rankAt: T.rankAt, ranks: (T.ranks || []).filter((x) => x[1] !== "-" || x[2] !== "-") };
   }
   return { kind: "none" };
 }
@@ -1285,7 +1362,7 @@ async function predApi(request, env, path, m, ctx) {
     if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
     // مباراة انحفظت قبل ما نصير نخزّن أرقام الفرق/المقاتلين: منحدّث هلق ومنرجع نقراها
     if (mt.src && mt.src !== "boxing" && !mt.aid) { await predSync(env, true).catch(() => {}); mt = (await predMatches(env)).find((x) => x.id === id) || mt; }
-    const ck = "pred:info:" + id, hit = await env.STORE.get(ck, "json").catch(() => null);
+    const ck = "pred:info2:" + id, hit = await env.STORE.get(ck, "json").catch(() => null);
     if (hit && hit.t > Date.now() - 6 * 3600e3) return json(hit.v);
     let v; try { v = await predInfo(env, mt); } catch (e) { v = { kind: "none" }; await env.STORE.put("pred:infoerr", JSON.stringify({ t: Date.now(), sport: mt.sport, e: String(e && e.message || e).slice(0, 120) })).catch(() => {}); }
     if (v.kind === "none" && !mt.aid && mt.src !== "boxing") await env.STORE.put("pred:infoerr", JSON.stringify({ t: Date.now(), sport: mt.sport, e: "no ids" })).catch(() => {});

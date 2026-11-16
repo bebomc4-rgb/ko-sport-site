@@ -96,6 +96,16 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
 .meths button{background:var(--card2);color:var(--txt);border:1.5px solid var(--line);border-radius:99px;padding:7px 12px;font:inherit;font-size:.85rem;cursor:pointer}
 .meths button.on{border-color:var(--gold);background:#2b2300;color:var(--gold2)}
 .hint{color:var(--mut);font-size:.72rem;margin-top:6px;text-align:center}
+.info .sec{margin:12px 0 4px;color:var(--gold2);font-size:.8rem;font-weight:700;border-top:1px solid #23232a;padding-top:8px}
+.info .sec:first-of-type{border-top:0;margin-top:0;padding-top:0}
+.info .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.info .two>div{display:flex;flex-direction:column;gap:3px}
+.info .fm{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;font-size:.7rem;font-weight:700;color:#fff;margin:0 1px}
+.fm.W{background:#1f8f4e}.fm.L{background:#b33}.fm.D{background:#666}
+.info .ln{display:flex;gap:6px;align-items:center;font-size:.76rem;color:var(--mut)}
+.info .ln b{color:var(--txt);font-weight:600}
+.info .row b small{display:block;font-size:.68rem;color:var(--mut);font-weight:400}
+.info .meta{color:var(--mut);font-size:.76rem;text-align:center;margin-top:4px}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(120px);background:#222;color:#fff;border:1px solid var(--line);padding:10px 18px;border-radius:99px;transition:.25s;z-index:9;font-size:.92rem}
 #toast.on{transform:translateX(-50%) translateY(0)}
 </style>
@@ -162,20 +172,49 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
     const v = INF[m.id];
     if (!v) return `<div class="info" style="text-align:center;color:var(--mut)">عم يحمّل…</div>`;
     if (v.kind === "none" || v.err) return `<div class="info" style="text-align:center;color:var(--mut)">ما في إحصائيات متوفرة لهالمباراة هلق</div>`;
-    const row = (x, label, y) => `<div class="row"><b class="${+x > +y ? "hi" : ""}">${x ?? "—"}</b><span>${label}</span><b class="${+y > +x ? "hi" : ""}">${y ?? "—"}</b></div>`;
+    const num = (x) => { const n = parseFloat(String(x ?? "").replace(/[^\d.\-]/g, "")); return Number.isFinite(n) ? n : null; };
+    const row = (x, label, y, low) => { const nx = num(x), ny = num(y), better = nx !== null && ny !== null && nx !== ny ? (low ? (nx < ny ? "a" : "b") : (nx > ny ? "a" : "b")) : "";
+      return `<div class="row"><b class="${better === "a" ? "hi" : ""}">${x ?? "—"}</b><span>${label}</span><b class="${better === "b" ? "hi" : ""}">${y ?? "—"}</b></div>`; };
+    const has = (x, y) => (x !== undefined && x !== null && x !== "") || (y !== undefined && y !== null && y !== "");
     const head = `<div class="row"><b style="font-size:.8rem">${esc(m.a)}</b><span></span><b style="font-size:.8rem">${esc(m.b)}</b></div>`;
-    if (v.kind === "h2h") {
-      if (!v.n) return `<div class="info" style="text-align:center;color:var(--mut)">ما في مواجهات سابقة مسجّلة بين الفريقين</div>`;
-      return `<div class="info"><h4>تاريخ مواجهات الفريقين (آخر ${v.n} ${v.n === 1 ? "مباراة" : "مباريات"})</h4>${head}
-        ${row(v.aw, "فوز", v.bw)}${row(v.d, "تعادل", v.d)}${row(v.bw, "هزيمة", v.aw)}${row(v.ag, esc(v.unit), v.bg)}
-        <div class="gl">${v.games.map((g) => `<div><span>${new Date(g.d).toLocaleDateString("ar-SY", { year: "numeric", month: "numeric", day: "numeric" })}</span><span>${esc(m.a)} <b style="color:var(--txt)">${g.sa} - ${g.sb}</b> ${esc(m.b)}</span></div>`).join("")}</div></div>`;
+    const sec = (t) => `<div class="sec">${t}</div>`, fmL = { W: "ف", D: "ت", L: "خ" };
+    const dt = (d) => d ? new Date(d).toLocaleDateString("ar-SY", { year: "2-digit", month: "numeric", day: "numeric" }) : "";
+    let h = `<div class="info">${head}`;
+    if (v.kind === "team") {
+      if (v.prob) h += sec("نسبة الفوز المتوقعة (حسب ESPN)") + row(v.prob[0] + "%", "فرصة الفوز", v.prob[1] + "%");
+      const S = v.stand || [];
+      if (S[0] || S[1]) { const A = S[0] || {}, B = S[1] || {}; h += sec("الترتيب" + (A.grp || B.grp ? " · " + esc(A.grp || B.grp) : "")) + row(A.pos ? "#" + A.pos : null, "المركز", B.pos ? "#" + B.pos : null, true);
+        if (has(A.pts, B.pts)) h += row(A.pts, "النقاط", B.pts); if (has(A.gp, B.gp)) h += row(A.gp, "لعب", B.gp);
+        if (has(A.w, B.w)) h += row(A.w, "فاز", B.w); if (has(A.d, B.d)) h += row(A.d, "تعادل", B.d); if (has(A.l, B.l)) h += row(A.l, "خسر", B.l, true);
+        if (has(A.gd, B.gd)) h += row(A.gd, "فرق الأهداف", B.gd); if (has(A.pct, B.pct)) h += row(A.pct, "نسبة الفوز", B.pct); }
+      if (v.rec && (v.rec[0] || v.rec[1])) { h += sec("السجل بالموسم") + row(v.rec[0], m.sport === "football" ? "فوز-تعادل-خسارة" : "فوز-خسارة", v.rec[1]); if (v.split && (v.split[0] || v.split[1])) h += row(v.split[0] || "—", "", v.split[1] || "—"); }
+      const L5 = v.last5 || [[], []];
+      if (L5[0].length || L5[1].length) { h += sec("الفورمة (آخر 5 مباريات، الأحدث أول)") + `<div class="two">${L5.map((L) => `<div>${L.map((g) => `<div class="ln"><span class="fm ${g.r}">${fmL[g.r] || g.r}</span><b>${esc(g.s)}</b> ${g.h ? "ضد" : "عند"} ${esc(g.o || "")}</div>`).join("") || "—"}</div>`).join("")}</div>`; }
+      const H = v.h2h;
+      if (H) { if (!H.n) h += sec("تاريخ مواجهات الفريقين") + `<div class="meta">ما في مواجهات سابقة مسجّلة</div>`;
+        else h += sec(`تاريخ مواجهات الفريقين (آخر ${H.n} ${H.n === 1 ? "مباراة" : "مباريات"})`) + row(H.aw, "فوز", H.bw) + row(H.d, "تعادل", H.d) + row(H.bw, "هزيمة", H.aw, true) + row(H.ag, esc(H.unit), H.bg)
+          + `<div class="gl">${H.games.map((g) => `<div><span>${dt(g.d)}</span><span>${esc(m.a)} <b style="color:var(--txt)">${g.sa} - ${g.sb}</b> ${esc(m.b)}</span></div>`).join("")}</div>`; }
+      if ((v.season || []).length) h += sec("أرقام الموسم") + v.season.map((x) => row(x[1] || "—", esc(x[0]), x[2] || "—", /عليه|الضايعة/.test(x[0]))).join("");
+      if ((v.leaders || []).length) h += sec("أفضل اللاعبين") + v.leaders.map((x) => `<div class="row"><b style="font-size:.8rem">${x[1] ? esc(x[1].n) + `<small>${esc(x[1].v)}</small>` : "—"}</b><span>${esc(x[0])}</span><b style="font-size:.8rem">${x[2] ? esc(x[2].n) + `<small>${esc(x[2].v)}</small>` : "—"}</b></div>`).join("");
+      if (v.inj) h += sec("الغيابات والإصابات") + `<div class="two">${v.inj.map((L) => `<div>${L.map((x) => `<div class="ln"><b>${esc(x.n)}</b> · ${esc(x.s)}</div>`).join("") || `<div class="ln">ما في</div>`}</div>`).join("")}</div>`;
+      if (v.venue) h += `<div class="meta">🏟️ ${esc(v.venue)}${v.att ? " · الحضور " + Number(v.att).toLocaleString("ar-SY") : ""}</div>`;
+      return h + `</div>`;
     }
-    const A = v.a, B = v.b;
-    return `<div class="info"><h4>إحصائيات</h4>${head}
-      ${row(`${A.w}-${A.l}-${A.d}`, "السجل (فوز-خسارة-تعادل)", `${B.w}-${B.l}-${B.d}`)}
-      ${row(A.ko, "الفوز بالضربة القاضية (KO/TKO)", B.ko)}
-      ${row(v.box ? "—" : A.sub, "الفوز بالإخضاع (Submission)", v.box ? "—" : B.sub)}
-      ${row(A.dec, "الفوز بقرار الحكام (Decision)", B.dec)}</div>`;
+    const A = v.a || {}, B = v.b || {};
+    if (v.weight || v.sched) h += `<div class="meta">${esc([v.sched && v.sched.replace(/(\d+) round contest/i, "$1 جولات"), v.weight].filter(Boolean).join(" · "))}</div>`;
+    if ((v.belts || []).length) h += `<div class="meta">🏆 ${v.belts.map(esc).join(" · ")}</div>`;
+    h += sec("السجل وطرق الفوز") + row(`${A.w}-${A.l}-${A.d}`, "السجل (فوز-خسارة-تعادل)", `${B.w}-${B.l}-${B.d}`)
+      + row(A.ko, "الفوز بالضربة القاضية (KO/TKO)", B.ko) + row(v.box ? "—" : A.sub, "الفوز بالإخضاع (Submission)", v.box ? "—" : B.sub) + row(A.dec, "الفوز بقرار الحكام (Decision)", B.dec);
+    if (has(A.kop, B.kop)) h += row(A.kop !== undefined ? A.kop + "%" : null, "نسبة الفوز بالضربة القاضية", B.kop !== undefined ? B.kop + "%" : null);
+    if (has(A.kol, B.kol)) h += row(A.kol, v.box ? "انوقف (خسر بالضربة القاضية)" : "خسر بالضربة القاضية", B.kol, true);
+    if (!v.box && has(A.subl, B.subl)) h += row(A.subl, "خسر بالإخضاع", B.subl, true);
+    const info = [["age", "العمر", true], ["h", "الطول"], ["wt", "الوزن"], ["reach", "مدى الذراع"], ["stance", "الوقفة"], ["debut", "أول نزال احترافي", true], ["rounds", "جولات احترافية"], ["cty", "البلد"], ["team", "النادي"], ["nick", "اللقب"]].filter(([k]) => has(A[k], B[k]));
+    if (info.length) h += sec("المقاس والمعلومات") + info.map(([k, l, low]) => ["stance", "cty", "team", "nick", "h", "wt", "reach"].includes(k) ? `<div class="row"><b style="font-size:.8rem">${esc(A[k] ?? "—")}</b><span>${l}</span><b style="font-size:.8rem">${esc(B[k] ?? "—")}</b></div>` : row(A[k], l, B[k], low)).join("");
+    if (has(A.fights, B.fights)) h += sec("أرقام النزالات (من كل نزالاتو)") + row(A.fights, "نزالات فيها أرقام", B.fights) + row(A.ssAcc !== null && A.ssAcc !== undefined ? A.ssAcc + "%" : null, "دقة الضربات المهمة", B.ssAcc !== null && B.ssAcc !== undefined ? B.ssAcc + "%" : null)
+      + row(A.ssPer, "ضربات مهمة بالنزال", B.ssPer) + row(A.kd, "إسقاطات", B.kd) + row(A.tdAcc !== null && A.tdAcc !== undefined ? A.tdAcc + "%" : null, "دقة الإطاحة", B.tdAcc !== null && B.tdAcc !== undefined ? B.tdAcc + "%" : null) + row(A.td, "إطاحات", B.td) + row(A.subAtt, "محاولات إخضاع", B.subAtt);
+    if ((A.last || []).length || (B.last || []).length) h += sec("آخر النزالات (الأحدث أول)") + `<div class="two">${[A, B].map((X) => `<div>${(X.last || []).map((g) => `<div class="ln"><span class="fm ${g.r}">${fmL[g.r] || g.r}</span>ضد <b>${esc(g.o || "")}</b> ${dt(g.d)}</div>`).join("") || "—"}</div>`).join("")}</div>`;
+    if ((v.ranks || []).length) h += sec("التصنيف العالمي" + (v.rankAt ? " · " + esc(v.rankAt) : "")) + v.ranks.map((x) => row(x[1] === "-" ? "—" : "#" + x[1], esc(x[0]), x[2] === "-" ? "—" : "#" + x[2], true)).join("");
+    return h + `</div>`;
   }
   const METH = { ko: "بالضربة القاضية", sub: "بالإخضاع", dec: "بقرار الحكام", rtd: "بالانسحاب" };
   const METH_OK = (m) => m.sport === "ufc" ? ["ko", "sub", "dec"] : ["ko", "dec", "rtd"];
