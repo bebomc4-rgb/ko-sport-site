@@ -1188,7 +1188,8 @@ const PRED_LBL = { "Goal Difference": "فرق الأهداف بالموسم", "T
   "Rebounds Per Game": "معدّل الريباوند", "Assists Per Game": "معدّل التمريرات الحاسمة", "Blocks Per Game": "معدّل الصدّات", "Steals Per Game": "معدّل الاستخلاص", "Total Turnovers Per Game": "معدّل الكرات الضايعة",
   "Goals": "الهدّاف", "Total Shots": "الأكتر تسديد", "Accurate Passes": "الأكتر تمرير صحيح", "Saves": "الحارس (تصدّيات)", "Points": "الأكتر نقاط", "Rebounds": "الأكتر ريباوند" };
 const PRED_STANCE = { Orthodox: "يميني", Southpaw: "يساري", Switch: "متبدّل" };
-const predJ = async (u) => { const r = await fetch(u, { headers: BX_HDR, signal: AbortSignal.timeout(9000), cf: { cacheTtl: 3600 } }); if (!r.ok) throw new Error("http " + r.status); return r.json(); };
+// ESPN: نفس طريقة المزامنة (بلا ترويسات خاصة، لأن ترويسة Box.live خلّت ESPN يرفض بـ 403)
+const predJ = async (u) => { const r = await fetch(u, { signal: AbortSignal.timeout(9000), cf: { cacheTtl: 3600 } }); if (!r.ok) throw new Error("http " + r.status + " " + u.split("/").slice(2, 3)); return r.json(); };
 const pd = (x) => { const d = Date.parse(x || ""); return d > 0 ? d : 0; };
 function bxTape(html) {
   const tk = String(html).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, " ").replace(/<[^>]+>/g, "|")
