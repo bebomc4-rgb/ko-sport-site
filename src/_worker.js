@@ -1033,7 +1033,7 @@ function subsClean(l) {
   })).filter((x) => x.name);
 }
 const subsMsg = (x, days) => `🔔 *تذكير بتجديد اشتراك*\n\n📌 ${x.name}\n📅 ${days === 0 ? "بيتجدد / بينتهي *اليوم*" : `بيتجدد / بينتهي بعد *${days}* ${days === 1 ? "يوم" : "أيام"}`} (${x.date})${x.price ? `\n💵 ${x.price}` : ""}${x.note ? `\n📝 ${x.note}` : ""}${x.url ? `\n🔗 ${x.url}` : ""}`;
-// كل 6 ساعات (مع زيارات الموقع): منبعت تذكير لكل اشتراك باقيلو 3 أيام أو أقل، مرة وحدة بكل يوم من الأيام التلاتة
+// كل 6 ساعات (مع زيارات الموقع): تذكير لكل اشتراك مرتين بس — مرة قبل 3 أيام ومرة قبل يوم (24 ساعة)، كل وحدة بتنبعت مرة
 async function subsTick(env, force) {
   if (!env.STORE) return { sent: 0 };
   if (!force && (await env.STORE.get("subs:tick"))) return { sent: 0 };
@@ -1044,7 +1044,7 @@ async function subsTick(env, force) {
     // فات التاريخ: الشهري والسنوي بيتجددو لحالهن للمرة الجاية
     while (x.cycle !== "once" && dayDiff(today, x.date) < -1) { x.date = addCycle(x.date, x.cycle); changed = true; }
     const d = dayDiff(today, x.date);
-    if (d < 0 || d > 3) continue;
+    if (d !== 3 && d !== 1) continue; // صاحب المتجر (16 تشرين التاني 2026): تذكير مرتين بس — قبل 3 أيام وقبل يوم، وبس
     const k = `subs:sent:${x.id}:${x.date}:${d}`;
     if (await env.STORE.get(k)) continue;
     if (await botSign(env, "notify", SUBS_TO, subsMsg(x, d))) { sent++; await env.STORE.put(k, "1", { expirationTtl: 40 * 864e5 }); }
