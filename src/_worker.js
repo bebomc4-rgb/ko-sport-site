@@ -1499,7 +1499,7 @@ async function predApi(request, env, path, m, ctx) {
     const [L, B, C, U] = await Promise.all([predMatches(env), env.STORE.get("pred:board", "json").catch(() => null), env.STORE.get("pred:cnt", "json").catch(() => null), acct ? env.STORE.get("pred:u:" + acct.phone, "json").catch(() => null) : null]);
     const board = Object.entries(B || {}).filter(([, r]) => r.t > 0).map(([ph, r]) => ({ n: r.n || "زبون", p: r.p, w: r.w, t: r.t, me: !!(acct && acct.phone === ph) })).sort((x, y) => y.p - x.p || y.w - x.w).slice(0, 30);
     const mine = (U && U.k) || {}, hideO = new Set(cfg.hideOrgs || []);
-    return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (PFL MENA وغيرها)", sp: x.sp, on: on.has(x.k) })); })(),
+    return json({ owner, live, now: Date.now(), sync: last, bkv: cfg.bkv || {}, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (PFL MENA وغيرها)", sp: x.sp, on: on.has(x.k) })); })(),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
       orgsAll: owner ? [...new Map(L.filter((mt) => !predFem(mt)).map((mt) => { const o = predOut(mt); return [o.sport + "|" + o.org, { k: o.sport + "|" + o.org, sp: o.sport, n: o.org, hid: hideO.has(o.sport + "|" + o.org) }]; })).values()] : undefined,
       matches: L.filter((mt) => !predFem(mt) && !(mt.src && predTba(mt))).filter((mt) => !hideO.has(mt.sport + "|" + (mt.org || (mt.league || "").split(" · ")[0] || ""))).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
@@ -1554,6 +1554,8 @@ async function predApi(request, env, path, m, ctx) {
     if (b.action === "sync") return json(await predSync(env, true));
     if (b.action === "leagues") { const ks = (Array.isArray(b.leagues) ? b.leagues : []).filter((k) => PRED_LEAGUES.some((x) => x.k === k)); await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, leagues: ks })); return json({ ok: true, ...(await predSync(env, true)) }); }
     if (b.action === "orgs") { const ks = (Array.isArray(b.hide) ? b.hide : []).map((k) => clip(k, 80)).filter(Boolean).slice(0, 200); await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, hideOrgs: ks })); return json({ ok: true, hide: ks }); }
+    // صاحب المتجر (16 تشرين التاني 2026): رابط يوتيوب لكل نزال مشهور بقسم BKFC، ليشتغل الفيديو جوّا الصفحة
+    if (b.action === "bkvid") { const k = clip(b.key, 80), mm = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([A-Za-z0-9_-]{11})/.exec(String(b.url || "")); if (!k) return json({ error: "ناقص" }, 400); if (b.url && !mm) return json({ error: "الرابط لازم يكون رابط فيديو يوتيوب" }, 400); const bkv = { ...(cfg.bkv || {}) }; if (mm) bkv[k] = mm[1]; else delete bkv[k]; await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, bkv })); return json({ ok: true, bkv }); }
     if (b.action === "live") { await env.STORE.put("pred:cfg", JSON.stringify({ ...cfg, live: !!b.live })); return json({ ok: true, live: !!b.live }); }
     let L = await predMatches(env);
     if (b.action === "add") {

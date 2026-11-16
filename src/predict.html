@@ -163,6 +163,10 @@ body.lock{overflow:hidden}
 .bkf-m b i{color:var(--gold2);font-style:normal;font-size:.8em;margin:0 4px}
 .bkf-m small{display:block;color:var(--gold2);font-size:.75rem;margin-top:2px}
 .bkf-m a{font-size:.8rem;font-weight:700;text-decoration:none}
+.bkf-v{position:relative;aspect-ratio:16/9;margin-top:8px;border-radius:10px;overflow:hidden;background:#000}
+.bkf-v iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.bkf-o{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.bkf-o input{flex:1;min-width:150px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--card2);color:var(--ink);font:inherit;font-size:.8rem}
 </style>
 </head>
 <body>
@@ -376,10 +380,20 @@ body.lock{overflow:hidden}
   ];
   let bkOpen = false;
   const ini = (n) => n.split(" ").map((w) => w[0]).slice(0, 2).join("");
+  const bkPlay = new Set();
+  function bkVid(a, b) {
+    const k = a + "|" + b, id = (D.bkv || {})[k], q = "https://www.youtube.com/results?search_query=" + encodeURIComponent("BKFC " + a + " vs " + b);
+    let h = "";
+    if (id && bkPlay.has(k)) h += `<div class="bkf-v"><iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1" title="${esc(a)} vs ${esc(b)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>`;
+    else if (id) h += `<button class="btn sm" data-bkplay="${esc(k)}">▶ شغّل النزال هون</button>`;
+    else h += `<a href="${q}" target="_blank" rel="noopener">▶ شوف النزال على يوتيوب</a>`;
+    if (D.owner && !VISITOR) h += `<div class="bkf-o"><input dir="ltr" placeholder="الصق رابط فيديو يوتيوب للنزال" data-bkurl="${esc(k)}"><button class="btn sm ghost" data-bksave="${esc(k)}">${id ? "بدّل" : "احفظ"}</button>${id ? `<button class="btn sm ghost" data-bkdel="${esc(k)}">شيل</button>` : ` <a href="${q}" target="_blank" rel="noopener">دوّر عليه</a>`}</div>`;
+    return h;
+  }
   function bkFame() {
     return `<details class="bkf" ${bkOpen ? "open" : ""}><summary>🥊 BKFC: أشهر المقاتلين وأشهر النزالات</summary>
       <h5>أشهر المقاتلين</h5><div class="bkf-g">${BK_F.map(([n, k, t]) => `<div class="bkf-c"><span class="bkf-i">${esc(ini(n))}</span><div><b dir="ltr">${esc(n)}</b>${k ? ` <small dir="ltr">“${esc(k)}”</small>` : ""}<p>${esc(t)}</p></div></div>`).join("")}</div>
-      <h5>أشهر النزالات</h5><div class="bkf-l">${BK_M.map(([a, b, ev, t]) => `<div class="bkf-m"><b dir="ltr">${esc(a)} <i>vs</i> ${esc(b)}</b><small>${esc(ev)}</small><p>${esc(t)}</p><a href="https://www.youtube.com/results?search_query=${encodeURIComponent("BKFC " + a + " vs " + b)}" target="_blank" rel="noopener">▶ شوف النزال</a></div>`).join("")}</div>
+      <h5>أشهر النزالات</h5><div class="bkf-l">${BK_M.map(([a, b, ev, t]) => `<div class="bkf-m"><b dir="ltr">${esc(a)} <i>vs</i> ${esc(b)}</b><small>${esc(ev)}</small><p>${esc(t)}</p>${bkVid(a, b)}</div>`).join("")}</div>
       <p class="sync">معلومات عامة للتسلية · الصفحات الرسمية للمقاتلين على <a href="https://www.bkfc.com/fighters" target="_blank" rel="noopener">bkfc.com</a></p></details>`;
   }
   function draw() {
@@ -411,6 +425,13 @@ body.lock{overflow:hidden}
     if (D.sync) h += `<p class="sync">المواعيد والنتايج بتتحدّث لحالها · آخر تحديث ${hm(D.sync)}</p>`;
     app.innerHTML = h;
     const bk = app.querySelector("details.bkf"); if (bk) bk.addEventListener("toggle", () => { bkOpen = bk.open; });
+    if (bk) bk.onclick = async (e) => {
+      const t = e.target.closest("[data-bkplay],[data-bksave],[data-bkdel]"); if (!t) return;
+      if (t.dataset.bkplay) { bkPlay.add(t.dataset.bkplay); return draw(); }
+      const key = t.dataset.bksave || t.dataset.bkdel, inp = [...bk.querySelectorAll("[data-bkurl]")].find((x) => x.dataset.bkurl === key);
+      const url = t.dataset.bkdel ? "" : (inp && inp.value.trim()); if (!t.dataset.bkdel && !url) return toast("الصق الرابط أول");
+      try { const j = await api("/api/pred/admin", { action: "bkvid", key, url }); D.bkv = j.bkv || {}; bkPlay.delete(key); toast("انحفظ ✓"); draw(); } catch (er) { toast(er.message || "ما زبط"); }
+    };
   }
 
   function adminForm() {
