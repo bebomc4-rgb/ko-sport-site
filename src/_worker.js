@@ -1378,7 +1378,7 @@ async function predSync(env, force) {
   const ATH = (await env.STORE.get("pred:ath", "json").catch(() => null)) || {}; let athErr = "";
   { const need = [...new Set(got.filter((g) => g.sport === "ufc").flatMap((g) => [g.aid, g.bid]).filter((id) => id && !ATH[id]))].slice(0, 300);
     for (let i = 0; i < need.length; i += 10) await Promise.all(need.slice(i, i + 10).map(async (id) => {
-      try { let r; for (let k = 0; k < 2; k++) { r = await fetch(`https://sports.core.api.espn.com/v2/sports/mma/athletes/${encodeURIComponent(id)}?lang=en&region=us`, { signal: AbortSignal.timeout(7000), headers: { accept: "application/json" }, cf: { cacheTtlByStatus: { "200-299": 86400, "300-599": 0 } } }); if (r.ok) break; athErr = "http " + r.status; await new Promise((z) => setTimeout(z, 800)); } if (!r.ok) return; const j = await r.json();
+      try { let r; for (let k = 0; k < 2; k++) { r = await fetch(`https://site.api.espn.com/apis/common/v3/sports/mma/athletes/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(7000), headers: { accept: "application/json" }, cf: { cacheTtlByStatus: { "200-299": 86400, "300-599": 0 } } }); if (r.ok) break; athErr = "http " + r.status; await new Promise((z) => setTimeout(z, 800)); } if (!r.ok) return; const j = ((await r.json()) || {}).athlete || {};
         const st = (j.images || []).find((x) => x && x.href) ; ATH[id] = { g: String(j.gender || "").toUpperCase() === "FEMALE" ? "F" : String(j.gender || "").toUpperCase() === "MALE" ? "M" : "?", h: (j.headshot && j.headshot.href) || (st && st.href) || "" };
       } catch (e) { athErr = String(e && e.name || e); } }));
     if (need.length) await env.STORE.put("pred:ath", JSON.stringify(ATH)).catch(() => {}); if (athErr) errs.push("ath:" + athErr); }
