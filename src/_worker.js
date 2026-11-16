@@ -1235,7 +1235,7 @@ async function predSync(env, force) {
 }
 const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, league: mt.league || "", ev: mt.ev || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: mine || "" });
 async function predApi(request, env, path, m, ctx) {
-  if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [] }); }
+  if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null) }); }
   const owner = env.__role === "owner", cfg = await predCfg(env), live = !!cfg.live;
   if (!owner && !live) return json({ error: "الصفحة لسا تجريبية" }, 403);
   const acct = await acctFromReq(request, env);
@@ -1250,11 +1250,15 @@ async function predApi(request, env, path, m, ctx) {
       matches: L.filter((mt) => !predFem(mt)).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
   }
   if (path === "/api/pred/info" && m === "GET") {
-    const id = clip(new URL(request.url).searchParams.get("id"), 80), mt = (await predMatches(env)).find((x) => x.id === id);
+    const id = clip(new URL(request.url).searchParams.get("id"), 80);
+    let mt = (await predMatches(env)).find((x) => x.id === id);
     if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
+    // مباراة انحفظت قبل ما نصير نخزّن أرقام الفرق/المقاتلين: منحدّث هلق ومنرجع نقراها
+    if (mt.src && mt.src !== "boxing" && !mt.aid) { await predSync(env, true).catch(() => {}); mt = (await predMatches(env)).find((x) => x.id === id) || mt; }
     const ck = "pred:info:" + id, hit = await env.STORE.get(ck, "json").catch(() => null);
     if (hit && hit.t > Date.now() - 6 * 3600e3) return json(hit.v);
-    let v; try { v = await predInfo(env, mt); } catch { v = { kind: "none" }; }
+    let v; try { v = await predInfo(env, mt); } catch (e) { v = { kind: "none" }; await env.STORE.put("pred:infoerr", JSON.stringify({ t: Date.now(), sport: mt.sport, e: String(e && e.message || e).slice(0, 120) })).catch(() => {}); }
+    if (v.kind === "none" && !mt.aid && mt.src !== "boxing") await env.STORE.put("pred:infoerr", JSON.stringify({ t: Date.now(), sport: mt.sport, e: "no ids" })).catch(() => {});
     if (v.kind !== "none") await env.STORE.put(ck, JSON.stringify({ t: Date.now(), v }), { expirationTtl: 7 * 86400 }).catch(() => {});
     return json(v);
   }

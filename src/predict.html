@@ -237,7 +237,7 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
       busy = true;
       if (b.dataset.sp !== undefined) { sport = b.dataset.sp; day = ""; draw(); return; }
       if (b.dataset.day !== undefined) { day = b.dataset.day; draw(); return; }
-      if (b.dataset.info) { const id = b.dataset.info; if (OPEN.has(id)) { OPEN.delete(id); draw(); return; } OPEN.add(id); draw();
+      if (b.dataset.info) { const id = b.dataset.info; if (OPEN.has(id)) { OPEN.delete(id); if (INF[id] && (INF[id].kind === "none" || INF[id].err)) delete INF[id]; draw(); return; } OPEN.add(id); draw();
         if (!INF[id]) { busy = false; try { INF[id] = await api("/api/pred/info?id=" + encodeURIComponent(id)); } catch { INF[id] = { err: 1 }; } draw(); } return; }
       if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "10"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
       if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(); }
