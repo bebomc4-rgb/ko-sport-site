@@ -164,3 +164,4 @@
 - 2026-11-16 (ko-sport-site v266): المزامنة بدفعات من 5 بطولات مع إعادة محاولة لـ 403/429 من ESPN.
 - 2026-11-16 (ko-sport-site v267): طلبات ESPN/Box.live صارت `cacheTtlByStatus` (الكاش للنجاح بس)؛ `cacheTtl` كان يحفظ أخطاء 403 ويعيدها.
 - 2026-11-16 (ko-sport-site v268): نافذة MMA بالمزامنة صارت 30 يوم بدل 8 (مشان UAE Warriors وBrave وONE يطلعوا)؛ BKFC: ما في مصدر فيه جنس المقاتل (ufcalendar بلا جنس، وبحاجة مفتاح)، لسا يدوي.
+- 2026-11-16 (ko-sport-site v269): شلنا PFL MENA وPFL Africa؛ بقي PFL الأساسي (mma/pfl) بس. فلتر يشيل أي حدث PFL جاي من mma/other، ويمسح القديم المخزّن.

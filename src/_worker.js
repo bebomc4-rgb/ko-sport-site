@@ -1105,7 +1105,7 @@ const PRED_LEAGUES = [
   { k: "nbl", p: "basketball/nbl", sp: "basketball", n: "الدوري الأسترالي NBL", daily: true, off: true },
   { k: "ufc", p: "mma/ufc", sp: "ufc", n: "UFC" },
   { k: "pfl", p: "mma/pfl", sp: "ufc", n: "PFL" },
-  { k: "mma-other", p: "mma/other", sp: "ufc", n: "", evName: true }, // PFL MENA (مقاتلين عرب وسوريين)، PFL Africa، …
+  { k: "mma-other", p: "mma/other", sp: "ufc", n: "", evName: true }, // منظمات MMA تانية من ESPN (UAE Warriors، Brave، ONE…)؛ PFL مستبعد منها
   { k: "boxing", sp: "boxing", n: "ملاكمة (Box.live)", box: true },
 ];
 const predOn = (cfg) => Array.isArray(cfg.leagues) ? new Set(cfg.leagues) : new Set(PRED_LEAGUES.filter((x) => !x.off).map((x) => x.k));
@@ -1155,6 +1155,7 @@ const predIso = (ms) => new Date(ms).toISOString().slice(0, 10).replace(/-/g, ""
 function predFromEspn(lg, ev) {
   const out = [], name = (c) => (c.team && (c.team.displayName || c.team.name)) || (c.athlete && (c.athlete.displayName || c.athlete.fullName)) || "";
   const pic = (c) => c.team ? (c.team.logo || "") : c.athlete ? ((c.athlete.headshot && c.athlete.headshot.href) || `https://a.espncdn.com/i/headshots/mma/players/full/${c.id}.png`) : "";
+  if (lg.k === "mma-other" && /\bPFL\b/i.test([ev.name, ev.shortName].join(" "))) return out; // PFL الأساسي بس (من mma/pfl)، بلا PFL MENA وAfrica
   for (const comp of (ev.competitions || [])) {
     const cs = comp.competitors || []; if (cs.length !== 2) continue;
     // صاحب المتجر: ولا فرق نسائية ولا لاعبات نساء أبداً
@@ -1383,7 +1384,7 @@ async function predSync(env, force) {
     if (!predSameR(oldR, newR)) boardDirty = (await predSettle(env, B, cur, oldR, newR)) || boardDirty;
   }
   // منشيل يلي خلص من أكتر من 3 أيام (النقاط بتضل محفوظة بالترتيب)
-  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
+  const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.src === "mma-other" && /\bPFL\b/i.test((x.org || "") + " " + (x.league || "") + " " + (x.ev || "")))).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
   await env.STORE.put("pred:matches", JSON.stringify(keep));
   if (boardDirty) await env.STORE.put("pred:board", JSON.stringify(B));
   await env.STORE.put("pred:errs", JSON.stringify(errs.slice(0, 20))).catch(() => {});
