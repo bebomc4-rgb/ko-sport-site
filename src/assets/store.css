@@ -2089,3 +2089,8 @@ html[data-logo-round=on] header.top .logo>img{animation:koGlow 4.8s ease-in-out 
 @keyframes koShine{0%,62%{transform:translateX(-130%)}88%,100%{transform:translateX(130%)}}
 @keyframes koPulse{0%,100%{box-shadow:0 0 0 3px #f5c518,0 0 0 7px rgba(245,197,24,.16),0 16px 36px -12px rgba(201,151,28,.55)}50%{box-shadow:0 0 0 3px #f5c518,0 0 0 12px rgba(245,197,24,.08),0 16px 44px -8px rgba(201,151,28,.85)}}
 @keyframes koGlow{0%,70%,100%{filter:none}82%{filter:brightness(1.15) drop-shadow(0 0 6px rgba(245,197,24,.8))}}
+
+.acc-pred{display:flex;align-items:center;justify-content:space-between;gap:10px;text-decoration:none;color:inherit;background:linear-gradient(135deg,#1a1a20,#2a2416);border:1px solid #c9a45c}
+.acc-pred .apr-l b{display:block;font-size:1.02rem;color:#f4d98b}
+.acc-pred .apr-l small{display:block;color:#d7d2c6;margin-top:3px;font-size:.82rem;line-height:1.5}
+.acc-pred .apr-go{color:#c9a45c;font-weight:700;white-space:nowrap}

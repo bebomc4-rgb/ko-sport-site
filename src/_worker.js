@@ -256,6 +256,7 @@ async function settingsGet(request, env, ctx) {
     const s = await getSettings(env, request);
     s.discounts = (s.discounts || []).filter((d) => d.type !== "code" && d.on !== false);
     s.pages = (s.pages || []).filter((p) => p.on !== false);
+    s.predLive = !!(await predCfg(env)).live; // صاحب المتجر (16 تشرين التاني 2026): قسم التوقعات بيبيّن بحسابي لما يصير live
     delete s.dev;
     return s;
   }, request);
