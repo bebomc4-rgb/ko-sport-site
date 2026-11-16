@@ -1114,7 +1114,7 @@ function predFromEspn(lg, ev) {
     out.push({
       id: "e" + (comp.id || ev.id), src: lg.k, sport: lg.sp, league: lg.n + (lg.sp === "ufc" && comp.type && comp.type.abbreviation ? " · " + (PRED_W[comp.type.abbreviation] || comp.type.abbreviation) : ""),
       ev: lg.sp === "ufc" ? String(ev.shortName || ev.name || "") : "",
-      a: nm(A), b: nm(Bc), ai: pic(A), bi: pic(Bc), ar: (A.records && A.records[0] && A.records[0].summary) || "", br: (Bc.records && Bc.records[0] && Bc.records[0].summary) || "",
+      a: nm(A), b: nm(Bc), ai: pic(A), bi: pic(Bc), aid: String((A.team && A.team.id) || A.id || ""), bid: String((Bc.team && Bc.team.id) || Bc.id || ""), eid: String(ev.id || ""), ar: (A.records && A.records[0] && A.records[0].summary) || "", br: (Bc.records && Bc.records[0] && Bc.records[0].summary) || "",
       af: A.athlete && A.athlete.flag ? A.athlete.flag.href : "", bf: Bc.athlete && Bc.athlete.flag ? Bc.athlete.flag.href : "",
       sc: st.completed && lg.sp !== "ufc" ? `${A.score ?? ""}-${Bc.score ?? ""}` : "", at: Date.parse(comp.date || ev.date), draw: lg.sp === "football", pts: 10, res,
     });
@@ -1155,6 +1155,44 @@ async function bxFetch(errs) {
     } catch (e) { errs.push("boxing:" + (e && e.name || "err")); }
   }
   return got;
+}
+// إحصائيات المباراة (بتنجاب لما الزبون يكبس «📊 إحصائيات»، وبتنحفظ بالـ KV كم ساعة):
+// كرة قدم وسلة: تاريخ مواجهات الفريقين من ESPN (summary → seasonseries). UFC: طرق الفوز من سجل المقاتل (ESPN core). ملاكمة: من صفحة النزال بـ Box.live.
+const predJ = async (u) => { const r = await fetch(u, { headers: BX_HDR, signal: AbortSignal.timeout(9000), cf: { cacheTtl: 3600 } }); if (!r.ok) throw new Error("http " + r.status); return r.json(); };
+async function predInfo(env, mt) {
+  const lg = PRED_LEAGUES.find((x) => x.k === mt.src);
+  if ((mt.sport === "football" || mt.sport === "basketball") && lg && lg.p && mt.aid) {
+    const j = await predJ(`https://site.api.espn.com/apis/site/v2/sports/${lg.p}/summary?event=${encodeURIComponent(mt.eid || mt.id.slice(1))}`);
+    const games = [];
+    for (const ss of (j.seasonseries || [])) for (const e of (ss.events || [])) {
+      const cs = e.competitors || [], A = cs.find((c) => String(c.team && c.team.id) === mt.aid), Bc = cs.find((c) => String(c.team && c.team.id) === mt.bid);
+      if (!A || !Bc || !(e.statusType && e.statusType.completed) || games.some((g) => g.id === e.id)) continue;
+      const sa = +A.score || 0, sb = +Bc.score || 0;
+      games.push({ id: e.id, d: Date.parse(e.date), sa, sb, w: A.winner ? "a" : Bc.winner ? "b" : sa === sb ? "d" : sa > sb ? "a" : "b" });
+    }
+    games.sort((x, y) => y.d - x.d);
+    const G = games.slice(0, 10), t = { aw: 0, bw: 0, d: 0, ag: 0, bg: 0 };
+    for (const g of G) { if (g.w === "a") t.aw++; else if (g.w === "b") t.bw++; else t.d++; t.ag += g.sa; t.bg += g.sb; }
+    return { kind: "h2h", unit: mt.sport === "basketball" ? "النقاط" : "الأهداف", n: G.length, ...t, games: G.map((g) => ({ d: g.d, sa: g.sa, sb: g.sb, w: g.w })) };
+  }
+  if (mt.sport === "ufc" && mt.aid && mt.bid) {
+    const rec = async (id) => { const j = await predJ(`https://sports.core.api.espn.com/v2/sports/mma/athletes/${encodeURIComponent(id)}/records`); const st = {}; for (const x of ((j.items && j.items[0] && j.items[0].stats) || [])) st[x.name] = +x.value || 0; return st; };
+    const [A, Bc] = await Promise.all([rec(mt.aid), rec(mt.bid)]);
+    const f = (x) => ({ w: x.wins || 0, l: x.losses || 0, d: x.draws || 0, ko: x.tkos || 0, sub: x.submissions || 0, dec: Math.max(0, (x.wins || 0) - (x.tkos || 0) - (x.submissions || 0)) });
+    return { kind: "fight", a: f(A), b: f(Bc) };
+  }
+  if (mt.sport === "boxing" && /^bx-/.test(mt.id)) {
+    const r = await fetch(`https://box.live/fights/${encodeURIComponent(mt.id.slice(3))}/`, { headers: BX_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtl: 3600 } });
+    if (!r.ok) throw new Error("http " + r.status);
+    const txt = (await r.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&#0?39;|&rsquo;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
+    // جدول «الشريط»: «30 Wins 36 · 27 By KO 25 · … 4 Losses 2 · … 0 Draws 1» (اليسار = الملاكم الأول)
+    const m = txt.match(/(\d+) Wins (\d+) (\d+) By KO (\d+)[\s\S]{0,80}?(\d+) Losses (\d+)[\s\S]{0,80}?(\d+) Draws (\d+)/);
+    if (!m) return { kind: "none" };
+    const f = (w, ko, l, d) => ({ w: +w, l: +l, d: +d, ko: +ko, sub: null, dec: Math.max(0, +w - +ko) });
+    const out = { a: f(m[1], m[3], m[5], m[7]), b: f(m[2], m[4], m[6], m[8]) };
+    return { kind: "fight", a: out.a, b: out.b, box: true };
+  }
+  return { kind: "none" };
 }
 async function predSync(env, force) {
   const now = Date.now(), last = +(await env.STORE.get("pred:sync").catch(() => 0)) || 0;
@@ -1210,6 +1248,15 @@ async function predApi(request, env, path, m, ctx) {
     return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n, on: !Array.isArray(cfg.leagues) || cfg.leagues.includes(x.k) })),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
       matches: L.filter((mt) => !predFem(mt)).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
+  }
+  if (path === "/api/pred/info" && m === "GET") {
+    const id = clip(new URL(request.url).searchParams.get("id"), 80), mt = (await predMatches(env)).find((x) => x.id === id);
+    if (!mt) return json({ error: "المباراة مو موجودة" }, 404);
+    const ck = "pred:info:" + id, hit = await env.STORE.get(ck, "json").catch(() => null);
+    if (hit && hit.t > Date.now() - 6 * 3600e3) return json(hit.v);
+    let v; try { v = await predInfo(env, mt); } catch { v = { kind: "none" }; }
+    if (v.kind !== "none") await env.STORE.put(ck, JSON.stringify({ t: Date.now(), v }), { expirationTtl: 7 * 86400 }).catch(() => {});
+    return json(v);
   }
   if (path === "/api/pred/pick" && m === "POST") {
     if (!acct) return json({ error: "لازم تفوت على حسابك بالمتجر أول" }, 401);

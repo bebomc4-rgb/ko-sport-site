@@ -77,6 +77,16 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
 .sync{color:var(--mut);font-size:.75rem;text-align:center;margin:14px 0 0}
 .lgs{display:flex;flex-wrap:wrap;gap:8px 14px;margin:10px 0}
 .lgs label{display:flex;gap:6px;align-items:center;font-size:.85rem}
+.stb{margin-top:8px;width:100%;background:transparent;color:var(--gold2);border:1px dashed #6b5600;border-radius:10px;padding:7px;font:inherit;font-size:.85rem;cursor:pointer}
+.info{margin-top:8px;background:#121216;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:.85rem}
+.info h4{margin:0 0 8px;font-size:.88rem;color:var(--gold2);text-align:center}
+.info .row{display:grid;grid-template-columns:1fr 2.2fr 1fr;align-items:center;padding:5px 0;border-bottom:1px solid #1f1f25;text-align:center}
+.info .row:last-of-type{border-bottom:0}
+.info .row b{font-size:1.05rem}
+.info .row b.hi{color:var(--gold)}
+.info .row span{color:var(--mut);font-size:.8rem}
+.info .gl{margin-top:8px;color:var(--mut);font-size:.78rem;display:flex;flex-direction:column;gap:3px}
+.info .gl div{display:flex;justify-content:space-between}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(120px);background:#222;color:#fff;border:1px solid var(--line);padding:10px 18px;border-radius:99px;transition:.25s;z-index:9;font-size:.92rem}
 #toast.on{transform:translateX(-50%) translateY(0)}
 </style>
@@ -128,11 +138,30 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
   const dayName = (k) => { const t = dayKey(Date.now()), tm = dayKey(Date.now() + 864e5); if (k === t) return "اليوم"; if (k === tm) return "بكرا";
     return new Date(k + "T12:00:00Z").toLocaleDateString("ar-SY", { weekday: "long", day: "numeric", month: "numeric" }); };
   const hm = (ms) => new Date(ms).toLocaleTimeString("ar-SY", { timeZone: "Asia/Damascus", hour: "numeric", minute: "2-digit" });
-  let day = "";
+  let day = ""; const INF = {}, OPEN = new Set();
   function side(m, s) {
     const img = m[s + "i"], person = m.sport === "ufc" || m.sport === "boxing", flag = m[s + "f"], rec = m[s + "r"];
     return `<div class="side">${img ? `<img class="${person ? "ph" : "lg"}" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
       <span class="nm">${esc(m[s])}</span>${flag || rec ? `<span class="inf">${flag ? `<img src="${esc(flag)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${rec ? `سجل ${esc(rec)}` : ""}</span>` : ""}</div>`;
+  }
+  function infoHtml(m) {
+    const v = INF[m.id];
+    if (!v) return `<div class="info" style="text-align:center;color:var(--mut)">عم يحمّل…</div>`;
+    if (v.kind === "none" || v.err) return `<div class="info" style="text-align:center;color:var(--mut)">ما في إحصائيات متوفرة لهالمباراة هلق</div>`;
+    const row = (x, label, y) => `<div class="row"><b class="${+x > +y ? "hi" : ""}">${x ?? "—"}</b><span>${label}</span><b class="${+y > +x ? "hi" : ""}">${y ?? "—"}</b></div>`;
+    const head = `<div class="row"><b style="font-size:.8rem">${esc(m.a)}</b><span></span><b style="font-size:.8rem">${esc(m.b)}</b></div>`;
+    if (v.kind === "h2h") {
+      if (!v.n) return `<div class="info" style="text-align:center;color:var(--mut)">ما في مواجهات سابقة مسجّلة بين الفريقين</div>`;
+      return `<div class="info"><h4>تاريخ مواجهات الفريقين (آخر ${v.n} ${v.n === 1 ? "مباراة" : "مباريات"})</h4>${head}
+        ${row(v.aw, "فوز", v.bw)}${row(v.d, "تعادل", v.d)}${row(v.bw, "هزيمة", v.aw)}${row(v.ag, esc(v.unit), v.bg)}
+        <div class="gl">${v.games.map((g) => `<div><span>${new Date(g.d).toLocaleDateString("ar-SY", { year: "numeric", month: "numeric", day: "numeric" })}</span><span>${esc(m.a)} <b style="color:var(--txt)">${g.sa} - ${g.sb}</b> ${esc(m.b)}</span></div>`).join("")}</div></div>`;
+    }
+    const A = v.a, B = v.b;
+    return `<div class="info"><h4>إحصائيات</h4>${head}
+      ${row(`${A.w}-${A.l}-${A.d}`, "السجل (فوز-خسارة-تعادل)", `${B.w}-${B.l}-${B.d}`)}
+      ${row(A.ko, "الفوز بالضربة القاضية (KO/TKO)", B.ko)}
+      ${row(v.box ? "—" : A.sub, "الفوز بالإخضاع (Submission)", v.box ? "—" : B.sub)}
+      ${row(A.dec, "الفوز بقرار الحكام (Decision)", B.dec)}</div>`;
   }
   function card(m) {
     const locked = !!m.res || Date.now() >= m.at, tot = m.counts.a + m.counts.b + m.counts.d;
@@ -157,7 +186,8 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
     return `<div class="m"><div class="top"><span class="sp">${esc(m.league || D.sports[m.sport] || "")}</span><span>${when(m.at)}</span></div>
       ${m.ev ? `<div class="evn">${esc(m.ev)}</div>` : ""}
       <div class="vs2">${side(m, "a")}<div class="mid">${mid}</div>${side(m, "b")}</div>
-      <div class="opts ${m.draw ? "d3" : ""}">${opt("a", m.a)}${m.draw ? opt("d", "تعادل") : ""}${opt("b", m.b)}</div>${st}${adm}</div>`;
+      <div class="opts ${m.draw ? "d3" : ""}">${opt("a", m.a)}${m.draw ? opt("d", "تعادل") : ""}${opt("b", m.b)}</div>${st}
+      ${m.auto ? `<button class="stb" data-info="${m.id}">📊 ${OPEN.has(m.id) ? "سكّر الإحصائيات" : "إحصائيات"}</button>${OPEN.has(m.id) ? infoHtml(m) : ""}` : ""}${adm}</div>`;
   }
 
   function draw() {
@@ -207,6 +237,8 @@ details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
       busy = true;
       if (b.dataset.sp !== undefined) { sport = b.dataset.sp; day = ""; draw(); return; }
       if (b.dataset.day !== undefined) { day = b.dataset.day; draw(); return; }
+      if (b.dataset.info) { const id = b.dataset.info; if (OPEN.has(id)) { OPEN.delete(id); draw(); return; } OPEN.add(id); draw();
+        if (!INF[id]) { busy = false; try { INF[id] = await api("/api/pred/info?id=" + encodeURIComponent(id)); } catch { INF[id] = { err: 1 }; } draw(); } return; }
       if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "10"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
       if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(); }
       if (b.id === "lg_go") { toast("عم حدّث…"); const ks = [...document.querySelectorAll("[data-lg]")].filter((x) => x.checked).map((x) => x.dataset.lg); const r = await api("/api/pred/admin", { action: "leagues", leagues: ks }); toast(`انحفظت ✓ (${r.total} مباراة)`); return await load(); }
