@@ -2063,7 +2063,7 @@ async function orderDelete(request, env, id) {
 
 // ---------- /api/images ----------
 const MAX_IMG = 3 * 1024 * 1024;
-async function imageUpload(request, env) {
+async function imageUpload(request, env, ctx) {
   if (!isAdmin(request, env)) return denied();
   const type = request.headers.get("content-type") || "";
   if (!type.startsWith("image/")) return json({ error: "لازم يكون صورة" }, 400);
@@ -2071,6 +2071,8 @@ async function imageUpload(request, env) {
   if (buf.byteLength > MAX_IMG) return json({ error: "الصورة كبيرة (أكتر من 3MB)" }, 400);
   const key = newKey();
   await env.STORE.put(`img:${key}`, buf, { metadata: { type } });
+  // صاحب المتجر (17 تشرين التاني 2026): «التطبيق بطيء بفتح الصور الجديدة» — منجهّز النسخ المصغّرة فوراً وقت الرفع، فأول زبون بيفتحها بتكون جاهزة
+  if (ctx && ctx.waitUntil) { const o = new URL(request.url).origin; ctx.waitUntil((async () => { await new Promise((r) => setTimeout(r, 1500)); for (const w of ["240", "300", "720", "900", "1080"]) { try { const r = await fetch(`${o}/imgs/${w}/${key}`); await r.arrayBuffer(); } catch {} } })()); }
   return json({ url: `/img/${key}` });
 }
 
@@ -4446,7 +4448,7 @@ const koMain = {
         if (m === "PATCH") return orderPatch(request, env, id);
         if (m === "DELETE") return orderDelete(request, env, id);
       } else if (path === "/api/images") {
-        if (m === "POST") return imageUpload(request, env);
+        if (m === "POST") return imageUpload(request, env, ctx);
         if (m === "PATCH") return imageMigrate(request, env);
       } else if (path === "/" + INDEXNOW_KEY + ".txt" && m === "GET") {
         return new Response(INDEXNOW_KEY, { headers: { "content-type": "text/plain; charset=utf-8" } });
