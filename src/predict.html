@@ -153,6 +153,8 @@ body.lock{overflow:hidden}
 .pz-bar{height:10px;border-radius:99px;background:var(--card2);overflow:hidden;margin:10px 0 6px}.pz-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:99px;transition:width .6s}
 .pz-t{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.pz-t .btn{flex:1;min-width:90px}.pz-t .btn small{display:block;font-weight:500;opacity:.8}.pz-t .btn:disabled{opacity:.55;cursor:default}
 .pz-c{border:1px dashed var(--gold);border-radius:10px;padding:8px 10px;margin:6px 0;font-size:.9rem}.pz-c b{color:var(--gold2);letter-spacing:1px}.pz-c small{display:block;color:var(--mut);font-size:.75rem;margin-top:2px}
+.lv{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid var(--lc);color:var(--lc);margin-inline-start:4px;white-space:nowrap}
+.lv-l{display:flex;justify-content:space-between;gap:4px;margin-top:10px}.lv-l span{flex:1;text-align:center;font-size:1.2rem;opacity:.35;filter:grayscale(1)}.lv-l span.on{opacity:1;filter:none}.lv-l small{display:block;font-size:.62rem;color:var(--lc);font-weight:700}
 </style>
 </head>
 <body>
@@ -336,7 +338,16 @@ body.lock{overflow:hidden}
   }
 
   // جوايز النقاط (16 تشرين التاني 2026): خصم بس. الرصيد = النقاط − المصروف.
-  const rank = (p) => "🎖 " + (p >= 10000 ? "أسطورة" : p >= 6000 ? "خبير" : p >= 3000 ? "محترف" : p >= 1000 ? "هاوي" : "مبتدئ");
+  // تصنيف الزباين (صاحب المتجر 16 تشرين التاني 2026): حسب مجموع نقاطو الكلية (مو الرصيد)، فلما يصرف نقاط على خصم تصنيفو ما بينزل.
+  const LV = [[0, "🥉", "برونزي", "#b87333"], [1000, "🥈", "فضي", "#9aa3ad"], [3000, "🥇", "ذهبي", "#d4a017"], [6000, "💠", "بلاتيني", "#3aa6b9"], [12000, "💎", "ألماسي", "#5b7cfa"], [25000, "👑", "أسطورة", "#c0392b"]];
+  const lv = (p) => { let i = 0; LV.forEach((l, k) => { if ((p || 0) >= l[0]) i = k; }); return i; };
+  const badge = (p) => { const l = LV[lv(p)]; return `<span class="lv" style="--lc:${l[3]}">${l[1]} ${l[2]}</span>`; };
+  const rank = (p) => badge(p);
+  function lvBar() {
+    if (!D.me) return ""; const p = D.me.p || 0, i = lv(p), n = LV[i + 1], c = LV[i];
+    return `<div class="pz"><div class="pz-h"><b>تصنيفك: ${badge(p)}</b><span>${p} نقطة</span></div>${n ? `<div class="pz-bar"><i style="width:${Math.min(100, Math.round(((p - c[0]) / (n[0] - c[0])) * 100))}%"></i></div><p class="sub">باقيلك <b>${n[0] - p}</b> نقطة لتوصل ${n[1]} ${n[2]}</p>` : `<p class="sub">وصلت لأعلى تصنيف 👑</p>`}
+      <div class="lv-l">${LV.map((l, k) => `<span class="${k <= i ? "on" : ""}" style="--lc:${l[3]}">${l[1]}<small>${l[2]}</small></span>`).join("")}</div></div>`;
+  }
   function prizes() {
     const T = D.tiers || []; if (!D.me || !T.length) return "";
     const bal = Math.max(0, (D.me.p || 0) - (D.me.s || 0)), next = T.find((t) => bal < t[0]), top = T[T.length - 1][0];
@@ -359,7 +370,7 @@ body.lock{overflow:hidden}
     if (day && !dks.includes(day)) day = "";
     const shown = up.filter((m) => !day || dayKey(m.at) === day);
     const used = [...new Set(D.matches.map((m) => m.sport))];
-    let h = D.me ? `<div class="me"><div><div class="sub">نقاطك يا ${esc(D.me.name.split(" ")[0])}</div><b>${D.me.p}</b></div><div class="sub" style="text-align:left">${rank(D.me.p)}<br>توقّعات صح: ${D.me.w} من ${D.me.t}</div></div>${prizes()}`
+    let h = D.me ? `<div class="me"><div><div class="sub">نقاطك يا ${esc(D.me.name.split(" ")[0])}</div><b>${D.me.p}</b></div><div class="sub" style="text-align:left">توقّعات صح: ${D.me.w} من ${D.me.t}</div></div>${lvBar()}${prizes()}`
       : `<div class="msg" style="margin-bottom:14px">لازم تفوت على حسابك بالمتجر لتقدر تتوقّع.<br><br><a class="btn" href="/ar/account" style="text-decoration:none;display:inline-block">فوت على حسابي</a></div>`;
     if (used.length > 1) h += `<div class="chips"><button class="${sport ? "" : "on"}" data-sp="">الكل</button>${used.map((s) => `<button class="${sport === s ? "on" : ""}" data-sp="${s}">${esc(D.sports[s])}</button>`).join("")}</div>`;
     if (orgs.length > 1) { const cnt = (o) => D.matches.filter((m) => m.sport === sport && m.org === o && !m.res).length;
@@ -372,7 +383,7 @@ body.lock{overflow:hidden}
     if (dks.length > 1) h += `<div class="chips days"><button class="${day ? "" : "on"}" data-day="">كل الأيام</button>${dks.map((k) => `<button class="${day === k ? "on" : ""}" data-day="${k}">${esc(dayName(k))}</button>`).join("")}</div>`;
     h += shown.length ? list(shown) : `<div class="empty">ما في مباريات جاية هلق${D.owner ? " · ضيف وحدة من فوق" : ""}</div>`;
     if (done.length) h += `<h2>خلصت</h2>` + list(done.slice(0, 40));
-    h += `<h2>🏆 الترتيب</h2><div class="board">${D.board.length ? D.board.map((r, i) => `<div class="${r.me ? "me1" : ""}"><span><span class="rk">${i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>${esc(r.n.split(" ").slice(0, 2).join(" "))}</span><span><b style="color:var(--gold)">${r.p}</b> نقطة</span></div>`).join("") : `<div class="empty" style="display:block">لسا ما في نتايج</div>`}</div>`;
+    h += `<h2>🏆 الترتيب</h2><div class="board">${D.board.length ? D.board.map((r, i) => `<div class="${r.me ? "me1" : ""}"><span><span class="rk">${i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>${esc(r.n.split(" ").slice(0, 2).join(" "))} ${badge(r.p)}</span><span><b style="color:var(--gold)">${r.p}</b> نقطة</span></div>`).join("") : `<div class="empty" style="display:block">لسا ما في نتايج</div>`}</div>`;
     if (D.sync) h += `<p class="sync">المواعيد والنتايج بتتحدّث لحالها · آخر تحديث ${hm(D.sync)}</p>`;
     app.innerHTML = h;
     app.querySelectorAll("[data-rd]").forEach((bt) => { bt.onclick = async () => {
