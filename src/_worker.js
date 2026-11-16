@@ -1190,8 +1190,16 @@ const PRED_LBL = { "Goal Difference": "فرق الأهداف بالموسم", "T
   "Rebounds Per Game": "معدّل الريباوند", "Assists Per Game": "معدّل التمريرات الحاسمة", "Blocks Per Game": "معدّل الصدّات", "Steals Per Game": "معدّل الاستخلاص", "Total Turnovers Per Game": "معدّل الكرات الضايعة",
   "Goals": "الهدّاف", "Total Shots": "الأكتر تسديد", "Accurate Passes": "الأكتر تمرير صحيح", "Saves": "الحارس (تصدّيات)", "Points": "الأكتر نقاط", "Rebounds": "الأكتر ريباوند" };
 const PRED_STANCE = { Orthodox: "يميني", Southpaw: "يساري", Switch: "متبدّل" };
-// ESPN: نفس طريقة المزامنة (بلا ترويسات خاصة، لأن ترويسة Box.live خلّت ESPN يرفض بـ 403)
-const predJ = async (u) => { const r = await fetch(u, { signal: AbortSignal.timeout(9000), cf: { cacheTtl: 3600 } }); if (!r.ok) throw new Error("http " + r.status + " " + u.split("/").slice(2, 3)); return r.json(); };
+// ESPN: «summary» أحياناً بيرجّع 403 من سيرفرات Cloudflare: منجرّب نفس الطلب على عناوين ESPN التانية بالترتيب
+const ESPN_HOSTS = ["site.api.espn.com", "site.web.api.espn.com"];
+const predJ = async (u) => {
+  let last = "";
+  const tries = /^https:\/\/site\.(web\.)?api\.espn\.com\//.test(u) ? ESPN_HOSTS.map((h) => u.replace(/^https:\/\/[^/]+/, "https://" + h) + (u.includes("?") ? "&" : "?") + "region=us&lang=en&contentorigin=espn") : [u];
+  for (const t of [u, ...tries.filter((x) => x !== u)]) {
+    try { const r = await fetch(t, { signal: AbortSignal.timeout(9000), headers: { accept: "application/json" }, cf: { cacheTtl: 3600 } }); if (r.ok) return r.json(); last = "http " + r.status + " " + t.split("/")[2]; } catch (e) { last = String(e && e.name || e); }
+  }
+  throw new Error(last);
+};
 const pd = (x) => { const d = Date.parse(x || ""); return d > 0 ? d : 0; };
 function bxTape(html) {
   const tk = String(html).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, " ").replace(/<[^>]+>/g, "|")
@@ -1343,6 +1351,11 @@ async function predSync(env, force) {
 const predMine = (v) => !v ? null : typeof v === "string" ? { k: v } : v;
 const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, league: mt.league || "", ev: mt.ev || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", meth: mt.meth || "", ra: mt.ra, rb: mt.rb, auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: predMine(mine), got: mine && predKeyOk(mt.res) ? predPts(mt, predMine(mine), predR(mt)).p : null });
 async function predApi(request, env, path, m, ctx) {
+  if (path === "/api/pred/probe" && m === "GET") {
+    const ev = clip(new URL(request.url).searchParams.get("ev") || "401878755", 20), lg = clip(new URL(request.url).searchParams.get("lg") || "soccer/eng.1", 30), out = {};
+    for (const h of ESPN_HOSTS) for (const q of ["", "?region=us&lang=en&contentorigin=espn"]) { try { const r = await fetch(`https://${h}/apis/site/v2/sports/${lg}/summary?event=${ev}${q ? "&" + q.slice(1) : ""}`, { headers: { accept: "application/json" } }); out[h + (q ? "+q" : "")] = r.status; } catch (e) { out[h] = String(e); } }
+    return json(out);
+  }
   if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null) }); }
   const owner = env.__role === "owner", cfg = await predCfg(env), live = !!cfg.live;
   const acct = await acctFromReq(request, env);
