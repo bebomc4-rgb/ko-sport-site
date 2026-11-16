@@ -304,13 +304,13 @@ body.lock{overflow:hidden}
       <button class="btn sm ghost" data-pts="${m.id}">النقاط: ${m.pts}</button>
       <button class="btn sm red" data-del="${m.id}">احذف</button>
       <span style="color:var(--mut);font-size:.75rem;width:100%">توقّعات: ${tot}</span></div>` : "";
-    const mid = m.res && m.res !== "x" && m.ra !== undefined ? `<b>${m.ra}-${m.rb}</b>` : `<span>${hm(m.at)}</span><span>ضد</span>`;
+    const mid = m.res && m.res !== "x" && m.ra !== undefined ? `<b>${m.ra}-${m.rb}</b>` : m.dOnly ? `<span>ضد</span>` : `<span>${hm(m.at)}</span><span>ضد</span>`;
     const inEv = !!(m.eid && m.seg);
-    return `<div class="m">${inEv && m.mev ? `<div style="text-align:center"><span class="mevb">⭐ النزال الرئيسي</span></div>` : ""}<div class="hd"><span class="sp">${esc(inEv ? (m.league.split(" · ")[1] || m.league) : (m.league || D.sports[m.sport] || ""))}</span><span>${inEv ? hm(m.at) : when(m.at)}</span></div>
+    return `<div class="m">${inEv && m.mev ? `<div style="text-align:center"><span class="mevb">⭐ النزال الرئيسي</span></div>` : ""}<div class="hd"><span class="sp">${esc(inEv ? (m.league.split(" · ")[1] || m.league) : (m.league || D.sports[m.sport] || ""))}</span><span>${m.dOnly ? "" : inEv ? hm(m.at) : when(m.at)}</span></div>
       ${m.ev && !inEv ? `<div class="evn">${esc(m.ev)}</div>` : ""}
       <div class="vs2">${side(m, "a")}<div class="mid">${mid}</div>${side(m, "b")}</div>
       ${body}${st}
-      ${m.auto ? `<button class="stb" data-info="${m.id}">📊 الإحصائيات</button>` : ""}${adm}</div>`;
+      ${m.auto && !m.ns ? `<button class="stb" data-info="${m.id}">📊 الإحصائيات</button>` : ""}${adm}</div>`;
   }
 
   // نزالات MMA بتنجمع ببطاقة الحدث متل UFC: اسم البطاقة، المكان، وأقسام (الرئيسية، التمهيدية، المبكرة)، والنزال الرئيسي فوق
@@ -325,7 +325,7 @@ body.lock{overflow:hidden}
     return out.map((x) => typeof x === "string" ? x : (() => {
       const L = seen.get(x.eid), f = L[0], segs = SEG.filter(([k]) => L.some((m) => m.seg === k));
       const no = (String(f.evn || f.ev || "").match(/\b(UFC|PFL|ONE|Brave CF|UAE Warriors)\s+(\d{2,4})\b/i) || []);
-      return `<div class="evc"><div class="eh">${no[2] ? `<span class="evno">${esc(no[1].toUpperCase())} ${no[2]}</span>` : ""}<b>${esc(f.evn || f.ev || f.org)}</b><small>${esc(when(Math.min(...L.map((m) => m.at))))}${f.ven ? " · " + esc(f.ven) : ""} · ${L.length} نزال</small></div>` +
+      return `<div class="evc"><div class="eh">${no[2] ? `<span class="evno">${esc(no[1].toUpperCase())} ${no[2]}</span>` : ""}<b>${esc(f.evn || f.ev || f.org)}</b><small>${esc(f.dOnly ? new Date(f.at + 3 * 3600e3).toLocaleDateString("ar-SY", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }) + " · التوقعات بتنقفل أول اليوم" : when(Math.min(...L.map((m) => m.at))))}${f.ven ? " · " + esc(f.ven) : ""} · ${L.length} نزال</small></div>` +
         segs.map(([k, t]) => (segs.length > 1 ? `<h4>${t}</h4>` : "") + L.filter((m) => m.seg === k).sort((a, b) => b.ord - a.ord).map(card).join("")).join("") + `</div>`;
     })()).join("");
   }

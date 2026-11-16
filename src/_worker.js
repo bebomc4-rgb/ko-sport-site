@@ -1106,6 +1106,9 @@ const PRED_LEAGUES = [
   { k: "ufc", p: "mma/ufc", sp: "ufc", n: "UFC" },
   { k: "pfl", p: "mma/pfl", sp: "ufc", n: "PFL" },
   { k: "mma-other", p: "mma/other", sp: "ufc", n: "", evName: true }, // منظمات MMA تانية من ESPN (UAE Warriors، Brave، ONE…)؛ PFL مستبعد منها
+  { k: "bkfc", sp: "ufc", n: "BKFC (من ويكيبيديا)", wiki: "Bare Knuckle Fighting Championship", org: "BKFC" },
+  { k: "one", sp: "ufc", n: "ONE Championship (من ويكيبيديا)", wiki: "ONE Championship", org: "ONE" },
+  { k: "brave", sp: "ufc", n: "Brave CF (من ويكيبيديا)", wiki: "Brave Combat Federation", org: "Brave CF" },
   { k: "boxing", sp: "boxing", n: "ملاكمة (Box.live)", box: true },
 ];
 const predOn = (cfg) => Array.isArray(cfg.leagues) ? new Set(cfg.leagues) : new Set(PRED_LEAGUES.filter((x) => !x.off).map((x) => x.k));
@@ -1217,6 +1220,56 @@ function bxResult(mt) {
   }
   if (/\bdraw\b|drew\b/i.test(d)) return { res: "d", meth: "" };
   return { res: /no contest|cancel|postpon/i.test(d) ? "x" : "" };
+}
+// ويكيبيديا (مجانية ومفتوحة، CC BY-SA): صفحات «2026 in BKFC/ONE/Brave» فيها كل حدث بجدول نزالاتو، والوزن مكتوب فيه «Women's» أو «W.» للسيدات.
+// النتيجة بتنكتب «X def. Y» (الفايز أول)، والجاية «X vs. Y». التاريخ بلا ساعة، فمنقفل التوقعات بأول اليوم (منتصف الليل بدمشق تقريباً).
+const wkTxt = (h) => String(h || "").replace(/<sup[\s\S]*?<\/sup>/g, "").replace(/<style[\s\S]*?<\/style>/g, "").replace(/<br\s*\/?>/g, " ").replace(/<[^>]+>/g, "").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&#91;|&#93;/g, "").replace(/\s+/g, " ").trim();
+const WK_FEM = /women|\bW\.\s*\w|\(W\)|female/i;
+const WK_DISC = { "Muay Thai": "مواي تاي", Kickboxing: "كيك بوكسينغ", "Submission Grappling": "مصارعة إخضاع", MMA: "" };
+const wkHash = (t) => { let h = 5381; for (const c of String(t)) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0; return h.toString(36); };
+function wkEvents(html, lg) {
+  const out = [], parts = String(html).split(/<div class="mw-heading mw-heading2">/).slice(1);
+  for (const p of parts) {
+    const name = wkTxt((p.match(/<h2[^>]*>([\s\S]*?)<\/h2>/) || [])[1]);
+    const ib = (p.match(/<table class="infobox"[\s\S]*?<\/table>/) || [""])[0];
+    const field = (k) => wkTxt((ib.match(new RegExp(`>${k}</th><td[^>]*>([\\s\\S]*?)</td>`)) || [])[1]);
+    const day = Date.parse(field("Date").replace(/\(.*?\)/g, "") + " 00:00 UTC"); if (!name || !(day > 0)) continue;
+    const at = day - 3 * 3600e3, ven = [field("Venue"), field("City")].filter(Boolean).join("، "), eid = "w" + wkHash(lg.k + "|" + day + "|" + name.replace(/:.*/, ""));
+    let seg = "main", ord = 0; const rows = [];
+    for (const tb of p.match(/<table class="wikitable[\s\S]*?<\/table>/g) || []) for (const tr of tb.match(/<tr[\s\S]*?<\/tr>/g) || []) {
+      const tds = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((x) => x[1]);
+      if (!tds.length) { const t = wkTxt(tr).toLowerCase(); if (/prelim/.test(t)) seg = /early/.test(t) ? "early" : "prelim"; else if (/main card/.test(t)) seg = "main"; continue; }
+      if (tds.length < 5) continue;
+      const rel = wkTxt(tds[2]).toLowerCase(); if (!/^(def\.?|vs\.?|draw|drew)$/.test(rel)) continue;
+      const w = wkTxt(tds[0]); if (WK_FEM.test(w)) continue; // ولا نزال سيدات
+      const nm = (c) => wkTxt(c).replace(/\((c|ic)\)/gi, "").replace(/\s+/g, " ").trim();
+      const flag = (c) => ((c.match(/<img[^>]+src="([^"]+)"/) || [])[1] || "").replace(/^\/\//, "https://");
+      const a = nm(tds[1]), b = nm(tds[3]), M = wkTxt(tds[4]);
+      let res = "", meth = "";
+      if (/^def/.test(rel)) { res = "a"; meth = /submission/i.test(M) ? "sub" : /\bko\b|tko|knockout|stoppage|retire|rtd/i.test(M) ? "ko" : /decision/i.test(M) ? "dec" : ""; if (/no contest/i.test(M)) res = "x"; }
+      else if (/draw|drew/.test(rel) || /^draw/i.test(M)) res = "d";
+      else if (/no contest/i.test(M)) res = "x";
+      const wb = w.replace(/\s*\d+(\.\d+)?\s*kg/i, "").trim(), disc = Object.keys(WK_DISC).find((d) => wb.endsWith(d)), base = disc ? wb.slice(0, -disc.length).trim() : wb;
+      const wl = [PRED_W[base.replace(/\bheavyweight\b/, "Heavyweight")] || base, disc && WK_DISC[disc]].filter(Boolean).join(" · ");
+      rows.push({ id: "w" + wkHash(lg.k + "|" + day + "|" + [a, b].map((x) => x.toLowerCase()).sort().join("|")), src: lg.k, sport: "ufc", org: lg.org, league: lg.org + (wl ? " · " + wl : ""), ev: name, evn: name, eid, seg, ord: ord++, ven,
+        a, b, ai: "", bi: "", af: flag(tds[1]), bf: flag(tds[3]), ar: "", br: "", sc: "", at, draw: true, pts: 10, res, meth, dOnly: true, ns: true });
+    }
+    // ويكيبيديا بتحط النزال الرئيسي أول: منقلب الترتيب حتى يصير «ord» الأكبر = الرئيسي (متل ESPN)
+    for (const r of rows) { r.ord = rows.length - 1 - r.ord; r.mev = r.ord === rows.length - 1; out.push(r); }
+  }
+  return out;
+}
+async function wkFetch(lg, errs) {
+  const y = new Date().getUTCFullYear(), out = [];
+  for (const yr of [y, y + 1]) {
+    try {
+      const r = await fetch(`https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&redirects=1&page=${encodeURIComponent(yr + " in " + lg.wiki)}`, { signal: AbortSignal.timeout(12000), headers: { "user-agent": "KO-SPORT-predictions/1.0 (https://ko-sport.online)", accept: "application/json" }, cf: { cacheTtlByStatus: { "200-299": 1200, "300-599": 0 } } });
+      if (!r.ok) { errs.push(lg.k + ":" + r.status); continue; }
+      const j = await r.json(); if (!j.parse) continue; // صفحة السنة الجاية لسا ما انعملت
+      out.push(...wkEvents(j.parse.text["*"], lg));
+    } catch (e) { errs.push(lg.k + ":" + (e && e.name || "err")); }
+  }
+  return out;
 }
 async function bxFetch(errs) {
   const got = [];
@@ -1367,7 +1420,7 @@ async function predSync(env, force) {
   const days = []; for (let t = now - 864e5; t <= to; t += 864e5) days.push(predIso(t));
   // دفعات من 5 بطولات، وكل طلب بيرفضو ESPN (403/429) منعيدو مرة بعد ثانية: الطلبات الكتيرة سوا كانت تنرفض
   const getJ = async (u) => { for (let i = 0; i < 2; i++) { const r = await fetch(u, { signal: AbortSignal.timeout(8000), cf: { cacheTtlByStatus: { "200-299": 600, "300-599": 0 } } }); if (r.ok) return r.json(); if (i === 0 && (r.status === 403 || r.status === 429 || r.status >= 500)) { await new Promise((z) => setTimeout(z, 1200)); continue; } throw new Error(String(r.status)); } };
-  const todo = PRED_LEAGUES.filter((lg) => !lg.box && on.has(lg.k));
+  const todo = PRED_LEAGUES.filter((lg) => !lg.box && !lg.wiki && on.has(lg.k));
   for (let i = 0; i < todo.length; i += 5) await Promise.all(todo.slice(i, i + 5).map(async (lg) => {
     for (const d of lg.daily ? days : lg.sp === "ufc" ? mmaMonths : months) {
       try {
@@ -1386,6 +1439,7 @@ async function predSync(env, force) {
       } catch (e) { athErr = String(e && e.name || e); } }));
     if (need.length) await env.STORE.put("pred:ath", JSON.stringify(ATH)).catch(() => {}); if (athErr) errs.push("ath:" + athErr); }
   for (const g of got) if (g.sport === "ufc" && g.aid) { const x = ATH[g.aid], y = ATH[g.bid]; if (x) g.ai = x.h; if (y) g.bi = y.h; g.men = !!(x && y && x.g === "M" && y.g === "M"); }
+  for (const lg of PRED_LEAGUES.filter((x) => x.wiki && on.has(x.k))) for (const mt of await wkFetch(lg, errs)) if (mt.at >= from) got.push(mt);
   if (on.has("boxing")) for (const mt of await bxFetch(errs)) if (mt.at >= from && mt.at <= now + 35 * 864e5) got.push(mt);
   const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
   let boardDirty = false;
@@ -1396,6 +1450,7 @@ async function predSync(env, force) {
     if (!cur) { byId.set(g.id, g); continue; }
     if (g.src === "boxing" && !g.res && cur.res) continue; // صفحة المواعيد ما فيها نتيجة: ما منمسح نتيجة جبناها من صفحة النتايج
     if (cur.lock) continue; // المالك حط النتيجة بإيدو: منترك قرارو
+    if (g.dOnly && cur.a !== g.a && cur.a === g.b) { [g.a, g.b, g.af, g.bf] = [g.b, g.a, g.bf, g.af]; if (g.res === "a") g.res = "b"; else if (g.res === "b") g.res = "a"; g.ord = cur.ord; g.mev = cur.mev; }
     const oldR = predR(cur);
     Object.assign(cur, { ...g, pts: cur.pts || g.pts });
     const newR = predR(cur);
@@ -1409,7 +1464,7 @@ async function predSync(env, force) {
   return { ok: true, fetched: got.length, total: keep.length, errs };
 }
 const predMine = (v) => !v ? null : typeof v === "string" ? { k: v } : v;
-const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, org: mt.org || (mt.league || "").split(" · ")[0] || "", league: mt.league || "", ev: mt.ev || "", evn: mt.evn || "", eid: mt.eid || "", seg: mt.seg || "", ord: mt.ord ?? 0, mev: !!mt.mev, ven: mt.ven || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", meth: mt.meth || "", ra: mt.ra, rb: mt.rb, auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: predMine(mine), got: mine && predKeyOk(mt.res) ? predPts(mt, predMine(mine), predR(mt)).p : null });
+const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, org: mt.org || (mt.league || "").split(" · ")[0] || "", league: mt.league || "", ev: mt.ev || "", evn: mt.evn || "", eid: mt.eid || "", seg: mt.seg || "", ord: mt.ord ?? 0, mev: !!mt.mev, ven: mt.ven || "", dOnly: !!mt.dOnly, ns: !!mt.ns, a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", meth: mt.meth || "", ra: mt.ra, rb: mt.rb, auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: predMine(mine), got: mine && predKeyOk(mt.res) ? predPts(mt, predMine(mine), predR(mt)).p : null });
 async function predApi(request, env, path, m, ctx) {
   if (path === "/api/pred/probe" && m === "GET") {
     const ev = clip(new URL(request.url).searchParams.get("ev") || "401878755", 20), lg = clip(new URL(request.url).searchParams.get("lg") || "soccer/eng.1", 30), out = {};
