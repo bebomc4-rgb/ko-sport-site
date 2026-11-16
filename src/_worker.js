@@ -72,7 +72,7 @@ async function saveProducts(env, list) {
 }
 // صاحب المتجر (17 تشرين التاني 2026): «السرعة أهم شي» — كل صورة جديدة بتتجهّز نسخها المصغّرة لحالها
 // (بالمقاسات يلي بيطلبها الموبايل) أول ما تنحفظ، فما في زبون بيستنّى تصغير بأول فتحة. أي طريقة رفع (اللوحة، البوت، GeminiKO) بتمرق من هون.
-const IMG_WARM_MAIN = ["540", "720", "900", "828", "240"], IMG_WARM_GAL = ["828", "1080", "240"];
+const IMG_WARM_MAIN = ["540q80", "720q80", "900q80", "828q80", "640q80", "360q80", "240q80"], IMG_WARM_GAL = ["828q80", "640q80", "1080", "240q80"];
 function imgWarmKeys(ctx, origin, items, env) {
   if (!ctx || !ctx.waitUntil || !origin || !items.length) return;
   ctx.waitUntil((async () => {
@@ -2460,7 +2460,9 @@ async function galleryCopy(request, env) {
 }
 
 // Same helper as the shop: resized copy of one of our own photos (Cloudflare Image Transformations), original if anything else.
-const imgW = (u, w, q) => /^\/img\/[a-z0-9]+$/.test(u || "") ? `/imgs/${w}${q && +q !== 90 ? "q" + q : ""}/${u.slice(5)}` : (u || "");
+// صاحب المتجر (17 تشرين التاني 2026): السرعة أهم شي — الصور لحد 900 بكسل بجودة 80 (أخف بحوالي 40%، والفرق ما بينشاف بالعين). نفس القاعدة بـ store.js
+const imgQ = (w, q) => q ? +q : +w <= 900 ? 80 : 90;
+const imgW = (u, w, q) => /^\/img\/[a-z0-9]+$/.test(u || "") ? `/imgs/${w}${imgQ(w, q) !== 90 ? "q" + imgQ(w, q) : ""}/${u.slice(5)}` : (u || "");
 async function imageGet(request, env, ctx, key) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const hit = cache && (await cache.match(request));
