@@ -4344,7 +4344,7 @@ const koMain = {
       if (path.startsWith("/s/") && m === "GET" && env.STORE) { const c = path.slice(3).toLowerCase(), d = await catalogData(request, env, ctx).catch(() => null), hit = d && d.products.find((x) => shortCode(x.id) === c); return hit ? productShare(request, env, ctx, hit.id) : Response.redirect(new URL("/", request.url).href, 302); }
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
       if (path === "/reset" && m === "GET") return resetPage();
-      if ((path === "/predict" || path === "/ar/predict") && m === "GET" && env.STORE) return predPage(request, env);
+      if (path === "/predict" && m === "GET" && env.STORE) return predPage(request, env); // /ar/predict = صفحة المتجر نفسها (#/predict) جوّا الموقع والتطبيق
       if (path === "/pimg" && m === "GET") return predImg(request, url, ctx);
       // short links to print on bags / send on WhatsApp: ko-sport.online/review and ko-sport.online/map
       // أيقونات لوحة التحكم كمان (المتصفح، الشاشة الرئيسية، تطبيق اللوحة): التنين الأصفر بدل الـ KO الأحمر
