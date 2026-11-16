@@ -1104,9 +1104,7 @@ const PRED_LEAGUES = [
   { k: "gleague", p: "basketball/nba-development", sp: "basketball", n: "NBA G League", daily: true, off: true },
   { k: "nbl", p: "basketball/nbl", sp: "basketball", n: "الدوري الأسترالي NBL", daily: true, off: true },
   { k: "ufc", p: "mma/ufc", sp: "ufc", n: "UFC" },
-  { k: "pfl", p: "mma/pfl", sp: "ufc", n: "PFL" },
   { k: "mma-other", p: "mma/other", sp: "ufc", n: "", evName: true }, // منظمات MMA تانية من ESPN (UAE Warriors، Brave، ONE…)؛ PFL مستبعد منها
-  { k: "one", sp: "ufc", n: "ONE Championship (من ويكيبيديا)", wiki: "ONE Championship", org: "ONE" },
   { k: "brave", sp: "ufc", n: "Brave CF (من ويكيبيديا)", wiki: "Brave Combat Federation", org: "Brave CF" },
   { k: "boxing", sp: "boxing", n: "ملاكمة (Box.live)", box: true },
 ];
@@ -1139,7 +1137,7 @@ const predImp = (mt, boxAll) => {
   if (mt.sport === "boxing") return boxAll || !!mt.imp || PRED_BIG_BOX.test(mt.a + " | " + mt.b);
   return true;
 };
-const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L.filter((x) => x.src !== "bkfc" && x.org !== "BKFC") : []; }; // صاحب المتجر (16 تشرين التاني 2026): شلنا كلشي إلو علاقة بـ BKFC
+const predMatches = async (env) => { const L = await env.STORE.get("pred:matches", "json").catch(() => null); return Array.isArray(L) ? L.filter((x) => x.src !== "bkfc" && x.org !== "BKFC" && x.src !== "pfl" && x.src !== "one" && !/^(PFL|ONE)\b/i.test(String(x.org || x.league || ""))) : []; }; // صاحب المتجر (16 تشرين التاني 2026): شلنا كلشي إلو علاقة بـ BKFC
 async function predCfg(env) { const c = await env.STORE.get("pred:cfg", "json").catch(() => null); return c && typeof c === "object" ? c : {}; }
 const predKeyOk = (k) => k === "a" || k === "b" || k === "d";
 // شو بيتوقّع الزبون (صاحب المتجر 16 تشرين التاني 2026):
@@ -1175,7 +1173,7 @@ const predIso = (ms) => new Date(ms).toISOString().slice(0, 10).replace(/-/g, ""
 function predFromEspn(lg, ev) {
   const out = [], name = (c) => (c.team && (c.team.displayName || c.team.name)) || (c.athlete && (c.athlete.displayName || c.athlete.fullName)) || "";
   const pic = (c) => c.team ? (c.team.logo || "") : c.athlete ? ((c.athlete.headshot && c.athlete.headshot.href) || `https://a.espncdn.com/i/headshots/mma/players/full/${c.id}.png`) : "";
-  if (lg.k === "mma-other" && /\bPFL\b/i.test([ev.name, ev.shortName].join(" "))) return out; // PFL الأساسي بس (من mma/pfl)، بلا PFL MENA وAfrica
+  if (lg.k === "mma-other" && /\bPFL\b|\bONE\b/i.test([ev.name, ev.shortName].join(" "))) return out; // صاحب المتجر (16 تشرين التاني 2026): «شيل ال one و ال pfl» // PFL الأساسي بس (من mma/pfl)، بلا PFL MENA وAfrica
   const CMP = ev.competitions || [], tms = [...new Set(CMP.map((c) => Date.parse(c.date || ev.date)).filter((x) => x > 0))].sort((x, y) => y - x);
   const segOf = (c) => { const i = tms.indexOf(Date.parse(c.date || ev.date)); return i <= 0 ? "main" : i === 1 ? "prelim" : "early"; }; // متل UFC: آخر توقيت = البطاقة الرئيسية، قبلو التمهيدية، وقبلو التمهيدية المبكرة
   for (const [ci, comp] of CMP.entries()) {
@@ -1515,7 +1513,7 @@ async function predApi(request, env, path, m, ctx) {
     const board = Object.entries(B || {}).filter(([, r]) => r.t > 0).map(([ph, r]) => ({ n: r.n || "زبون", p: r.p, w: r.w, t: r.t, me: !!(acct && acct.phone === ph) })).sort((x, y) => y.p - x.p || y.w - x.w).slice(0, 30);
     const mine = (U && U.k) || {}, hideO = new Set(cfg.hideOrgs || []);
     const boxAll = !!cfg.impAll || !L.some((mt) => mt.sport === "boxing" && mt.imp), impOk = (mt) => !!cfg.impAll || !!mine[mt.id] || predImp(mt, boxAll); // بالملاكمة: إذا المصدر ما عطى ولا إشارة لقب، منعرض الكل أحسن ما يفضى القسم
-    return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (PFL MENA وغيرها)", sp: x.sp, on: on.has(x.k) })); })(),
+    return json({ owner, live, now: Date.now(), sync: last, sports: PRED_SPORTS, leagues: (() => { const on = predOn(cfg); return PRED_LEAGUES.map((x) => ({ k: x.k, n: x.n || "MMA (منظمات تانية)", sp: x.sp, on: on.has(x.k) })); })(),
       me: acct ? { name: acct.name, ...((B && B[acct.phone]) || { p: 0, w: 0, t: 0 }) } : null,
       orgsAll: owner ? [...new Map(L.filter((mt) => !predFem(mt)).map((mt) => { const o = predOut(mt); return [o.sport + "|" + o.org, { k: o.sport + "|" + o.org, sp: o.sport, n: o.org, hid: hideO.has(o.sport + "|" + o.org) }]; })).values()] : undefined,
       matches: L.filter((mt) => !predFem(mt) && !(mt.src && predTba(mt))).filter(impOk).filter((mt) => !hideO.has(mt.sport + "|" + (mt.org || (mt.league || "").split(" · ")[0] || ""))).map((mt) => predOut(mt, C && C[mt.id], mine[mt.id])), board });
