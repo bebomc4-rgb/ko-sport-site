@@ -193,7 +193,8 @@ body.lock{overflow:hidden}
     if (v.kind === "none" || v.err) return `<div class="info"><div class="load">ما في إحصائيات متوفرة لهالمباراة هلق</div></div>`;
     const num = (x) => { const n = parseFloat(String(x ?? "").replace(/[^\d.\-]/g, "")); return Number.isFinite(n) ? n : null; };
     const row = (x, label, y, low) => { const nx = num(x), ny = num(y), better = nx !== null && ny !== null && nx !== ny ? (low ? (nx < ny ? "a" : "b") : (nx > ny ? "a" : "b")) : "";
-      return `<div class="row"><b class="${better === "a" ? "hi" : ""}">${x ?? "—"}</b><span>${label}</span><b class="${better === "b" ? "hi" : ""}">${y ?? "—"}</b></div>`; };
+      const V = (z) => z === undefined || z === null || z === "" ? "—" : /^[\d\s+\-#.%:'"/]+$/.test(String(z)) ? `<bdi dir="ltr">${z}</bdi>` : z;
+      return `<div class="row"><b class="${better === "a" ? "hi" : ""}">${V(x)}</b><span>${label}</span><b class="${better === "b" ? "hi" : ""}">${V(y)}</b></div>`; };
     const has = (x, y) => (x !== undefined && x !== null && x !== "") || (y !== undefined && y !== null && y !== "");
     const head = `<div class="row"><b style="font-size:.8rem">${esc(m.a)}</b><span></span><b style="font-size:.8rem">${esc(m.b)}</b></div>`;
     const sec = (t) => `<div class="sec">${t}</div>`, fmL = { W: "ف", D: "ت", L: "خ" };
