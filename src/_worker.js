@@ -1068,6 +1068,7 @@ const PRED_LEAGUES = [
   { k: "ksa.1", p: "soccer/ksa.1", sp: "football", n: "الدوري السعودي" },
   { k: "nba", p: "basketball/nba", sp: "basketball", n: "NBA", daily: true },
   { k: "ufc", p: "mma/ufc", sp: "ufc", n: "UFC" },
+  { k: "boxing", sp: "boxing", n: "ملاكمة (Box.live)", box: true },
 ];
 const PRED_AR = { "Real Madrid": "ريال مدريد", "Barcelona": "برشلونة", "Atlético Madrid": "أتلتيكو مدريد", "Atletico Madrid": "أتلتيكو مدريد", "Sevilla": "إشبيلية", "Valencia": "فالنسيا", "Villarreal": "فياريال", "Real Betis": "ريال بيتيس", "Real Sociedad": "ريال سوسيداد", "Athletic Club": "أتلتيك بلباو",
   "Manchester United": "مانشستر يونايتد", "Manchester City": "مانشستر سيتي", "Liverpool": "ليفربول", "Arsenal": "آرسنال", "Chelsea": "تشيلسي", "Tottenham Hotspur": "توتنهام", "Newcastle United": "نيوكاسل", "Aston Villa": "أستون فيلا", "West Ham United": "وست هام", "Everton": "إيفرتون",
@@ -1120,6 +1121,41 @@ function predFromEspn(lg, ev) {
   }
   return out;
 }
+// الملاكمة: Box.live (مفتوح وبلا مفتاح). صفحة المواعيد وصفحة النتايج فيهن بيانات منظّمة (JSON-LD SportsEvent):
+// الملاكمين، صورهن، بلدهن، جنسهن (Male/Female)، والنتيجة بجملة «X beat Y by …». منقبل بس النزالات يلي الطرفين فيها رجال.
+const BX_HDR = { "user-agent": "Mozilla/5.0 (compatible; KO-SPORT/1.0; +https://ko-sport.online)", accept: "text/html" };
+function bxEvents(html) {
+  const out = [];
+  for (const m of String(html).matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g)) {
+    try { const j = JSON.parse(m[1]); for (const e of (Array.isArray(j) ? j : j["@graph"] || [j])) if (e && e["@type"] === "SportsEvent" && /box/i.test(e.sport || "")) out.push(e); } catch {}
+  }
+  return out;
+}
+function bxMatch(e) {
+  const c = e.competitor || []; if (c.length !== 2) return null;
+  if (!c.every((x) => String(x.gender || "") === "Male")) return null; // ولا لاعبة، ولا شي مو معروف جنسو
+  const slug = (String(e.url || "").match(/\/fights\/([^/]+)/) || [])[1]; if (!slug) return null;
+  const at = Date.parse(e.startDate || ""); if (!(at > 0)) return null;
+  const nm = (x) => String(x.name || "").replace(/\s+/g, " ").trim();
+  return { id: "bx-" + slug.slice(0, 60), src: "boxing", sport: "boxing", league: "ملاكمة", ev: "", a: nm(c[0]), b: nm(c[1]), ai: c[0].image || "", bi: c[1].image || "", ar: "", br: "", af: "", bf: "", sc: "", at, draw: false, pts: 10, res: "", desc: String(e.description || "") };
+}
+function bxResult(mt) {
+  const d = mt.desc || "", n = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]+/g, " ").trim();
+  const w = (d.match(/(?:^|\.\s+)([^.]+?)\s+beat\s+/i) || [])[1];
+  if (w) { const W = n(w), A = n(mt.a), Bn = n(mt.b); if (W && (W === A || W.includes(A) || A.includes(W))) return "a"; if (W && (W === Bn || W.includes(Bn) || Bn.includes(W))) return "b"; return ""; }
+  return /\bdraw\b|no contest|cancel|postpon/i.test(d) ? "x" : "";
+}
+async function bxFetch(errs) {
+  const got = [];
+  for (const [u, done] of [["https://box.live/upcoming-fights-schedule/", false], ["https://box.live/fight-results/", true]]) {
+    try {
+      const r = await fetch(u, { headers: BX_HDR, signal: AbortSignal.timeout(10000), cf: { cacheTtl: 900 } });
+      if (!r.ok) { errs.push("boxing:" + r.status); continue; }
+      for (const e of bxEvents(await r.text())) { const mt = bxMatch(e); if (!mt) continue; if (done) mt.res = bxResult(mt) || ""; delete mt.desc; got.push(mt); }
+    } catch (e) { errs.push("boxing:" + (e && e.name || "err")); }
+  }
+  return got;
+}
 async function predSync(env, force) {
   const now = Date.now(), last = +(await env.STORE.get("pred:sync").catch(() => 0)) || 0;
   if (!force && now - last < 20 * 60e3) return { skipped: true };
@@ -1128,7 +1164,7 @@ async function predSync(env, force) {
   const from = now - 2 * 864e5, to = now + 8 * 864e5, got = [], errs = [];
   const months = [...new Set([now, to].map((t) => predIso(t).slice(0, 6)))];
   const days = []; for (let t = now - 864e5; t <= to; t += 864e5) days.push(predIso(t));
-  await Promise.all(PRED_LEAGUES.filter((lg) => !on || on.has(lg.k)).map(async (lg) => {
+  await Promise.all(PRED_LEAGUES.filter((lg) => !lg.box && (!on || on.has(lg.k))).map(async (lg) => {
     for (const d of lg.daily ? days : months) {
       try {
         const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${lg.p}/scoreboard?dates=${d}&limit=200`, { signal: AbortSignal.timeout(8000), cf: { cacheTtl: 600 } });
@@ -1138,6 +1174,7 @@ async function predSync(env, force) {
       } catch (e) { errs.push(lg.k + ":" + (e && e.name || "err")); }
     }
   }));
+  if (!on || on.has("boxing")) for (const mt of await bxFetch(errs)) if (mt.at >= from && mt.at <= now + 35 * 864e5) got.push(mt);
   const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
   let boardDirty = false;
   const hidden = new Set(cfg.hide || []);
@@ -1145,6 +1182,7 @@ async function predSync(env, force) {
     if (hidden.has(g.id)) continue;
     const cur = byId.get(g.id);
     if (!cur) { byId.set(g.id, g); continue; }
+    if (g.src === "boxing" && !g.res && cur.res) continue; // صفحة المواعيد ما فيها نتيجة: ما منمسح نتيجة جبناها من صفحة النتايج
     if (cur.lock) { if (!cur.res && g.res) { boardDirty = (await predSettle(env, B, cur, cur.res, g.res)) || boardDirty; cur.res = g.res; cur.sc = g.sc; } continue; } // المالك صحّح النتيجة بإيدو: منترك قرارو
     const oldRes = cur.res || "";
     Object.assign(cur, { ...g, pts: cur.pts || g.pts });
@@ -1154,10 +1192,12 @@ async function predSync(env, force) {
   const keep = [...byId.values()].filter((x) => !predFem(x)).filter((x) => !(x.at < now - 3 * 864e5 && (x.res || x.at < now - 7 * 864e5))).sort((x, y) => x.at - y.at).slice(0, 600);
   await env.STORE.put("pred:matches", JSON.stringify(keep));
   if (boardDirty) await env.STORE.put("pred:board", JSON.stringify(B));
+  await env.STORE.put("pred:errs", JSON.stringify(errs.slice(0, 20))).catch(() => {});
   return { ok: true, fetched: got.length, total: keep.length, errs };
 }
 const predOut = (mt, cnt, mine) => ({ id: mt.id, sport: mt.sport, league: mt.league || "", ev: mt.ev || "", a: mt.a, b: mt.b, ai: mt.ai || "", bi: mt.bi || "", ar: mt.ar || "", br: mt.br || "", af: mt.af || "", bf: mt.bf || "", sc: mt.sc || "", at: mt.at, draw: !!mt.draw, pts: mt.pts, res: mt.res || "", auto: !!mt.src, counts: cnt || { a: 0, b: 0, d: 0 }, mine: mine || "" });
 async function predApi(request, env, path, m, ctx) {
+  if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [] }); }
   const owner = env.__role === "owner", cfg = await predCfg(env), live = !!cfg.live;
   if (!owner && !live) return json({ error: "الصفحة لسا تجريبية" }, 403);
   const acct = await acctFromReq(request, env);
