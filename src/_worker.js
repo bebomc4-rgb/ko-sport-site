@@ -1354,15 +1354,16 @@ async function predSync(env, force) {
   const cfg = await predCfg(env), on = predOn(cfg);
   const from = now - 2 * 864e5, to = now + 8 * 864e5, got = [], errs = [];
   const months = [...new Set([now, to].map((t) => predIso(t).slice(0, 6)))];
+  const mmaTo = now + 30 * 864e5, mmaMonths = [...new Set([now, mmaTo].map((t) => predIso(t).slice(0, 6)))];
   const days = []; for (let t = now - 864e5; t <= to; t += 864e5) days.push(predIso(t));
   // دفعات من 5 بطولات، وكل طلب بيرفضو ESPN (403/429) منعيدو مرة بعد ثانية: الطلبات الكتيرة سوا كانت تنرفض
   const getJ = async (u) => { for (let i = 0; i < 2; i++) { const r = await fetch(u, { signal: AbortSignal.timeout(8000), cf: { cacheTtlByStatus: { "200-299": 600, "300-599": 0 } } }); if (r.ok) return r.json(); if (i === 0 && (r.status === 403 || r.status === 429 || r.status >= 500)) { await new Promise((z) => setTimeout(z, 1200)); continue; } throw new Error(String(r.status)); } };
   const todo = PRED_LEAGUES.filter((lg) => !lg.box && on.has(lg.k));
   for (let i = 0; i < todo.length; i += 5) await Promise.all(todo.slice(i, i + 5).map(async (lg) => {
-    for (const d of lg.daily ? days : months) {
+    for (const d of lg.daily ? days : lg.sp === "ufc" ? mmaMonths : months) {
       try {
         const j = await getJ(`https://site.api.espn.com/apis/site/v2/sports/${lg.p}/scoreboard?dates=${d}&limit=200`);
-        for (const ev of (j.events || [])) for (const mt of predFromEspn(lg, ev)) if (mt.at >= from && mt.at <= to) got.push(mt);
+        for (const ev of (j.events || [])) for (const mt of predFromEspn(lg, ev)) if (mt.at >= from && mt.at <= (lg.sp === "ufc" ? mmaTo : to)) got.push(mt);
       } catch (e) { errs.push(lg.k + ":" + (e && e.message || e && e.name || "err")); }
     }
   }));
