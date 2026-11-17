@@ -29,15 +29,22 @@
 .tr-shop{display:block;text-align:center;margin:16px 0 8px;padding:12px;border-radius:14px;background:linear-gradient(135deg,#1a1a20,#2a2416);color:#f4d98b;font-weight:700;border:1px solid #c9a45c;text-decoration:none}
 .tr-safe{font-size:12px;color:var(--muted);line-height:1.7;text-align:center}
 .tr-fig{width:100%;height:100%;display:block}
-.tr-fig line{stroke:#1d1d1f;stroke-width:4.2;stroke-linecap:round}
-.tr-fig line.far{stroke:#c9a45c;stroke-width:3.6}
-.tr-fig .tr-head{fill:#1d1d1f}
+.tr-fig line{stroke-linecap:round}
+.tr-fig .lb .b{stroke:#5a421a}.tr-fig .lb .m{stroke:#c9a45c}.tr-fig .lb .hl{stroke:#fff1c2;opacity:.85}
+.tr-fig .lb.far .b{stroke:#2e261b}.tr-fig .lb.far .m{stroke:#7d6a4a}.tr-fig .lb.far .hl{stroke:#c7b48c;opacity:.55}
+.tr-fig .jt,.tr-fig .hd,.tr-fig .hp{fill:url(#trSph)}.tr-fig .jt.far,.tr-fig .hd.far{fill:url(#trSphF)}
+.tr-fig .ft{stroke:#5a421a;stroke-width:3.4}.tr-fig .ft.far{stroke:#2e261b}
+.tr-fig .to{fill:url(#trTo);stroke:#5a421a;stroke-width:.7}
+.tr-fig .nk{stroke:#a8843f;stroke-width:3.6}
+.tr-fig .hd0{fill:url(#trSph);stroke:#5a421a;stroke-width:.5}
+.tr-fig .fc{fill:none;stroke:#5a421a;stroke-width:.8;opacity:.7}
+.tr-fig .tr-body{filter:drop-shadow(0 1.6px 1.4px rgba(0,0,0,.28))}
 .tr-fig .tr-gnd{stroke:rgba(0,0,0,.18);stroke-width:1.2}
 .tr-fig .tr-prop{stroke:#8a8a8a;stroke-width:1.8}
 .tr-fig .tr-propf{fill:#8a8a8a}
 .tr-fig .tr-bag{fill:#b01a23;stroke:none}
-.tr-fig .tr-plate{fill:none;stroke:#c9a45c;stroke-width:3}
-.tr-fig .tr-db rect{fill:#c9a45c}
+.tr-fig .tr-plate{fill:rgba(30,30,32,.18);stroke:#2b2b2e;stroke-width:3.2}
+.tr-fig .tr-db rect{fill:#2b2b2e}
 .tr-fig .tr-rope{fill:none;stroke:#c9a45c;stroke-width:1.4}
 .tr-sh{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .2s}
 .tr-sh.on{opacity:1}
@@ -49,7 +56,5 @@
 .tr-shb h3{margin:6px 0}
 .tr-shb ol{padding-inline-start:20px;line-height:1.9;margin:6px 0}
 .tr-err{font-size:13.5px;border-radius:12px;padding:9px 12px;background:rgba(217,35,45,.08);border:1px solid rgba(217,35,45,.3)}
-html.dark .tr-fig line,[data-theme="dark"] .tr-fig line{stroke:#ece6da}
-html.dark .tr-fig .tr-head,[data-theme="dark"] .tr-fig .tr-head{fill:#ece6da}
 html.dark .tr-fig .tr-gnd,[data-theme="dark"] .tr-fig .tr-gnd{stroke:rgba(255,255,255,.2)}
 .acc-train{margin-top:0}

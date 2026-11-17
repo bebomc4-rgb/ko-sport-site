@@ -181,8 +181,9 @@
 
   // ---------- الرسم ----------
   const NS = "http://www.w3.org/2000/svg";
-  const SEGS = [["n", "e2"], ["e2", "w2"], ["p", "k2"], ["k2", "f2"], ["p", "n"], ["p", "k1"], ["k1", "f1"], ["n", "e1"], ["e1", "w1"]];
-  const FAR = new Set([0, 1, 2, 3]);
+  // المجسّم (صاحب المتجر 17 تشرين التاني 2026: «بدي المجسمات تكون 3D على شكل إنسان»): أطراف أسطوانية مضلّلة، جذع، مفاصل ورأس كروية، كفوف ورجلين.
+  // الطرف البعيد أغمق (عمق). التدرّجات معرّفة مرة وحدة بالصفحة (trDefs).
+  const LIMBS = [["n", "e2", 5.4, 1], ["e2", "w2", 4.6, 1], ["p", "k2", 7.4, 1], ["k2", "f2", 5.8, 1], ["p", "k1", 7.6, 0], ["k1", "f1", 6, 0], ["n", "e1", 5.6, 0], ["e1", "w1", 4.8, 0]];
   function frame(ex, u) {
     const ps = ex.poses, n = ps.length, x = u * n, i = Math.floor(x) % n, f = x - Math.floor(x), e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2; // سهولة بالدخول والخروج
     return place(fk(mix(ps[i], ps[(i + 1) % n], ex.hold ? e : Math.min(1, e * (ex.fast ? 1.25 : 1)))), ex);
@@ -194,16 +195,38 @@
     if (ex.prop === "dip") h += `<line x1="50" y1="53" x2="76" y2="53" class="tr-prop" stroke-width="2.4"/><line x1="72" y1="53" x2="72" y2="${GY}" class="tr-prop"/><line x1="54" y1="53" x2="54" y2="${GY}" class="tr-prop"/>`;
     if (ex.prop === "bench") h += `<rect x="28" y="69.5" width="64" height="4" rx="1.5" class="tr-propf"/><line x1="34" y1="73" x2="34" y2="${GY}" class="tr-prop"/><line x1="86" y1="73" x2="86" y2="${GY}" class="tr-prop"/>`;
     if (ex.prop === "bag") h += `<line x1="103" y1="0" x2="103" y2="14" class="tr-prop"/><rect x="96" y="14" width="14" height="44" rx="6" class="tr-bag"/>`;
-    h += `<g class="tr-body">${SEGS.map((sg, i) => `<line class="${FAR.has(i) ? "far" : ""}"/>`).join("")}<circle r="6.2" class="tr-head"/></g>`;
+    const lb = (i) => `<g class="lb${LIMBS[i][3] ? " far" : ""}" data-l="${i}"><line class="b"/><line class="m"/><line class="hl"/></g>`;
+    h += `<g class="tr-body">${lb(0)}${lb(1)}<circle class="jt far" data-j="e2" r="2.6"/><circle class="hd far" data-j="w2" r="2.7"/>${lb(2)}${lb(3)}<circle class="jt far" data-j="k2" r="3.1"/><line class="ft far" data-f="2"/>`
+      + `<line class="nk"/><path class="to"/><circle class="hp" data-j="p" r="4.6"/><circle class="hd0" r="6.4"/><path class="fc"/>`
+      + `${lb(4)}${lb(5)}<circle class="jt" data-j="k1" r="3.2"/><line class="ft" data-f="1"/>${lb(6)}<circle class="jt" data-j="n" r="3.4"/>${lb(7)}<circle class="jt" data-j="e1" r="2.7"/><circle class="hd" data-j="w1" r="2.9"/></g>`;
     if (ex.plate) h += `<circle class="tr-plate" r="${ex.plateR || 9}"/>`;
     if (ex.db) h += `<g class="tr-db"><rect width="9" height="3.4" rx="1" x="-4.5" y="-1.7"/><rect width="2.6" height="6.4" rx=".8" x="-5.6" y="-3.2"/><rect width="2.6" height="6.4" rx=".8" x="3" y="-3.2"/></g>`;
     if (ex.prop === "rope") h += `<path class="tr-rope"/>`;
     s.innerHTML = h; s.__ex = ex; draw(s, 0); return s;
   }
+  const f1 = (x) => x.toFixed(1), setL = (l, A, B) => { l.setAttribute("x1", f1(A[0])); l.setAttribute("y1", f1(A[1])); l.setAttribute("x2", f1(B[0])); l.setAttribute("y2", f1(B[1])); };
   function draw(s, u) {
-    const ex = s.__ex, J = frame(ex, u), ls = s.querySelectorAll(".tr-body line");
-    SEGS.forEach(([a, b], i) => { const l = ls[i]; l.setAttribute("x1", J[a][0].toFixed(1)); l.setAttribute("y1", J[a][1].toFixed(1)); l.setAttribute("x2", J[b][0].toFixed(1)); l.setAttribute("y2", J[b][1].toFixed(1)); });
-    const hd = s.querySelector(".tr-head"); hd.setAttribute("cx", J.h[0].toFixed(1)); hd.setAttribute("cy", J.h[1].toFixed(1));
+    const ex = s.__ex, J = frame(ex, u), B = s.querySelector(".tr-body");
+    for (const g of B.querySelectorAll(".lb")) {
+      const [a, b, w] = LIMBS[+g.dataset.l], A = J[a], C = J[b], dx = C[0] - A[0], dy = C[1] - A[1], ln = Math.hypot(dx, dy) || 1;
+      let nx = -dy / ln, ny = dx / ln; if (ny > 0 || (ny === 0 && nx > 0)) { nx = -nx; ny = -ny; } // الضو من فوق-يسار
+      const o = w * 0.2, [lb2, lm, lh] = g.children;
+      setL(lb2, A, C); lb2.setAttribute("stroke-width", w); setL(lm, [A[0] + nx * o * .4, A[1] + ny * o * .4], [C[0] + nx * o * .4, C[1] + ny * o * .4]); lm.setAttribute("stroke-width", w * .62);
+      setL(lh, [A[0] + nx * o * 1.1 + dx * .08, A[1] + ny * o * 1.1 + dy * .08], [C[0] + nx * o * 1.1 - dx * .08, C[1] + ny * o * 1.1 - dy * .08]); lh.setAttribute("stroke-width", w * .22);
+    }
+    for (const c of B.querySelectorAll("[data-j]")) { const q = J[c.dataset.j]; c.setAttribute("cx", f1(q[0])); c.setAttribute("cy", f1(q[1])); }
+    // الرجلين: مشط قصير قدّام الكاحل، عمودي عالساق
+    for (const ft of B.querySelectorAll(".ft")) { const i = ft.dataset.f, K = J["k" + i], F = J["f" + i], dx = F[0] - K[0], dy = F[1] - K[1], ln = Math.hypot(dx, dy) || 1; let fx = -dy / ln, fy = dx / ln; if (fx < 0) { fx = -fx; fy = -fy; } setL(ft, [F[0] - fx * 1.2, F[1] - fy * 1.2], [F[0] + fx * 6.2, F[1] + fy * 6.2]); }
+    // الجذع: صدر أعرض من الخصر، مايل مع اتجاه الضهر
+    { const P0 = J.p, N0 = J.n, dx = N0[0] - P0[0], dy = N0[1] - P0[1], ln = Math.hypot(dx, dy) || 1, ux = dx / ln, uy = dy / ln, px = -uy, py = ux;
+      const pt = (b2, along, side) => [b2[0] + ux * along + px * side, b2[1] + uy * along + py * side];
+      const c1 = pt(N0, -1.5, 5.6), c2 = pt(N0, -1.5, -4.6), w1 = pt(P0, 5, 3.6), w2 = pt(P0, 5, -3.4), h1 = pt(P0, -1, 4.6), h2 = pt(P0, -1, -4.4), sh = pt(N0, 1.2, 0);
+      B.querySelector(".to").setAttribute("d", `M${f1(sh[0])} ${f1(sh[1])} Q${f1(c1[0])} ${f1(c1[1])} ${f1(w1[0])} ${f1(w1[1])} L${f1(h1[0])} ${f1(h1[1])} Q${f1(P0[0] - ux * 4)} ${f1(P0[1] - uy * 4)} ${f1(h2[0])} ${f1(h2[1])} L${f1(w2[0])} ${f1(w2[1])} Q${f1(c2[0])} ${f1(c2[1])} ${f1(sh[0])} ${f1(sh[1])}Z`);
+      setL(B.querySelector(".nk"), N0, J.h); }
+    const hd = B.querySelector(".hd0"); hd.setAttribute("cx", f1(J.h[0])); hd.setAttribute("cy", f1(J.h[1]));
+    // ملامح بسيطة: خط الوجّ لقدّام (وين عم يطلّع)
+    { const dx = J.h[0] - J.n[0], dy = J.h[1] - J.n[1], ln = Math.hypot(dx, dy) || 1; let fx = -dy / ln, fy = dx / ln; if (fx < 0) { fx = -fx; fy = -fy; } const c = [J.h[0] + fx * 4.2, J.h[1] + fy * 4.2];
+      B.querySelector(".fc").setAttribute("d", `M${f1(c[0] - dx / ln * 2.6)} ${f1(c[1] - dy / ln * 2.6)} Q${f1(c[0] + fx * 2.4)} ${f1(c[1] + fy * 2.4)} ${f1(c[0] + dx / ln * 2.2)} ${f1(c[1] + dy / ln * 2.2)}`); }
     const pl = s.querySelector(".tr-plate"); if (pl) { const q = J[ex.plate], o = ex.plateOff || [0, 0]; pl.setAttribute("cx", (q[0] + o[0]).toFixed(1)); pl.setAttribute("cy", (q[1] + o[1]).toFixed(1)); }
     const db = s.querySelector(".tr-db"); if (db) db.setAttribute("transform", `translate(${J.w1[0].toFixed(1)} ${J.w1[1].toFixed(1)})`);
     const rp = s.querySelector(".tr-rope"); if (rp) { const ang = u * Math.PI * 2 * ex.poses.length, cy = 50 - Math.cos(ang) * 46, cx = 60 + Math.sin(ang) * 14; rp.setAttribute("d", `M${J.w1[0].toFixed(1)} ${J.w1[1].toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${J.w2[0].toFixed(1)} ${J.w2[1].toFixed(1)}`); }
@@ -220,7 +243,16 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const st = (() => { try { return JSON.parse(localStorage.getItem("ko_train") || "{}") || {}; } catch { return {}; } })();
   const save = () => { try { localStorage.setItem("ko_train", JSON.stringify(st)); } catch {} };
+  function trDefs() {
+    if (document.getElementById("trDefs")) return;
+    const d = document.createElementNS(NS, "svg"); d.id = "trDefs"; d.setAttribute("width", "0"); d.setAttribute("height", "0"); d.setAttribute("aria-hidden", "true"); d.style.position = "absolute";
+    d.innerHTML = `<defs><radialGradient id="trSph" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff3c8"/><stop offset=".45" stop-color="#d6b26a"/><stop offset="1" stop-color="#6e5220"/></radialGradient>
+      <radialGradient id="trSphF" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#cdb98d"/><stop offset=".5" stop-color="#8a7350"/><stop offset="1" stop-color="#3a2f20"/></radialGradient>
+      <linearGradient id="trTo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7dc95"/><stop offset=".45" stop-color="#c9a45c"/><stop offset="1" stop-color="#5e461b"/></linearGradient></defs>`;
+    document.body.appendChild(d);
+  }
   function mount(root) {
+    trDefs();
     let pk = PROGS.some((x) => x.k === st.p) ? st.p : "cal", lv = Math.min(2, Math.max(0, +st.l || 0)), dy = +st.d || 0;
     const render = () => {
       const pr = PROGS.find((x) => x.k === pk), L2 = pr.lv[lv], D = L2.days[Math.min(dy, L2.days.length - 1)], dk = pk + lv + "-" + dy, done = (st.done && st.done[dk]) || {};
@@ -260,5 +292,5 @@
     };
     render();
   }
-  window.KOTrain = { mount, EX, PROGS, _fk: { fk, place, frame, mix } };
+  window.KOTrain = { mount, EX, PROGS, _fk: { fk, place, frame, mix, svgOf, draw, trDefs } };
 })();

@@ -1930,9 +1930,9 @@
     document.title = "برامج التدريب | " + (C.name || "");
     app.innerHTML = '<div class="loading">جاري التحميل…</div>';
     const go = () => { if (curRoute().indexOf("/train") === 0 && window.KOTrain) KOTrain.mount(app); };
-    if (!document.querySelector("link[data-train]")) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/assets/train.css?v=320"; l.dataset.train = ""; document.head.appendChild(l); }
+    if (!document.querySelector("link[data-train]")) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/assets/train.css?v=321"; l.dataset.train = ""; document.head.appendChild(l); }
     if (window.KOTrain) return go();
-    const sc = document.createElement("script"); sc.src = "/assets/train.js?v=320"; sc.onload = go; sc.onerror = () => { app.innerHTML = '<div class="empty"><b>تعذّر تحميل البرامج، جرّب كمان مرة</b></div>'; }; document.head.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/assets/train.js?v=321"; sc.onload = go; sc.onerror = () => { app.innerHTML = '<div class="empty"><b>تعذّر تحميل البرامج، جرّب كمان مرة</b></div>'; }; document.head.appendChild(sc);
   }
   function account() {
     const A = acct();
