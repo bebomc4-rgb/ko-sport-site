@@ -316,6 +316,7 @@
       root.innerHTML = `<div class="tr">
         <h1 class="page-title">برامج التدريب</h1>
         <p class="tr-sub">اختار الرياضة ومستواك، وكل تمرين معو رسمة متحركة بتورجيك كيف ينعمل. كبوس على أي تمرين لتشوف الشرح.</p>
+        <a class="tr-wk" href="#/workout">⏱ جرّب التمرين التفاعلي: مؤقت وكاميرا بتعدّ ضرباتك ›</a>
         <div class="tr-tabs">${PROGS.map((x) => `<button type="button" data-p="${x.k}" class="${x.k === pk ? "on" : ""}"><span>${x.ic}</span>${esc(x.n)}</button>`).join("")}</div>
         <p class="tr-desc">${esc(pr.desc)}</p>
         <div class="tr-lv">${pr.lv.map((x, i) => `<button type="button" data-l="${i}" class="${i === lv ? "on" : ""}">${esc(x.n)}</button>`).join("")}</div>

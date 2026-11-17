@@ -2096,3 +2096,5 @@ html[data-logo-round=on] header.top .logo>img{animation:koGlow 4.8s ease-in-out 
 .acc-pred .apr-go{color:#c9a45c;font-weight:700;white-space:nowrap}
 
 .pred-fr{display:block;width:100%;min-height:70vh;border:0;background:transparent;margin:0 auto;max-width:900px}
+
+.wk-fr{display:block;width:100%;height:calc(100vh - 140px);height:calc(100dvh - 140px);min-height:560px;border:0;border-radius:16px;margin:0 auto;max-width:1200px;background:#0a0b0f}
