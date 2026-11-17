@@ -4412,7 +4412,8 @@ async function ytCheck(env, id, exName) {
     const yes = (L) => new RegExp("(^|[^a-z])" + L + "\\s*[=:)\\].\\-]*\\s*yes", "i").test(t);
     const femWord = /\b(wom[ae]n|girls?|female|lady|ladies)\b/i.test(t) && !/\bno\b[^.]{0,25}\b(wom[ae]n|girls?|female|lady|ladies)\b/i.test(t);
     if (yes("A") || femWord || (/^\W*yes/i.test(t) && !/\bB\b/i.test(t))) return { w: true, ans };
-    if (pos && yes("B") && yes("C")) ex.push(pos);
+    // C (مرسوم ولا حقيقي) ما منعتمد عليه: الذكاء بيحسب الـ 3D الواقعي إنسان حقيقي. الأنيميشن مضمون من العنوان (لازم فيه animat/3d/2d/cartoon/vector/cgi)
+    if (pos && yes("B")) ex.push(pos);
   }
   if (seen < 2) return { err: "frames" };
   return { w: false, ex, ans };
@@ -4434,7 +4435,7 @@ async function exYt(url, env) {
   if (!name || !env.STORE) return J({ none: 1 }, 60);
   const names = await exNames();
   if (names.size && !names.has(name.toLowerCase())) return J({ none: 1 }, 3600);
-  const k = "yte:" + name.toLowerCase(); // ytb = أنيميشن بس + اسم التمرين بالعنوان (القديم yt:/yta: ما عاد ينقرا)
+  const k = "ytf:" + name.toLowerCase(); // ytb = أنيميشن بس + اسم التمرين بالعنوان (القديم yt:/yta: ما عاد ينقرا)
   const pick = (o) => ({ id: o.ids[0].id, d: o.ids[0].d, s: o.ids[0].s || 0, e: o.ids[0].e || 0 });
   let saved = await env.STORE.get(k, "json");
   if (url.searchParams.get("dbg") === "1") return J({ k, saved }, 0); // للفحص بس (ما فيه شي سري)
