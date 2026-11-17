@@ -17,7 +17,7 @@
 @media(min-width:760px){.tr-list{grid-template-columns:1fr 1fr}}
 .tr-ex{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px;cursor:pointer;transition:border-color .2s,opacity .2s}
 .tr-ex.ok{border-color:#16703c;opacity:.75}
-.tr-fw{flex:0 0 108px;height:90px;border-radius:12px;background:radial-gradient(circle at 50% 30%,rgba(201,164,92,.18),transparent 70%),var(--paper,#f5f3ef);overflow:hidden}
+.tr-fw{flex:0 0 100px;height:100px;border-radius:12px;background:radial-gradient(circle at 50% 30%,rgba(201,164,92,.18),transparent 70%),var(--paper,#f5f3ef);overflow:hidden}
 .tr-in{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .tr-in b{font-size:14.5px}
 .tr-sr{font-weight:800;color:#a8812f;font-size:15px}
@@ -66,3 +66,9 @@
 .tr-err{font-size:13.5px;border-radius:12px;padding:9px 12px;background:rgba(217,35,45,.08);border:1px solid rgba(217,35,45,.3)}
 html.dark .tr-fig .tr-gnd,[data-theme="dark"] .tr-fig .tr-gnd{stroke:rgba(255,255,255,.2)}
 .acc-train{margin-top:0}
+.tr-ph{position:relative;width:100%;height:100%;background:#dff1fb}
+.tr-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.tr-ph.an img.b{animation:trSw 2.4s ease-in-out infinite}
+@keyframes trSw{0%,38%{opacity:0}50%,88%{opacity:1}100%{opacity:0}}
+.tr-big{overflow:hidden}.tr-big:has(.tr-ph){height:auto;aspect-ratio:1;max-height:56vh;margin-inline:auto}
+.tr-cred{font-size:11.5px;color:var(--muted);text-align:center;margin:10px 0 4px;direction:ltr}.tr-cred a{color:inherit;text-decoration:underline}

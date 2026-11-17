@@ -61,7 +61,7 @@
       poses: [P({ a1: [-40, 120], a2: [-36, 124] }), P({ t: 140, a1: [-70, 90], a2: [-66, 94], l1: [82, -14], l2: [84, -12] })] },
     deadlift: { n: "ديدلفت (Deadlift)", how: ["البار فوق نص رجلك، انحني وامسكو وضهرك مستقيم", "قوم بدفش رجليك بالأرض لحد ما توقف منتصب، ونزّلو بنفس الطريق"], err: "ضهرك ما يتقوّس، والبار يضل لازق برجليك", anchor: ["f1", 60, GY], plate: "w1",
       poses: [P({ t: 120, hd: 135, a1: [2, 2], a2: [4, 4], l1: [66, -16], l2: [68, -14] }), P({ a1: [2, 2], a2: [4, 4] })] },
-    press: { n: "ضغط عسكري بالبار", how: ["البار عند كتافك قدّام، ووقف ثابت", "ادفش البار لفوق راسك لتمدّ إيديك، ونزّلو لعند كتافك"], err: "شدّ بطنك وما ترجع بضهرك لورا", anchor: ["f1", 60, GY], plate: "w1",
+    press: { n: "ضغط كتف بالبار", how: ["البار عند كتافك قدّام، قاعد أو واقف وضهرك ثابت", "ادفش البار لفوق راسك لتمدّ إيديك، ونزّلو لعند كتافك"], err: "شدّ بطنك وما ترجع بضهرك لورا", anchor: ["f1", 60, GY], plate: "w1",
       poses: [P({ a1: [28, 176], a2: [26, 174] }), P({ a1: [178, 180], a2: [176, 178] })] },
     swing: { n: "كيتل بل سوينغ", how: ["رجليك أعرض من كتافك، والكيتل بإيدينك", "انحني لورا بوسطك وبعدين ادفش وسطك لقدّام بقوة لتطلع الكيتل لمستوى صدرك"], err: "القوة من الوسط مو من الإيدين", anchor: ["f1", 62, GY], plate: "w1", plateR: 6,
       poses: [P({ t: 130, hd: 145, a1: [-22, -26], a2: [-20, -24], l1: [40, -14], l2: [42, -12] }), P({ a1: [92, 92], a2: [90, 90] })] },
@@ -253,6 +253,16 @@
   function tick(t) { raf = 0; for (const s of VIS) { if (!s.isConnected) { VIS.delete(s); continue; } const ex = s.__ex, per = (ex.fast ? 1.1 : ex.hold ? 2.6 : 2.2) * 1000 * (ex.poses.length > 2 ? ex.poses.length / 2 : 1); draw(s, ((t - t0) % per) / per); } kick(); }
   const watch = (s) => { if (io) io.observe(s); else { VIS.add(s); kick(); } };
 
+  // رسومات جاهزة لإنسان كامل (صاحب المتجر 17 تشرين التاني 2026: «بدي موديل إنسان كامل، ومجاني تماماً»): من RepDB (repdb.co)، الخطة المجانية —
+  // مسموحة للمواقع التجارية بشرط رابط ظاهر «Exercise data by RepDB (repdb.co)» (موجود بآخر الصفحة، لا تشيلو). صورتين (بداية/نهاية) بيتبدّلوا.
+  // التمارين يلي ما إلها رسمة عندهن (ضربات الملاكمة ودخلات المصارعة) بتضل بالمجسّم المرسوم بالكود.
+  const IMG = { pushup: 2, pullup: 2, dips: 2, squat: 2, plank: 1, lunge: 2, kneeraise: 2, climber: 2, bench: 2, curl: 2, ohp: 2, row: 2, triceps: 2, bsquat: 2, deadlift: 2, press: 2, swing: 2, farmer: 1, rope: 1, bridge: 2, jsquat: 2 }, IV = 2;
+  function figOf(k, big) {
+    const n = IMG[k]; if (!n) { const s = svgOf(EX[k], big); watch(s); return s; }
+    const d = document.createElement("div"); d.className = "tr-ph" + (big ? " big" : "") + (n > 1 && !still ? " an" : "");
+    d.innerHTML = Array.from({ length: n }, (_, i) => `<img src="/assets/train/${k}-${i}.webp?v=${IV}" alt="" loading="lazy" decoding="async" width="400" height="400"${i ? ' class="b"' : ""}>`).join("");
+    return d;
+  }
   // ---------- الصفحة ----------
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const st = (() => { try { return JSON.parse(localStorage.getItem("ko_train") || "{}") || {}; } catch { return {}; } })();
@@ -283,14 +293,15 @@
         <div class="tr-list">${(D.ex || []).map((x, i) => { const e = EX[x.k]; return `<div class="tr-ex ${done[i] ? "ok" : ""}" data-i="${i}" data-k="${x.k}"><div class="tr-fw" data-open="${x.k}"></div><div class="tr-in" data-open="${x.k}"><b>${esc(e.n)}</b><span class="tr-sr">${x.sets === 1 ? "مجموعة وحدة" : x.sets + " مجموعات"} × ${esc(x.rep)}</span><small>راحة: ${esc(x.rest)}</small></div><button type="button" class="tr-ck" data-ck="${i}" aria-label="خلّصت">${done[i] ? "✓" : ""}</button></div>`; }).join("")}</div>
         ${(D.ex || []).length ? `<div class="tr-prog"><span style="width:${Math.round(Object.values(done).filter(Boolean).length * 100 / D.ex.length)}%"></span></div>` : ""}
         <a class="tr-shop" href="#/search/${encodeURIComponent(pr.q)}">🛒 شوف معدات ${esc(pr.n)} بالمتجر ›</a>
+        <p class="tr-cred">Exercise data by <a href="https://repdb.co" target="_blank" rel="nofollow noopener">RepDB (repdb.co)</a></p>
         <p class="tr-safe">ملاحظة: إذا عندك إصابة أو مرض، اسأل دكتور أو مدرّب قبل ما تبلّش. ووقّف أي تمرين إذا حسّيت بوجع حاد.</p>
       </div>`;
-      root.querySelectorAll(".tr-ex").forEach((el) => { const s = svgOf(EX[el.dataset.k]); el.querySelector(".tr-fw").appendChild(s); watch(s); });
+      root.querySelectorAll(".tr-ex").forEach((el) => { el.querySelector(".tr-fw").appendChild(figOf(el.dataset.k)); });
     };
     const sheet = (k) => {
       const e = EX[k], o = document.createElement("div"); o.className = "tr-sh";
       o.innerHTML = `<div class="tr-shb" role="dialog" aria-modal="true"><button type="button" class="tr-x" aria-label="سكّر">✕</button><div class="tr-big"></div><h3>${esc(e.n)}</h3><ol>${e.how.map((x) => `<li>${esc(x)}</li>`).join("")}</ol><div class="tr-err">⚠️ ${esc(e.err)}</div></div>`;
-      const s = svgOf(e, true); o.querySelector(".tr-big").appendChild(s); document.body.appendChild(o); watch(s); requestAnimationFrame(() => o.classList.add("on"));
+      o.querySelector(".tr-big").appendChild(figOf(k, true)); document.body.appendChild(o); requestAnimationFrame(() => o.classList.add("on"));
       const close = () => { o.classList.remove("on"); setTimeout(() => o.remove(), 220); };
       o.addEventListener("click", (ev) => { if (ev.target === o || ev.target.closest(".tr-x")) close(); });
     };
