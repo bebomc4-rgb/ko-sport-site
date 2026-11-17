@@ -4363,14 +4363,27 @@ async function exNames() {
   return set;
 }
 async function exYt(url, env) {
-  const J = (o, ttl) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=" + (ttl || 300) } });
+  const J = (o, ttl) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": ttl ? "public, max-age=" + ttl : "no-store" } });
   const name = String(url.searchParams.get("n") || "").trim().slice(0, 140);
+  const bad = String(url.searchParams.get("bad") || "").slice(0, 20);
   if (!name || !env.STORE) return J({ none: 1 }, 60);
   const names = await exNames();
   if (names.size && !names.has(name.toLowerCase())) return J({ none: 1 }, 3600);
   const k = "yt:" + name.toLowerCase();
-  const saved = await env.STORE.get(k, "json");
-  if (saved) return J(saved, 86400);
+  const pick = (o) => (o.ids && o.ids.length ? { id: o.ids[0].id, d: o.ids[0].d } : { none: 1 });
+  let saved = await env.STORE.get(k, "json");
+  if (saved && saved.id && !saved.ids) saved = { ids: [{ id: saved.id, d: saved.d }] }; // الشكل القديم
+  if (saved) {
+    // الصفحة بتبلّغ إذا الفيديو رفض يشتغل برّا يوتيوب (خطأ 150/101/100): منشطبو ومنعطي يلي بعدو
+    if (bad && saved.ids && saved.ids.length && saved.ids[0].id === bad) {
+      saved.ids.shift();
+      saved.skip = (saved.skip || []).concat(bad).slice(-30);
+      if (saved.ids.length) { await env.STORE.put(k, JSON.stringify(saved)); return J(pick(saved), 0); }
+      // خلصو الفيديوهات المحفوظة: منعيد البحث فوراً ومنتجاهل يلي انشطبو
+    } else if (saved.ids && saved.ids.length) return J(pick(saved), 300);
+    else return J({ none: 1 }, 3600);
+  }
+  const skip = new Set((saved && saved.skip) || []);
   const keys = String(env.YT_KEYS || env.YOUTUBE_API_KEY || "").split(/[,\s]+/).filter(Boolean);
   if (!keys.length) return J({ pending: 1, why: "no-key" }, 300);
   if (await env.STORE.get("yt:quota")) return J({ pending: 1, why: "quota" }, 600);
@@ -4378,25 +4391,29 @@ async function exYt(url, env) {
   const start = Math.floor(Date.now() / 60000);
   for (let i = 0; i < keys.length; i++) {
     const key = keys[(start + i) % keys.length];
-    const sr = await fetch("https://www.googleapis.com/youtube/v3/search?" + new URLSearchParams({ part: "id", type: "video", videoDuration: "short", videoEmbeddable: "true", safeSearch: "strict", maxResults: "10", q: name + " exercise how to", key }));
+    const sr = await fetch("https://www.googleapis.com/youtube/v3/search?" + new URLSearchParams({ part: "snippet", type: "video", videoDuration: "short", videoEmbeddable: "true", videoSyndicated: "true", safeSearch: "strict", maxResults: "15", q: name + " exercise how to", key }));
     if (sr.status === 403 || sr.status === 429) continue; // المفتاح خلص حصتو اليوم، جرّب يلي بعدو
     if (!sr.ok) return J({ pending: 1, why: "err" + sr.status }, 300);
-    const ids = ((await sr.json()).items || []).map((x) => x.id && x.id.videoId).filter(Boolean);
-    let best = null;
+    const items = (await sr.json()).items || [];
+    const ids = items.map((x) => x.id && x.id.videoId).filter(Boolean);
+    const title = {};
+    items.forEach((x) => { if (x.id && x.id.videoId) title[x.id.videoId] = String((x.snippet && x.snippet.title) || ""); });
+    let list = [];
     if (ids.length) {
       const vr = await fetch("https://www.googleapis.com/youtube/v3/videos?" + new URLSearchParams({ part: "contentDetails,status", id: ids.join(","), key }));
       if (vr.ok) {
-        const ok = ((await vr.json()).items || [])
-          .filter((v) => v.status && v.status.embeddable !== false && v.status.privacyStatus === "public")
-          .map((v) => ({ id: v.id, d: dur(v.contentDetails && v.contentDetails.duration), r: ids.indexOf(v.id) }))
-          .filter((v) => v.d >= 5);
-        ok.sort((a, b) => ((a.d <= 60 ? 0 : 1) - (b.d <= 60 ? 0 : 1)) || (a.r - b.r));
-        best = ok[0] || null;
+        list = ((await vr.json()).items || [])
+          .filter((v) => v.status && v.status.embeddable !== false && v.status.privacyStatus === "public" && !(v.contentDetails && v.contentDetails.regionRestriction))
+          .map((v) => ({ id: v.id, d: dur(v.contentDetails && v.contentDetails.duration), r: ids.indexOf(v.id), sh: /#shorts?\b/i.test(title[v.id] || "") ? 1 : 0 }))
+          .filter((v) => v.d >= 5 && !skip.has(v.id));
+        // الأفضل: فيديو عادي مو شورتس (الشورتس غالباً فيها موسيقى وممنوعة برّا يوتيوب)، تحت الدقيقة ونص، ومن أول النتايج
+        list.sort((a, b) => (a.sh - b.sh) || ((a.d <= 90 ? 0 : 1) - (b.d <= 90 ? 0 : 1)) || (a.r - b.r));
+        list = list.slice(0, 6).map((v) => ({ id: v.id, d: v.d }));
       }
     }
-    const val = best ? { id: best.id, d: best.d } : { none: 1 };
-    await env.STORE.put(k, JSON.stringify(val), best ? {} : { expirationTtl: 14 * 86400 });
-    return J(val, 86400);
+    const val = { ids: list, skip: [...skip] };
+    await env.STORE.put(k, JSON.stringify(val), list.length ? {} : { expirationTtl: 14 * 86400 });
+    return J(pick(val), list.length ? 300 : 3600);
   }
   await env.STORE.put("yt:quota", "1", { expirationTtl: 3 * 3600 });
   return J({ pending: 1, why: "quota" }, 600);

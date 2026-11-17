@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<!-- يوتيوب بدها Referer وإلا بتطلع Error 153 (الموقع بيبعت سياسة مشددة بالهيدر)، فهون منرجّعها للعادي -->
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>مكتبة التمارين | KO SPORT</title>
 <script>try{var t=localStorage.getItem("ko_theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
@@ -314,24 +316,55 @@ button.yt:disabled{opacity:.6;cursor:default}
     showMore();
   }
 
-  // فيديو يوتيوب قصير جوّا البطاقة: أول 20 ثانية بس، بيعيد لحالو بلا صوت متل الـ GIF
+  // فيديو يوتيوب قصير جوّا البطاقة: أول 20 ثانية بس، بيعيد لحالو بلا صوت متل الـ GIF.
+  // إذا صاحب الفيديو مانع تشغيلو برّا يوتيوب (خطأ 150/101/100) منبلّغ السيرفر وبيعطينا يلي بعدو.
   const ytSearch = n => "https://www.youtube.com/results?search_query=" + encodeURIComponent(n + " exercise");
+  let ytApi = null;
+  function loadYT(){
+    if (ytApi) return ytApi;
+    ytApi = new Promise(res => {
+      if (window.YT && window.YT.Player) return res(window.YT);
+      window.onYouTubeIframeAPIReady = () => res(window.YT);
+      const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc);
+    });
+    return ytApi;
+  }
+  const ytQ = (n, bad) => fetch("/exdb/yt?n=" + encodeURIComponent(n) + (bad ? "&bad=" + encodeURIComponent(bad) : "")).then(r => r.json()).catch(() => ({}));
+  function ytFail(card, b, n, pending){
+    const old = card.querySelector(".ytmsg"); if (old) old.remove();
+    const msg = pending ? "الفيديو لسا عم يتجهّز لهالتمرين." : "ما لقينا فيديو قصير لهالتمرين.";
+    const html = `<span class="ytmsg">${msg} <a href="${ytSearch(n)}" target="_blank" rel="noopener">افتح يوتيوب</a></span>`;
+    if (b && b.isConnected){ b.disabled = false; b.lastChild.textContent = "شوف الفيديو"; b.insertAdjacentHTML("afterend", html); }
+    else card.querySelector(".body .tags").insertAdjacentHTML("afterend", html);
+  }
+  async function ytPlay(card, b, n, r, tries){
+    const media = card.querySelector(".media");
+    const YT = await loadYT();
+    const box = document.createElement("div"); media.appendChild(box);
+    const vars = {autoplay:1, mute:1, loop:1, playlist:r.id, controls:0, playsinline:1, rel:0, modestbranding:1};
+    if (r.d > 20) vars.end = 20;
+    new YT.Player(box, {
+      videoId: r.id, host: "https://www.youtube-nocookie.com", playerVars: vars,
+      events: {
+        onReady: e => { e.target.mute(); e.target.playVideo(); if (b && b.isConnected) b.remove(); },
+        onError: async e => {
+          const f = media.querySelector("iframe"); if (f) f.remove();
+          if ([100, 101, 150, 153].includes(e.data) && tries < 5){
+            const nx = await ytQ(n, r.id);
+            if (nx.id) return ytPlay(card, b, n, nx, tries + 1);
+          }
+          ytFail(card, b, n, false);
+        }
+      }
+    });
+  }
   $("grid").addEventListener("click", async e => {
     const b = e.target.closest("button.yt"); if (!b) return;
-    const card = b.closest(".card"), media = card.querySelector(".media"), n = b.getAttribute("data-n");
+    const card = b.closest(".card"), n = b.getAttribute("data-n");
     const old = card.querySelector(".ytmsg"); if (old) old.remove();
     b.disabled = true; b.lastChild.textContent = "عم يحمّل…";
-    let r = {};
-    try { r = await (await fetch("/exdb/yt?n=" + encodeURIComponent(n))).json(); } catch (err) {}
-    if (r.id) {
-      const end = r.d > 20 ? "&end=20" : "";
-      media.insertAdjacentHTML("beforeend", `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(r.id)}?autoplay=1&mute=1&loop=1&playlist=${encodeURIComponent(r.id)}&controls=0&playsinline=1&rel=0&modestbranding=1${end}" title="${esc(n)}" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" loading="lazy"></iframe>`);
-      b.remove();
-    } else {
-      b.disabled = false; b.lastChild.textContent = "شوف الفيديو";
-      const msg = r.pending ? "الفيديو لسا عم يتجهّز لهالتمرين." : "ما لقينا فيديو قصير لهالتمرين.";
-      b.insertAdjacentHTML("afterend", `<span class="ytmsg">${msg} <a href="${ytSearch(n)}" target="_blank" rel="noopener">افتح يوتيوب</a></span>`);
-    }
+    const r = await ytQ(n);
+    if (r.id) ytPlay(card, b, n, r, 0); else ytFail(card, b, n, !!r.pending);
   });
 
   buildMap();
