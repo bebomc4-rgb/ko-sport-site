@@ -4368,10 +4368,11 @@ const YT_VM = "@cf/meta/llama-3.2-11b-vision-instruct";
 // بيفحص 4 لقطات: الغلاف (hqdefault) و hq1/hq2/hq3 (تقريباً عند 25%/50%/75% من الفيديو).
 // بيرجّع {w:true} إذا في بنت، أو {w:false, ex:[مواقع اللقطات يلي فيها شب عم يتمرن فعلاً]}، أو {err} إذا الذكاء ما ردّ.
 // (صاحب المتجر: «ما بدي الفيديوهات يلي أولها كلام أو لوغو، خود بس من أول التمرين لآخرو»)
-async function ytCheck(env, id) {
+async function ytCheck(env, id, exName) {
   if (!env.AI) return { err: "no-ai" };
   // صاحب المتجر (17/11/2026): «حط فيديوهات تمرين مو ناس حقيقيين، كرتون فيكتور» → C لازم تكون YES (شخصية مرسومة/أنيميشن/3D)
-  const Q = "Answer three questions about this image. A) Is any woman or girl visible (real or drawn/animated), even small, partial or in the background? B) Is a figure clearly performing an exercise movement right now (not only talking, not a title, logo, text or intro screen)? C) Is the figure an animated, cartoon, vector-illustrated or 3D-rendered character (NOT a real filmed human)? Reply exactly in this format: A=YES or A=NO, B=YES or B=NO, C=YES or C=NO";
+  const exN = String(exName || "").replace(/["`\\$]/g, "");
+  const Q = `Answer three questions about this image. A) Is any woman or girl visible (real or drawn/animated), even small, partial or in the background? B) Is a figure clearly performing the gym/fitness exercise "${exN}" (or a very similar fitness exercise) right now? Standing, walking, waving, cheering, talking, a story scene, a title, logo, text or intro screen = NO. C) Is the figure an animated, cartoon, vector-illustrated or 3D-rendered character (NOT a real filmed human)? Reply exactly in this format: A=YES or A=NO, B=YES or B=NO, C=YES or C=NO`;
   const b64 = (u8) => { let s = ""; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); };
   const run = async (u8, fmt) => fmt === 1
     ? env.AI.run(YT_VM, { messages: [{ role: "user", content: [{ type: "text", text: Q }, { type: "image_url", image_url: { url: "data:image/jpeg;base64," + b64(u8) } }] }], max_tokens: 20, temperature: 0 })
@@ -4430,7 +4431,7 @@ async function exYt(url, env) {
   if (!name || !env.STORE) return J({ none: 1 }, 60);
   const names = await exNames();
   if (names.size && !names.has(name.toLowerCase())) return J({ none: 1 }, 3600);
-  const k = "yta:" + name.toLowerCase(); // yta = أنيميشن بس (القديم yt: كان ناس حقيقيين)
+  const k = "ytb:" + name.toLowerCase(); // ytb = أنيميشن بس + اسم التمرين بالعنوان (القديم yt:/yta: ما عاد ينقرا)
   const pick = (o) => ({ id: o.ids[0].id, d: o.ids[0].d, s: o.ids[0].s || 0, e: o.ids[0].e || 0 });
   let saved = await env.STORE.get(k, "json");
   if (saved && saved.id && !saved.ids) saved = { ids: [{ id: saved.id, d: saved.d }] }; // الشكل القديم
@@ -4453,7 +4454,12 @@ async function exYt(url, env) {
       const sr = await fetch("https://www.googleapis.com/youtube/v3/search?" + new URLSearchParams({ part: "snippet", type: "video", videoDuration: "short", videoEmbeddable: "true", videoSyndicated: "true", safeSearch: "strict", maxResults: "25", q: name + " exercise animation", key }));
       if (sr.status === 403 || sr.status === 429) continue; // المفتاح خلص حصتو اليوم، جرّب يلي بعدو
       if (!sr.ok) return J({ pending: 1, why: "err" + sr.status }, 300);
-      const items = ((await sr.json()).items || []).filter((x) => x.id && x.id.videoId && !skip.has(x.id.videoId) && !YT_FEM.test(((x.snippet && x.snippet.title) || "") + " " + ((x.snippet && x.snippet.channelTitle) || "")));
+      // عنوان الفيديو لازم يكون فيه كلمات اسم التمرين (نص الكلمات المهمة على الأقل)، مشان ما يجي كرتون ما إلو علاقة
+      const STOP = new Set(["exercise", "with", "using", "from", "the", "and", "your", "into", "onto"]);
+      const toks = name.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w)).map((w) => w.replace(/(es|s)$/, ""));
+      const need = Math.max(1, Math.ceil(toks.length / 2));
+      const fits = (t) => { const c = String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, ""); return toks.filter((w) => w && c.includes(w)).length >= need; };
+      const items = ((await sr.json()).items || []).filter((x) => x.id && x.id.videoId && !skip.has(x.id.videoId) && fits(x.snippet && x.snippet.title) && !YT_FEM.test(((x.snippet && x.snippet.title) || "") + " " + ((x.snippet && x.snippet.channelTitle) || "")));
       const ids = items.map((x) => x.id.videoId);
       const title = {};
       items.forEach((x) => { title[x.id.videoId] = String((x.snippet && x.snippet.title) || ""); });
@@ -4478,17 +4484,17 @@ async function exYt(url, env) {
   }
   // فحص كل فيديو قبل ما ينعرض (لحد 3 بكل طلب): يلي فيه بنت، أو ما فيه ولا لقطة تمرين (كلو كلام/لوغو)، بينشطب للأبد
   let changed = false, checked = 0, aiDown = "";
-  while (saved.ids.length && !(saved.ids[0].ok && saved.ids[0].v === 2) && checked < 3) {
+  while (saved.ids.length && !(saved.ids[0].ok && saved.ids[0].v === 3) && checked < 3) {
     const c = saved.ids[0];
-    const r = await ytCheck(env, c.id);
+    const r = await ytCheck(env, c.id, name);
     checked++;
     if (r.err) { aiDown = r.err; break; }
     const seg = r.w ? null : ytSeg(c.d, r.ex);
-    if (seg) { c.ok = 1; c.v = 2; c.s = seg.s; c.e = seg.e; changed = true; break; }
+    if (seg) { c.ok = 1; c.v = 3; c.s = seg.s; c.e = seg.e; changed = true; break; }
     saved.ids.shift(); skip.add(c.id); saved.skip = [...skip].slice(-60); changed = true;
   }
   if (changed) await env.STORE.put(k, JSON.stringify(saved));
-  if (saved.ids.length && saved.ids[0].ok && saved.ids[0].v === 2) return J(pick(saved), 300);
+  if (saved.ids.length && saved.ids[0].ok && saved.ids[0].v === 3) return J(pick(saved), 300);
   if (saved.ids.length || aiDown) return J(aiDown ? { pending: 1, why: "ai", err: aiDown } : { pending: 1, why: "checking" }, 0);
   return J({ none: 1 }, 3600);
 }
