@@ -1931,10 +1931,12 @@
     app.innerHTML = `<iframe class="wk-fr" src="/workout.html?v=333" title="التمرين التفاعلي" allow="camera; fullscreen; autoplay" loading="eager"></iframe>`;
   }
   // مكتبة التمارين (صاحب المتجر 17 تشرين التاني 2026): بيانات Free Exercise DB المفتوحة، صورتين بيتبدّلوا كل 0.8 ثانية (src/exercises.html)
+  // صاحب المتجر (17/11/2026): التوقعات والتمرين التفاعلي وبرامج التدريب ومكتبة التمارين بس لحسابو (0938986875)، مخفية عن كل الزباين
+  function koOwn() { const a = acct(); const p = String((a && a.account && a.account.phone) || "").replace(/\D/g, ""); return p.slice(-9) === "938986875"; }
   function exl() { return `<a class="acc-card acc-pred acc-train" href="#/exercises"><span class="apr-l"><b>📚 مكتبة التمارين</b><small>أكتر من 800 تمرين: اختار العضلة أو الأداة وشوف الحركة الصحيحة</small></span><span class="apr-go">افتح ›</span></a>`; }
   function exercisesPage() {
     document.title = "مكتبة التمارين | " + (C.name || "");
-    app.innerHTML = `<iframe class="wk-fr" src="/exercises.html?v=351" title="مكتبة التمارين" loading="eager"></iframe>`;
+    app.innerHTML = `<iframe class="wk-fr" src="/exercises.html?v=352" title="مكتبة التمارين" loading="eager"></iframe>`;
   }
   // برامج التدريب (صاحب المتجر 17 تشرين التاني 2026): جوّا «حسابي»، والملفات بتنحمّل بس لما الزبون يفتح الصفحة (ما بتثقّل المتجر)
   function trainPage() {
@@ -1957,10 +1959,10 @@
         <span class="qd-note"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 10.5v6M12 7.4v.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>لازم يكون التلغرام على نفس الرقم المسجّل على الوصل</span>
         <span class="qd-cta"><span>افتح البوت</span><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </a>
-${(C.predLive || (A.account && A.account.predOpen)) ? `<a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a>` : ""}
+${koOwn() ? `<a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a>
 <a class="acc-card acc-pred acc-train" href="#/workout"><span class="apr-l"><b>⏱ التمرين التفاعلي</b><small>مؤقت لكل تمرين، وكاميرا بتعدّ ضرباتك وتكراراتك وبتقلّك إذا الحركة صح أو غلط</small></span><span class="apr-go">افتح ›</span></a>
 <a class="acc-card acc-pred acc-train" href="#/train"><span class="apr-l"><b>🏋️ برامج التدريب</b><small>كالستنكس، كمال أجسام، قوة بدنية، ملاكمة ومصارعة — مع رسومات متحركة لكل تمرين</small></span><span class="apr-go">افتح ›</span></a>
-${exl()}
+${exl()}` : ""}
       <section class="acc-card"><h2>طلباتي</h2><div data-myorders>${(myOrdOwner(), myOrdersHtml(myOrdCache))}</div></section>
       <section class="acc-card acc-links"><a href="#/cart">🛒 السلة</a><a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">💬 تواصل معنا على واتساب</a></section>`;
     app.onclick = (e) => {
@@ -2714,6 +2716,7 @@ ${trustH()}
     else if (a === "account") (b ? myOrder(b) : account());
     else if (a === "page") page(b || "");
     else if (a === "games" && gamesOn()) gamesPage();
+    else if (["predict", "train", "workout", "exercises"].includes(a) && !koOwn()) { location.replace("#/account"); return; } // مخفية عن الزباين
     else if (a === "predict") predictPage();
     else if (a === "train") trainPage();
     else if (a === "workout") workoutPage();

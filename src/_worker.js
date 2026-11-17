@@ -279,7 +279,7 @@ async function settingsGet(request, env, ctx) {
     const s = await getSettings(env, request);
     s.discounts = (s.discounts || []).filter((d) => d.type !== "code" && d.on !== false);
     s.pages = (s.pages || []).filter((p) => p.on !== false);
-    s.predLive = (await predCfg(env)).live !== false; // صاحب المتجر (16 تشرين التاني 2026): قسم التوقعات بيبيّن بحسابي لما يصير live
+    s.predLive = !OWNER_ONLY_EXTRAS && (await predCfg(env)).live !== false; // صاحب المتجر (16 تشرين التاني 2026): قسم التوقعات بيبيّن بحسابي لما يصير live
     delete s.dev;
     return s;
   }, request);
@@ -1082,6 +1082,9 @@ async function subsTick(env, force) {
 // هلق تجريبي: ما حدا بيشوف الصفحة غير المالك (كلمة سر لوحة التحكم + حسابو بالمتجر). بعدين منفتحها للكل من «pred:cfg».live
 // المفاتيح: pred:matches (كل المباريات المعروضة)، pred:picks:<id> (توقعات مباراة)، pred:u:<رقم> (توقعات زبون)، pred:cnt (عدّ التوقعات)، pred:board (النقاط)، pred:cfg، pred:sync
 const PRED_TESTERS = ["0938986875"]; // رقم صاحب المتجر بحسابو بالمتجر
+// صاحب المتجر (17/11/2026): «اخفي التوقعات والتمارين (4 خانات) وخليها ظاهرة بس لحساب 0938986875، الباقي اخفيه عن أي زبون»
+// التوقعات + التمرين التفاعلي + برامج التدريب + مكتبة التمارين: بس لـ PRED_TESTERS (ولوحة التحكم)، مهما كان pred:cfg.live
+const OWNER_ONLY_EXTRAS = true;
 const PRED_SPORTS = { football: "كرة قدم", basketball: "كرة سلة", ufc: "MMA", boxing: "ملاكمة", wrestling: "مصارعة", tennis: "تنس", esports: "ألعاب إلكترونية", other: "غير" };
 // off: true = مطفية بالأساس (كتيرة أو بعيدة عن جمهورنا)، صاحب المتجر بيشغّلها من لوحة المالك
 const PRED_LEAGUES = [
@@ -1598,7 +1601,7 @@ async function predApi(request, env, path, m, ctx) {
     return json(out);
   }
   if (path === "/api/pred/status" && m === "GET") { const L = await predMatches(env), c = {}; for (const x of L) c[x.sport] = (c[x.sport] || 0) + 1; return json({ sync: +(await env.STORE.get("pred:sync").catch(() => 0)) || 0, counts: c, esKey: !!env.PANDASCORE_TOKEN, errs: (await env.STORE.get("pred:errs", "json").catch(() => null)) || [], info: await env.STORE.get("pred:infoerr", "json").catch(() => null), nm: await env.STORE.get("pred:nm", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, id: v.filter((x) => x.id).length }; }).catch(() => null), wn: await env.STORE.get("pred:wn", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, pic: v.filter((x) => x.u).length }; }).catch(() => null), wimg: await env.STORE.get("pred:wimg", "json").then((A) => { const v = Object.values(A || {}); return { n: v.length, pic: v.filter(Boolean).length }; }).catch(() => null), ath: await env.STORE.get("pred:ath", "json").then((A) => { const o = { M: 0, F: 0, "?": 0, pic: 0 }; for (const x of Object.values(A || {})) { o[x.g] = (o[x.g] || 0) + 1; if (x.h) o.pic++; } return o; }).catch(() => null) }); }
-  const owner = env.__role === "owner", cfg = await predCfg(env), live = cfg.live !== false; // صاحب المتجر (16 تشرين التاني 2026): «خلي التوقعات مفتوحة للكل» — مفتوحة افتراضياً إلا إذا قفلها صراحة
+  const owner = env.__role === "owner", cfg = await predCfg(env), live = !OWNER_ONLY_EXTRAS && cfg.live !== false; // صاحب المتجر (16 تشرين التاني 2026): «خلي التوقعات مفتوحة للكل» — مفتوحة افتراضياً إلا إذا قفلها صراحة
   const acct = await acctFromReq(request, env);
   // وقت التجربة: صاحب المتجر بيشوف الصفحة متل أي زبون من حسابو بالمتجر (بلا كلمة سر اللوحة)
   const tester = !!(acct && [...PRED_TESTERS, ...(Array.isArray(cfg.testers) ? cfg.testers : [])].includes(acct.phone));
@@ -1881,7 +1884,7 @@ async function acctApi(request, env, path, m) {
     const why = {}, a = await acctFromReq(request, env, why);
     // بس الحساب الموقوف أو كلمة سر تغيّرت بيطلّعو الزبون. غير هيك (ضغط أو حساب لسا عم يوصل) بيضل داخل
     if (!a) return json({ error: "سجّل دخول من جديد", reason: why.reason || "", logout: why.reason === "blocked" || why.reason === "password" || why.reason === "token" }, 401);
-    if (m === "GET") { await acctTouch(env, request, a); const _pc = await predCfg(env); const _pt = _pc.live !== false || [...PRED_TESTERS, ...(Array.isArray(_pc.testers) ? _pc.testers : [])].includes(a.phone); return json({ ok: true, account: { ...acctOut(a), predOpen: _pt }, token: await acctToken(env, a) }); } // predOpen: يشوف قسم التوقعات (live أو تستر)
+    if (m === "GET") { await acctTouch(env, request, a); const _pc = await predCfg(env); const _pt = (!OWNER_ONLY_EXTRAS && _pc.live !== false) || [...PRED_TESTERS, ...(Array.isArray(_pc.testers) ? _pc.testers : [])].includes(a.phone); return json({ ok: true, account: { ...acctOut(a), predOpen: _pt }, token: await acctToken(env, a) }); } // predOpen: يشوف قسم التوقعات (live أو تستر)
     if (m === "PUT") {
       const b = await request.json().catch(() => ({}));
       if (b.governorate) { if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة" }, 400); a.governorate = b.governorate; }
@@ -4524,7 +4527,12 @@ const koMain = {
     const m = request.method;
     // مكتبة التمارين (صاحب المتجر 17 تشرين التاني 2026): بيانات وصور Free Exercise DB عن طريق دومين المتجر، لأن raw.githubusercontent.com ممكن يكون محجوب أو بطيء عالموبايل بسوريا.
     // كلو بيتخزّن بسيرفر Cloudflare القريب، والـ JSON بينحذف منو الحقول يلي ما منحتاجها (أخف عالموبايل).
-    if (m === "GET" && path === "/exdb/yt") return exYt(url, env);
+    if (m === "GET" && path === "/exdb/yt") {
+      // الفيديوهات بس لصاحب المتجر هلق (القسم مخفي عن الزباين) — كمان بيوفّر حصة يوتيوب والذكاء
+      const ya = await acctFromReq(request, env).catch(() => null);
+      if (OWNER_ONLY_EXTRAS && !(ya && PRED_TESTERS.includes(ya.phone))) return new Response(JSON.stringify({ none: 1 }), { status: 403, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+      return exYt(url, env);
+    }
     if (m === "GET" && path.indexOf("/exdb/") === 0) {
       const rest = path.slice(6), isJson = rest === "exercises.json";
       if (!isJson && !/^img\/[A-Za-z0-9_\-]+\/[01]\.jpg$/.test(rest)) return new Response("not found", { status: 404 });
