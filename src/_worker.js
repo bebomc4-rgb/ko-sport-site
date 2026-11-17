@@ -4434,7 +4434,7 @@ async function exYt(url, env) {
   if (!name || !env.STORE) return J({ none: 1 }, 60);
   const names = await exNames();
   if (names.size && !names.has(name.toLowerCase())) return J({ none: 1 }, 3600);
-  const k = "ytd:" + name.toLowerCase(); // ytb = أنيميشن بس + اسم التمرين بالعنوان (القديم yt:/yta: ما عاد ينقرا)
+  const k = "yte:" + name.toLowerCase(); // ytb = أنيميشن بس + اسم التمرين بالعنوان (القديم yt:/yta: ما عاد ينقرا)
   const pick = (o) => ({ id: o.ids[0].id, d: o.ids[0].d, s: o.ids[0].s || 0, e: o.ids[0].e || 0 });
   let saved = await env.STORE.get(k, "json");
   if (url.searchParams.get("dbg") === "1") return J({ k, saved }, 0); // للفحص بس (ما فيه شي سري)
@@ -4445,24 +4445,27 @@ async function exYt(url, env) {
   if (saved && bad && saved.ids.length && saved.ids[0].id === bad) {
     saved.ids.shift(); skip.add(bad); saved.skip = [...skip].slice(-60);
     await env.STORE.put(k, JSON.stringify(saved));
-  } else if (saved && !saved.ids.length && saved.at && Date.now() - saved.at < 14 * 86400e3) return J({ none: 1 }, 3600);
+  } else if (saved && !saved.ids.length && saved.at && (saved.qi || 0) >= 1 && Date.now() - saved.at < 14 * 86400e3) return J({ none: 1 }, 3600);
   if (!saved || !saved.ids.length) {
     const keys = String(env.YT_KEYS || env.YOUTUBE_API_KEY || "").split(/[,\s]+/).filter(Boolean);
     if (!keys.length) return J({ pending: 1, why: "no-key" }, 300);
     if (await env.STORE.get("yt:quota")) return J({ pending: 1, why: "quota" }, 600);
     const dur = (s) => { const x = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(s || ""); return x ? (+x[1] || 0) * 3600 + (+x[2] || 0) * 60 + (+x[3] || 0) : 0; };
     const start = Math.floor(Date.now() / 60000);
+    // بحثين بكلمات مختلفة؛ إذا خلصو فيديوهات الأول منجرّب التاني
+    const QS = [name + " exercise 3d animation", name + " animation workout"];
+    const qi = saved && saved.ids && !saved.ids.length ? Math.min((saved.qi || 0) + (saved.at ? 1 : 0), QS.length - 1) : 0;
     let found = null;
     for (let i = 0; i < keys.length && !found; i++) {
       const key = keys[(start + i) % keys.length];
-      const sr = await fetch("https://www.googleapis.com/youtube/v3/search?" + new URLSearchParams({ part: "snippet", type: "video", videoDuration: "short", videoEmbeddable: "true", videoSyndicated: "true", safeSearch: "strict", maxResults: "25", q: name + " exercise animation", key }));
+      const sr = await fetch("https://www.googleapis.com/youtube/v3/search?" + new URLSearchParams({ part: "snippet", type: "video", videoDuration: "short", videoEmbeddable: "true", videoSyndicated: "true", safeSearch: "strict", maxResults: "50", q: QS[qi], key }));
       if (sr.status === 403 || sr.status === 429) continue; // المفتاح خلص حصتو اليوم، جرّب يلي بعدو
       if (!sr.ok) return J({ pending: 1, why: "err" + sr.status }, 300);
       // عنوان الفيديو لازم يكون فيه كلمات اسم التمرين (نص الكلمات المهمة على الأقل)، مشان ما يجي كرتون ما إلو علاقة
       const STOP = new Set(["exercise", "with", "using", "from", "the", "and", "your", "into", "onto"]);
       const toks = name.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w)).map((w) => w.replace(/(es|s)$/, ""));
       const need = Math.max(1, Math.ceil(toks.length / 2));
-      const fits = (t) => { const c = String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, ""); return toks.filter((w) => w && c.includes(w)).length >= need; };
+      const fits = (t) => { const c = String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, ""); return toks.filter((w) => w && c.includes(w)).length >= need && /animat|3d|2d|cartoon|vector|cgi/i.test(String(t || "")); };
       const items = ((await sr.json()).items || []).filter((x) => x.id && x.id.videoId && !skip.has(x.id.videoId) && fits(x.snippet && x.snippet.title) && !YT_FEM.test(((x.snippet && x.snippet.title) || "") + " " + ((x.snippet && x.snippet.channelTitle) || "")));
       const ids = items.map((x) => x.id.videoId);
       const title = {};
@@ -4480,7 +4483,7 @@ async function exYt(url, env) {
           list = list.slice(0, 8).map((v) => ({ id: v.id, d: v.d }));
         }
       }
-      found = { ids: list, skip: [...skip].slice(-60), at: Date.now() };
+      found = { ids: list, skip: [...skip].slice(-60), at: Date.now(), qi, log: (saved && saved.log) || [] };
     }
     if (!found) { await env.STORE.put("yt:quota", "1", { expirationTtl: 3 * 3600 }); return J({ pending: 1, why: "quota" }, 600); }
     saved = found;
@@ -4500,6 +4503,7 @@ async function exYt(url, env) {
   }
   if (changed) await env.STORE.put(k, JSON.stringify(saved));
   if (saved.ids.length && saved.ids[0].ok && saved.ids[0].v === 3) return J(pick(saved), 300);
+  if (!saved.ids.length && (saved.qi || 0) < 1) return J({ pending: 1, why: "checking" }, 0); // لسا في بحث تاني نجرّبو
   if (saved.ids.length || aiDown) return J(aiDown ? { pending: 1, why: "ai", err: aiDown } : { pending: 1, why: "checking" }, 0);
   return J({ none: 1 }, 3600);
 }
