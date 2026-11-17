@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>مكتبة التمارين | KO SPORT</title>
+<link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+<script>try{var t=localStorage.getItem("ko_theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
+<style>
+/* مكتبة التمارين (صاحب المتجر 17 تشرين التاني 2026): بيانات Free Exercise DB المفتوحة، بهوية المتجر ووضع ليلي من ko_theme */
+:root{--bg:#ffffff;--ink:#100f14;--muted:#5f5c56;--line:#e4e0d8;--card:#ffffff;--card2:#f7f5f0;
+  --gold:#c9a45c;--gold2:#a8843f;--goldbg:#fbf6ea;--btn:#100f14;--btnfg:#ffffff;--r:14px;
+  --shadow:0 1px 0 rgba(201,164,92,.3) inset,0 14px 34px -18px rgba(0,0,0,.35);color-scheme:light}
+html[data-theme=dark]{--bg:#0f0f12;--ink:#f2f2f5;--muted:#a4a4af;--line:#2c2c34;--card:#1a1a20;--card2:#22222a;
+  --goldbg:#2a2416;--btn:#f2f2f5;--btnfg:#100f14;--shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.4);color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;line-height:1.55}
+.wrap{max-width:1100px;margin:0 auto;padding:16px 14px 60px}
+header{margin:2px 0 14px}
+.eyebrow{display:inline-block;background:var(--goldbg);color:var(--gold2);border:1px solid var(--gold);border-radius:99px;padding:3px 10px;font-size:.72rem;font-weight:700;margin-bottom:8px}
+h1{font-size:clamp(22px,5vw,28px);font-weight:800;line-height:1.3}
+h1 span{color:var(--gold2)}
+header p{color:var(--muted);font-size:.9rem;margin-top:4px}
+.search{display:block;width:100%;max-width:520px;margin:10px 0 4px;padding:11px 14px;border-radius:var(--r);
+  border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;outline:none;font-family:inherit}
+.search:focus{border-color:var(--gold)}
+.sec-title{font-size:.8rem;color:var(--muted);font-weight:700;margin:14px 0 7px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 15px;border-radius:99px;
+  font-size:.9rem;cursor:pointer;font-family:inherit;font-weight:600;transition:.15s}
+.chip:hover{border-color:var(--gold)}
+.chip.on{background:var(--btn);color:var(--btnfg);border-color:var(--btn)}
+.chip.sub{font-size:.8rem;padding:6px 12px;background:var(--goldbg);border-color:var(--gold);color:var(--gold2)}
+.chip.sub.on{background:var(--gold2);color:#fff;border-color:var(--gold2)}
+#subs{margin-top:8px}
+#subs:empty{display:none}
+.status{color:var(--muted);margin:16px 0 4px;font-size:.88rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.media{position:relative;aspect-ratio:4/3;background:#fff;overflow:hidden;border-bottom:1px solid var(--line)}
+.media img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .25s}
+.media img.b{opacity:0}
+.media.flip img.a{opacity:0}
+.media.flip img.b{opacity:1}
+.lvl{position:absolute;top:8px;right:8px;background:var(--goldbg);color:var(--gold2);border:1px solid var(--gold);font-size:.72rem;font-weight:700;
+  padding:2px 10px;border-radius:99px;z-index:2}
+.body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px;flex:1}
+.name{font-size:1rem;font-weight:800;direction:ltr;text-align:right}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:.75rem;background:var(--card2);border-radius:8px;padding:2px 8px;color:var(--muted)}
+.tag.g{background:var(--goldbg);color:var(--gold2);font-weight:700}
+details{margin-top:auto}
+summary{cursor:pointer;color:var(--gold2);font-size:.88rem;font-weight:700}
+ol{direction:ltr;text-align:left;padding-left:20px;margin-top:8px;font-size:.82rem;color:var(--muted)}
+ol li{margin-bottom:5px}
+.more{display:block;margin:22px auto 0;background:var(--btn);border:0;color:var(--btnfg);
+  padding:11px 30px;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit}
+.credit{text-align:center;color:var(--muted);font-size:.72rem;margin-top:28px}
+.credit a{color:var(--gold2)}
+@media (prefers-reduced-motion:reduce){.media img{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">أكتر من 800 تمرين</span>
+  <h1>مكتبة <span>التمارين</span></h1>
+  <p>اختار العضلة أو الأداة، وشوف الحركة الصحيحة لكل تمرين</p>
+</header>
+  <input class="search" id="q" type="search" placeholder="ابحث باسم التمرين (بالإنكليزي)…">
+
+  <div class="sec-title">العضلة</div>
+  <div class="chips" id="groups"></div>
+  <div class="chips" id="subs"></div>
+
+  <div class="sec-title">الأداة الرياضية</div>
+  <div class="chips" id="equip"></div>
+
+  <div class="status" id="status">جاري تحميل التمارين…</div>
+  <div class="grid" id="grid"></div>
+  <button class="more" id="more" hidden>عرض المزيد</button>
+
+  <p class="credit">بيانات التمارين من قاعدة <a href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">Free Exercise DB</a> المفتوحة المصدر</p>
+</div>
+
+<script>
+(function(){
+  const DATA_URL = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
+  const IMG_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
+  const PAGE = 24;
+  const FLIP_MS = 800;
+
+  // أسماء العضلات بالعربي
+  const MUSCLE_AR = {
+    "chest":"الصدر","lats":"الظهر العريض","middle back":"منتصف الظهر","lower back":"أسفل الظهر",
+    "traps":"الترابيس","shoulders":"الأكتاف","biceps":"البايسبس","triceps":"الترايسبس",
+    "forearms":"الساعد","quadriceps":"الفخذ الأمامي","hamstrings":"الفخذ الخلفي","calves":"السمانة",
+    "glutes":"المؤخرة","adductors":"الفخذ الداخلي","abductors":"الفخذ الخارجي",
+    "abdominals":"البطن","neck":"الرقبة"
+  };
+  // المجموعات الرئيسية
+  const GROUPS = [
+    {key:"all",   ar:"الكل",    m:[]},
+    {key:"chest", ar:"الصدر",   m:["chest"]},
+    {key:"back",  ar:"الظهر",   m:["lats","middle back","lower back","traps"]},
+    {key:"shoul", ar:"الأكتاف", m:["shoulders"]},
+    {key:"arms",  ar:"الذراعين",m:["biceps","triceps","forearms"]},
+    {key:"legs",  ar:"الأرجل",  m:["quadriceps","hamstrings","calves","glutes","adductors","abductors"]},
+    {key:"abs",   ar:"البطن",   m:["abdominals"]},
+    {key:"neck",  ar:"الرقبة",  m:["neck"]}
+  ];
+  // الأدوات بالعربي
+  const EQUIP_AR = {
+    "body only":"وزن الجسم","dumbbell":"دمبل","barbell":"بار حديد","kettlebells":"كيتل بيل",
+    "cable":"كابلات","machine":"جهاز","bands":"حبال مقاومة","medicine ball":"كرة طبية",
+    "exercise ball":"كرة سويسرية","e-z curl bar":"بار زد","foam roll":"رول مساج","other":"أدوات أخرى"
+  };
+  const LEVEL_AR = {"beginner":"مبتدئ","intermediate":"متوسط","expert":"محترف"};
+
+  const $ = id => document.getElementById(id);
+  let all = [], list = [], shown = 0;
+  let state = {group:"all", muscle:null, equip:null, q:""};
+
+  function chip(text, on, onClick, cls){
+    const b = document.createElement("button");
+    b.className = "chip" + (cls ? " "+cls : "") + (on ? " on" : "");
+    b.textContent = text;
+    b.onclick = onClick;
+    return b;
+  }
+
+  function renderFilters(){
+    const g = $("groups"); g.innerHTML = "";
+    GROUPS.forEach(x => g.appendChild(chip(x.ar, state.group===x.key, () => {
+      state.group = x.key; state.muscle = null; update();
+    })));
+
+    const s = $("subs"); s.innerHTML = "";
+    const grp = GROUPS.find(x => x.key===state.group);
+    if (grp && grp.m.length > 1){
+      s.appendChild(chip("كل "+grp.ar, !state.muscle, () => { state.muscle=null; update(); }, "sub"));
+      grp.m.forEach(m => s.appendChild(chip(MUSCLE_AR[m]||m, state.muscle===m, () => {
+        state.muscle = m; update();
+      }, "sub")));
+    }
+
+    const e = $("equip"); e.innerHTML = "";
+    e.appendChild(chip("كل الأدوات", !state.equip, () => { state.equip=null; update(); }));
+    Object.keys(EQUIP_AR).forEach(k => {
+      if (!all.some(x => x.equipment===k)) return;
+      e.appendChild(chip(EQUIP_AR[k], state.equip===k, () => { state.equip=k; update(); }));
+    });
+  }
+
+  function filter(){
+    const grp = GROUPS.find(x => x.key===state.group);
+    const muscles = state.muscle ? [state.muscle] : (grp ? grp.m : []);
+    const q = state.q.trim().toLowerCase();
+    list = all.filter(x => {
+      if (muscles.length && !(x.primaryMuscles||[]).some(m => muscles.includes(m))) return false;
+      if (state.equip && x.equipment !== state.equip) return false;
+      if (q && !x.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
+
+  function card(x){
+    const imgs = x.images || [];
+    const a = imgs[0] ? IMG_BASE + imgs[0] : "";
+    const b = imgs[1] ? IMG_BASE + imgs[1] : "";
+    const el = document.createElement("div");
+    el.className = "card";
+    const muscles = (x.primaryMuscles||[]).map(m => `<span class="tag g">${MUSCLE_AR[m]||m}</span>`).join("");
+    const sec = (x.secondaryMuscles||[]).map(m => `<span class="tag">${MUSCLE_AR[m]||m}</span>`).join("");
+    const eq = x.equipment ? `<span class="tag">🏋️ ${EQUIP_AR[x.equipment]||x.equipment}</span>` : "";
+    const steps = (x.instructions||[]).map(t => `<li>${esc(t)}</li>`).join("");
+    el.innerHTML = `
+      <div class="media" ${b ? 'data-anim="1"' : ''}>
+        ${x.level ? `<span class="lvl">${LEVEL_AR[x.level]||x.level}</span>` : ""}
+        ${a ? `<img class="a" src="${a}" alt="${esc(x.name)}" loading="lazy" decoding="async">` : ""}
+        ${b ? `<img class="b" src="${b}" alt="" loading="lazy" decoding="async">` : ""}
+      </div>
+      <div class="body">
+        <div class="name">${esc(x.name)}</div>
+        <div class="tags">${muscles}${sec}${eq}</div>
+        ${steps ? `<details><summary>طريقة التمرين</summary><ol>${steps}</ol></details>` : ""}
+      </div>`;
+    return el;
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+  // التحريك فقط للبطاقات الظاهرة على الشاشة (أسرع)
+  const visible = new Set();
+  const io = "IntersectionObserver" in window ? new IntersectionObserver(ents => {
+    ents.forEach(en => en.isIntersecting ? visible.add(en.target) : (visible.delete(en.target), en.target.classList.remove("flip")));
+  }, {rootMargin:"100px"}) : null;
+  setInterval(() => { visible.forEach(m => m.classList.toggle("flip")); }, FLIP_MS);
+
+  function showMore(){
+    const grid = $("grid");
+    const frag = document.createDocumentFragment();
+    list.slice(shown, shown+PAGE).forEach(x => {
+      const c = card(x);
+      const m = c.querySelector('.media[data-anim]');
+      if (m){ io ? io.observe(m) : visible.add(m); }
+      frag.appendChild(c);
+    });
+    grid.appendChild(frag);
+    shown = Math.min(shown+PAGE, list.length);
+    $("more").hidden = shown >= list.length;
+  }
+
+  function update(){
+    renderFilters();
+    filter();
+    visible.clear(); if (io) io.disconnect();
+    $("grid").innerHTML = ""; shown = 0;
+    $("status").textContent = list.length ? `عدد التمارين: ${list.length}` : "ما في تمارين بهالاختيار";
+    showMore();
+  }
+
+  $("more").onclick = showMore;
+  let t; $("q").oninput = e => { clearTimeout(t); t = setTimeout(() => { state.q = e.target.value; update(); }, 250); };
+
+  fetch(DATA_URL).then(r => { if(!r.ok) throw 0; return r.json(); }).then(d => {
+    all = d; update();
+  }).catch(() => {
+    $("status").textContent = "صار في مشكلة بتحميل التمارين، جرّب تحدّث الصفحة.";
+  });
+})();
+</script>
+</body>
+</html>
