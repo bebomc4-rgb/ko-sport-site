@@ -4362,6 +4362,33 @@ async function exNames() {
   if (set.size) globalThis.__exNames = set;
   return set;
 }
+// صاحب المتجر (17/11/2026): «ما بدي ولا فيديو فيو بنت». فلترين: (1) العنوان واسم القناة (YT_FEM)، (2) الذكاء الاصطناعي بيشوف 4 لقطات من الفيديو (الغلاف + 25%/50%/75%) قبل ما ينعرض.
+const YT_FEM = /\b(wom[ae]n'?s?|girls?|female|ladies|lady|her|she|mom|mum|bikini|booty|madfit|chloe ?ting|pamela ?reif|blogilates|popsugar|fitness ?blender|growwithjo|lilly ?sabri|natacha ?oceane|sydney ?cummings|heather ?robertson|caroline ?girvan|juice ?(&|and) ?toya|emi ?wong|krissy|cara ?kuykens)\b|بنات|نساء|للنساء|سيدات|بنت/i;
+const YT_VM = "@cf/meta/llama-3.2-11b-vision-instruct";
+async function ytHasWoman(env, id) {
+  if (!env.AI) return null;
+  let seen = 0;
+  for (const f of ["hqdefault", "hq1", "hq2", "hq3"]) {
+    let img;
+    try {
+      const r = await fetch("https://i.ytimg.com/vi/" + encodeURIComponent(id) + "/" + f + ".jpg");
+      if (!r.ok) continue;
+      img = [...new Uint8Array(await r.arrayBuffer())];
+    } catch (e) { continue; }
+    const ask = () => env.AI.run(YT_VM, { messages: [{ role: "user", content: "Look carefully at this image. Is there any woman or girl visible in it, even small, partial or in the background? Answer with exactly one word: YES or NO." }], image: img, max_tokens: 4, temperature: 0 });
+    let out;
+    try { out = await ask(); }
+    catch (e) {
+      if (/agree/i.test(String(e && e.message))) { try { await env.AI.run(YT_VM, { prompt: "agree" }); out = await ask(); } catch (e2) { return null; } }
+      else return null;
+    }
+    const t = String((out && (out.response || out.result || out.text)) || "").trim();
+    if (!t) return null;
+    seen++;
+    if (/^\W*yes/i.test(t)) return true;
+  }
+  return seen >= 2 ? false : null;
+}
 async function exYt(url, env) {
   const J = (o, ttl) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": ttl ? "public, max-age=" + ttl : "no-store" } });
   const name = String(url.searchParams.get("n") || "").trim().slice(0, 140);
@@ -4370,53 +4397,65 @@ async function exYt(url, env) {
   const names = await exNames();
   if (names.size && !names.has(name.toLowerCase())) return J({ none: 1 }, 3600);
   const k = "yt:" + name.toLowerCase();
-  const pick = (o) => (o.ids && o.ids.length ? { id: o.ids[0].id, d: o.ids[0].d } : { none: 1 });
+  const pick = (o) => ({ id: o.ids[0].id, d: o.ids[0].d });
   let saved = await env.STORE.get(k, "json");
   if (saved && saved.id && !saved.ids) saved = { ids: [{ id: saved.id, d: saved.d }] }; // الشكل القديم
-  if (saved) {
-    // الصفحة بتبلّغ إذا الفيديو رفض يشتغل برّا يوتيوب (خطأ 150/101/100): منشطبو ومنعطي يلي بعدو
-    if (bad && saved.ids && saved.ids.length && saved.ids[0].id === bad) {
-      saved.ids.shift();
-      saved.skip = (saved.skip || []).concat(bad).slice(-30);
-      if (saved.ids.length) { await env.STORE.put(k, JSON.stringify(saved)); return J(pick(saved), 0); }
-      // خلصو الفيديوهات المحفوظة: منعيد البحث فوراً ومنتجاهل يلي انشطبو
-    } else if (saved.ids && saved.ids.length) return J(pick(saved), 300);
-    else return J({ none: 1 }, 3600);
-  }
+  if (saved && !saved.ids) saved.ids = [];
   const skip = new Set((saved && saved.skip) || []);
-  const keys = String(env.YT_KEYS || env.YOUTUBE_API_KEY || "").split(/[,\s]+/).filter(Boolean);
-  if (!keys.length) return J({ pending: 1, why: "no-key" }, 300);
-  if (await env.STORE.get("yt:quota")) return J({ pending: 1, why: "quota" }, 600);
-  const dur = (s) => { const x = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(s || ""); return x ? (+x[1] || 0) * 3600 + (+x[2] || 0) * 60 + (+x[3] || 0) : 0; };
-  const start = Math.floor(Date.now() / 60000);
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[(start + i) % keys.length];
-    const sr = await fetch("https://www.googleapis.com/youtube/v3/search?" + new URLSearchParams({ part: "snippet", type: "video", videoDuration: "short", videoEmbeddable: "true", videoSyndicated: "true", safeSearch: "strict", maxResults: "15", q: name + " exercise how to", key }));
-    if (sr.status === 403 || sr.status === 429) continue; // المفتاح خلص حصتو اليوم، جرّب يلي بعدو
-    if (!sr.ok) return J({ pending: 1, why: "err" + sr.status }, 300);
-    const items = (await sr.json()).items || [];
-    const ids = items.map((x) => x.id && x.id.videoId).filter(Boolean);
-    const title = {};
-    items.forEach((x) => { if (x.id && x.id.videoId) title[x.id.videoId] = String((x.snippet && x.snippet.title) || ""); });
-    let list = [];
-    if (ids.length) {
-      const vr = await fetch("https://www.googleapis.com/youtube/v3/videos?" + new URLSearchParams({ part: "contentDetails,status", id: ids.join(","), key }));
-      if (vr.ok) {
-        list = ((await vr.json()).items || [])
-          .filter((v) => v.status && v.status.embeddable !== false && v.status.privacyStatus === "public" && !(v.contentDetails && v.contentDetails.regionRestriction))
-          .map((v) => ({ id: v.id, d: dur(v.contentDetails && v.contentDetails.duration), r: ids.indexOf(v.id), sh: /#shorts?\b/i.test(title[v.id] || "") ? 1 : 0 }))
-          .filter((v) => v.d >= 5 && !skip.has(v.id));
-        // الأفضل: فيديو عادي مو شورتس (الشورتس غالباً فيها موسيقى وممنوعة برّا يوتيوب)، تحت الدقيقة ونص، ومن أول النتايج
-        list.sort((a, b) => (a.sh - b.sh) || ((a.d <= 90 ? 0 : 1) - (b.d <= 90 ? 0 : 1)) || (a.r - b.r));
-        list = list.slice(0, 6).map((v) => ({ id: v.id, d: v.d }));
+  // الصفحة بتبلّغ إذا الفيديو رفض يشتغل برّا يوتيوب (خطأ 150/101/100): منشطبو ومنعطي يلي بعدو
+  if (saved && bad && saved.ids.length && saved.ids[0].id === bad) {
+    saved.ids.shift(); skip.add(bad); saved.skip = [...skip].slice(-60);
+    await env.STORE.put(k, JSON.stringify(saved));
+  } else if (saved && !saved.ids.length && saved.at && Date.now() - saved.at < 14 * 86400e3) return J({ none: 1 }, 3600);
+  if (!saved || !saved.ids.length) {
+    const keys = String(env.YT_KEYS || env.YOUTUBE_API_KEY || "").split(/[,\s]+/).filter(Boolean);
+    if (!keys.length) return J({ pending: 1, why: "no-key" }, 300);
+    if (await env.STORE.get("yt:quota")) return J({ pending: 1, why: "quota" }, 600);
+    const dur = (s) => { const x = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(s || ""); return x ? (+x[1] || 0) * 3600 + (+x[2] || 0) * 60 + (+x[3] || 0) : 0; };
+    const start = Math.floor(Date.now() / 60000);
+    let found = null;
+    for (let i = 0; i < keys.length && !found; i++) {
+      const key = keys[(start + i) % keys.length];
+      const sr = await fetch("https://www.googleapis.com/youtube/v3/search?" + new URLSearchParams({ part: "snippet", type: "video", videoDuration: "short", videoEmbeddable: "true", videoSyndicated: "true", safeSearch: "strict", maxResults: "25", q: name + " exercise how to men", key }));
+      if (sr.status === 403 || sr.status === 429) continue; // المفتاح خلص حصتو اليوم، جرّب يلي بعدو
+      if (!sr.ok) return J({ pending: 1, why: "err" + sr.status }, 300);
+      const items = ((await sr.json()).items || []).filter((x) => x.id && x.id.videoId && !skip.has(x.id.videoId) && !YT_FEM.test(((x.snippet && x.snippet.title) || "") + " " + ((x.snippet && x.snippet.channelTitle) || "")));
+      const ids = items.map((x) => x.id.videoId);
+      const title = {};
+      items.forEach((x) => { title[x.id.videoId] = String((x.snippet && x.snippet.title) || ""); });
+      let list = [];
+      if (ids.length) {
+        const vr = await fetch("https://www.googleapis.com/youtube/v3/videos?" + new URLSearchParams({ part: "contentDetails,status", id: ids.join(","), key }));
+        if (vr.ok) {
+          list = ((await vr.json()).items || [])
+            .filter((v) => v.status && v.status.embeddable !== false && v.status.privacyStatus === "public" && !(v.contentDetails && v.contentDetails.regionRestriction))
+            .map((v) => ({ id: v.id, d: dur(v.contentDetails && v.contentDetails.duration), r: ids.indexOf(v.id), sh: /#shorts?\b/i.test(title[v.id] || "") ? 1 : 0 }))
+            .filter((v) => v.d >= 5);
+          // الأفضل: فيديو عادي مو شورتس (الشورتس غالباً فيها موسيقى وممنوعة برّا يوتيوب)، تحت الدقيقة ونص، ومن أول النتايج
+          list.sort((a, b) => (a.sh - b.sh) || ((a.d <= 90 ? 0 : 1) - (b.d <= 90 ? 0 : 1)) || (a.r - b.r));
+          list = list.slice(0, 8).map((v) => ({ id: v.id, d: v.d }));
+        }
       }
+      found = { ids: list, skip: [...skip].slice(-60), at: Date.now() };
     }
-    const val = { ids: list, skip: [...skip] };
-    await env.STORE.put(k, JSON.stringify(val), list.length ? {} : { expirationTtl: 14 * 86400 });
-    return J(pick(val), list.length ? 300 : 3600);
+    if (!found) { await env.STORE.put("yt:quota", "1", { expirationTtl: 3 * 3600 }); return J({ pending: 1, why: "quota" }, 600); }
+    saved = found;
+    await env.STORE.put(k, JSON.stringify(saved));
   }
-  await env.STORE.put("yt:quota", "1", { expirationTtl: 3 * 3600 });
-  return J({ pending: 1, why: "quota" }, 600);
+  // فحص البنات: أول فيديو لسا ما انفحص بيتفحص هلأ (لحد 3 بكل طلب)، ويلي فيه بنت بينشطب للأبد
+  let changed = false, checked = 0, aiDown = false;
+  while (saved.ids.length && !saved.ids[0].ok && checked < 3) {
+    const c = saved.ids[0];
+    const w = await ytHasWoman(env, c.id);
+    checked++;
+    if (w === null) { aiDown = true; break; }
+    if (w === false) { c.ok = 1; changed = true; break; }
+    saved.ids.shift(); skip.add(c.id); saved.skip = [...skip].slice(-60); changed = true;
+  }
+  if (changed) await env.STORE.put(k, JSON.stringify(saved));
+  if (saved.ids.length && saved.ids[0].ok) return J(pick(saved), 300);
+  if (saved.ids.length || aiDown) return J({ pending: 1, why: aiDown ? "ai" : "checking" }, 0);
+  return J({ none: 1 }, 3600);
 }
 
 const koMain = {

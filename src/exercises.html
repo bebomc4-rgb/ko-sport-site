@@ -329,7 +329,13 @@ button.yt:disabled{opacity:.6;cursor:default}
     });
     return ytApi;
   }
-  const ytQ = (n, bad) => fetch("/exdb/yt?n=" + encodeURIComponent(n) + (bad ? "&bad=" + encodeURIComponent(bad) : "")).then(r => r.json()).catch(() => ({}));
+  const ytQ1 = (n, bad) => fetch("/exdb/yt?n=" + encodeURIComponent(n) + (bad ? "&bad=" + encodeURIComponent(bad) : "")).then(r => r.json()).catch(() => ({}));
+  // السيرفر عم يفحص الفيديوهات (ما بدنا ولا فيديو فيه بنت): منعيد السؤال كم مرة لحد ما يجهز
+  async function ytQ(n, bad){
+    let r = await ytQ1(n, bad);
+    for (let i = 0; i < 5 && r.pending && r.why === "checking"; i++) r = await ytQ1(n);
+    return r;
+  }
   function ytFail(card, b, n, pending){
     const old = card.querySelector(".ytmsg"); if (old) old.remove();
     const msg = pending ? "الفيديو لسا عم يتجهّز لهالتمرين." : "ما لقينا فيديو قصير لهالتمرين.";
