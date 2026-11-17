@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>مكتبة التمارين | KO SPORT</title>
-<link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
 <script>try{var t=localStorage.getItem("ko_theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <style>
 /* مكتبة التمارين (صاحب المتجر 17 تشرين التاني 2026): بيانات Free Exercise DB المفتوحة، بهوية المتجر ووضع ليلي من ko_theme */
@@ -87,8 +86,8 @@ ol li{margin-bottom:5px}
 
 <script>
 (function(){
-  const DATA_URL = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
-  const IMG_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
+  const DATA_URL = "/exdb/exercises.json"; // عن طريق سيرفر المتجر (_worker.js) لأن raw.githubusercontent.com ممكن يكون محجوب عالموبايل
+  const IMG_BASE = "/exdb/img/";
   const PAGE = 24;
 
   // أسماء العضلات بالعربي
