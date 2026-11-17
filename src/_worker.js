@@ -4407,9 +4407,12 @@ async function ytCheck(env, id, exName) {
     } catch (e) { continue; }
     let t;
     try { t = await ask(u8); } catch (e) { return { err: String(e.message || e) }; }
-    seen++; ans.push(f + ":" + t.replace(/\s+/g, " ").slice(0, 40));
-    if (/A\s*[=:]\s*YES/i.test(t) || (/^\W*yes/i.test(t) && !/B\s*[=:]/i.test(t))) return { w: true, ans };
-    if (pos && /B\s*[=:]\s*YES/i.test(t) && /C\s*[=:]\s*YES/i.test(t)) ex.push(pos);
+    seen++; ans.push(f + ":" + t.replace(/\s+/g, " ").slice(0, 60));
+    // الذكاء أحياناً بيجاوب «A) YES, there is a woman…» بدل «A=YES»: منقبل أي صيغة، وأي ذكر لبنت = رفض
+    const yes = (L) => new RegExp("(^|[^a-z])" + L + "\\s*[=:)\\].\\-]*\\s*yes", "i").test(t);
+    const femWord = /\b(wom[ae]n|girls?|female|lady|ladies)\b/i.test(t) && !/\bno\b[^.]{0,25}\b(wom[ae]n|girls?|female|lady|ladies)\b/i.test(t);
+    if (yes("A") || femWord || (/^\W*yes/i.test(t) && !/\bB\b/i.test(t))) return { w: true, ans };
+    if (pos && yes("B") && yes("C")) ex.push(pos);
   }
   if (seen < 2) return { err: "frames" };
   return { w: false, ex, ans };
@@ -4431,7 +4434,7 @@ async function exYt(url, env) {
   if (!name || !env.STORE) return J({ none: 1 }, 60);
   const names = await exNames();
   if (names.size && !names.has(name.toLowerCase())) return J({ none: 1 }, 3600);
-  const k = "ytc:" + name.toLowerCase(); // ytb = أنيميشن بس + اسم التمرين بالعنوان (القديم yt:/yta: ما عاد ينقرا)
+  const k = "ytd:" + name.toLowerCase(); // ytb = أنيميشن بس + اسم التمرين بالعنوان (القديم yt:/yta: ما عاد ينقرا)
   const pick = (o) => ({ id: o.ids[0].id, d: o.ids[0].d, s: o.ids[0].s || 0, e: o.ids[0].e || 0 });
   let saved = await env.STORE.get(k, "json");
   if (url.searchParams.get("dbg") === "1") return J({ k, saved }, 0); // للفحص بس (ما فيه شي سري)
