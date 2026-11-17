@@ -4396,7 +4396,7 @@ async function ytCheck(env, id, exName) {
     }
     throw new Error(last || "ai");
   };
-  const ex = []; let seen = 0;
+  const ex = []; let seen = 0; const ans = [];
   const frames = [["hqdefault", 0], ["hq1", 0.25], ["hq2", 0.5], ["hq3", 0.75]];
   for (const [f, pos] of frames) {
     let u8;
@@ -4407,12 +4407,12 @@ async function ytCheck(env, id, exName) {
     } catch (e) { continue; }
     let t;
     try { t = await ask(u8); } catch (e) { return { err: String(e.message || e) }; }
-    seen++;
-    if (/A\s*[=:]\s*YES/i.test(t) || (/^\W*yes/i.test(t) && !/B\s*[=:]/i.test(t))) return { w: true };
+    seen++; ans.push(f + ":" + t.replace(/\s+/g, " ").slice(0, 40));
+    if (/A\s*[=:]\s*YES/i.test(t) || (/^\W*yes/i.test(t) && !/B\s*[=:]/i.test(t))) return { w: true, ans };
     if (pos && /B\s*[=:]\s*YES/i.test(t) && /C\s*[=:]\s*YES/i.test(t)) ex.push(pos);
   }
   if (seen < 2) return { err: "frames" };
-  return { w: false, ex };
+  return { w: false, ex, ans };
 }
 // من مواقع اللقطات يلي فيها تمرين، منحسب من وين نبلّش ولوين نوقّف (بلا مقدمة ولا كلام)
 function ytSeg(d, ex) {
@@ -4431,9 +4431,10 @@ async function exYt(url, env) {
   if (!name || !env.STORE) return J({ none: 1 }, 60);
   const names = await exNames();
   if (names.size && !names.has(name.toLowerCase())) return J({ none: 1 }, 3600);
-  const k = "ytb:" + name.toLowerCase(); // ytb = أنيميشن بس + اسم التمرين بالعنوان (القديم yt:/yta: ما عاد ينقرا)
+  const k = "ytc:" + name.toLowerCase(); // ytb = أنيميشن بس + اسم التمرين بالعنوان (القديم yt:/yta: ما عاد ينقرا)
   const pick = (o) => ({ id: o.ids[0].id, d: o.ids[0].d, s: o.ids[0].s || 0, e: o.ids[0].e || 0 });
   let saved = await env.STORE.get(k, "json");
+  if (url.searchParams.get("dbg") === "1") return J({ k, saved }, 0); // للفحص بس (ما فيه شي سري)
   if (saved && saved.id && !saved.ids) saved = { ids: [{ id: saved.id, d: saved.d }] }; // الشكل القديم
   if (saved && !saved.ids) saved.ids = [];
   const skip = new Set((saved && saved.skip) || []);
@@ -4490,6 +4491,7 @@ async function exYt(url, env) {
     checked++;
     if (r.err) { aiDown = r.err; break; }
     const seg = r.w ? null : ytSeg(c.d, r.ex);
+    saved.log = (saved.log || []).concat({ id: c.id, ok: !!seg, a: r.ans }).slice(-12); // للفحص: ليش انقبل أو انرفض
     if (seg) { c.ok = 1; c.v = 3; c.s = seg.s; c.e = seg.e; changed = true; break; }
     saved.ids.shift(); skip.add(c.id); saved.skip = [...skip].slice(-60); changed = true;
   }
