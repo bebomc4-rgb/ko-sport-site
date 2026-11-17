@@ -4355,6 +4355,25 @@ const koMain = {
     const url = new URL(request.url);
     const path = url.pathname;
     const m = request.method;
+    // مكتبة التمارين (صاحب المتجر 17 تشرين التاني 2026): بيانات وصور Free Exercise DB عن طريق دومين المتجر، لأن raw.githubusercontent.com ممكن يكون محجوب أو بطيء عالموبايل بسوريا.
+    // كلو بيتخزّن بسيرفر Cloudflare القريب، والـ JSON بينحذف منو الحقول يلي ما منحتاجها (أخف عالموبايل).
+    if (m === "GET" && path.indexOf("/exdb/") === 0) {
+      const rest = path.slice(6), isJson = rest === "exercises.json";
+      if (!isJson && !/^img\/[A-Za-z0-9_\-]+\/[01]\.jpg$/.test(rest)) return new Response("not found", { status: 404 });
+      const cache = typeof caches !== "undefined" ? caches.default : null;
+      const key = new Request("https://ko-sport.online/exdb/v1/" + rest);
+      let res = cache ? await cache.match(key) : null;
+      if (!res) {
+        const src = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/" + (isJson ? "dist/exercises.json" : "exercises/" + rest.slice(4));
+        const up = await fetch(src, { cf: { cacheTtl: 2592000, cacheEverything: true } });
+        if (!up.ok) return new Response("upstream " + up.status, { status: 502 });
+        let body = up.body;
+        if (isJson) body = JSON.stringify((await up.json()).map((x) => ({ name: x.name, level: x.level, equipment: x.equipment, primaryMuscles: x.primaryMuscles, secondaryMuscles: x.secondaryMuscles, instructions: x.instructions, images: x.images })));
+        res = new Response(body, { headers: { "content-type": isJson ? "application/json; charset=utf-8" : "image/jpeg", "cache-control": isJson ? "public, max-age=86400" : "public, max-age=2592000, immutable" } });
+        if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(key, res.clone()));
+      }
+      return res;
+    }
     if (m === "GET" && ctx && ctx.waitUntil && (path === "/sitemap.xml" || path === "/ar" || path === "/ar/")) ctx.waitUntil(indexNowAll(request, env, ctx, false).catch(() => {}));
     if (!migDone && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMigrations(env, request).catch(() => {}));
     if (migDone && !mig2Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig2(env).catch(() => {}));
