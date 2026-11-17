@@ -325,7 +325,7 @@ button.yt:disabled{opacity:.6;cursor:default}
     try { r = await (await fetch("/exdb/yt?n=" + encodeURIComponent(n))).json(); } catch (err) {}
     if (r.id) {
       const end = r.d > 20 ? "&end=20" : "";
-      media.insertAdjacentHTML("beforeend", `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(r.id)}?autoplay=1&mute=1&loop=1&playlist=${encodeURIComponent(r.id)}&controls=0&playsinline=1&rel=0&modestbranding=1${end}" title="${esc(n)}" allow="autoplay; encrypted-media; picture-in-picture" loading="lazy"></iframe>`);
+      media.insertAdjacentHTML("beforeend", `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(r.id)}?autoplay=1&mute=1&loop=1&playlist=${encodeURIComponent(r.id)}&controls=0&playsinline=1&rel=0&modestbranding=1${end}" title="${esc(n)}" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" loading="lazy"></iframe>`);
       b.remove();
     } else {
       b.disabled = false; b.lastChild.textContent = "شوف الفيديو";
