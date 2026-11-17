@@ -73,6 +73,11 @@ html[data-theme=dark]{--sk:#26262e;--mu:#3a3a45}
 .yt,.shop{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-size:.8rem;font-weight:700;border-radius:10px;padding:7px 11px}
 .yt{background:var(--btn);color:var(--btnfg)}
 .yt i{display:inline-block;width:0;height:0;border-style:solid;border-width:5px 0 5px 8px;border-color:transparent transparent transparent #e02424}
+button.yt{border:0;cursor:pointer;font-family:inherit}
+button.yt:disabled{opacity:.6;cursor:default}
+.media iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;z-index:3}
+.ytmsg{font-size:.75rem;color:var(--muted)}
+.ytmsg a{color:var(--gold2);font-weight:700}
 .shop{background:var(--goldbg);color:var(--gold2);border:1px solid var(--gold)}
 .credit{text-align:center;color:var(--muted);font-size:.72rem;margin-top:28px}
 .credit a{color:var(--gold2)}
@@ -270,7 +275,7 @@ html[data-theme=dark]{--sk:#26262e;--mu:#3a3a45}
         <div class="name">${esc(x.name)}</div>
         <div class="tags">${muscles}${sec}${eq}</div>
         <div class="acts">
-          <a class="yt" href="https://www.youtube.com/results?search_query=${encodeURIComponent(x.name + " exercise")}" target="_blank" rel="noopener"><i></i>شوف الفيديو على يوتيوب</a>
+          <button class="yt" type="button" data-n="${esc(x.name)}"><i></i>شوف الفيديو</button>
           ${EQUIP_SHOP[x.equipment] ? `<a class="shop" href="/#/search/${encodeURIComponent(EQUIP_SHOP[x.equipment])}" target="_top">🛒 ${EQUIP_AR[x.equipment]} من المتجر</a>` : ""}
         </div>
         ${steps ? `<details><summary>طريقة التمرين</summary><ol>${steps}</ol></details>` : ""}
@@ -308,6 +313,26 @@ html[data-theme=dark]{--sk:#26262e;--mu:#3a3a45}
     $("status").textContent = list.length ? `عدد التمارين: ${list.length}` : "ما في تمارين بهالاختيار";
     showMore();
   }
+
+  // فيديو يوتيوب قصير جوّا البطاقة: أول 20 ثانية بس، بيعيد لحالو بلا صوت متل الـ GIF
+  const ytSearch = n => "https://www.youtube.com/results?search_query=" + encodeURIComponent(n + " exercise");
+  $("grid").addEventListener("click", async e => {
+    const b = e.target.closest("button.yt"); if (!b) return;
+    const card = b.closest(".card"), media = card.querySelector(".media"), n = b.getAttribute("data-n");
+    const old = card.querySelector(".ytmsg"); if (old) old.remove();
+    b.disabled = true; b.lastChild.textContent = "عم يحمّل…";
+    let r = {};
+    try { r = await (await fetch("/exdb/yt?n=" + encodeURIComponent(n))).json(); } catch (err) {}
+    if (r.id) {
+      const end = r.d > 20 ? "&end=20" : "";
+      media.insertAdjacentHTML("beforeend", `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(r.id)}?autoplay=1&mute=1&loop=1&playlist=${encodeURIComponent(r.id)}&controls=0&playsinline=1&rel=0&modestbranding=1${end}" title="${esc(n)}" allow="autoplay; encrypted-media; picture-in-picture" loading="lazy"></iframe>`);
+      b.remove();
+    } else {
+      b.disabled = false; b.lastChild.textContent = "شوف الفيديو";
+      const msg = r.pending ? "الفيديو لسا عم يتجهّز لهالتمرين." : "ما لقينا فيديو قصير لهالتمرين.";
+      b.insertAdjacentHTML("afterend", `<span class="ytmsg">${msg} <a href="${ytSearch(n)}" target="_blank" rel="noopener">افتح يوتيوب</a></span>`);
+    }
+  });
 
   buildMap();
   $("more").onclick = showMore;

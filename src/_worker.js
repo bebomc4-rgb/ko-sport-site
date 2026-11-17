@@ -4342,6 +4342,66 @@ async function qdSync(env) {
   }
 }
 
+// مكتبة التمارين: فيديو يوتيوب قصير لكل تمرين (صاحب المتجر 17/11/2026: «مو ساعة، كم ثانية بيوضّح التمرين»).
+// بحث YouTube Data API بمفاتيح من Secret اسمو YT_KEYS (أكتر من مفتاح مفصولين بفاصلة) أو YOUTUBE_API_KEY.
+// كل مفتاح إلو 100 بحث باليوم، فالنتيجة بتنحفظ للأبد بـ KV (yt:<اسم التمرين>)، والاسم لازم يكون من قاعدة التمارين.
+// منختار فيديو قصير (تحت دقيقة إذا في) من أول النتايج، والصفحة بتعرض أول 20 ثانية بس وبتعيد بلا صوت.
+async function exNames() {
+  if (globalThis.__exNames) return globalThis.__exNames;
+  let arr = [];
+  try {
+    const cache = typeof caches !== "undefined" ? caches.default : null;
+    const hit = cache ? await cache.match(new Request("https://ko-sport.online/exdb/v1/exercises.json")) : null;
+    if (hit) arr = await hit.json();
+    else {
+      const up = await fetch("https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json", { cf: { cacheTtl: 2592000, cacheEverything: true } });
+      if (up.ok) arr = await up.json();
+    }
+  } catch (e) {}
+  const set = new Set(arr.map((x) => String(x.name || "").toLowerCase()));
+  if (set.size) globalThis.__exNames = set;
+  return set;
+}
+async function exYt(url, env) {
+  const J = (o, ttl) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=" + (ttl || 300) } });
+  const name = String(url.searchParams.get("n") || "").trim().slice(0, 140);
+  if (!name || !env.STORE) return J({ none: 1 }, 60);
+  const names = await exNames();
+  if (names.size && !names.has(name.toLowerCase())) return J({ none: 1 }, 3600);
+  const k = "yt:" + name.toLowerCase();
+  const saved = await env.STORE.get(k, "json");
+  if (saved) return J(saved, 86400);
+  const keys = String(env.YT_KEYS || env.YOUTUBE_API_KEY || "").split(/[,\s]+/).filter(Boolean);
+  if (!keys.length) return J({ pending: 1, why: "no-key" }, 300);
+  if (await env.STORE.get("yt:quota")) return J({ pending: 1, why: "quota" }, 600);
+  const dur = (s) => { const x = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(s || ""); return x ? (+x[1] || 0) * 3600 + (+x[2] || 0) * 60 + (+x[3] || 0) : 0; };
+  const start = Math.floor(Date.now() / 60000);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[(start + i) % keys.length];
+    const sr = await fetch("https://www.googleapis.com/youtube/v3/search?" + new URLSearchParams({ part: "id", type: "video", videoDuration: "short", videoEmbeddable: "true", safeSearch: "strict", maxResults: "10", q: name + " exercise how to", key }));
+    if (sr.status === 403 || sr.status === 429) continue; // المفتاح خلص حصتو اليوم، جرّب يلي بعدو
+    if (!sr.ok) return J({ pending: 1, why: "err" + sr.status }, 300);
+    const ids = ((await sr.json()).items || []).map((x) => x.id && x.id.videoId).filter(Boolean);
+    let best = null;
+    if (ids.length) {
+      const vr = await fetch("https://www.googleapis.com/youtube/v3/videos?" + new URLSearchParams({ part: "contentDetails,status", id: ids.join(","), key }));
+      if (vr.ok) {
+        const ok = ((await vr.json()).items || [])
+          .filter((v) => v.status && v.status.embeddable !== false && v.status.privacyStatus === "public")
+          .map((v) => ({ id: v.id, d: dur(v.contentDetails && v.contentDetails.duration), r: ids.indexOf(v.id) }))
+          .filter((v) => v.d >= 5);
+        ok.sort((a, b) => ((a.d <= 60 ? 0 : 1) - (b.d <= 60 ? 0 : 1)) || (a.r - b.r));
+        best = ok[0] || null;
+      }
+    }
+    const val = best ? { id: best.id, d: best.d } : { none: 1 };
+    await env.STORE.put(k, JSON.stringify(val), best ? {} : { expirationTtl: 14 * 86400 });
+    return J(val, 86400);
+  }
+  await env.STORE.put("yt:quota", "1", { expirationTtl: 3 * 3600 });
+  return J({ pending: 1, why: "quota" }, 600);
+}
+
 const koMain = {
   async fetch(request, rawEnv, ctx) {
     // Accept the KV binding whatever it was named (STORE, store, KV...).
@@ -4357,6 +4417,7 @@ const koMain = {
     const m = request.method;
     // مكتبة التمارين (صاحب المتجر 17 تشرين التاني 2026): بيانات وصور Free Exercise DB عن طريق دومين المتجر، لأن raw.githubusercontent.com ممكن يكون محجوب أو بطيء عالموبايل بسوريا.
     // كلو بيتخزّن بسيرفر Cloudflare القريب، والـ JSON بينحذف منو الحقول يلي ما منحتاجها (أخف عالموبايل).
+    if (m === "GET" && path === "/exdb/yt") return exYt(url, env);
     if (m === "GET" && path.indexOf("/exdb/") === 0) {
       const rest = path.slice(6), isJson = rest === "exercises.json";
       if (!isJson && !/^img\/[A-Za-z0-9_\-]+\/[01]\.jpg$/.test(rest)) return new Response("not found", { status: 404 });
