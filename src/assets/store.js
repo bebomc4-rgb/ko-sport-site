@@ -1925,6 +1925,15 @@
     const fr = app.querySelector(".pred-fr");
     window.onmessage = (e) => { if (e.origin === location.origin && e.data && e.data.koPredH && fr && fr.isConnected) fr.style.height = Math.max(400, +e.data.koPredH) + "px"; };
   }
+  // برامج التدريب (صاحب المتجر 17 تشرين التاني 2026): جوّا «حسابي»، والملفات بتنحمّل بس لما الزبون يفتح الصفحة (ما بتثقّل المتجر)
+  function trainPage() {
+    document.title = "برامج التدريب | " + (C.name || "");
+    app.innerHTML = '<div class="loading">جاري التحميل…</div>';
+    const go = () => { if (curRoute().indexOf("/train") === 0 && window.KOTrain) KOTrain.mount(app); };
+    if (!document.querySelector("link[data-train]")) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/assets/train.css?v=320"; l.dataset.train = ""; document.head.appendChild(l); }
+    if (window.KOTrain) return go();
+    const sc = document.createElement("script"); sc.src = "/assets/train.js?v=320"; sc.onload = go; sc.onerror = () => { app.innerHTML = '<div class="empty"><b>تعذّر تحميل البرامج، جرّب كمان مرة</b></div>'; }; document.head.appendChild(sc);
+  }
   function account() {
     const A = acct();
     if (!A) { authView(() => account(), "سجّل حساب أو ادخل على حسابك لتطلب وتتابع طلباتك.", "login"); return; }
@@ -1938,6 +1947,7 @@
         <span class="qd-cta"><span>افتح البوت</span><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </a>
 ${(C.predLive || (A.account && A.account.predOpen)) ? `<a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a>` : ""}
+<a class="acc-card acc-pred acc-train" href="#/train"><span class="apr-l"><b>🏋️ برامج التدريب</b><small>كالستنكس، كمال أجسام، قوة بدنية، ملاكمة ومصارعة — مع رسومات متحركة لكل تمرين</small></span><span class="apr-go">افتح ›</span></a>
       <section class="acc-card"><h2>طلباتي</h2><div data-myorders>${(myOrdOwner(), myOrdersHtml(myOrdCache))}</div></section>
       <section class="acc-card acc-links"><a href="#/cart">🛒 السلة</a><a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">💬 تواصل معنا على واتساب</a></section>`;
     app.onclick = (e) => {
@@ -2692,6 +2702,7 @@ ${trustH()}
     else if (a === "page") page(b || "");
     else if (a === "games" && gamesOn()) gamesPage();
     else if (a === "predict") predictPage();
+    else if (a === "train") trainPage();
     else if (a === "o" && b) orderPage(b);
     else home();
     finishRoute(hs, keepScroll, keepY, revisit);
