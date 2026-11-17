@@ -57,6 +57,23 @@ ol{direction:ltr;text-align:left;padding-left:20px;margin-top:8px;font-size:.82r
 ol li{margin-bottom:5px}
 .more{display:block;margin:22px auto 0;background:var(--btn);border:0;color:var(--btnfg);
   padding:11px 30px;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit}
+/* المجسّم (مرسوم خاص بالمتجر): قدّام وورا، كبسة عالعضلة بتفلتر التمارين */
+.bmap{display:flex;justify-content:center;gap:4px;margin:6px auto 2px;max-width:440px}
+.bmap figure{flex:1;text-align:center;max-width:210px}
+.bmap figcaption{font-size:.75rem;color:var(--muted);font-weight:700;margin-top:2px}
+.bmap svg{width:100%;height:auto;display:block;max-height:52vh}
+.bmap .sil{fill:var(--sk)}
+.bmap .mu{fill:var(--mu);stroke:var(--bg);stroke-width:1.2;cursor:pointer;transition:fill .15s}
+.bmap .mu:hover{fill:var(--gold)}
+.bmap .mu.on{fill:var(--gold2)}
+.bmap-hint{text-align:center;font-size:.85rem;font-weight:700;color:var(--gold2);min-height:1.4em;margin-bottom:4px}
+:root{--sk:#ebe6dc;--mu:#cfc6b5}
+html[data-theme=dark]{--sk:#26262e;--mu:#3a3a45}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.yt,.shop{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-size:.8rem;font-weight:700;border-radius:10px;padding:7px 11px}
+.yt{background:var(--btn);color:var(--btnfg)}
+.yt i{display:inline-block;width:0;height:0;border-style:solid;border-width:5px 0 5px 8px;border-color:transparent transparent transparent #e02424}
+.shop{background:var(--goldbg);color:var(--gold2);border:1px solid var(--gold)}
 .credit{text-align:center;color:var(--muted);font-size:.72rem;margin-top:28px}
 .credit a{color:var(--gold2)}
 </style>
@@ -66,9 +83,13 @@ ol li{margin-bottom:5px}
 <header>
   <span class="eyebrow">أكتر من 800 تمرين</span>
   <h1>مكتبة <span>التمارين</span></h1>
-  <p>اختار العضلة أو الأداة، وشوف الحركة الصحيحة لكل تمرين</p>
+  <p>اكبس على العضلة بالمجسّم أو اختار الأداة، وشوف الحركة الصحيحة لكل تمرين</p>
 </header>
   <input class="search" id="q" type="search" placeholder="ابحث باسم التمرين (بالإنكليزي)…">
+
+  <div class="sec-title">اكبس على العضلة بالمجسّم</div>
+  <div class="bmap" id="bmap"></div>
+  <div class="bmap-hint" id="bhint">اكبس على أي عضلة لتشوف تمريناتها</div>
 
   <div class="sec-title">العضلة</div>
   <div class="chips" id="groups"></div>
@@ -115,6 +136,71 @@ ol li{margin-bottom:5px}
     "cable":"كابلات","machine":"جهاز","bands":"حبال مقاومة","medicine ball":"كرة طبية",
     "exercise ball":"كرة سويسرية","e-z curl bar":"بار زد","foam roll":"رول مساج","other":"أدوات أخرى"
   };
+  // كلمة البحث بالمتجر لكل أداة (زر «جيبها من المتجر»)
+  const EQUIP_SHOP = {"dumbbell":"دمبل","barbell":"بار","kettlebells":"كيتل","bands":"مطاط","medicine ball":"كرة طبية",
+    "exercise ball":"كرة","e-z curl bar":"بار","foam roll":"رول","cable":"حبل"};
+
+  // ===== المجسّم: رسمة خاصة بالمتجر (نص يمين وبينعكس للشمال) =====
+  const MIR = 'transform="translate(200 0) scale(-1 1)"';
+  const SIL = '<ellipse cx="100" cy="27" rx="16" ry="20"/>' + ['M100 44 L108 44 L110 60 Q128 63 140 67 Q157 70 161 88 Q166 118 164 150 Q170 180 168 212 Q171 228 165 236 Q157 239 154 228 L151 214 Q145 182 146 154 Q141 128 142 108 Q140 158 137 206 Q143 250 136 300 Q133 322 132 336 Q136 370 129 404 L133 420 Q122 425 110 422 Q110 410 112 404 Q104 370 108 336 Q102 300 101 262 L100 262 Z']
+    .map(d => `<path d="${d}"/><path d="${d}" ${MIR}/>`).join("");
+  const SHOULDER = 'M131 67 Q149 65 155 80 Q158 95 150 104 Q143 91 133 83 Q129 74 131 67 Z';
+  const FOREARM = 'M152 153 Q163 160 165 180 Q165 198 160 212 L152 213 Q148 190 148 170 Z';
+  const NECK = 'M93 46 L107 46 L109 62 L91 62 Z';
+  const BODY = {
+    front: [
+      ["neck", NECK, 0], ["traps", "M109 58 Q120 62 131 67 L110 68 Z"], ["shoulders", SHOULDER],
+      ["chest", "M102 71 L131 69 Q144 84 140 106 Q122 116 102 110 Z"],
+      ["biceps", "M145 106 Q157 108 159 124 Q159 141 152 149 Q144 139 144 121 Z"], ["forearms", FOREARM],
+      ["abdominals", "M87 114 L113 114 Q116 158 112 196 L88 196 Q84 158 87 114 Z", 0],
+      ["abdominals", "M116 116 Q131 120 134 150 Q132 180 117 196 Q120 158 116 116 Z"],
+      ["abductors", "M133 208 Q143 220 141 250 L135 252 Q135 230 129 213 Z"],
+      ["quadriceps", "M104 214 Q129 209 135 236 Q139 280 127 320 L110 320 Q102 270 104 214 Z"],
+      ["adductors", "M101 215 L110 217 Q108 250 106 282 L101 282 Z"],
+      ["calves", "M112 336 Q127 334 129 360 Q129 388 121 402 L114 402 Q108 368 112 336 Z"]
+    ],
+    back: [
+      ["neck", NECK, 0], ["traps", "M100 50 L113 60 L133 69 L114 80 L100 122 L86 80 L67 69 L87 60 Z", 0], ["shoulders", SHOULDER],
+      ["triceps", "M145 104 Q159 110 159 128 Q157 145 150 149 Q142 135 144 116 Z"], ["forearms", FOREARM],
+      ["lats", "M114 84 Q134 83 140 104 Q136 140 116 172 Q108 140 110 102 Z"],
+      ["middle back", "M102 122 L111 98 Q114 128 108 156 L102 156 Z"],
+      ["lower back", "M101 160 L110 160 Q114 178 112 198 L101 200 Z"],
+      ["glutes", "M101 206 Q129 202 137 224 Q139 248 120 256 Q104 254 101 240 Z"],
+      ["hamstrings", "M104 260 Q125 258 133 276 Q137 300 127 322 L110 322 Q102 290 104 260 Z"],
+      ["calves", "M112 332 Q131 336 131 360 Q129 384 121 398 L114 398 Q106 366 112 332 Z"]
+    ]
+  };
+  function buildMap(){
+    const out = [["front","قدّام"],["back","ورا"]].map(([v, label]) => {
+      const mus = BODY[v].map(([m, d, mirror]) => {
+        const t = `<title>${MUSCLE_AR[m]||m}</title>`;
+        return `<path class="mu" data-m="${m}" d="${d}">${t}</path>` + (mirror === 0 ? "" : `<path class="mu" data-m="${m}" d="${d}" ${MIR}>${t}</path>`);
+      }).join("");
+      return `<figure><svg viewBox="0 0 200 430" role="img" aria-label="مجسّم العضلات - ${label}"><g class="sil">${SIL}</g>${mus}</svg><figcaption>${label}</figcaption></figure>`;
+    }).join("");
+    const box = $("bmap");
+    box.innerHTML = out;
+    box.addEventListener("click", e => {
+      const p = e.target.closest(".mu"); if (!p) return;
+      const m = p.getAttribute("data-m");
+      const grp = GROUPS.find(g => g.m.includes(m));
+      state.group = grp ? grp.key : "all";
+      state.muscle = grp && grp.m.length > 1 ? m : null;
+      update();
+      $("status").scrollIntoView({behavior:"smooth", block:"start"});
+    });
+    box.addEventListener("mouseover", e => {
+      const p = e.target.closest(".mu"); if (p) $("bhint").textContent = MUSCLE_AR[p.getAttribute("data-m")] || "";
+    });
+    box.addEventListener("mouseleave", paintMap);
+  }
+  function paintMap(){
+    const grp = GROUPS.find(x => x.key===state.group);
+    const sel = state.muscle ? [state.muscle] : (grp ? grp.m : []);
+    document.querySelectorAll("#bmap .mu").forEach(p => p.classList.toggle("on", sel.includes(p.getAttribute("data-m"))));
+    $("bhint").textContent = sel.length ? "تمارين: " + (state.muscle ? (MUSCLE_AR[state.muscle]||state.muscle) : grp.ar) : "اكبس على أي عضلة لتشوف تمريناتها";
+  }
+
   const LEVEL_AR = {"beginner":"مبتدئ","intermediate":"متوسط","expert":"محترف"};
 
   const $ = id => document.getElementById(id);
@@ -183,6 +269,10 @@ ol li{margin-bottom:5px}
       <div class="body">
         <div class="name">${esc(x.name)}</div>
         <div class="tags">${muscles}${sec}${eq}</div>
+        <div class="acts">
+          <a class="yt" href="https://www.youtube.com/results?search_query=${encodeURIComponent(x.name + " exercise")}" target="_blank" rel="noopener"><i></i>شوف الفيديو على يوتيوب</a>
+          ${EQUIP_SHOP[x.equipment] ? `<a class="shop" href="/#/search/${encodeURIComponent(EQUIP_SHOP[x.equipment])}" target="_top">🛒 ${EQUIP_AR[x.equipment]} من المتجر</a>` : ""}
+        </div>
         ${steps ? `<details><summary>طريقة التمرين</summary><ol>${steps}</ol></details>` : ""}
       </div>`;
     return el;
@@ -211,6 +301,7 @@ ol li{margin-bottom:5px}
 
   function update(){
     renderFilters();
+    paintMap();
     filter();
     if (io) io.disconnect();
     $("grid").innerHTML = ""; shown = 0;
@@ -218,6 +309,7 @@ ol li{margin-bottom:5px}
     showMore();
   }
 
+  buildMap();
   $("more").onclick = showMore;
   let t; $("q").oninput = e => { clearTimeout(t); t = setTimeout(() => { state.q = e.target.value; update(); }, 250); };
 
