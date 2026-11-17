@@ -1934,7 +1934,7 @@
   function exl() { return `<a class="acc-card acc-pred acc-train" href="#/exercises"><span class="apr-l"><b>📚 مكتبة التمارين</b><small>أكتر من 800 تمرين: اختار العضلة أو الأداة وشوف الحركة الصحيحة</small></span><span class="apr-go">افتح ›</span></a>`; }
   function exercisesPage() {
     document.title = "مكتبة التمارين | " + (C.name || "");
-    app.innerHTML = `<iframe class="wk-fr" src="/exercises.html?v=334" title="مكتبة التمارين" loading="eager"></iframe>`;
+    app.innerHTML = `<iframe class="wk-fr" src="/exercises.html?v=335" title="مكتبة التمارين" loading="eager"></iframe>`;
   }
   // برامج التدريب (صاحب المتجر 17 تشرين التاني 2026): جوّا «حسابي»، والملفات بتنحمّل بس لما الزبون يفتح الصفحة (ما بتثقّل المتجر)
   function trainPage() {
