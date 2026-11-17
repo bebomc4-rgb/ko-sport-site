@@ -179,8 +179,7 @@
         <button id="voiceBtn">🔇 الصوت</button>
         <button id="camOff">✕ سكّر الكاميرا</button>
       </div>
-      <button class="cam-btn" id="recBtn2" style="display:block;background:var(--card2);border:1px solid var(--line)">🎥 أو صوّر فيديو / اختار فيديو وحلّلو</button>
-      <input type="file" id="recIn" accept="video/*" capture="user" hidden>
+      <label class="cam-btn" for="recIn" style="display:block;text-align:center;background:var(--card2);border:1px solid var(--line)">🎥 أو صوّر فيديو / اختار فيديو وحلّلو</label>
     </div>
     <div class="t-main">
     <div class="phase" id="phase">استعد</div>
@@ -204,6 +203,7 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<input type="file" id="recIn" accept="video/*" capture="user" style="position:fixed;left:0;top:0;width:1px;height:1px;opacity:0">
 
 <script>
 /* ============================================================
@@ -810,10 +810,10 @@ async function startCamera(){
       const framed = window.top !== window;
       $("#camLoading").innerHTML = `<div>📱 الكاميرا المباشرة ما فتحت هون.<br>
         ${framed ? `<button class="cam-btn" id="toFull" style="display:block;margin-top:12px">📷 افتح صفحة الكاميرا الكاملة</button>` : ""}
-        <button class="cam-btn" id="toRec" style="display:block;margin-top:10px;background:linear-gradient(135deg,#ff2d46,#ff8a00)">🎥 صوّر تمرينك فيديو وخلّينا نحلّلو</button>
-        <small style="display:block;margin-top:10px;color:#8b90a0">بتصوّر حالك بكاميرا الموبايل، وبنعدّلك الضربات والتكرارات ومنقلّك شو الصح وشو الغلط.</small></div>`;
+        <label class="cam-btn" for="recIn" style="display:block;margin-top:10px;background:linear-gradient(135deg,#ff2d46,#ff8a00)">🎥 صوّر تمرينك فيديو وخلّينا نحلّلو</label>
+        <small style="display:block;margin-top:10px;color:#8b90a0">بتصوّر حالك بكاميرا الموبايل، وبنعدّلك الضربات والتكرارات ومنقلّك شو الصح وشو الغلط.</small>
+        <small style="display:block;margin-top:6px;color:#555a68;direction:ltr">${(err && err.name) || "?"}${navigator.mediaDevices ? "" : " · no-mediaDevices"}</small></div>`;
       if(framed) $("#toFull").onclick = openFullPage;
-      $("#toRec").onclick = () => $("#recIn").click();
       return;
     }
     $("#camLoading").textContent = err.name==="NotAllowedError"
@@ -899,7 +899,6 @@ function drawSkeleton(ctx, lm, W, H){
 }
 
 $("#camBtn").onclick = startCamera;
-$("#recBtn2").onclick = () => $("#recIn").click();
 $("#recIn").onchange = e => { analyzeFile(e.target.files[0]); e.target.value = ""; };
 $("#camOff").onclick = stopCamera;
 $("#voiceBtn").onclick = () => { Coach.voice = !Coach.voice; $("#voiceBtn").textContent = Coach.voice ? "🔊 الصوت" : "🔇 الصوت"; };
