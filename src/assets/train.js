@@ -1,6 +1,6 @@
 /* KO SPORT — برامج التدريب (حسابي ← برامج تدريب)
  * صاحب المتجر (17 تشرين التاني 2026): «حطلي بقسم حسابي برامج تدريب مع رسومات توضيحية متحركة للكالستنكس وكمال الأجسام والقوة البدنية والملاكمة والمصارعة».
- * الرسومات: مجسّم بسيط بلون المتجر (SVG) بيتحرك بين وضعيات (زوايا مفاصل)، مرسوم بالكود هون، بلا صور من برّا.
+ * الرسومات: شخصية 3D بعضلات مبنية ومحرّكة بالكود هون (canvas)، بين وضعيات (زوايا مفاصل)، بلا صور من برّا.
  * التقدّم (شو خلّص الزبون) بينحفظ عالجهاز بس (localStorage: ko_train).
  */
 (function () {
@@ -180,102 +180,130 @@
   ];
 
   // ---------- الرسم ----------
-  const NS = "http://www.w3.org/2000/svg";
-  // المجسّم (صاحب المتجر 17 تشرين التاني 2026: «بدي ياه يشبه الإنسان، أصلع، ولحية طويلة، وعضلات»):
-  // رياضي بلون بشرة، أطرافو معضّلة (عرض بيتغيّر مع بطن العضلة)، صدر وبطن مرسومين، شورت أسود، راس أصلع ولحية طويلة. الطرف البعيد أغمق (عمق).
-  const LIMBS = [["n", "e2", 6.4, 4.9, 1.7, 1], ["e2", "w2", 4.9, 3.3, 1, 1], ["p", "k2", 8.8, 5.8, 1.6, 1], ["k2", "f2", 5.7, 3.4, 1.6, 1], ["p", "k1", 9, 6, 1.7, 0], ["k1", "f1", 5.9, 3.5, 1.7, 0], ["n", "e1", 6.8, 5.1, 1.9, 0], ["e1", "w1", 5.1, 3.4, 1.1, 0]];
-  for (const k of ["jab", "cross", "upper", "combo"]) EX[k].glv = true;
-  EX.bench.sup = EX.bridge.sup = true; // منسدح على ضهرو: الصدر والوجّ لفوق
+  // صاحب المتجر (17 تشرين التاني 2026): «بدي شخصية إنسان كاملة بعضلات، إنت تحرّكها حسب التمرين، مو صورتين بيتبدّلوا».
+  // شخصية 3D مبنية بالكود فوق الهيكل العظمي (المفاصل من fk): كل عضلة مجسّم بيضاوي (صدر، بطن، دالية، بايسبس، ترايسبس، فخد، بطة…)،
+  // راس أصلع ولحية طويلة وشورت. الرسم بمحرّك صغير منّا (canvas، z-buffer وإضاءة)، بلا مكتبات وبلا صور من برّا.
+  // العضلات يلي عم تشتغل بالتمرين بتتلوّن أحمر (TGT).
   function frame(ex, u) {
-    const ps = ex.poses, n = ps.length, x = u * n, i = Math.floor(x) % n, f = x - Math.floor(x), e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2; // سهولة بالدخول والخروج
+    const ps = ex.poses, n = ps.length, x = u * n, i = Math.floor(x) % n, f = x - Math.floor(x), e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
     return place(fk(mix(ps[i], ps[(i + 1) % n], ex.hold ? e : Math.min(1, e * (ex.fast ? 1.25 : 1)))), ex);
   }
-  function svgOf(ex, big) {
-    const s = document.createElementNS(NS, "svg"); s.setAttribute("viewBox", "0 0 120 100"); s.setAttribute("class", "tr-fig" + (big ? " big" : "")); s.setAttribute("aria-hidden", "true");
-    let h = `<line x1="4" y1="${GY + 1.5}" x2="116" y2="${GY + 1.5}" class="tr-gnd"/>`;
-    if (ex.prop === "bar") h += `<line x1="32" y1="9" x2="88" y2="9" class="tr-prop" stroke-width="2.4"/><line x1="34" y1="9" x2="34" y2="1" class="tr-prop"/><line x1="86" y1="9" x2="86" y2="1" class="tr-prop"/>`;
-    if (ex.prop === "dip") h += `<line x1="50" y1="53" x2="76" y2="53" class="tr-prop" stroke-width="2.4"/><line x1="72" y1="53" x2="72" y2="${GY}" class="tr-prop"/><line x1="54" y1="53" x2="54" y2="${GY}" class="tr-prop"/>`;
-    if (ex.prop === "bench") h += `<rect x="28" y="69.5" width="64" height="4" rx="1.5" class="tr-propf"/><line x1="34" y1="73" x2="34" y2="${GY}" class="tr-prop"/><line x1="86" y1="73" x2="86" y2="${GY}" class="tr-prop"/>`;
-    if (ex.prop === "bag") h += `<line x1="103" y1="0" x2="103" y2="14" class="tr-prop"/><rect x="96" y="14" width="14" height="44" rx="6" class="tr-bag"/>`;
-    const lb = (i) => `<g class="lb${LIMBS[i][5] ? " far" : ""}" data-l="${i}"><path class="b"/><path class="sd"/><path class="hl"/></g>`, gl = ex.glv ? " glv" : "", hr = ex.glv ? 3.7 : 2.8;
-    h += `<g class="tr-body">${lb(0)}${lb(1)}<circle class="hd far${gl}" data-j="w2" r="${hr}"/>${lb(2)}<line class="st far" data-s="2"/>${lb(3)}<line class="ft far" data-f="2"/>`
-      + `<path class="nk"/><path class="to"/><path class="pec"/><path class="abs"/><path class="sht"/>`
-      + `${lb(4)}<line class="st" data-s="1"/>${lb(5)}<line class="ft" data-f="1"/>`
-      + `<circle class="hd0" r="6.3"/><path class="ear"/><path class="brd"/><path class="brw"/><circle class="eye" r=".75"/><path class="nose"/>`
-      + `${lb(6)}${lb(7)}<circle class="hd${gl}" data-j="w1" r="${hr + .1}"/></g>`;
-    if (ex.plate) h += `<circle class="tr-plate" r="${ex.plateR || 9}"/>`;
-    if (ex.db) h += `<g class="tr-db"><rect width="9" height="3.4" rx="1" x="-4.5" y="-1.7"/><rect width="2.6" height="6.4" rx=".8" x="-5.6" y="-3.2"/><rect width="2.6" height="6.4" rx=".8" x="3" y="-3.2"/></g>`;
-    if (ex.prop === "rope") h += `<path class="tr-rope"/>`;
-    s.innerHTML = h; s.__ex = ex; draw(s, 0); return s;
-  }
-  const f1 = (x) => x.toFixed(1), setL = (l, A, B) => { l.setAttribute("x1", f1(A[0])); l.setAttribute("y1", f1(A[1])); l.setAttribute("x2", f1(B[0])); l.setAttribute("y2", f1(B[1])); };
-  const pp = (q) => f1(q[0]) + " " + f1(q[1]);
-  function draw(s, u) {
-    const ex = s.__ex, J = frame(ex, u), B = s.querySelector(".tr-body"), sg = ex.sup ? -1 : 1;
-    for (const g of B.querySelectorAll(".lb")) {
-      const [a, b, wa, wb, bg] = LIMBS[+g.dataset.l], A = J[a], C = J[b], dx = C[0] - A[0], dy = C[1] - A[1], ln = Math.hypot(dx, dy) || 1;
-      let nx = -dy / ln, ny = dx / ln; if (ny > 0 || (ny === 0 && nx > 0)) { nx = -nx; ny = -ny; } // n = الجهة الفوقانية (الضو من فوق)
-      const M = [A[0] + dx * .38, A[1] + dy * .38], hw = (wa + wb) / 4 + bg, o = (q, k) => [q[0] + nx * k, q[1] + ny * k], ra = wa / 2, rb = wb / 2, [pb, sd, hl] = g.children;
-      // بطن العضلة أقرب للمفصل الفوقاني، والأطراف مدوّرة عند المفاصل
-      pb.setAttribute("d", `M${pp(o(A, ra))} Q${pp(o(M, hw + .6))} ${pp(o(C, rb))} Q${pp([C[0] + dx / ln * rb * 1.7, C[1] + dy / ln * rb * 1.7])} ${pp(o(C, -rb))} Q${pp(o(M, -hw))} ${pp(o(A, -ra))} Q${pp([A[0] - dx / ln * ra * 1.7, A[1] - dy / ln * ra * 1.7])} ${pp(o(A, ra))}Z`);
-      sd.setAttribute("d", `M${pp(o(A, -ra * .55))} Q${pp(o(M, -hw * .8))} ${pp(o(C, -rb * .55))}`);
-      hl.setAttribute("d", `M${pp(o([A[0] + dx * .12, A[1] + dy * .12], ra * .45))} Q${pp(o(M, hw * .75))} ${pp(o([C[0] - dx * .25, C[1] - dy * .25], rb * .4))}`);
+  for (const k in EX) EX[k].key = k;
+  for (const k of ["jab", "cross", "upper", "combo"]) EX[k].glv = true;
+  EX.bench.sup = EX.bridge.sup = true; // منسدح على ضهرو: الصدر والوجّ لفوق
+  EX.bsquat.plateOff = [-3.5, 1.5];
+  const TGT = { pushup: ["chest", "triceps", "delts"], pullup: ["lats", "biceps", "back"], dips: ["triceps", "chest", "delts"], squat: ["quads", "glutes"], plank: ["abs"], lunge: ["quads", "glutes", "hams"], kneeraise: ["abs"], climber: ["abs", "quads"],
+    bench: ["chest", "triceps", "delts"], curl: ["biceps", "forearms"], ohp: ["delts", "triceps"], row: ["lats", "back", "biceps"], triceps: ["triceps"], bsquat: ["quads", "glutes", "hams"], deadlift: ["hams", "lowback", "glutes", "traps"], press: ["delts", "triceps", "traps"],
+    swing: ["glutes", "hams", "lowback"], farmer: ["forearms", "traps"], jab: ["delts", "triceps"], cross: ["delts", "chest", "abs"], upper: ["delts", "biceps", "abs"], combo: ["delts", "chest", "abs"], rope: ["calves"], sprawl: ["abs", "quads", "delts"], shot: ["quads", "glutes"], bridge: ["glutes", "hams", "lowback"], jsquat: ["quads", "calves", "glutes"] };
+  const SKIN = [.84, .6, .44], RED = [.9, .2, .15], BLK = [.1, .1, .12], BRD = [.15, .1, .07], GRY = [.6, .62, .66], DRK = [.2, .2, .23], BAG = [.72, .1, .13], EYE = [.05, .04, .04], GLV = [.82, .08, .1], GLT = [.5, .09, .09];
+  const IX = [1, 0, 0], IY = [0, 1, 0], IZ = [0, 0, 1];
+  function build(ex, J) {
+    const P = [], T = TGT[ex.key] || [], c = (t) => (T.includes(t) ? RED : SKIN), sg = ex.sup ? -1 : 1, q = (p, z) => [p[0], -p[1], z];
+    const B = (A, C, tor) => { const dx = C[0] - A[0], dy = C[1] - A[1], L = Math.hypot(dx, dy) || 1, Y = [dx / L, dy / L, 0]; return { o: A, Y, X: tor ? [Y[1] * tor, -Y[0] * tor, 0] : [-Y[1], Y[0], 0], L }; };
+    const put = (b, fx, t, wz, rx, ry, rz, col, sp) => P.push({ c: [b.o[0] + b.X[0] * fx + b.Y[0] * t * b.L, b.o[1] + b.X[1] * fx + b.Y[1] * t * b.L, b.o[2] + wz], ax: b.X, ay: b.Y, az: IZ, r: [rx, ry, rz], col, sp: sp ?? .16 });
+    const raw = (cx, cy, cz, ax, ay, az, r, col, cyl) => P.push({ c: [cx, cy, cz], ax, ay, az, r, col, cyl, sp: .3 });
+    // ظل عالأرض
+    { const xs = [J.h, J.p, J.f1, J.f2, J.w1].map((p) => p[0]), x0 = Math.min(...xs), x1 = Math.max(...xs); P.push({ c: [(x0 + x1) / 2, -(GY + 1.6), 0], ax: IX, ay: IY, az: IZ, r: [(x1 - x0) / 2 + 9, .5, 12], shadow: 1 }); }
+    // الجذع
+    const tb = B(q(J.p, 0), q(J.n, 0), sg);
+    put(tb, 0, .03, 0, 5, 5.4, 7.4, BLK, .05);
+    put(tb, .2, .33, 0, 4.3, 7, 6, SKIN); put(tb, 0, .68, 0, 5.4, 7.6, 8, SKIN);
+    for (const s of [1, -1]) {
+      put(tb, -3.2, -.03, s * 3.2, 3.6, 4.2, 3.7, T.includes("glutes") ? GLT : BLK, .05);
+      for (const t of [.2, .32, .44]) put(tb, 3.9, t, s * 1.75, 1.5, 1.75, 1.75, c("abs"));
+      put(tb, 1, .3, s * 5.3, 2.8, 4.6, 1.8, c("abs")); put(tb, 4.3, .76, s * 3.7, 2.9, 3.5, 3.9, c("chest"));
+      put(tb, -2.2, .56, s * 6.7, 3.3, 6.8, 3.2, c("lats")); put(tb, -4.4, .76, s * 2.7, 2.4, 5, 3, c("back"));
+      put(tb, -3.7, .3, s * 1.7, 1.9, 4.4, 1.8, c("lowback")); put(tb, -1.4, .97, s * 3.4, 2.9, 2.5, 3.8, c("traps"));
     }
-    for (const c of B.querySelectorAll("[data-j]")) { const q = J[c.dataset.j]; c.setAttribute("cx", f1(q[0])); c.setAttribute("cy", f1(q[1])); }
-    for (const st of B.querySelectorAll(".st")) { const K = J["k" + st.dataset.s]; setL(st, J.p, [J.p[0] + (K[0] - J.p[0]) * .5, J.p[1] + (K[1] - J.p[1]) * .5]); } // الشورت
-    for (const ft of B.querySelectorAll(".ft")) { const i = ft.dataset.f, K = J["k" + i], F = J["f" + i], dx = F[0] - K[0], dy = F[1] - K[1], ln = Math.hypot(dx, dy) || 1; let fx = -dy / ln, fy = dx / ln; if (fx < 0) { fx = -fx; fy = -fy; } setL(ft, [F[0] - fx * 1.2, F[1] - fy * 1.2], [F[0] + fx * 6.4, F[1] + fy * 6.4]); }
-    // الجذع (منظر جانبي): صدر نافر لقدّام، ضهر عريض، خصر رفيع
-    { const P0 = J.p, N0 = J.n, dx = N0[0] - P0[0], dy = N0[1] - P0[1], ln = Math.hypot(dx, dy) || 1, ux = dx / ln, uy = dy / ln, fx = -uy * sg, fy = ux * sg;
-      const pt = (b2, al, sd2) => [b2[0] + ux * al + fx * sd2, b2[1] + uy * al + fy * sd2];
-      B.querySelector(".to").setAttribute("d", `M${pp(pt(P0, -1, 4.6))} Q${pp(pt(P0, 6, 3.2))} ${pp(pt(P0, 12, 4.4))} Q${pp(pt(N0, -8, 9))} ${pp(pt(N0, -1, 4.8))} Q${pp(pt(N0, 2.6, 0))} ${pp(pt(N0, -1, -5))} Q${pp(pt(N0, -9, -7.4))} ${pp(pt(P0, 7, -3.9))} L${pp(pt(P0, -1, -4.4))}Z`);
-      B.querySelector(".pec").setAttribute("d", `M${pp(pt(N0, -9.2, 6.3))} Q${pp(pt(N0, -11, 4))} ${pp(pt(N0, -9.6, 1.2))}`);
-      B.querySelector(".abs").setAttribute("d", `M${pp(pt(P0, 11.6, 3.9))} L${pp(pt(P0, 11.2, 1))} M${pp(pt(P0, 8.4, 3.5))} L${pp(pt(P0, 8.1, .8))} M${pp(pt(P0, 5.3, 3.3))} L${pp(pt(P0, 5.1, .8))}`);
-      B.querySelector(".sht").setAttribute("d", `M${pp(pt(P0, 3.4, 4.2))} L${pp(pt(P0, 3.2, -4.3))} L${pp(pt(P0, -4.2, -4.8))} L${pp(pt(P0, -4.4, 5))}Z`);
-      const d2x = J.h[0] - N0[0], d2y = J.h[1] - N0[1], l2 = Math.hypot(d2x, d2y) || 1, ex2 = -d2y / l2, ey2 = d2x / l2, nk = (q, k) => [q[0] + ex2 * k, q[1] + ey2 * k];
-      B.querySelector(".nk").setAttribute("d", `M${pp(nk(N0, 3.4))} L${pp(nk(J.h, 2.6))} L${pp(nk(J.h, -2.6))} L${pp(nk(N0, -3.6))}Z`); }
-    // الراس: أصلع، أدن، عين وحاجب، أنف، ولحية طويلة نازلة عالصدر
-    { const H = J.h, dx = H[0] - J.n[0], dy = H[1] - J.n[1], ln = Math.hypot(dx, dy) || 1, ux = dx / ln, uy = dy / ln, fx = -uy * sg, fy = ux * sg, hp = (al, sd2) => [H[0] + ux * al + fx * sd2, H[1] + uy * al + fy * sd2];
-      const hd = B.querySelector(".hd0"); hd.setAttribute("cx", f1(H[0])); hd.setAttribute("cy", f1(H[1]));
-      B.querySelector(".brd").setAttribute("d", `M${pp(hp(-1, 6))} Q${pp(hp(-9, 9))} ${pp(hp(-16.5, 4))} Q${pp(hp(-11, -.5))} ${pp(hp(-5.4, -3.4))} L${pp(hp(-.6, -3.2))} Q${pp(hp(-3.6, 1.6))} ${pp(hp(-1, 6))}Z`);
-      B.querySelector(".ear").setAttribute("d", `M${pp(hp(1.2, -1.6))} Q${pp(hp(.4, -3.4))} ${pp(hp(-1.4, -1.8))}`);
-      B.querySelector(".brw").setAttribute("d", `M${pp(hp(2.5, 2.6))} L${pp(hp(2.1, 5.2))}`);
-      const ey = hp(1, 4.1), e = B.querySelector(".eye"); e.setAttribute("cx", f1(ey[0])); e.setAttribute("cy", f1(ey[1]));
-      B.querySelector(".nose").setAttribute("d", `M${pp(hp(.9, 6))} L${pp(hp(-.7, 7.7))} L${pp(hp(-1.3, 5.9))}Z`); }
-    const pl = s.querySelector(".tr-plate"); if (pl) { const q = J[ex.plate], o = ex.plateOff || [0, 0]; pl.setAttribute("cx", (q[0] + o[0]).toFixed(1)); pl.setAttribute("cy", (q[1] + o[1]).toFixed(1)); }
-    const db = s.querySelector(".tr-db"); if (db) db.setAttribute("transform", `translate(${J.w1[0].toFixed(1)} ${J.w1[1].toFixed(1)})`);
-    const rp = s.querySelector(".tr-rope"); if (rp) { const ang = u * Math.PI * 2 * ex.poses.length, cy = 50 - Math.cos(ang) * 46, cx = 60 + Math.sin(ang) * 14; rp.setAttribute("d", `M${J.w1[0].toFixed(1)} ${J.w1[1].toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${J.w2[0].toFixed(1)} ${J.w2[1].toFixed(1)}`); }
+    // الرقبة والراس (أصلع، لحية طويلة)
+    const nb = B(q(J.n, 0), q(J.h, 0), sg), hb = { o: q(J.h, 0), X: nb.X, Y: nb.Y, L: 1 };
+    put(nb, 0, .35, 0, 2.7, 5, 2.8, SKIN);
+    put(hb, 0, .6, 0, 5.7, 6.1, 5.2, SKIN, .3); put(hb, 1.4, -2.2, 0, 4.2, 3.8, 4.2, SKIN); put(hb, 5.7, -.3, 0, 1.3, 1.5, 1, SKIN);
+    put(hb, 3.6, -4.6, 0, 3.5, 3.4, 4.3, BRD, .05); put(hb, 5, -9.6, 0, 2.5, 6.4, 3, BRD, .05); put(hb, 5.6, -2.3, 0, 1.1, .8, 2.5, BRD, .05);
+    for (const s of [1, -1]) { put(hb, -.6, -.2, s * 5.1, 1.1, 1.8, .7, SKIN); put(hb, 5, 1, s * 2.1, .75, .6, .9, EYE, .5); put(hb, 5.2, 2.2, s * 2.2, .8, .5, 1.7, BRD, .05); put(hb, 1.4, -2.8, s * 3.6, 2.8, 3.2, 1.5, BRD, .05); }
+    // الإيدين والرجلين
+    const W3 = {};
+    for (const s of [1, -1]) {
+      const i = s > 0 ? 1 : 2, z = s * 9.8, Sh = [tb.o[0] + tb.Y[0] * (tb.L - 1.5), tb.o[1] + tb.Y[1] * (tb.L - 1.5), z], E = q(J["e" + i], z), Wr = q(J["w" + i], z);
+      const ub = B(Sh, E), fb = B(E, Wr); W3[i] = { p: Wr, b: fb };
+      put(ub, .2, .1, s * .8, 3.6, 4.3, 3.5, c("delts")); put(ub, 0, .52, 0, 2.3, 7.6, 2.4, SKIN); put(ub, 1.5, .5, 0, 2.6, 5, 2.5, c("biceps")); put(ub, -1.6, .48, 0, 2.6, 5.4, 2.5, c("triceps")); put(ub, 0, 1, 0, 2.2, 2.2, 2.2, SKIN);
+      put(fb, .3, .34, 0, 2.6, 5.4, 2.4, c("forearms")); put(fb, 0, .74, 0, 1.8, 4.2, 1.7, SKIN);
+      if (ex.glv) put(fb, 0, 1.1, 0, 3.4, 3.8, 3.3, GLV, .35); else put(fb, 0, 1.08, 0, 2, 2.6, 1.6, SKIN);
+      const zl = s * 4.7, Hp = q(J.p, zl), K = q(J["k" + i], zl), F = q(J["f" + i], zl), kb = B(Hp, K), sb = B(K, F);
+      put(kb, 0, .2, 0, 4.5, 5.8, 4.5, BLK, .05); put(kb, 0, .55, 0, 3.3, 8.6, 3.4, SKIN); put(kb, 1.6, .5, 0, 3.2, 6.6, 3.4, c("quads")); put(kb, -1.8, .55, 0, 2.9, 6.4, 3.1, c("hams")); put(kb, .3, 1, 0, 2.7, 2.7, 2.7, SKIN);
+      put(sb, 0, .5, 0, 2.2, 8.8, 2.2, SKIN); put(sb, -1.4, .3, 0, 2.7, 5, 2.6, c("calves")); put(sb, 2.4, 1.02, 0, 4.6, 1.9, 2.3, DRK, .3);
+    }
+    // الأدوات
+    if (ex.prop === "bar") { raw(60, -9, 0, IX, IZ, IY, [.9, 24, .9], GRY, 1); for (const s of [1, -1]) raw(60, -4.5, s * 24, IX, IY, IZ, [.9, 5, .9], GRY, 1); }
+    if (ex.prop === "dip") for (const s of [1, -1]) { raw(63, -52.6, s * 9.8, IY, IX, IZ, [.9, 13, .9], GRY, 1); raw(73, -(52.6 + GY) / 2, s * 9.8, IX, IY, IZ, [.9, (GY - 52.6) / 2, .9], GRY, 1); }
+    if (ex.prop === "bench") { raw(60, -71.6, 0, IX, IY, IZ, [32, 2.2, 7], DRK); for (const x of [34, 86]) raw(x, -(73.5 + GY) / 2, 0, IX, IY, IZ, [1, (GY - 73.5) / 2, 1], GRY, 1); }
+    if (ex.prop === "bag") { raw(103, -36, 0, IX, IY, IZ, [7, 20, 7], BAG, 1); raw(103, -16, 0, IX, IY, IZ, [7, 3, 7], BAG); raw(103, -56, 0, IX, IY, IZ, [7, 3, 7], BAG); raw(103, -6.5, 0, IX, IY, IZ, [.4, 7, .4], GRY, 1); }
+    if (ex.plate) { const o = ex.plateOff || [0, 0], x = J[ex.plate][0] + o[0], y = -(J[ex.plate][1] + o[1]);
+      if (ex.plateR === 6) { raw(x, y - 3.5, 0, IX, IY, IZ, [4.6, 4.6, 4.6], DRK); raw(x, y, 0, IX, IZ, IY, [.7, 9.8, .7], DRK, 1); }
+      else { const R = ex.key === "bsquat" ? 8 : 9; raw(x, y, 0, IX, IZ, IY, [.8, 27, .8], GRY, 1); for (const s of [1, -1]) { raw(x, y, s * 21.5, IX, IZ, IY, [R, 1.3, R], DRK, 1); raw(x, y, s * 24, IX, IZ, IY, [R * .72, 1, R * .72], DRK, 1); } } }
+    if (ex.db) for (const i of [1, 2]) { const w = W3[i], b = w.b, h = [w.p[0] + b.Y[0] * 1.2, w.p[1] + b.Y[1] * 1.2, w.p[2]];
+      raw(h[0], h[1], h[2], b.Y, b.X, IZ, [.7, 3.6, .7], GRY, 1); for (const s of [1, -1]) raw(h[0] + b.X[0] * 3.6 * s, h[1] + b.X[1] * 3.6 * s, h[2], b.Y, b.X, IZ, [2.4, 1.4, 2.4], DRK, 1); }
+    return { P, W3 };
   }
-  // التحريك: بس الرسومات يلي ظاهرة عالشاشة (توفير بطارية)، وبلا حركة إذا الجهاز طالب «تقليل الحركة»
-  const VIS = new Set(); let raf = 0, t0 = 0;
+  // المحرّك: إسقاط متعامد بزاوية 3/4، z-buffer لكل بكسل، إضاءة منتشرة + لمعة
+  const CA = Math.cos(-.5), SA = Math.sin(-.5), CB = Math.cos(.16), SB = Math.sin(.16), LX = -.36, LY = .74, LZ = .57;
+  const rot = (v) => { const x = v[0] * CA + v[2] * SA, z = -v[0] * SA + v[2] * CA; return [x, v[1] * CB - z * SB, v[1] * SB + z * CB]; };
+  const view = (p) => rot([p[0] - 60, p[1] + 50, p[2]]);
+  function render(cv, ex, u) {
+    const W = cv.width, H = cv.height, S = W / 120 * .86, CX = W / 2 / S, CY = H * .53 / S, ctx = cv.__ctx || (cv.__ctx = cv.getContext("2d")), img = cv.__img || (cv.__img = ctx.createImageData(W, H)), D = img.data, zb = cv.__zb || (cv.__zb = new Float32Array(W * H));
+    D.fill(0); zb.fill(1e9);
+    const J = frame(ex, u), { P, W3 } = build(ex, J);
+    for (const pr of P) {
+      const c = view(pr.c), ax = rot(pr.ax), ay = rot(pr.ay), az = rot(pr.az), rx = pr.r[0], ry = pr.r[1], rz = pr.r[2];
+      const ex2 = pr.cyl ? Math.abs(ax[0]) * rx + Math.abs(ay[0]) * ry + Math.abs(az[0]) * rz : Math.hypot(ax[0] * rx, ay[0] * ry, az[0] * rz), ey2 = pr.cyl ? Math.abs(ax[1]) * rx + Math.abs(ay[1]) * ry + Math.abs(az[1]) * rz : Math.hypot(ax[1] * rx, ay[1] * ry, az[1] * rz);
+      const x0 = Math.max(0, Math.floor((c[0] - ex2 + CX) * S)), x1 = Math.min(W - 1, Math.ceil((c[0] + ex2 + CX) * S)), y0 = Math.max(0, Math.floor((CY - c[1] - ey2) * S)), y1 = Math.min(H - 1, Math.ceil((CY - c[1] + ey2) * S));
+      const dx = -ax[2] / rx, dy = -ay[2] / ry, dz = -az[2] / rz, col = pr.col, sp = pr.sp || 0;
+      for (let py = y0; py <= y1; py++) {
+        const ry_ = CY - (py + .5) / S - c[1];
+        for (let px = x0; px <= x1; px++) {
+          const rx_ = (px + .5) / S - CX - c[0];
+          const ox = (rx_ * ax[0] + ry_ * ax[1] - c[2] * ax[2]) / rx, oy = (rx_ * ay[0] + ry_ * ay[1] - c[2] * ay[2]) / ry, oz = (rx_ * az[0] + ry_ * az[1] - c[2] * az[2]) / rz;
+          let t, nx, ny, nz;
+          if (!pr.cyl) {
+            const a = dx * dx + dy * dy + dz * dz, b = ox * dx + oy * dy + oz * dz, cc = ox * ox + oy * oy + oz * oz - 1, ds = b * b - a * cc; if (ds < 0) continue;
+            t = (-b - Math.sqrt(ds)) / a; const lx = (ox + t * dx) / rx, ly = (oy + t * dy) / ry, lz = (oz + t * dz) / rz;
+            nx = ax[0] * lx + ay[0] * ly + az[0] * lz; ny = ax[1] * lx + ay[1] * ly + az[1] * lz; nz = ax[2] * lx + ay[2] * ly + az[2] * lz;
+          } else {
+            let hit = 0; const a = dx * dx + dz * dz;
+            if (a > 1e-9) { const b = ox * dx + oz * dz, cc = ox * ox + oz * oz - 1, ds = b * b - a * cc; if (ds < 0) continue; t = (-b - Math.sqrt(ds)) / a; const yy = oy + t * dy;
+              if (yy >= -1 && yy <= 1) { const lx = (ox + t * dx) / rx, lz = (oz + t * dz) / rz; nx = ax[0] * lx + az[0] * lz; ny = ax[1] * lx + az[1] * lz; nz = ax[2] * lx + az[2] * lz; hit = 1; } }
+            if (!hit) { if (Math.abs(dy) < 1e-9) continue; const s = dy > 0 ? -1 : 1; t = (s - oy) / dy; const xx = ox + t * dx, zz = oz + t * dz; if (xx * xx + zz * zz > 1) continue; nx = ay[0] * s; ny = ay[1] * s; nz = ay[2] * s; }
+          }
+          const k = py * W + px;
+          if (pr.shadow) { if (zb[k] > 1e8) { const o = k * 4; D[o] = D[o + 1] = D[o + 2] = 0; D[o + 3] = 46; } continue; }
+          if (t >= zb[k]) continue; zb[k] = t;
+          const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+          const df = Math.max(0, nx * LX + ny * LY + nz * LZ), hz = LZ + 1, hl = Math.hypot(LX, LY, hz), sh = Math.max(0, (nx * LX + ny * LY + nz * hz) / hl), spc = sp * Math.pow(sh, 26);
+          const li = (.36 + .78 * df) * (.7 + .3 * Math.max(0, nz)), o = k * 4;
+          D[o] = Math.min(255, (col[0] * li + spc) * 255); D[o + 1] = Math.min(255, (col[1] * li + spc) * 255); D[o + 2] = Math.min(255, (col[2] * li + spc) * 255); D[o + 3] = 255;
+        }
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    if (ex.prop === "rope") { // الحبل: خط مرسوم فوق الصورة بين الإيدين
+      const pj = (p) => { const v = view(p); return [(v[0] + CX) * S, (CY - v[1]) * S]; }, a = pj(W3[1].p), b = pj(W3[2].p), ang = u * Math.PI * 2 * ex.poses.length, m = pj([60 + Math.sin(ang) * 16, -(50 - Math.cos(ang) * 46), 0]);
+      ctx.strokeStyle = "#c9a45c"; ctx.lineWidth = S * .9; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.quadraticCurveTo(m[0] * 2 - (a[0] + b[0]) / 2, m[1] * 2 - (a[1] + b[1]) / 2, b[0], b[1]); ctx.stroke(); }
+  }
+  // التحريك: بس الرسومات يلي ظاهرة عالشاشة (توفير بطارية)، 30 صورة بالثانية، وبلا حركة إذا الجهاز طالب «تقليل الحركة»
+  const VIS = new Set(); let raf = 0, t0 = 0, last = 0;
   const still = (() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } })();
   const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => { for (const e of es) e.isIntersecting ? VIS.add(e.target) : VIS.delete(e.target); kick(); }, { rootMargin: "60px" }) : null;
-  function kick() { if (!raf && VIS.size && !still) { t0 = t0 || performance.now(); raf = requestAnimationFrame(tick); } }
-  function tick(t) { raf = 0; for (const s of VIS) { if (!s.isConnected) { VIS.delete(s); continue; } const ex = s.__ex, per = (ex.fast ? 1.1 : ex.hold ? 2.6 : 2.2) * 1000 * (ex.poses.length > 2 ? ex.poses.length / 2 : 1); draw(s, ((t - t0) % per) / per); } kick(); }
-  const watch = (s) => { if (io) io.observe(s); else { VIS.add(s); kick(); } };
-
-  // رسومات جاهزة لإنسان كامل (صاحب المتجر 17 تشرين التاني 2026: «بدي موديل إنسان كامل، ومجاني تماماً»): من RepDB (repdb.co)، الخطة المجانية —
-  // مسموحة للمواقع التجارية بشرط رابط ظاهر «Exercise data by RepDB (repdb.co)» (موجود بآخر الصفحة، لا تشيلو). صورتين (بداية/نهاية) بيتبدّلوا.
-  // التمارين يلي ما إلها رسمة عندهن (ضربات الملاكمة ودخلات المصارعة) بتضل بالمجسّم المرسوم بالكود.
-  const IMG = { pushup: 2, pullup: 2, dips: 2, squat: 2, plank: 1, lunge: 2, kneeraise: 2, climber: 2, bench: 2, curl: 2, ohp: 2, row: 2, triceps: 2, bsquat: 2, deadlift: 2, press: 2, swing: 2, farmer: 1, rope: 1, bridge: 2, jsquat: 2 }, IV = 2;
+  function kick() { if (!raf && VIS.size && !still) raf = requestAnimationFrame(tick); }
+  function tick(t) { raf = 0; t0 = t0 || t; if (t - last >= 30) { last = t; for (const s of VIS) { if (!s.isConnected) { VIS.delete(s); if (io) io.unobserve(s); continue; } const ex = s.__ex, per = (ex.fast ? 1.1 : ex.hold ? 2.6 : 2.2) * 1000 * (ex.poses.length > 2 ? ex.poses.length / 2 : 1); render(s, ex, ((t - t0) % per) / per); } } kick(); }
   function figOf(k, big) {
-    const n = IMG[k]; if (!n) { const s = svgOf(EX[k], big); watch(s); return s; }
-    const d = document.createElement("div"); d.className = "tr-ph" + (big ? " big" : "") + (n > 1 && !still ? " an" : "");
-    d.innerHTML = Array.from({ length: n }, (_, i) => `<img src="/assets/train/${k}-${i}.webp?v=${IV}" alt="" loading="lazy" decoding="async" width="400" height="400"${i ? ' class="b"' : ""}>`).join("");
-    return d;
+    const cv = document.createElement("canvas"), S = big ? 5 : 2.5; cv.width = 120 * S; cv.height = 100 * S; cv.className = "tr-fig" + (big ? " big" : ""); cv.setAttribute("aria-hidden", "true"); cv.__ex = EX[k];
+    render(cv, EX[k], 0); if (io) io.observe(cv); else { VIS.add(cv); kick(); } return cv;
   }
   // ---------- الصفحة ----------
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const st = (() => { try { return JSON.parse(localStorage.getItem("ko_train") || "{}") || {}; } catch { return {}; } })();
   const save = () => { try { localStorage.setItem("ko_train", JSON.stringify(st)); } catch {} };
-  function trDefs() {
-    if (document.getElementById("trDefs")) return;
-    const d = document.createElementNS(NS, "svg"); d.id = "trDefs"; d.setAttribute("width", "0"); d.setAttribute("height", "0"); d.setAttribute("aria-hidden", "true"); d.style.position = "absolute";
-    d.innerHTML = `<defs><radialGradient id="trSkin" cx=".42" cy=".3" r=".8"><stop offset="0" stop-color="#f6cfa6"/><stop offset=".55" stop-color="#d9a273"/><stop offset="1" stop-color="#a66f45"/></radialGradient>
-      <linearGradient id="trTo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3c79c"/><stop offset=".5" stop-color="#d9a273"/><stop offset="1" stop-color="#a87148"/></linearGradient></defs>`;
-    document.body.appendChild(d);
-  }
   function mount(root) {
-    trDefs();
     let pk = PROGS.some((x) => x.k === st.p) ? st.p : "cal", lv = Math.min(2, Math.max(0, +st.l || 0)), dy = +st.d || 0;
     const render = () => {
       const pr = PROGS.find((x) => x.k === pk), L2 = pr.lv[lv], D = L2.days[Math.min(dy, L2.days.length - 1)], dk = pk + lv + "-" + dy, done = (st.done && st.done[dk]) || {};
@@ -293,7 +321,6 @@
         <div class="tr-list">${(D.ex || []).map((x, i) => { const e = EX[x.k]; return `<div class="tr-ex ${done[i] ? "ok" : ""}" data-i="${i}" data-k="${x.k}"><div class="tr-fw" data-open="${x.k}"></div><div class="tr-in" data-open="${x.k}"><b>${esc(e.n)}</b><span class="tr-sr">${x.sets === 1 ? "مجموعة وحدة" : x.sets + " مجموعات"} × ${esc(x.rep)}</span><small>راحة: ${esc(x.rest)}</small></div><button type="button" class="tr-ck" data-ck="${i}" aria-label="خلّصت">${done[i] ? "✓" : ""}</button></div>`; }).join("")}</div>
         ${(D.ex || []).length ? `<div class="tr-prog"><span style="width:${Math.round(Object.values(done).filter(Boolean).length * 100 / D.ex.length)}%"></span></div>` : ""}
         <a class="tr-shop" href="#/search/${encodeURIComponent(pr.q)}">🛒 شوف معدات ${esc(pr.n)} بالمتجر ›</a>
-        <p class="tr-cred">Exercise data by <a href="https://repdb.co" target="_blank" rel="nofollow noopener">RepDB (repdb.co)</a></p>
         <p class="tr-safe">ملاحظة: إذا عندك إصابة أو مرض، اسأل دكتور أو مدرّب قبل ما تبلّش. ووقّف أي تمرين إذا حسّيت بوجع حاد.</p>
       </div>`;
       root.querySelectorAll(".tr-ex").forEach((el) => { el.querySelector(".tr-fw").appendChild(figOf(el.dataset.k)); });
@@ -316,5 +343,5 @@
     };
     render();
   }
-  window.KOTrain = { mount, EX, PROGS, _fk: { fk, place, frame, mix, svgOf, draw, trDefs } };
+  window.KOTrain = { mount, EX, PROGS, _fk: { frame, build, render, figOf } };
 })();
