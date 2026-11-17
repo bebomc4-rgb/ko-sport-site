@@ -787,7 +787,29 @@ async function loadModel(){
   try{ landmarker = await PoseLandmarker.createFromOptions(files, opts("GPU")); }
   catch{ landmarker = await PoseLandmarker.createFromOptions(files, opts("CPU")); }
 }
+// تطبيق الأندرويد ما بيعطي الصفحة كاميرا لايف، فمنحوّل على المتصفح (كروم) فوراً.
+// التطبيق بيفتح أي دومين غير دومينو بالمتصفح، فمنستعمل الدومين التاني، ومعو intent كروم كاحتياط.
+const IN_APP = /; wv\)|appcreator/i.test(navigator.userAgent||"");
+function browserUrls(){
+  const path = "/workout.html?ex=" + encodeURIComponent(T.w.id) + "&cam=1";
+  const other = /pages\.dev$/.test(location.hostname) ? "https://ko-sport.online" : "https://ko-sport.pages.dev";
+  const main = "https://ko-sport.online" + path;
+  return { other: other + path,
+    intent: "intent://ko-sport.online" + path + "#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=" + encodeURIComponent(main) + ";end",
+    any: "intent://ko-sport.online" + path + "#Intent;scheme=https;action=android.intent.action.VIEW;S.browser_fallback_url=" + encodeURIComponent(main) + ";end" };
+}
+function goBrowser(){
+  const u = browserUrls();
+  $("#timer").classList.add("cam");
+  $("#camLoading").style.display = "grid";
+  $("#camLoading").innerHTML = `<div>🌐 عم نفتح الكاميرا اللايف بالمتصفح...<br><small style="color:#8b90a0">إذا ما انفتح المتصفح، اكبس واحد من هالأزرار:</small>
+    <a class="cam-btn" href="${u.other}" target="_blank" rel="noopener" style="display:block;margin-top:12px;text-decoration:none">🌐 افتح بالمتصفح</a>
+    <a class="cam-btn" href="${u.intent}" target="_top" style="display:block;margin-top:8px;text-decoration:none;background:linear-gradient(135deg,#ff2d46,#ff8a00)">افتح بكروم</a>
+    <a class="cam-btn" href="${u.any}" target="_top" style="display:block;margin-top:8px;text-decoration:none;background:var(--card2);border:1px solid var(--line)">افتح بأي متصفح</a></div>`;
+  try{ window.top.location.href = u.other; }catch(e){ location.href = u.other; }
+}
 async function startCamera(){
+  if(IN_APP) return goBrowser();
   Coach.mode = "live";
   const box = $("#timer"); box.classList.add("cam");
   $("#camLoading").style.display="grid"; $("#camLoading").textContent="⏳ عم نجهّز الكاميرا ونموذج تتبّع الجسم...";
@@ -899,6 +921,7 @@ function drawSkeleton(ctx, lm, W, H){
 }
 
 $("#camBtn").onclick = startCamera;
+if(IN_APP) $("#camBtn").textContent = "📷 الكاميرا اللايف (بتنفتح بالمتصفح)";
 $("#recIn").onchange = e => { analyzeFile(e.target.files[0]); e.target.value = ""; };
 $("#camOff").onclick = stopCamera;
 $("#voiceBtn").onclick = () => { Coach.voice = !Coach.voice; $("#voiceBtn").textContent = Coach.voice ? "🔊 الصوت" : "🔇 الصوت"; };

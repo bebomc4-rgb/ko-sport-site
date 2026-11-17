@@ -1928,16 +1928,16 @@
   // التمرين التفاعلي (صاحب المتجر 17 تشرين التاني 2026): مؤقت لكل تمرين + كاميرا بتعدّ الضربات والتكرارات وبتصحّح الحركة (src/workout.html)
   function workoutPage() {
     document.title = "التمرين التفاعلي | " + (C.name || "");
-    app.innerHTML = `<iframe class="wk-fr" src="/workout.html?v=331" title="التمرين التفاعلي" allow="camera; fullscreen; autoplay" loading="eager"></iframe>`;
+    app.innerHTML = `<iframe class="wk-fr" src="/workout.html?v=332" title="التمرين التفاعلي" allow="camera; fullscreen; autoplay" loading="eager"></iframe>`;
   }
   // برامج التدريب (صاحب المتجر 17 تشرين التاني 2026): جوّا «حسابي»، والملفات بتنحمّل بس لما الزبون يفتح الصفحة (ما بتثقّل المتجر)
   function trainPage() {
     document.title = "برامج التدريب | " + (C.name || "");
     app.innerHTML = '<div class="loading">جاري التحميل…</div>';
     const go = () => { if (curRoute().indexOf("/train") === 0 && window.KOTrain) KOTrain.mount(app); };
-    if (!document.querySelector("link[data-train]")) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/assets/train.css?v=331"; l.dataset.train = ""; document.head.appendChild(l); }
+    if (!document.querySelector("link[data-train]")) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/assets/train.css?v=332"; l.dataset.train = ""; document.head.appendChild(l); }
     if (window.KOTrain) return go();
-    const sc = document.createElement("script"); sc.src = "/assets/train.js?v=331"; sc.onload = go; sc.onerror = () => { app.innerHTML = '<div class="empty"><b>تعذّر تحميل البرامج، جرّب كمان مرة</b></div>'; }; document.head.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/assets/train.js?v=332"; sc.onload = go; sc.onerror = () => { app.innerHTML = '<div class="empty"><b>تعذّر تحميل البرامج، جرّب كمان مرة</b></div>'; }; document.head.appendChild(sc);
   }
   function account() {
     const A = acct();
