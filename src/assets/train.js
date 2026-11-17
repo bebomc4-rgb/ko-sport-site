@@ -292,10 +292,16 @@
   // التحريك: بس الرسومات يلي ظاهرة عالشاشة (توفير بطارية)، 30 صورة بالثانية، وبلا حركة إذا الجهاز طالب «تقليل الحركة»
   const VIS = new Set(); let raf = 0, t0 = 0, last = 0;
   const still = (() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } })();
-  const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => { for (const e of es) e.isIntersecting ? VIS.add(e.target) : VIS.delete(e.target); kick(); }, { rootMargin: "60px" }) : null;
+  const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => { for (const e of es) { const t = e.target; if (t.tagName === "VIDEO") { if (e.isIntersecting) { const p = t.play(); if (p && p.catch) p.catch(() => {}); } else t.pause(); continue; } e.isIntersecting ? VIS.add(t) : VIS.delete(t); } kick(); }, { rootMargin: "60px" }) : null;
   function kick() { if (!raf && VIS.size && !still) raf = requestAnimationFrame(tick); }
   function tick(t) { raf = 0; t0 = t0 || t; if (t - last >= 30) { last = t; for (const s of VIS) { if (!s.isConnected) { VIS.delete(s); if (io) io.unobserve(s); continue; } const ex = s.__ex, per = (ex.fast ? 1.1 : ex.hold ? 2.6 : 2.2) * 1000 * (ex.poses.length > 2 ? ex.poses.length / 2 : 1); render(s, ex, ((t - t0) % per) / per); } } kick(); }
+  // صاحب المتجر (17 تشرين التاني 2026): «بدي شي احترافي». شخصية وحركات احترافية من Mixamo (Adobe، مجانية ومسموحة تجارياً، ممنوع توزيع ملفات الموديل الخام —
+  // فمنعرضها فيديو بس). الفيديوهات معمولة من ملفات FBX (شخصية Brute) بـ three.js على السيرفر، بالأدوات (دمبل، بار، كيتل بل، قفازات). يلي ما إلو حركة بـ Mixamo بيضل عالشخصية المرسومة بالكود تحت.
+  const VID = new Set(["pushup", "squat", "plank", "curl", "bsquat", "swing", "jab", "cross", "upper", "combo"]), VV = 1;
   function figOf(k, big) {
+    if (VID.has(k)) { const v = document.createElement("video"); v.className = "tr-fig tr-vid" + (big ? " big" : ""); v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute("playsinline", ""); v.setAttribute("muted", ""); v.preload = big ? "auto" : "metadata";
+      v.poster = `/assets/train/${k}.jpg?v=${VV}`; v.src = `/assets/train/${k}.mp4?v=${VV}`; v.setAttribute("aria-hidden", "true");
+      if (still) return v; if (io) io.observe(v); else v.autoplay = true; return v; }
     const cv = document.createElement("canvas"), S = big ? 5 : 2.5; cv.width = 120 * S; cv.height = 100 * S; cv.className = "tr-fig" + (big ? " big" : ""); cv.setAttribute("aria-hidden", "true"); cv.__ex = EX[k];
     render(cv, EX[k], 0); if (io) io.observe(cv); else { VIS.add(cv); kick(); } return cv;
   }

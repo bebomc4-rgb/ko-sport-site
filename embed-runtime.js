@@ -18,6 +18,14 @@ function __embAssets(real) {
         if (f) {
           const h = { "content-type": f.type, etag: f.etag };
           if (r.headers.get("if-none-match") === f.etag) return new Response(null, { status: 304, headers: h });
+          // فيديوهات التمارين: آيفون/سفاري ما بيشغّل الفيديو إلا إذا السيرفر بيدعم Range (206)
+          h["accept-ranges"] = "bytes";
+          const rg = /^bytes=(\d*)-(\d*)$/.exec(r.headers.get("range") || ""), n = f.bytes.length;
+          if (rg && (rg[1] || rg[2])) {
+            let a = rg[1] ? +rg[1] : n - +rg[2], b = rg[1] && rg[2] ? Math.min(+rg[2], n - 1) : n - 1; if (a < 0) a = 0;
+            if (a >= n || a > b) return new Response(null, { status: 416, headers: { ...h, "content-range": `bytes */${n}` } });
+            return new Response(m === "HEAD" ? null : f.bytes.subarray(a, b + 1), { status: 206, headers: { ...h, "content-range": `bytes ${a}-${b}/${n}`, "content-length": String(b - a + 1) } });
+          }
           return new Response(m === "HEAD" ? null : f.bytes, { status: 200, headers: h });
         }
       }

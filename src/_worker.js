@@ -3149,6 +3149,7 @@ async function pushApi(request, env, m, sub) {
 async function staticAsset(request, env) {
   const res = await env.ASSETS.fetch(request);
   const url = new URL(request.url);
+  if (res.status === 206 && url.searchParams.has("v")) { const o = new Response(res.body, res); o.headers.set("cache-control", "public, max-age=31536000, immutable"); return o; } // فيديوهات التمارين (Range)
   if (res.status !== 200) return res;
   const out = new Response(res.body, res);
   if (url.pathname.startsWith("/assets/") && url.searchParams.has("v")) out.headers.set("cache-control", "public, max-age=31536000, immutable");

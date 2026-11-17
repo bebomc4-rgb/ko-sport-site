@@ -41,3 +41,5 @@
 .tr-err{font-size:13.5px;border-radius:12px;padding:9px 12px;background:rgba(217,35,45,.08);border:1px solid rgba(217,35,45,.3)}
 html.dark .tr-fig .tr-gnd,[data-theme="dark"] .tr-fig .tr-gnd{stroke:rgba(255,255,255,.2)}
 .acc-train{margin-top:0}
+.tr-vid{object-fit:cover;background:#f3efe6}
+.tr-fw:has(.tr-vid),.tr-big:has(.tr-vid){background:#f3efe6}
