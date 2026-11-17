@@ -40,10 +40,11 @@ header p{color:var(--muted);font-size:.9rem;margin-top:4px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:8px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)}
 .media{position:relative;aspect-ratio:4/3;background:#fff;overflow:hidden;border-bottom:1px solid var(--line)}
-.media img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .25s}
-.media img.b{opacity:0}
-.media.flip img.a{opacity:0}
-.media.flip img.b{opacity:1}
+.media img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+/* الصورة التانية بتظهر وبتختفي بنعومة فوق الأولى (متل فيديو)، وبتمشي بس وهي ظاهرة عالشاشة */
+.media img.b{opacity:0;will-change:opacity;animation:xf 2.4s cubic-bezier(.45,0,.55,1) infinite alternate;animation-play-state:paused}
+.media.play img.b{animation-play-state:running}
+@keyframes xf{0%,12%{opacity:0}88%,100%{opacity:1}}
 .lvl{position:absolute;top:8px;right:8px;background:var(--goldbg);color:var(--gold2);border:1px solid var(--gold);font-size:.72rem;font-weight:700;
   padding:2px 10px;border-radius:99px;z-index:2}
 .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px;flex:1}
@@ -59,7 +60,7 @@ ol li{margin-bottom:5px}
   padding:11px 30px;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit}
 .credit{text-align:center;color:var(--muted);font-size:.72rem;margin-top:28px}
 .credit a{color:var(--gold2)}
-@media (prefers-reduced-motion:reduce){.media img{transition:none}}
+@media (prefers-reduced-motion:reduce){.media img.b{animation-duration:4s}}
 </style>
 </head>
 <body>
@@ -90,7 +91,6 @@ ol li{margin-bottom:5px}
   const DATA_URL = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
   const IMG_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
   const PAGE = 24;
-  const FLIP_MS = 800;
 
   // أسماء العضلات بالعربي
   const MUSCLE_AR = {
@@ -193,11 +193,9 @@ ol li{margin-bottom:5px}
   function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
   // التحريك فقط للبطاقات الظاهرة على الشاشة (أسرع)
-  const visible = new Set();
   const io = "IntersectionObserver" in window ? new IntersectionObserver(ents => {
-    ents.forEach(en => en.isIntersecting ? visible.add(en.target) : (visible.delete(en.target), en.target.classList.remove("flip")));
+    ents.forEach(en => en.target.classList.toggle("play", en.isIntersecting));
   }, {rootMargin:"100px"}) : null;
-  setInterval(() => { visible.forEach(m => m.classList.toggle("flip")); }, FLIP_MS);
 
   function showMore(){
     const grid = $("grid");
@@ -205,7 +203,7 @@ ol li{margin-bottom:5px}
     list.slice(shown, shown+PAGE).forEach(x => {
       const c = card(x);
       const m = c.querySelector('.media[data-anim]');
-      if (m){ io ? io.observe(m) : visible.add(m); }
+      if (m){ io ? io.observe(m) : m.classList.add("play"); }
       frag.appendChild(c);
     });
     grid.appendChild(frag);
@@ -216,7 +214,7 @@ ol li{margin-bottom:5px}
   function update(){
     renderFilters();
     filter();
-    visible.clear(); if (io) io.disconnect();
+    if (io) io.disconnect();
     $("grid").innerHTML = ""; shown = 0;
     $("status").textContent = list.length ? `عدد التمارين: ${list.length}` : "ما في تمارين بهالاختيار";
     showMore();
