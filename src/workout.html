@@ -113,7 +113,10 @@
   .timer.cam .t-fig{display:none}
   .stage{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:4/3;border:1px solid var(--line)}
   .stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-  .stage .loading{position:absolute;inset:0;z-index:3;background:rgba(10,11,15,.92);display:grid;place-items:center;color:var(--muted);font-weight:700;text-align:center;padding:20px}
+  .stage.file video,.stage.file canvas{transform:none}
+  .back{display:none;margin-bottom:14px;color:var(--orange);font-weight:800;text-decoration:none}
+  body.full .back{display:inline-block}
+  .stage .loading{position:absolute;inset:0;z-index:3;background:#0d0e13;display:grid;place-items:center;color:var(--muted);font-weight:700;text-align:center;padding:20px}
   .fb{position:absolute;left:12px;right:12px;bottom:12px;padding:10px 14px;border-radius:12px;font-weight:800;font-size:16px;
     background:rgba(10,11,15,.75);backdrop-filter:blur(6px);border:1px solid var(--line);transition:.2s;text-align:center}
   .fb.good{border-color:var(--green);color:var(--green)}
@@ -137,6 +140,7 @@
 </head>
 <body>
 <div class="wrap">
+  <a class="back" href="/ar#/workout">‹ رجوع للمتجر</a>
   <header>
     <div>
       <div class="eyebrow">KO SPORT · تمرين تفاعلي</div>
@@ -175,6 +179,8 @@
         <button id="voiceBtn">🔇 الصوت</button>
         <button id="camOff">✕ سكّر الكاميرا</button>
       </div>
+      <button class="cam-btn" id="recBtn2" style="display:block;background:var(--card2);border:1px solid var(--line)">🎥 أو صوّر فيديو / اختار فيديو وحلّلو</button>
+      <input type="file" id="recIn" accept="video/*" capture="user" hidden>
     </div>
     <div class="t-main">
     <div class="phase" id="phase">استعد</div>
@@ -625,7 +631,8 @@ function side(k){ // الجنب الأوضح للكاميرا
 const Coach = {
   on:false, good:0, bad:0, setCount:0, st:{}, msg:"", kind:"", t:0, voice:false, lastSay:"",
   reset(){ this.good=this.bad=this.setCount=0; this.st={}; this.ui(); },
-  counting(){ return T.running && T.phase==="work"; },
+  mode:"live",
+  counting(){ return this.mode==="file" || (T.running && T.phase==="work"); },
   ok(m, quiet){ if(!this.counting()) return; this.good++; this.setCount++; this.show(m,"good"); if(!quiet) beep(1200,.07); this.check(); },
   no(m){ if(!this.counting()) return; this.bad++; this.show(m,"bad"); beep(180,.22); vibrate(120); this.speak(m); },
   tip(m){ if(performance.now()-this.t > 1600 || this.kind!=="warn") this.show(m,"warn"); },
@@ -635,7 +642,7 @@ const Coach = {
     this.lastSay = m; speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(m.replace(/[^؀-ۿ\s]/g,"")); u.lang="ar-SA"; u.rate=1.1; speechSynthesis.speak(u);
   },
-  check(){ if(T.w.type==="reps" && this.setCount >= T.w.reps){ this.setCount=0; setTimeout(next,350); } },
+  check(){ if(this.mode==="live" && T.w.type==="reps" && this.setCount >= T.w.reps){ this.setCount=0; setTimeout(next,350); } },
   ui(){
     $("#cGood").textContent = this.good; $("#cBad").textContent = this.bad;
     const tot = this.good+this.bad; $("#cAcc").textContent = tot ? Math.round(this.good/tot*100)+"%" : "—";
@@ -772,7 +779,16 @@ const ANALYZER_OF = { "jab-cross":"boxing","combo-1-2-3":"boxing","shadow":"boxi
 const UNIT_OF = { boxing:"ضربة صح", plank:"ثانية صح", rope:"نطّة صح", twist:"لفّة صح" };
 
 // ---- تشغيل الكاميرا والنموذج ----
+async function loadModel(){
+  if(landmarker) return;
+  const { PoseLandmarker, FilesetResolver } = await import(`${MP_URL}/vision_bundle.mjs`);
+  const files = await FilesetResolver.forVisionTasks(`${MP_URL}/wasm`);
+  const opts = d => ({ baseOptions:{modelAssetPath:MODEL, delegate:d}, runningMode:"VIDEO", numPoses:1 });
+  try{ landmarker = await PoseLandmarker.createFromOptions(files, opts("GPU")); }
+  catch{ landmarker = await PoseLandmarker.createFromOptions(files, opts("CPU")); }
+}
 async function startCamera(){
+  Coach.mode = "live";
   const box = $("#timer"); box.classList.add("cam");
   $("#camLoading").style.display="grid"; $("#camLoading").textContent="⏳ عم نجهّز الكاميرا ونموذج تتبّع الجسم...";
   $("#cUnit").textContent = UNIT_OF[ANALYZER_OF[T.w.id]] || "تكرار صح";
@@ -782,23 +798,22 @@ async function startCamera(){
       navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:"user"},audio:false}),
       new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error("timeout"),{name:"NotAllowedError"})),9000))
     ]);
-    const v = $("#video"); v.srcObject = stream; await v.play();
-    if(!landmarker){
-      const { PoseLandmarker, FilesetResolver } = await import(`${MP_URL}/vision_bundle.mjs`);
-      const files = await FilesetResolver.forVisionTasks(`${MP_URL}/wasm`);
-      const opts = d => ({ baseOptions:{modelAssetPath:MODEL, delegate:d}, runningMode:"VIDEO", numPoses:1 });
-      try{ landmarker = await PoseLandmarker.createFromOptions(files, opts("GPU")); }
-      catch{ landmarker = await PoseLandmarker.createFromOptions(files, opts("CPU")); }
-    }
+    const v = $("#video"); v.removeAttribute("src"); v.srcObject = stream; v.loop=false; await v.play();
+    $(".stage").classList.remove("file");
+    await loadModel();
     $("#camLoading").style.display="none";
     Coach.on = true; Coach.st = {}; Coach.show("جاهز! اضغط ▶ ابدأ ليبلش العدّ","warn");
     camLoop();
   }catch(err){
     console.error(err);
-    if(!stream && IN_APP){ // تطبيق الأندرويد ما بيسمح للصفحة تفتح الكاميرا، فمنفتحها بكروم
-      $("#camLoading").innerHTML = `<div>📱 التطبيق ما بيسمح للكاميرا تفتح جوّاتو.<br>افتحها بكروم وبتشتغل عادي:<br>
-        <button class="cam-btn" id="toChrome" style="display:block;margin-top:14px">افتح الكاميرا بكروم ›</button></div>`;
-      $("#toChrome").onclick = openInChrome;
+    if(!stream){ // الكاميرا المباشرة ممنوعة (متل جوّا تطبيق الأندرويد): منعرض بدائل جوّا التطبيق نفسو
+      const framed = window.top !== window;
+      $("#camLoading").innerHTML = `<div>📱 الكاميرا المباشرة ما فتحت هون.<br>
+        ${framed ? `<button class="cam-btn" id="toFull" style="display:block;margin-top:12px">📷 افتح صفحة الكاميرا الكاملة</button>` : ""}
+        <button class="cam-btn" id="toRec" style="display:block;margin-top:10px;background:linear-gradient(135deg,#ff2d46,#ff8a00)">🎥 صوّر تمرينك فيديو وخلّينا نحلّلو</button>
+        <small style="display:block;margin-top:10px;color:#8b90a0">بتصوّر حالك بكاميرا الموبايل، وبنعدّلك الضربات والتكرارات ومنقلّك شو الصح وشو الغلط.</small></div>`;
+      if(framed) $("#toFull").onclick = openFullPage;
+      $("#toRec").onclick = () => $("#recIn").click();
       return;
     }
     $("#camLoading").textContent = err.name==="NotAllowedError"
@@ -807,15 +822,39 @@ async function startCamera(){
       : "⚠️ ما قدرنا نشغّل الكاميرا. تأكد إن الموقع على https وإن الكاميرا مو مستخدمة ببرنامج تاني.";
   }
 }
-const IN_APP = /; wv\)|appcreator/i.test(navigator.userAgent||"");
-function openInChrome(){
-  const url = location.origin + "/workout.html?ex=" + encodeURIComponent(T.w.id) + "&cam=1";
-  const intent = "intent://" + url.replace(/^https?:\/\//,"") + "#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=" + encodeURIComponent(url) + ";end";
-  try{ window.top.location.href = intent; }catch(e){ location.href = intent; }
+// صفحة الكاميرا الكاملة جوّا التطبيق نفسو (مو iframe)
+function openFullPage(){
+  const url = "/workout.html?ex=" + encodeURIComponent(T.w.id) + "&cam=1&full=1";
+  try{ window.top.location.href = url; }catch(e){ location.href = url; }
 }
+// تحليل فيديو مصوّر: بيشتغل حتى لو الصفحة ممنوعة من الكاميرا المباشرة
+async function analyzeFile(f){
+  if(!f) return;
+  stopStream();
+  $("#timer").classList.add("cam");
+  $("#camLoading").style.display="grid"; $("#camLoading").textContent="⏳ عم نجهّز تحليل الفيديو...";
+  try{
+    await loadModel();
+    const v = $("#video"); v.srcObject = null; v.src = URL.createObjectURL(f); v.muted = true; v.loop = false;
+    $(".stage").classList.add("file");
+    Coach.reset(); Coach.mode = "file"; Coach.on = true;
+    v.onended = () => {
+      const tot = Coach.good + Coach.bad;
+      Coach.show(tot ? `✅ خلص التحليل: ${Coach.good} صح و ${Coach.bad} غلط (الدقة ${Math.round(Coach.good/tot*100)}%)` : "ما قدرنا نعدّ شي، صوّر جسمك كامل وبضو منيح وجرّب كمان مرة", tot ? "good" : "warn");
+      Coach.mode = "done"; SOUND.end();
+    };
+    await v.play();
+    $("#camLoading").style.display="none";
+    Coach.show("عم نحلّل الفيديو... 🔍","warn");
+    camLoop();
+  }catch(err){
+    console.error(err);
+    $("#camLoading").textContent = "⚠️ ما قدرنا نحلّل الفيديو. تأكد من الإنترنت وجرّب كمان مرة.";
+  }
+}
+function stopStream(){ cancelAnimationFrame(camRAF); if(stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; } }
 function stopCamera(){
-  Coach.on = false; cancelAnimationFrame(camRAF);
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; }
+  Coach.on = false; stopStream(); const v=$("#video"); v.pause(); v.removeAttribute("src");
   $("#timer").classList.remove("cam");
 }
 
@@ -837,7 +876,7 @@ function camLoop(){
       else {
         const name = ANALYZER_OF[T.w.id];
         ANALYZERS[name](k, Coach.st[name] || (Coach.st[name]={}), performance.now());
-        if(!Coach.counting() && Coach.kind!=="warn") Coach.tip("اضغط ▶ ابدأ ليبلش العدّ");
+        if(Coach.mode==="live" && !Coach.counting() && Coach.kind!=="warn") Coach.tip("اضغط ▶ ابدأ ليبلش العدّ");
       }
     } else Coach.tip("ما عم شوفك 👀 وقّف قدّام الكاميرا");
   }
@@ -860,11 +899,14 @@ function drawSkeleton(ctx, lm, W, H){
 }
 
 $("#camBtn").onclick = startCamera;
+$("#recBtn2").onclick = () => $("#recIn").click();
+$("#recIn").onchange = e => { analyzeFile(e.target.files[0]); e.target.value = ""; };
 $("#camOff").onclick = stopCamera;
 $("#voiceBtn").onclick = () => { Coach.voice = !Coach.voice; $("#voiceBtn").textContent = Coach.voice ? "🔊 الصوت" : "🔇 الصوت"; };
 
 renderFilters(); renderGrid(); requestAnimationFrame(loop);
 // رابط مباشر لتمرين مع الكاميرا (منستعملو لما التطبيق يفتح الكاميرا بكروم): ?ex=<id>&cam=1
+if(window.top === window) document.body.classList.add("full");
 (() => { const q = new URLSearchParams(location.search), w = WORKOUTS.find(x=>x.id===q.get("ex"));
   if(w){ openTimer(w); if(q.get("cam")==="1") startCamera(); } })();
 </script>
