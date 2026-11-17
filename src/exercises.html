@@ -347,12 +347,14 @@ button.yt:disabled{opacity:.6;cursor:default}
     const media = card.querySelector(".media");
     const YT = await loadYT();
     const box = document.createElement("div"); media.appendChild(box);
-    const vars = {autoplay:1, mute:1, loop:1, playlist:r.id, controls:0, playsinline:1, rel:0, modestbranding:1};
-    if (r.d > 20) vars.end = 20;
+    // بس مقطع التمرين (بلا مقدمة ولا كلام ولا لوغو): السيرفر بيحدد البداية والنهاية، ومنعيدو لحالو
+    const st = r.s || 0, en = r.e || Math.min(r.d || 20, 20);
+    const vars = {autoplay:1, mute:1, controls:0, playsinline:1, rel:0, modestbranding:1, start:st, end:en};
     new YT.Player(box, {
       videoId: r.id, host: "https://www.youtube-nocookie.com", playerVars: vars,
       events: {
         onReady: e => { e.target.mute(); e.target.playVideo(); if (b && b.isConnected) b.remove(); },
+        onStateChange: e => { if (e.data === 0) { e.target.seekTo(st, true); e.target.playVideo(); } },
         onError: async e => {
           const f = media.querySelector("iframe"); if (f) f.remove();
           if ([100, 101, 150, 153].includes(e.data) && tries < 5){

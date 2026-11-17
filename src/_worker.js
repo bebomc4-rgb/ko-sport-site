@@ -4365,29 +4365,62 @@ async function exNames() {
 // صاحب المتجر (17/11/2026): «ما بدي ولا فيديو فيو بنت». فلترين: (1) العنوان واسم القناة (YT_FEM)، (2) الذكاء الاصطناعي بيشوف 4 لقطات من الفيديو (الغلاف + 25%/50%/75%) قبل ما ينعرض.
 const YT_FEM = /\b(wom[ae]n'?s?|girls?|female|ladies|lady|her|she|mom|mum|bikini|booty|madfit|chloe ?ting|pamela ?reif|blogilates|popsugar|fitness ?blender|growwithjo|lilly ?sabri|natacha ?oceane|sydney ?cummings|heather ?robertson|caroline ?girvan|juice ?(&|and) ?toya|emi ?wong|krissy|cara ?kuykens)\b|بنات|نساء|للنساء|سيدات|بنت/i;
 const YT_VM = "@cf/meta/llama-3.2-11b-vision-instruct";
-async function ytHasWoman(env, id) {
-  if (!env.AI) return null;
-  let seen = 0;
-  for (const f of ["hqdefault", "hq1", "hq2", "hq3"]) {
-    let img;
+// بيفحص 4 لقطات: الغلاف (hqdefault) و hq1/hq2/hq3 (تقريباً عند 25%/50%/75% من الفيديو).
+// بيرجّع {w:true} إذا في بنت، أو {w:false, ex:[مواقع اللقطات يلي فيها شب عم يتمرن فعلاً]}، أو {err} إذا الذكاء ما ردّ.
+// (صاحب المتجر: «ما بدي الفيديوهات يلي أولها كلام أو لوغو، خود بس من أول التمرين لآخرو»)
+async function ytCheck(env, id) {
+  if (!env.AI) return { err: "no-ai" };
+  const Q = "Answer two questions about this image. A) Is any woman or girl visible, even small, partial or in the background? B) Is a man clearly performing an exercise movement right now (not only talking to the camera, not a title, logo, text or intro screen)? Reply exactly in this format: A=YES or A=NO, then B=YES or B=NO";
+  const b64 = (u8) => { let s = ""; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); };
+  const run = async (u8, fmt) => fmt === 1
+    ? env.AI.run(YT_VM, { messages: [{ role: "user", content: [{ type: "text", text: Q }, { type: "image_url", image_url: { url: "data:image/jpeg;base64," + b64(u8) } }] }], max_tokens: 20, temperature: 0 })
+    : env.AI.run(YT_VM, { messages: [{ role: "user", content: Q }], image: [...u8], max_tokens: 20, temperature: 0 });
+  const ask = async (u8) => {
+    const order = globalThis.__ytFmt ? [globalThis.__ytFmt] : [1, 2];
+    let last = "";
+    for (const fmt of order) {
+      try {
+        let out;
+        try { out = await run(u8, fmt); }
+        catch (e) {
+          if (!/agree/i.test(String(e && e.message))) throw e;
+          await env.AI.run(YT_VM, { prompt: "agree" });
+          out = await run(u8, fmt);
+        }
+        const t = String((out && (out.response || out.result || out.text)) || "").trim();
+        if (t) { globalThis.__ytFmt = fmt; return t; }
+        last = "empty";
+      } catch (e) { last = String((e && e.message) || e).slice(0, 160); }
+    }
+    throw new Error(last || "ai");
+  };
+  const ex = []; let seen = 0;
+  const frames = [["hqdefault", 0], ["hq1", 0.25], ["hq2", 0.5], ["hq3", 0.75]];
+  for (const [f, pos] of frames) {
+    let u8;
     try {
       const r = await fetch("https://i.ytimg.com/vi/" + encodeURIComponent(id) + "/" + f + ".jpg");
       if (!r.ok) continue;
-      img = [...new Uint8Array(await r.arrayBuffer())];
+      u8 = new Uint8Array(await r.arrayBuffer());
     } catch (e) { continue; }
-    const ask = () => env.AI.run(YT_VM, { messages: [{ role: "user", content: "Look carefully at this image. Is there any woman or girl visible in it, even small, partial or in the background? Answer with exactly one word: YES or NO." }], image: img, max_tokens: 4, temperature: 0 });
-    let out;
-    try { out = await ask(); }
-    catch (e) {
-      if (/agree/i.test(String(e && e.message))) { try { await env.AI.run(YT_VM, { prompt: "agree" }); out = await ask(); } catch (e2) { return null; } }
-      else return null;
-    }
-    const t = String((out && (out.response || out.result || out.text)) || "").trim();
-    if (!t) return null;
+    let t;
+    try { t = await ask(u8); } catch (e) { return { err: String(e.message || e) }; }
     seen++;
-    if (/^\W*yes/i.test(t)) return true;
+    if (/A\s*[=:]\s*YES/i.test(t) || (/^\W*yes/i.test(t) && !/B\s*[=:]/i.test(t))) return { w: true };
+    if (pos && /B\s*[=:]\s*YES/i.test(t)) ex.push(pos);
   }
-  return seen >= 2 ? false : null;
+  if (seen < 2) return { err: "frames" };
+  return { w: false, ex };
+}
+// من مواقع اللقطات يلي فيها تمرين، منحسب من وين نبلّش ولوين نوقّف (بلا مقدمة ولا كلام)
+function ytSeg(d, ex) {
+  if (!ex.length) return null;
+  const lo = Math.min(...ex), hi = Math.max(...ex);
+  let s = Math.max(0, Math.round(d * lo) - 1);
+  let e = Math.min(d, Math.round(d * (hi + 0.15)));
+  if (e - s < 6) e = Math.min(d, s + 8);
+  if (e - s > 25) e = s + 25;
+  return { s, e };
 }
 async function exYt(url, env) {
   const J = (o, ttl) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": ttl ? "public, max-age=" + ttl : "no-store" } });
@@ -4397,7 +4430,7 @@ async function exYt(url, env) {
   const names = await exNames();
   if (names.size && !names.has(name.toLowerCase())) return J({ none: 1 }, 3600);
   const k = "yt:" + name.toLowerCase();
-  const pick = (o) => ({ id: o.ids[0].id, d: o.ids[0].d });
+  const pick = (o) => ({ id: o.ids[0].id, d: o.ids[0].d, s: o.ids[0].s || 0, e: o.ids[0].e || 0 });
   let saved = await env.STORE.get(k, "json");
   if (saved && saved.id && !saved.ids) saved = { ids: [{ id: saved.id, d: saved.d }] }; // الشكل القديم
   if (saved && !saved.ids) saved.ids = [];
@@ -4442,19 +4475,20 @@ async function exYt(url, env) {
     saved = found;
     await env.STORE.put(k, JSON.stringify(saved));
   }
-  // فحص البنات: أول فيديو لسا ما انفحص بيتفحص هلأ (لحد 3 بكل طلب)، ويلي فيه بنت بينشطب للأبد
-  let changed = false, checked = 0, aiDown = false;
-  while (saved.ids.length && !saved.ids[0].ok && checked < 3) {
+  // فحص كل فيديو قبل ما ينعرض (لحد 3 بكل طلب): يلي فيه بنت، أو ما فيه ولا لقطة تمرين (كلو كلام/لوغو)، بينشطب للأبد
+  let changed = false, checked = 0, aiDown = "";
+  while (saved.ids.length && !(saved.ids[0].ok && saved.ids[0].v === 2) && checked < 3) {
     const c = saved.ids[0];
-    const w = await ytHasWoman(env, c.id);
+    const r = await ytCheck(env, c.id);
     checked++;
-    if (w === null) { aiDown = true; break; }
-    if (w === false) { c.ok = 1; changed = true; break; }
+    if (r.err) { aiDown = r.err; break; }
+    const seg = r.w ? null : ytSeg(c.d, r.ex);
+    if (seg) { c.ok = 1; c.v = 2; c.s = seg.s; c.e = seg.e; changed = true; break; }
     saved.ids.shift(); skip.add(c.id); saved.skip = [...skip].slice(-60); changed = true;
   }
   if (changed) await env.STORE.put(k, JSON.stringify(saved));
-  if (saved.ids.length && saved.ids[0].ok) return J(pick(saved), 300);
-  if (saved.ids.length || aiDown) return J({ pending: 1, why: aiDown ? "ai" : "checking" }, 0);
+  if (saved.ids.length && saved.ids[0].ok && saved.ids[0].v === 2) return J(pick(saved), 300);
+  if (saved.ids.length || aiDown) return J(aiDown ? { pending: 1, why: "ai", err: aiDown } : { pending: 1, why: "checking" }, 0);
   return J({ none: 1 }, 3600);
 }
 
