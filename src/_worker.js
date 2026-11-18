@@ -741,6 +741,109 @@ async function throttle(request, name, max, secs) {
   return false;
 }
 
+// ---------- البروفايل والنقاط والتصنيف العالمي والتعليقات (صاحب المتجر 18 تشرين التاني 2026) ----------
+// «بروفايل محترم لكل زائر مع نقاط ومستواه، رانك تصنيف عالمي، تعليقات المنتجات متل الفيسبوك، صورة شخصية».
+// كلو مخفي (SOCIAL_LIVE=false) وبيشتغل بس لحساب صاحب المتجر (PRED_TESTERS) لحتى يقول «انشرها».
+// النقاط بنفس لوحة التوقعات (pred:board): p = نقاط التوقعات، rv = نقاط التعليقات، m = مجموع كل شهر. المجموع = p + rv.
+// نقاط التعليق نفسها مهما كان عدد النجوم (مكافأة النجوم العالية بس = تقييمات مدفوعة، ممنوعة بقواعد غوغل وبتضر ثقة الزباين).
+const SOCIAL_LIVE = false;
+const SOC_CMT_PTS = 150, SOC_CMT_MIN = 20, SOC_CMT_DAY = 3;
+const socYm = (ms) => new Date(+ms + 3 * 3600e3).toISOString().slice(0, 7);
+const socPrune = (r) => { if (!r || !r.m) return; const ks = Object.keys(r.m).sort(); while (ks.length > 4) delete r.m[ks.shift()]; };
+const socTot = (r) => (r ? (r.p || 0) + (r.rv || 0) : 0);
+const SOC_UIDS = new Map();
+async function socUid(env, phone) { if (SOC_UIDS.has(phone)) return SOC_UIDS.get(phone); const u = (await hmac(env, "uid:" + phone)).replace(/[^A-Za-z0-9]/g, "").slice(0, 12); SOC_UIDS.set(phone, u); return u; }
+const socOk = (a) => SOCIAL_LIVE || (a && PRED_TESTERS.includes(a.phone));
+async function socAward(env, phone, name, pts, when) {
+  const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
+  const r = (B[phone] ||= { n: name || "", p: 0, w: 0, t: 0 }); if (name && !r.n) r.n = name;
+  r.rv = (r.rv || 0) + pts; r.m ||= {}; const ym = socYm(when || Date.now()); r.m[ym] = (r.m[ym] || 0) + pts; socPrune(r);
+  r.c = Math.max(0, (r.c || 0) + (pts > 0 ? 1 : -1));
+  await env.STORE.put("pred:board", JSON.stringify(B));
+}
+// الترتيب: كل الحسابات حسب المجموع (all) أو حسب هالشهر (month)
+async function socRanked(env, scope) {
+  const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {}, ym = socYm(Date.now());
+  const L = Object.entries(B).map(([ph, r]) => ({ ph, r, pts: scope === "month" ? ((r.m && r.m[ym]) || 0) : socTot(r) })).filter((x) => x.pts > 0 || scope !== "month");
+  L.sort((a, b) => b.pts - a.pts || (b.r.w || 0) - (a.r.w || 0));
+  return { L, B };
+}
+const socPub = async (env, ph, r, pts, rank) => ({ uid: r.uid || (r.uid = await socUid(env, ph)), n: String(r.n || "").split(" ").slice(0, 2).join(" "), av: r.av || "", pts, tot: socTot(r), w: r.w || 0, t: r.t || 0, c: r.c || 0, lk: r.lk || 0, rank });
+async function socialApi(request, env, ctx, path, m) {
+  const a = await acctFromReq(request, env);
+  if (!a) return json({ error: "لازم تفوت على حسابك" }, 401);
+  if (!socOk(a)) return json({ error: "قريباً" }, 403);
+  const uidMe = await socUid(env, a.phone);
+  if (path === "/api/social/me" && m === "GET") {
+    const { L, B } = await socRanked(env, "all"), i = L.findIndex((x) => x.ph === a.phone), r = B[a.phone] || { n: a.name, p: 0, w: 0, t: 0 };
+    const ym = socYm(Date.now()), mi = (await socRanked(env, "month")).L.findIndex((x) => x.ph === a.phone);
+    return json({ ...(await socPub(env, a.phone, { ...r, n: a.name, av: a.av || r.av, uid: uidMe }, socTot(r), i >= 0 ? i + 1 : L.length + 1)), name: a.name, p: r.p || 0, rv: r.rv || 0, s: r.s || 0, mpts: (r.m && r.m[ym]) || 0, mrank: mi >= 0 ? mi + 1 : 0, of: L.length });
+  }
+  if (path === "/api/social/rank" && m === "GET") {
+    const scope = new URL(request.url).searchParams.get("scope") === "month" ? "month" : "all";
+    const { L } = await socRanked(env, scope), top = [];
+    for (let i = 0; i < Math.min(100, L.length); i++) top.push(await socPub(env, L[i].ph, L[i].r, L[i].pts, i + 1));
+    const i = L.findIndex((x) => x.ph === a.phone);
+    return json({ scope, of: L.length, top, me: i >= 0 ? await socPub(env, a.phone, L[i].r, L[i].pts, i + 1) : null });
+  }
+  if (path.startsWith("/api/social/u/") && m === "GET") {
+    const uid = path.slice("/api/social/u/".length).replace(/[^A-Za-z0-9]/g, "");
+    const { L } = await socRanked(env, "all");
+    for (let i = 0; i < L.length; i++) { const r = L[i].r; if ((r.uid || (r.uid = await socUid(env, L[i].ph))) === uid) return json(await socPub(env, L[i].ph, r, L[i].pts, i + 1)); }
+    return json({ error: "ما لقينا هالحساب" }, 404);
+  }
+  if (path === "/api/social/avatar" && m === "POST") {
+    if (await throttle(request, "avatar", 10, 3600)) return json({ error: "جرّب بعد شوي" }, 429);
+    const type = (request.headers.get("content-type") || "").split(";")[0].trim();
+    if (!/^image\/(webp|jpeg|png)$/.test(type)) return json({ error: "لازم تكون صورة" }, 400);
+    const buf = await request.arrayBuffer();
+    if (buf.byteLength < 200 || buf.byteLength > 300 * 1024) return json({ error: "الصورة كبيرة كتير" }, 413);
+    const key = newKey(); await env.STORE.put("img:" + key, buf, { metadata: { type } });
+    const av = "/img/" + key, old = a.av; a.av = av; await env.STORE.put("acct:" + a.phone, JSON.stringify(a));
+    const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {}; const r = (B[a.phone] ||= { n: a.name, p: 0, w: 0, t: 0 }); r.av = av; r.uid = uidMe; await env.STORE.put("pred:board", JSON.stringify(B));
+    if (old && /^\/img\/[a-z0-9]+$/.test(old)) ctx.waitUntil(env.STORE.delete("img:" + old.slice(5)).catch(() => {}));
+    return json({ ok: true, av });
+  }
+  if (path === "/api/social/comment" && m === "POST") {
+    const b = await request.json().catch(() => ({})), pid = clip(b.pid, 160), text = clip(b.text, 800), rating = parseInt(b.rating);
+    if (!(rating >= 1 && rating <= 5)) return json({ error: "اختار عدد النجوم" }, 400);
+    if (text.length < 2) return json({ error: "اكتب تعليقك" }, 400);
+    if (await throttle(request, "cmt:" + a.phone, 10, 3600)) return json({ error: "كتبت تعليقات كتير، جرّب بعد شوي" }, 429);
+    const p = (await getProducts(env, request)).find((x) => x.id === pid && !x.hidden); if (!p) return json({ error: "المنتج مو موجود" }, 404);
+    const settings = await getSettings(env, request), auto = settings.design.reviewsAuto === true, list = await getReviews(env);
+    const today = socYm(Date.now()) + new Date(Date.now() + 3 * 3600e3).toISOString().slice(7, 10);
+    const mineHere = list.some((r) => r.ph === a.phone && r.pid === pid && r.paid);
+    const paidToday = list.filter((r) => r.ph === a.phone && r.paid && String(r.payDay || "") === today).length;
+    const earns = text.length >= SOC_CMT_MIN && !mineHere && paidToday < SOC_CMT_DAY;
+    const rv = { id: newKey().slice(0, 12), pid, pname: p.name, name: String(a.name || "").split(" ").slice(0, 2).join(" "), rating, text, at: new Date().toISOString(), ok: auto, ph: a.phone, uid: uidMe, av: a.av || "", earn: earns, likes: [], rp: [] };
+    if (auto && earns) { rv.paid = true; rv.payDay = today; await socAward(env, a.phone, a.name, SOC_CMT_PTS); }
+    list.push(rv); if (list.length > 3000) list.splice(0, list.length - 3000);
+    await env.STORE.put("reviews", JSON.stringify(list));
+    if (auto) { await purgeEdge("products"); await purgeEdge("rev:" + encodeURIComponent(pid)); }
+    return json({ ok: true, pending: !auto, pts: earns ? SOC_CMT_PTS : 0, why: earns ? "" : text.length < SOC_CMT_MIN ? `اكتب ${SOC_CMT_MIN} حرف أو أكتر لتاخد نقاط` : mineHere ? "النقاط بتنحسب لأول تعليق على كل منتج" : "خلصت تعليقات النقاط لليوم (3)" }, 201);
+  }
+  if ((path === "/api/social/like" || path === "/api/social/reply") && m === "POST") {
+    const b = await request.json().catch(() => ({})), rid = clip(b.rid, 20), list = await getReviews(env), r = list.find((x) => x.id === rid && x.ok);
+    if (!r) return json({ error: "التعليق مو موجود" }, 404);
+    if (path === "/api/social/like") {
+      if (await throttle(request, "like:" + a.phone, 120, 3600)) return json({ error: "جرّب بعد شوي" }, 429);
+      r.likes = Array.isArray(r.likes) ? r.likes : []; const i = r.likes.indexOf(uidMe), on = i < 0;
+      if (on) r.likes.push(uidMe); else r.likes.splice(i, 1); if (r.likes.length > 500) r.likes.length = 500;
+      await env.STORE.put("reviews", JSON.stringify(list));
+      if (r.ph && r.ph !== a.phone) { const B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {}; if (B[r.ph]) { B[r.ph].lk = Math.max(0, (B[r.ph].lk || 0) + (on ? 1 : -1)); await env.STORE.put("pred:board", JSON.stringify(B)); } }
+      await purgeEdge("rev:" + encodeURIComponent(r.pid));
+      return json({ ok: true, on, n: r.likes.length });
+    }
+    const text = clip(b.text, 400); if (text.length < 1) return json({ error: "اكتب ردّك" }, 400);
+    if (await throttle(request, "rep:" + a.phone, 20, 3600)) return json({ error: "جرّب بعد شوي" }, 429);
+    r.rp = Array.isArray(r.rp) ? r.rp : []; if (r.rp.length >= 50) return json({ error: "الردود خلصت على هالتعليق" }, 400);
+    const one = { id: newKey().slice(0, 8), uid: uidMe, n: String(a.name || "").split(" ").slice(0, 2).join(" "), av: a.av || "", text, at: new Date().toISOString(), own: PRED_TESTERS.includes(a.phone) };
+    r.rp.push(one); await env.STORE.put("reviews", JSON.stringify(list)); await purgeEdge("rev:" + encodeURIComponent(r.pid));
+    return json({ ok: true, rp: one });
+  }
+  return json({ error: "مو موجود" }, 404);
+}
+
 // ---------- product reviews: customers write, the owner approves in the dashboard ----------
 const getReviews = async (env) => (await env.STORE.get("reviews", "json")) || [];
 async function reviewsPost(request, env, ctx) {
@@ -771,7 +874,7 @@ async function reviewsPost(request, env, ctx) {
 async function reviewsGet(request, env, ctx) {
   const id = new URL(request.url).searchParams.get("id");
   if (id) return edgeCached("rev:" + encodeURIComponent(id), ctx, async () =>
-    (await getReviews(env)).filter((r) => r.ok && r.pid === id).reverse().slice(0, 100).map(({ name, rating, text, at }) => ({ name, rating, text, at })));
+    (await getReviews(env)).filter((r) => r.ok && r.pid === id).reverse().slice(0, 100).map(({ id: rid, name, rating, text, at, uid, av, likes, rp }) => ({ id: rid, name, rating, text, at, uid: uid || "", av: av || "", likes: Array.isArray(likes) ? likes : [], rp: (Array.isArray(rp) ? rp : []).map(({ uid: u, n, av: v, text: t, at: w, own }) => ({ uid: u, n, av: v || "", text: t, at: w, own: !!own })) })));
   if (!isAdmin(request, env)) return denied();
   return json((await getReviews(env)).slice().reverse());
 }
@@ -780,9 +883,13 @@ async function reviewChange(request, env, rid, del) {
   const list = await getReviews(env);
   const i = list.findIndex((r) => r.id === rid);
   if (i < 0) return json({ error: "التقييم مو موجود" }, 404);
-  const pid = list[i].pid;
-  if (del) list.splice(i, 1);
-  else { const b = await request.json().catch(() => ({})); list[i].ok = !!b.ok; }
+  const pid = list[i].pid, rv = list[i];
+  if (del) { list.splice(i, 1); if (rv.paid && rv.ph) await socAward(env, rv.ph, rv.name, -SOC_CMT_PTS); }
+  else {
+    const b = await request.json().catch(() => ({})); rv.ok = !!b.ok;
+    // التعليق من حساب: النقاط بتنزل لما تنقبل (مرة وحدة)، وبترجع لما ينحذف
+    if (rv.ok && rv.ph && rv.earn && !rv.paid) { rv.paid = true; rv.payDay = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10); await socAward(env, rv.ph, rv.name, SOC_CMT_PTS); }
+  }
   await env.STORE.put("reviews", JSON.stringify(list));
   await purgeEdge("products"); await purgeEdge("rev:" + encodeURIComponent(pid));
   return json({ ok: true });
@@ -902,7 +1009,7 @@ async function acctFromTok(t, env, why) {
   if (a.blocked) return no("blocked");
   return a.hash.slice(0, 8) === pv ? a : no("password");
 }
-const acctOut = (a) => ({ name: a.name, phone: a.phone, governorate: a.governorate, at: a.at });
+const acctOut = (a) => ({ name: a.name, phone: a.phone, governorate: a.governorate, at: a.at, av: a.av || "" });
 // WhatsApp code: the site signs the request (ECDSA P-256, private key kept in KV), K FAST AI checks it with /api/acct/otp-key
 const OTP_SENDER = "https://k-fast-ai.pages.dev/api/otp/ko";
 // the workers.dev address switches to the phone a few seconds faster than pages.dev when the PC goes down: try it first
@@ -1224,8 +1331,10 @@ async function predSettle(env, B, mt, oldR, newR) {
   if (!Object.keys(P).length) return false;
   for (const [ph, v] of Object.entries(P)) {
     const r = (B[ph] ||= { n: v.n || "", p: 0, w: 0, t: 0 }); if (v.n) r.n = v.n;
-    if (predKeyOk(oldR.res)) { const x = predPts(mt, v, oldR); r.t--; r.w -= x.w; r.p -= x.p; }
-    if (predKeyOk(newR.res)) { const x = predPts(mt, v, newR); r.t++; r.w += x.w; r.p += x.p; }
+    const ym = socYm(mt.at || Date.now()); r.m ||= {};
+    if (predKeyOk(oldR.res)) { const x = predPts(mt, v, oldR); r.t--; r.w -= x.w; r.p -= x.p; r.m[ym] = (r.m[ym] || 0) - x.p; }
+    if (predKeyOk(newR.res)) { const x = predPts(mt, v, newR); r.t++; r.w += x.w; r.p += x.p; r.m[ym] = (r.m[ym] || 0) + x.p; }
+    socPrune(r);
   }
   return true;
 }
@@ -4740,6 +4849,8 @@ const koMain = {
       } else if ((path === "/robots.txt" || path === "/sitemap.xml" || path === "/llms.txt" || path === "/ar/sitemap.xml") && m === "GET") {
         // /ar/sitemap.xml: نفس الخريطة، لأنو حساب Search Console مسجّل على ko-sport.online/ar/ وما بيقبل خريطة برّاه
         return siteFiles(request, env, path === "/ar/sitemap.xml" ? "/sitemap.xml" : path, ctx);
+      } else if (path.startsWith("/api/social/")) {
+        return socialApi(request, env, ctx, path, m);
       } else if (path === "/api/reviews") {
         if (m === "POST") return reviewsPost(request, env, ctx);
         if (m === "GET") return reviewsGet(request, env, ctx);

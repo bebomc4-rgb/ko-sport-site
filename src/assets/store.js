@@ -1518,6 +1518,7 @@
       if (now) navTo("#/checkout"); else flyToCart(app.querySelector("[data-buyline] button, [data-buy]"));
     };
     // reviews: summary, bars and list
+    if (revOn && koOwn()) fbComments(p); // التعليقات متل الفيسبوك (لصاحب المتجر هلق)
     if (revOn) fetch("/api/reviews?id=" + encodeURIComponent(p.id)).then((r) => (r.ok ? r.json() : [])).then((list) => {
       if (!Array.isArray(list) || !list.length || !document.contains(app.querySelector("[data-reviews]"))) return;
       const n = list.length, avg = Math.round((list.reduce((a, r) => a + r.rating, 0) / n) * 10) / 10;
@@ -1947,6 +1948,140 @@
     if (window.KOTrain) return go();
     const sc = document.createElement("script"); sc.src = "/assets/train.js?v=333"; sc.onload = go; sc.onerror = () => { app.innerHTML = '<div class="empty"><b>تعذّر تحميل البرامج، جرّب كمان مرة</b></div>'; }; document.head.appendChild(sc);
   }
+  // ---------- البروفايل، التصنيف العالمي، والتعليقات متل الفيسبوك (صاحب المتجر 18 تشرين التاني 2026) ----------
+  // مخفي عن الكل إلا حساب صاحب المتجر (koOwn) لحتى يقول «انشرها». السيرفر كمان مسكّر (SOCIAL_LIVE=false).
+  const SOC_LV = [[0, "🥉", "برونزي", "#b87333"], [1000, "🥈", "فضي", "#8e98a3"], [3000, "🥇", "ذهبي", "#c9a227"], [6000, "💠", "بلاتيني", "#2f9fb3"], [10000, "💚", "زمردي", "#1f9d68"], [16000, "💎", "ألماسي", "#5b7cfa"], [25000, "🏆", "ملكي", "#8e44ad"], [40000, "👑", "أسطورة", "#c0392b"]];
+  const socLvI = (p) => { let i = 0; SOC_LV.forEach((l, k) => { if ((p || 0) >= l[0]) i = k; }); return i; };
+  const socBadge = (p) => { const l = SOC_LV[socLvI(p)]; return `<span class="so-lv" style="--lc:${l[3]}">${l[1]} ${l[2]}</span>`; };
+  const socAuth = () => ({ authorization: "Bearer " + ((acct() || {}).token || "") });
+  const socNum = (n) => Number(n || 0).toLocaleString("en-US");
+  function socAv(av, name, uid, size) {
+    const z = size || 40;
+    if (av) return `<img class="so-av" src="${esc(imgW(av, z > 60 ? 240 : 120))}" width="${z}" height="${z}" alt="" loading="lazy" decoding="async" style="--z:${z}px">`;
+    let h = 0; for (const c of String(uid || name || "?")) h = (h * 31 + c.charCodeAt(0)) % 360;
+    const ini = String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("");
+    return `<span class="so-av so-ini" style="--z:${z}px;--h:${h}">${esc(ini)}</span>`;
+  }
+  function socAgo(at) {
+    const d = (Date.now() - Date.parse(at)) / 1000;
+    if (!(d >= 0)) return ""; if (d < 60) return "هلّق"; if (d < 3600) { const m = Math.floor(d / 60); return m === 1 ? "من دقيقة" : m === 2 ? "من دقيقتين" : `من ${m} دقايق`; }
+    if (d < 86400) { const h = Math.floor(d / 3600); return h === 1 ? "من ساعة" : h === 2 ? "من ساعتين" : `من ${h} ساعات`; }
+    const dd = Math.floor(d / 86400); if (dd === 1) return "مبارح"; if (dd < 7) return `من ${dd} أيام`;
+    return new Date(at).toLocaleDateString("ar-SY", { day: "numeric", month: "long" });
+  }
+  async function socGet(u) { const r = await fetch(u, { headers: socAuth(), cache: "no-store" }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "صار خطأ"); return j; }
+  async function socPost(u, body) { const r = await fetch(u, { method: "POST", headers: { "content-type": "application/json", ...socAuth() }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "صار خطأ"); return j; }
+  // صورة البروفايل: منصغّرها بالموبايل لـ 320×320 (قص مربع من النص) قبل الرفع
+  function socPickAvatar(done) {
+    const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+    inp.onchange = async () => {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      try {
+        const bmp = await createImageBitmap(f), side = Math.min(bmp.width, bmp.height), c = document.createElement("canvas"); c.width = c.height = 320;
+        c.getContext("2d").drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, 320, 320);
+        const blob = await new Promise((r) => c.toBlob(r, "image/webp", 0.85)) || await new Promise((r) => c.toBlob(r, "image/jpeg", 0.85));
+        toast("عم نرفع الصورة…");
+        const r = await fetch("/api/social/avatar", { method: "POST", headers: { "content-type": blob.type, ...socAuth() }, body: blob });
+        const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "ما زبط الرفع");
+        const A = acct(); if (A && A.account) { A.account.av = j.av; try { store.set("ko_acct_av", j.av); } catch {} }
+        toast("✓ تغيّرت صورتك"); done && done(j.av);
+      } catch (e) { toast(esc(e.message || "ما زبط")); }
+    };
+    inp.click();
+  }
+  function socLvBar(p) {
+    const i = socLvI(p), c = SOC_LV[i], n = SOC_LV[i + 1];
+    return `<div class="so-lvbar">${n ? `<div class="so-bar"><i style="width:${Math.min(100, Math.round(((p - c[0]) / (n[0] - c[0])) * 100))}%;--lc:${c[3]}"></i></div><small>باقيلك <b>${socNum(n[0] - p)}</b> نقطة لتصير ${n[1]} ${n[2]}</small>` : `<small>وصلت لأعلى مستوى 👑</small>`}
+      <div class="so-lvrow">${SOC_LV.map((l, k) => `<span class="${k <= i ? "on" : ""}" style="--lc:${l[3]}" title="${l[2]} · ${socNum(l[0])}">${l[1]}</span>`).join("")}</div></div>`;
+  }
+  function socCard(d, mine) {
+    const acc = d.t ? Math.round((d.w / d.t) * 100) : 0;
+    return `<section class="so-hero">
+        <div class="so-hav">${socAv(d.av, d.n || d.name, d.uid, 96)}${mine ? `<button type="button" class="so-cam" data-so-av aria-label="غيّر الصورة">📷</button>` : ""}</div>
+        <h1>${esc(d.name || d.n || "")}</h1>${socBadge(d.tot)}
+        <div class="so-rank"><b>#${socNum(d.rank)}</b><small>بالتصنيف العالمي${d.of ? ` من ${socNum(d.of)}` : ""}</small></div>
+        <div class="so-stats"><div><b>${socNum(d.tot)}</b><small>نقطة</small></div><div><b>${acc}%</b><small>دقة التوقعات</small></div><div><b>${socNum(d.t)}</b><small>توقّع</small></div><div><b>${socNum(d.c)}</b><small>تعليق</small></div><div><b>${socNum(d.lk)}</b><small>إعجاب</small></div></div>
+        ${socLvBar(d.tot)}</section>`;
+  }
+  async function mePage() {
+    document.title = "بروفايلي | " + (C.name || "");
+    app.innerHTML = `<div class="so-page"><div class="loading">لحظة…</div></div>`;
+    let d; try { d = await socGet("/api/social/me"); } catch (e) { app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; return; }
+    if (!document.body.dataset.page || document.body.dataset.page !== "me") return;
+    app.innerHTML = `<div class="so-page">${socCard(d, true)}
+      <div class="so-two"><div class="so-box"><small>نقاط التوقعات</small><b>${socNum(d.p)}</b></div><div class="so-box"><small>نقاط التعليقات</small><b>${socNum(d.rv)}</b></div><div class="so-box"><small>هالشهر</small><b>${socNum(d.mpts)}</b>${d.mrank ? `<em>#${socNum(d.mrank)}</em>` : ""}</div><div class="so-box"><small>رصيدك للخصم</small><b>${socNum(Math.max(0, d.tot - (d.s || 0)))}</b></div></div>
+      <a class="acc-card acc-pred" href="#/rank"><span class="apr-l"><b>🏆 التصنيف العالمي</b><small>شوف ترتيبك بين كل الزباين، وأقوى اللاعبين هالشهر</small></span><span class="apr-go">افتح ›</span></a>
+      <div class="so-how"><b>كيف بتجمع نقاط؟</b><p>🔮 كل توقّع صح بالتوقعات: من 30 لـ 200 نقطة.<br>💬 تعليق على منتج (20 حرف أو أكتر): 150 نقطة، أول تعليق على كل منتج، لحد 3 تعليقات باليوم.<br>👍 الإعجابات على تعليقاتك بتبيّن ببروفايلك.</p></div></div>`;
+    app.onclick = (e) => { if (e.target.closest("[data-so-av]")) socPickAvatar(() => mePage()); };
+  }
+  async function userPage(uid) {
+    app.innerHTML = `<div class="so-page"><div class="loading">لحظة…</div></div>`;
+    let d; try { d = await socGet("/api/social/u/" + encodeURIComponent(uid)); } catch (e) { app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; return; }
+    document.title = (d.n || "") + " | " + (C.name || "");
+    app.innerHTML = `<div class="so-page">${socCard(d, false)}<a class="btn btn-dark so-back" href="#/rank">‹ التصنيف العالمي</a></div>`;
+    app.onclick = null;
+  }
+  async function rankPage(scope) {
+    scope = scope === "month" ? "month" : "all";
+    document.title = "التصنيف العالمي | " + (C.name || "");
+    app.innerHTML = `<div class="so-page"><div class="loading">لحظة…</div></div>`;
+    let d; try { d = await socGet("/api/social/rank?scope=" + scope); } catch (e) { app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; return; }
+    const row = (x) => `<a class="so-row${d.me && x.uid === d.me.uid ? " me" : ""}" href="#/u/${esc(x.uid)}"><span class="so-n">${x.rank}</span>${socAv(x.av, x.n, x.uid, 40)}<span class="so-nm"><b>${esc(x.n)}</b>${socBadge(x.tot)}</span><span class="so-pt"><b>${socNum(x.pts)}</b><small>${x.t ? Math.round((x.w / x.t) * 100) + "% دقة" : "نقطة"}</small></span></a>`;
+    const [a, b, c] = d.top, pod = (x, k) => x ? `<a class="so-pod p${k}" href="#/u/${esc(x.uid)}"><span class="so-crown">${["🥇", "🥈", "🥉"][k - 1]}</span>${socAv(x.av, x.n, x.uid, k === 1 ? 76 : 60)}<b>${esc(x.n)}</b><small>${socNum(x.pts)}</small><i></i></a>` : "<span></span>";
+    app.innerHTML = `<div class="so-page so-rk"><h1 class="page-title">🏆 التصنيف العالمي</h1>
+      <div class="so-tabs"><a href="#/rank" class="${scope === "all" ? "on" : ""}">كل الأوقات</a><a href="#/rank/month" class="${scope === "month" ? "on" : ""}">هالشهر</a></div>
+      ${d.top.length ? `<div class="so-podium">${pod(b, 2)}${pod(a, 1)}${pod(c, 3)}</div><div class="so-list">${d.top.slice(3).map(row).join("")}</div>` : `<p class="msg">لسا ما في حدا بالترتيب هالشهر. أول توقّع صح أو تعليق بيحطّك فوق 💪</p>`}
+      ${d.me ? `<div class="so-mebar">${row(d.me)}</div>` : ""}
+      <p class="so-foot">${socNum(d.of)} لاعب بالترتيب · النقاط من التوقعات والتعليقات</p></div>`;
+    app.onclick = null;
+  }
+  // التعليقات تحت المنتج متل الفيسبوك (لصاحب المتجر بس هلق)
+  function fbComments(p) {
+    const sec = app.querySelector("[data-reviews]"); if (!sec) return;
+    const A = acct(), me = A && A.account, form = sec.querySelector("[data-rv-form]");
+    const myUid = () => (fbComments.uid || "");
+    if (!fbComments.uid && me) socGet("/api/social/me").then((d) => { fbComments.uid = d.uid; }).catch(() => {});
+    const box = document.createElement("div"); box.className = "fb"; box.dataset.fbc = "";
+    box.innerHTML = `<div class="fb-new">${socAv(me && me.av, me && me.name, "", 38)}<div class="fb-in"><textarea data-fb-text rows="1" maxlength="800" placeholder="${me ? "اكتب تعليق…" : "فوت على حسابك لتعلّق"}"></textarea>
+        <div class="fb-tools" data-fb-tools hidden><span class="fb-stars" data-fb-stars>${[1, 2, 3, 4, 5].map((i) => `<button type="button" data-fs="${i}" class="on" aria-label="${i} نجوم">★</button>`).join("")}</span><small data-fb-hint>20 حرف أو أكتر = 150 نقطة</small><button type="button" class="fb-send" data-fb-send aria-label="إرسال">➤</button></div></div></div>
+      <div class="fb-list" data-fb-list><div class="loading">لحظة…</div></div>`;
+    if (form) form.replaceWith(box); else sec.appendChild(box);
+    const old = sec.querySelector("[data-rv-list]"); if (old) old.hidden = true;
+    let rating = 5, list = [];
+    const one = (r) => {
+      const liked = r.likes.includes(myUid()), lk = r.likes.length;
+      return `<article class="fb-c" data-rid="${esc(r.id)}">${socAv(r.av, r.name, r.uid, 36)}<div class="fb-body">
+        <div class="fb-bub"><a href="${r.uid ? "#/u/" + esc(r.uid) : "#"}" class="fb-nm">${esc(r.name)}</a>${stars(r.rating, "sm")}${r.text ? `<p>${esc(r.text)}</p>` : ""}${lk ? `<span class="fb-lkc">👍 ${lk}</span>` : ""}</div>
+        <div class="fb-meta"><span>${socAgo(r.at)}</span><button type="button" data-fb-like class="${liked ? "on" : ""}">أعجبني</button><button type="button" data-fb-rep>ردّ</button></div>
+        ${r.rp.length ? `<div class="fb-reps">${r.rp.map((x) => `<div class="fb-c fb-r">${socAv(x.av, x.n, x.uid, 28)}<div class="fb-body"><div class="fb-bub${x.own ? " own" : ""}"><span class="fb-nm">${esc(x.n)}${x.own ? " · KO SPORT ✓" : ""}</span><p>${esc(x.text)}</p></div><div class="fb-meta"><span>${socAgo(x.at)}</span></div></div></div>`).join("")}</div>` : ""}
+        <div class="fb-repbox" data-fb-repbox hidden>${socAv(me && me.av, me && me.name, "", 28)}<div class="fb-in"><textarea rows="1" maxlength="400" placeholder="اكتب ردّ…" data-fb-reptext></textarea><button type="button" class="fb-send" data-fb-repsend aria-label="إرسال">➤</button></div></div></div></article>`;
+    };
+    const draw = () => { const L = box.querySelector("[data-fb-list]"); L.innerHTML = list.length ? list.map(one).join("") : `<p class="fb-empty">كون أول واحد بيعلّق على هالمنتج 💬</p>`; };
+    fetch("/api/reviews?id=" + encodeURIComponent(p.id), { cache: "no-store" }).then((r) => (r.ok ? r.json() : [])).then((L) => { list = Array.isArray(L) ? L : []; draw(); }).catch(() => { list = []; draw(); });
+    const grow = (t) => { t.style.height = "auto"; t.style.height = Math.min(160, t.scrollHeight) + "px"; };
+    box.addEventListener("input", (e) => { if (e.target.matches("textarea")) grow(e.target); if (e.target.matches("[data-fb-text]")) { const n = e.target.value.trim().length; box.querySelector("[data-fb-hint]").textContent = n >= 20 ? "✓ هالتعليق بياخد 150 نقطة" : `${20 - n} حرف كمان = 150 نقطة`; } });
+    box.addEventListener("focusin", (e) => { if (e.target.matches("[data-fb-text]")) { if (!me) { e.target.blur(); account(); return; } box.querySelector("[data-fb-tools]").hidden = false; } });
+    box.addEventListener("click", async (e) => {
+      const fs = e.target.closest("[data-fs]"); if (fs) { rating = +fs.dataset.fs; box.querySelectorAll("[data-fs]").forEach((b) => b.classList.toggle("on", +b.dataset.fs <= rating)); return; }
+      const c = e.target.closest("[data-rid]"), r = c && list.find((x) => x.id === c.dataset.rid);
+      if (e.target.closest("[data-fb-send]")) {
+        const t = box.querySelector("[data-fb-text]"), text = t.value.trim(); if (!text) { t.focus(); return; }
+        const btn = e.target.closest("[data-fb-send]"); btn.disabled = true;
+        try { const j = await socPost("/api/social/comment", { pid: p.id, text, rating });
+          t.value = ""; grow(t); box.querySelector("[data-fb-tools]").hidden = true;
+          if (!j.pending) { list.unshift({ id: "tmp" + Date.now(), name: String(me.name || "").split(" ").slice(0, 2).join(" "), rating, text, at: new Date().toISOString(), uid: myUid(), av: me.av || "", likes: [], rp: [] }); draw(); }
+          toast(j.pts ? `🎉 +${j.pts} نقطة${j.pending ? " بعد ما ينقبل تعليقك" : ""}` : j.pending ? "وصل تعليقك، بيبيّن بعد المراجعة" + (j.why ? " · " + esc(j.why) : "") : esc(j.why || "✓ انضاف تعليقك"));
+        } catch (er) { toast(esc(er.message)); } btn.disabled = false; return;
+      }
+      if (!r) return;
+      if (!me && (e.target.closest("[data-fb-like]") || e.target.closest("[data-fb-rep]"))) { account(); return; }
+      if (e.target.closest("[data-fb-like]")) { try { const j = await socPost("/api/social/like", { rid: r.id }); const u = myUid(); r.likes = r.likes.filter((x) => x !== u); if (j.on) r.likes.push(u); draw(); } catch (er) { toast(esc(er.message)); } return; }
+      if (e.target.closest("[data-fb-rep]")) { const rb = c.querySelector("[data-fb-repbox]"); rb.hidden = !rb.hidden; if (!rb.hidden) rb.querySelector("textarea").focus(); return; }
+      if (e.target.closest("[data-fb-repsend]")) { const t = c.querySelector("[data-fb-reptext]"), text = t.value.trim(); if (!text) return;
+        try { const j = await socPost("/api/social/reply", { rid: r.id, text }); r.rp.push(j.rp); draw(); } catch (er) { toast(esc(er.message)); } }
+    });
+  }
+
   function account() {
     const A = acct();
     if (!A) { authView(() => account(), "سجّل حساب أو ادخل على حسابك لتطلب وتتابع طلباتك.", "login"); return; }
@@ -1959,7 +2094,7 @@
         <span class="qd-note"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 10.5v6M12 7.4v.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>لازم يكون التلغرام على نفس الرقم المسجّل على الوصل</span>
         <span class="qd-cta"><span>افتح البوت</span><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </a>
-${koOwn() ? `<a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a>
+${koOwn() ? `<a class="acc-card acc-pred acc-me2" href="#/me"><span class="apr-l"><b>👤 بروفايلي ونقاطي</b><small>صورتك، مستواك، نقاطك وترتيبك بالعالم</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/rank"><span class="apr-l"><b>🏆 التصنيف العالمي</b><small>أقوى الزباين بالتوقعات والتعليقات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a>
 <a class="acc-card acc-pred acc-train" href="#/workout"><span class="apr-l"><b>⏱ التمرين التفاعلي</b><small>مؤقت لكل تمرين، وكاميرا بتعدّ ضرباتك وتكراراتك وبتقلّك إذا الحركة صح أو غلط</small></span><span class="apr-go">افتح ›</span></a>
 <a class="acc-card acc-pred acc-train" href="#/train"><span class="apr-l"><b>🏋️ برامج التدريب</b><small>كالستنكس، كمال أجسام، قوة بدنية، ملاكمة ومصارعة — مع رسومات متحركة لكل تمرين</small></span><span class="apr-go">افتح ›</span></a>
 ${exl()}` : ""}
@@ -2716,7 +2851,10 @@ ${trustH()}
     else if (a === "account") (b ? myOrder(b) : account());
     else if (a === "page") page(b || "");
     else if (a === "games" && gamesOn()) gamesPage();
-    else if (["predict", "train", "workout", "exercises"].includes(a) && !koOwn()) { location.replace("#/account"); return; } // مخفية عن الزباين
+    else if (["predict", "train", "workout", "exercises", "me", "rank", "u"].includes(a) && !koOwn()) { location.replace("#/account"); return; } // مخفية عن الزباين
+    else if (a === "me") mePage();
+    else if (a === "rank") rankPage(b);
+    else if (a === "u" && b) userPage(decodeURIComponent(b));
     else if (a === "predict") predictPage();
     else if (a === "train") trainPage();
     else if (a === "workout") workoutPage();
