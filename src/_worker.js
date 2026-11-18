@@ -747,7 +747,7 @@ async function throttle(request, name, max, secs) {
 // النقاط بنفس لوحة التوقعات (pred:board): p = نقاط التوقعات، rv = نقاط التعليقات، m = مجموع كل شهر. المجموع = p + rv.
 // نقاط التعليق نفسها مهما كان عدد النجوم (مكافأة النجوم العالية بس = تقييمات مدفوعة، ممنوعة بقواعد غوغل وبتضر ثقة الزباين).
 const SOCIAL_LIVE = false;
-const SOC_CMT_PTS = 150, SOC_CMT_MIN = 20, SOC_CMT_DAY = 3;
+const SOC_CMT_PTS = 150, SOC_CMT_DAY = 3; // صاحب المتجر (18/11): 150 لكل تعليق، اشترى أو لأ، بلا شرط عدد أحرف، وتعليق واحد بس على كل منتج
 const socYm = (ms) => new Date(+ms + 3 * 3600e3).toISOString().slice(0, 7);
 const socPrune = (r) => { if (!r || !r.m) return; const ks = Object.keys(r.m).sort(); while (ks.length > 4) delete r.m[ks.shift()]; };
 const socTot = (r) => (r ? (r.p || 0) + (r.rv || 0) : 0);
@@ -807,20 +807,20 @@ async function socialApi(request, env, ctx, path, m) {
   if (path === "/api/social/comment" && m === "POST") {
     const b = await request.json().catch(() => ({})), pid = clip(b.pid, 160), text = clip(b.text, 800), rating = parseInt(b.rating);
     if (!(rating >= 1 && rating <= 5)) return json({ error: "اختار عدد النجوم" }, 400);
-    if (text.length < 2) return json({ error: "اكتب تعليقك" }, 400);
+    if (text.length < 1) return json({ error: "اكتب تعليقك" }, 400);
     if (await throttle(request, "cmt:" + a.phone, 10, 3600)) return json({ error: "كتبت تعليقات كتير، جرّب بعد شوي" }, 429);
     const p = (await getProducts(env, request)).find((x) => x.id === pid && !x.hidden); if (!p) return json({ error: "المنتج مو موجود" }, 404);
     const settings = await getSettings(env, request), auto = settings.design.reviewsAuto === true, list = await getReviews(env);
     const today = socYm(Date.now()) + new Date(Date.now() + 3 * 3600e3).toISOString().slice(7, 10);
-    const mineHere = list.some((r) => r.ph === a.phone && r.pid === pid && r.paid);
+    if (list.some((r) => r.ph === a.phone && r.pid === pid)) return json({ error: "علّقت على هالمنتج قبل، كل زبون إلو تعليق واحد على المنتج", dup: true }, 409);
     const paidToday = list.filter((r) => r.ph === a.phone && r.paid && String(r.payDay || "") === today).length;
-    const earns = text.length >= SOC_CMT_MIN && !mineHere && paidToday < SOC_CMT_DAY;
+    const earns = paidToday < SOC_CMT_DAY;
     const rv = { id: newKey().slice(0, 12), pid, pname: p.name, name: String(a.name || "").split(" ").slice(0, 2).join(" "), rating, text, at: new Date().toISOString(), ok: auto, ph: a.phone, uid: uidMe, av: a.av || "", earn: earns, likes: [], rp: [] };
     if (auto && earns) { rv.paid = true; rv.payDay = today; await socAward(env, a.phone, a.name, SOC_CMT_PTS); }
     list.push(rv); if (list.length > 3000) list.splice(0, list.length - 3000);
     await env.STORE.put("reviews", JSON.stringify(list));
     if (auto) { await purgeEdge("products"); await purgeEdge("rev:" + encodeURIComponent(pid)); }
-    return json({ ok: true, pending: !auto, pts: earns ? SOC_CMT_PTS : 0, why: earns ? "" : text.length < SOC_CMT_MIN ? `اكتب ${SOC_CMT_MIN} حرف أو أكتر لتاخد نقاط` : mineHere ? "النقاط بتنحسب لأول تعليق على كل منتج" : "خلصت تعليقات النقاط لليوم (3)" }, 201);
+    return json({ ok: true, pending: !auto, pts: earns ? SOC_CMT_PTS : 0, why: earns ? "" : "خلصت تعليقات النقاط لليوم (3)" }, 201);
   }
   if ((path === "/api/social/like" || path === "/api/social/reply") && m === "POST") {
     const b = await request.json().catch(() => ({})), rid = clip(b.rid, 20), list = await getReviews(env), r = list.find((x) => x.id === rid && x.ok);

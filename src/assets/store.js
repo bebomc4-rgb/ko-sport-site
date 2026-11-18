@@ -2011,7 +2011,7 @@
     app.innerHTML = `<div class="so-page">${socCard(d, true)}
       <div class="so-two"><div class="so-box"><small>نقاط التوقعات</small><b>${socNum(d.p)}</b></div><div class="so-box"><small>نقاط التعليقات</small><b>${socNum(d.rv)}</b></div><div class="so-box"><small>هالشهر</small><b>${socNum(d.mpts)}</b>${d.mrank ? `<em>#${socNum(d.mrank)}</em>` : ""}</div><div class="so-box"><small>رصيدك للخصم</small><b>${socNum(Math.max(0, d.tot - (d.s || 0)))}</b></div></div>
       <a class="acc-card acc-pred" href="#/rank"><span class="apr-l"><b>🏆 التصنيف العالمي</b><small>شوف ترتيبك بين كل الزباين، وأقوى اللاعبين هالشهر</small></span><span class="apr-go">افتح ›</span></a>
-      <div class="so-how"><b>كيف بتجمع نقاط؟</b><p>🔮 كل توقّع صح بالتوقعات: من 30 لـ 200 نقطة.<br>💬 تعليق على منتج (20 حرف أو أكتر): 150 نقطة، أول تعليق على كل منتج، لحد 3 تعليقات باليوم.<br>👍 الإعجابات على تعليقاتك بتبيّن ببروفايلك.</p></div></div>`;
+      <div class="so-how"><b>كيف بتجمع نقاط؟</b><p>🔮 كل توقّع صح بالتوقعات: من 30 لـ 200 نقطة.<br>💬 تعليق على منتج: 150 نقطة (تعليق واحد على كل منتج، والنقاط لحد 3 تعليقات باليوم).<br>👍 الإعجابات على تعليقاتك بتبيّن ببروفايلك.</p></div></div>`;
     app.onclick = (e) => { if (e.target.closest("[data-so-av]")) socPickAvatar(() => mePage()); };
   }
   async function userPage(uid) {
@@ -2052,10 +2052,10 @@
     const sec = app.querySelector("[data-reviews]"); if (!sec) return;
     const A = acct(), me = A && A.account, form = sec.querySelector("[data-rv-form]");
     const myUid = () => (fbComments.uid || "");
-    if (!fbComments.uid && me) socGet("/api/social/me").then((d) => { fbComments.uid = d.uid; }).catch(() => {});
+    if (!fbComments.uid && me) socGet("/api/social/me").then((d) => { fbComments.uid = d.uid; if (box.__draw && box.isConnected) box.__draw(); }).catch(() => {});
     const box = document.createElement("div"); box.className = "fb"; box.dataset.fbc = "";
     box.innerHTML = `<div class="fb-new">${socAv(me && me.av, me && me.name, "", 38)}<div class="fb-in"><textarea data-fb-text rows="1" maxlength="800" placeholder="${me ? "اكتب تعليق…" : "فوت على حسابك لتعلّق"}"></textarea>
-        <div class="fb-tools" data-fb-tools hidden><span class="fb-stars" data-fb-stars>${[1, 2, 3, 4, 5].map((i) => `<button type="button" data-fs="${i}" class="on" aria-label="${i} نجوم">★</button>`).join("")}</span><small data-fb-hint>20 حرف أو أكتر = 150 نقطة</small><button type="button" class="fb-send" data-fb-send aria-label="إرسال">➤</button></div></div></div>
+        <div class="fb-tools" data-fb-tools hidden><span class="fb-stars" data-fb-stars>${[1, 2, 3, 4, 5].map((i) => `<button type="button" data-fs="${i}" class="on" aria-label="${i} نجوم">★</button>`).join("")}</span><small data-fb-hint>تعليقك = 150 نقطة 🎁</small><button type="button" class="fb-send" data-fb-send aria-label="إرسال">➤</button></div></div></div>
       <div class="fb-list" data-fb-list><div class="loading">لحظة…</div></div>`;
     if (form) form.replaceWith(box); else sec.appendChild(box);
     const old = sec.querySelector("[data-rv-list]"); if (old) old.hidden = true;
@@ -2068,10 +2068,14 @@
         ${r.rp.length ? `<div class="fb-reps">${r.rp.map((x) => `<div class="fb-c fb-r">${socAv(x.av, x.n, x.uid, 28)}<div class="fb-body"><div class="fb-bub${x.own ? " own" : ""}"><span class="fb-nm">${esc(x.n)}${x.own ? " · KO SPORT ✓" : ""}</span><p>${esc(x.text)}</p></div><div class="fb-meta"><span>${socAgo(x.at)}</span></div></div></div>`).join("")}</div>` : ""}
         <div class="fb-repbox" data-fb-repbox hidden>${socAv(me && me.av, me && me.name, "", 28)}<div class="fb-in"><textarea rows="1" maxlength="400" placeholder="اكتب ردّ…" data-fb-reptext></textarea><button type="button" class="fb-send" data-fb-repsend aria-label="إرسال">➤</button></div></div></div></article>`;
     };
-    const draw = () => { const L = box.querySelector("[data-fb-list]"); L.innerHTML = list.length ? list.map(one).join("") : `<p class="fb-empty">كون أول واحد بيعلّق على هالمنتج 💬</p>`; };
+    // تعليق واحد لكل زبون على المنتج: إذا علّق قبل، منخبّي مربع الكتابة
+    const draw = () => { const L = box.querySelector("[data-fb-list]"), nb = box.querySelector(".fb-new"), done = me && (list.some((r) => r.uid && r.uid === myUid()) || fbComments.done === p.id);
+      if (nb && done && !nb.classList.contains("fb-done")) nb.outerHTML = `<p class="fb-done fb-new">✓ علّقت على هالمنتج، شكراً إلك</p>`;
+      L.innerHTML = list.length ? list.map(one).join("") : `<p class="fb-empty">كون أول واحد بيعلّق على هالمنتج 💬</p>`; };
+    box.__draw = () => draw();
     fetch("/api/reviews?id=" + encodeURIComponent(p.id), { cache: "no-store" }).then((r) => (r.ok ? r.json() : [])).then((L) => { list = Array.isArray(L) ? L : []; draw(); }).catch(() => { list = []; draw(); });
     const grow = (t) => { t.style.height = "auto"; t.style.height = Math.min(160, t.scrollHeight) + "px"; };
-    box.addEventListener("input", (e) => { if (e.target.matches("textarea")) grow(e.target); if (e.target.matches("[data-fb-text]")) { const n = e.target.value.trim().length; box.querySelector("[data-fb-hint]").textContent = n >= 20 ? "✓ هالتعليق بياخد 150 نقطة" : `${20 - n} حرف كمان = 150 نقطة`; } });
+    box.addEventListener("input", (e) => { if (e.target.matches("textarea")) grow(e.target); });
     box.addEventListener("focusin", (e) => { if (e.target.matches("[data-fb-text]")) { if (!me) { e.target.blur(); account(); return; } box.querySelector("[data-fb-tools]").hidden = false; } });
     box.addEventListener("click", async (e) => {
       const fs = e.target.closest("[data-fs]"); if (fs) { rating = +fs.dataset.fs; box.querySelectorAll("[data-fs]").forEach((b) => b.classList.toggle("on", +b.dataset.fs <= rating)); return; }
@@ -2080,9 +2084,10 @@
         const t = box.querySelector("[data-fb-text]"), text = t.value.trim(); if (!text) { t.focus(); return; }
         const btn = e.target.closest("[data-fb-send]"); btn.disabled = true;
         try { const j = await socPost("/api/social/comment", { pid: p.id, text, rating });
-          t.value = ""; grow(t); box.querySelector("[data-fb-tools]").hidden = true;
+          t.value = ""; grow(t); box.querySelector("[data-fb-tools]").hidden = true; fbComments.done = p.id;
           if (!j.pending) { list.unshift({ id: "tmp" + Date.now(), name: String(me.name || "").split(" ").slice(0, 2).join(" "), rating, text, at: new Date().toISOString(), uid: myUid(), av: me.av || "", likes: [], rp: [] }); draw(); }
           toast(j.pts ? `🎉 +${j.pts} نقطة${j.pending ? " بعد ما ينقبل تعليقك" : ""}` : j.pending ? "وصل تعليقك، بيبيّن بعد المراجعة" + (j.why ? " · " + esc(j.why) : "") : esc(j.why || "✓ انضاف تعليقك"));
+          draw();
         } catch (er) { toast(esc(er.message)); } btn.disabled = false; return;
       }
       if (!r) return;
