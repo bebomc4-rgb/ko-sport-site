@@ -2021,15 +2021,27 @@
     app.innerHTML = `<div class="so-page">${socCard(d, false)}<a class="btn btn-dark so-back" href="#/rank">‹ التصنيف العالمي</a></div>`;
     app.onclick = null;
   }
+  // معاينة بأسماء وهمية (صاحب المتجر 18/11: «حطلي كيف لح يطلع التصنيف ولو وهمي بدي شوف المنظر»): بتنرسم بالمتصفح بس، ما بتنحفظ، وما حدا غيرو بيشوفها
+  function socDemo(scope) {
+    const N = ["أحمد الخطيب", "محمد العلي", "خالد الحسن", "سامر حداد", "رامي الشامي", "يوسف درويش", "عمر النجار", "حسام الأحمد", "فادي سليمان", "مازن العبدالله", "طارق المصري", "باسل يونس", "زياد قاسم", "ماهر الحلبي", "وسيم عيسى", "نور الدين صالح", "إياد شاهين", "غيث الزين", "علاء حمدان", "مهند الرفاعي", "جاد الأيوبي", "قصي بكور", "ليث العمر", "هادي ناصر", "كريم الحمصي", "أنس الخوري", "مجد الساعور", "شادي عباس", "تامر رزق", "بشار المحمد"];
+    const base = scope === "month" ? 6200 : 48000, me = (acct() || {}).account || {};
+    const top = N.map((n, i) => { const pts = Math.round(base * Math.pow(0.86, i) + (30 - i) * 7), t = 40 + ((i * 37) % 160); return { uid: "demo" + i, n: n, av: "", pts, tot: scope === "month" ? Math.round(pts * 6.5) : pts, w: Math.round(t * (0.78 - i * 0.012)), t, rank: i + 1 }; });
+    const mi = 6; top.splice(mi, 0, { uid: "demo-me", n: String(me.name || "إنت").split(" ").slice(0, 2).join(" "), av: me.av || "", pts: Math.round((top[mi - 1].pts + top[mi].pts) / 2), tot: 0, w: 61, t: 88, rank: mi + 1 }); top[mi].tot = scope === "month" ? Math.round(top[mi].pts * 6.5) : top[mi].pts;
+    top.forEach((x, i) => (x.rank = i + 1));
+    return { scope, of: 1284, top: top.slice(0, 30), me: top[mi], demo: true };
+  }
   async function rankPage(scope) {
-    scope = scope === "month" ? "month" : "all";
+    const demo = /^demo/.test(scope || ""); scope = /month/.test(scope || "") ? "month" : "all";
     document.title = "التصنيف العالمي | " + (C.name || "");
     app.innerHTML = `<div class="so-page"><div class="loading">لحظة…</div></div>`;
-    let d; try { d = await socGet("/api/social/rank?scope=" + scope); } catch (e) { app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; return; }
-    const row = (x) => `<a class="so-row${d.me && x.uid === d.me.uid ? " me" : ""}" href="#/u/${esc(x.uid)}"><span class="so-n">${x.rank}</span>${socAv(x.av, x.n, x.uid, 40)}<span class="so-nm"><b>${esc(x.n)}</b>${socBadge(x.tot)}</span><span class="so-pt"><b>${socNum(x.pts)}</b><small>${x.t ? Math.round((x.w / x.t) * 100) + "% دقة" : "نقطة"}</small></span></a>`;
-    const [a, b, c] = d.top, pod = (x, k) => x ? `<a class="so-pod p${k}" href="#/u/${esc(x.uid)}"><span class="so-crown">${["🥇", "🥈", "🥉"][k - 1]}</span>${socAv(x.av, x.n, x.uid, k === 1 ? 76 : 60)}<b>${esc(x.n)}</b><small>${socNum(x.pts)}</small><i></i></a>` : "<span></span>";
+    let d; if (demo) d = socDemo(scope); else try { d = await socGet("/api/social/rank?scope=" + scope); } catch (e) { app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; return; }
+    const uh = (x) => d.demo ? "#/rank/demo" : "#/u/" + esc(x.uid);
+    const row = (x) => `<a class="so-row${d.me && x.uid === d.me.uid ? " me" : ""}" href="${uh(x)}"><span class="so-n">${x.rank}</span>${socAv(x.av, x.n, x.uid, 40)}<span class="so-nm"><b>${esc(x.n)}</b>${socBadge(x.tot)}</span><span class="so-pt"><b>${socNum(x.pts)}</b><small>${x.t ? Math.round((x.w / x.t) * 100) + "% دقة" : "نقطة"}</small></span></a>`;
+    const [a, b, c] = d.top, pod = (x, k) => x ? `<a class="so-pod p${k}" href="${uh(x)}"><span class="so-crown">${["🥇", "🥈", "🥉"][k - 1]}</span>${socAv(x.av, x.n, x.uid, k === 1 ? 76 : 60)}<b>${esc(x.n)}</b><small>${socNum(x.pts)}</small><i></i></a>` : "<span></span>";
+    const pre = demo ? "demo-" : "";
     app.innerHTML = `<div class="so-page so-rk"><h1 class="page-title">🏆 التصنيف العالمي</h1>
-      <div class="so-tabs"><a href="#/rank" class="${scope === "all" ? "on" : ""}">كل الأوقات</a><a href="#/rank/month" class="${scope === "month" ? "on" : ""}">هالشهر</a></div>
+      ${demo ? `<div class="so-demo">👁 معاينة بأسماء وهمية، بس إنت بتشوفها وما بتنحفظ · <a href="#/rank">رجوع للتصنيف الحقيقي</a></div>` : `<a class="so-demo-go" href="#/rank/demo">👁 شوف المنظر بأسماء وهمية</a>`}
+      <div class="so-tabs"><a href="#/rank${demo ? "/demo" : ""}" class="${scope === "all" ? "on" : ""}">كل الأوقات</a><a href="#/rank/${pre}month" class="${scope === "month" ? "on" : ""}">هالشهر</a></div>
       ${d.top.length ? `<div class="so-podium">${pod(b, 2)}${pod(a, 1)}${pod(c, 3)}</div><div class="so-list">${d.top.slice(3).map(row).join("")}</div>` : `<p class="msg">لسا ما في حدا بالترتيب هالشهر. أول توقّع صح أو تعليق بيحطّك فوق 💪</p>`}
       ${d.me ? `<div class="so-mebar">${row(d.me)}</div>` : ""}
       <p class="so-foot">${socNum(d.of)} لاعب بالترتيب · النقاط من التوقعات والتعليقات</p></div>`;

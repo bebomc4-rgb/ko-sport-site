@@ -2147,3 +2147,6 @@ html[data-logo-round=on] header.top .logo>img{animation:koGlow 4.8s ease-in-out 
 .fb-meta button{border:0;background:none;padding:0;font:inherit;font-weight:800;color:var(--muted)}.fb-meta button.on{color:#1877f2}
 .fb-reps{margin-top:8px}.fb-r{margin-bottom:8px}
 .fb-empty{color:var(--muted);text-align:center;padding:10px 0}
+
+.so-demo{background:#fff6dc;border:1px solid #e9c46a;color:#6b4e00;border-radius:12px;padding:8px 12px;font-size:13px;margin:0 0 12px;text-align:center}.so-demo a{color:inherit;font-weight:800}
+.so-demo-go{display:block;text-align:center;font-size:13px;font-weight:700;margin:-6px 0 12px;color:var(--muted)}
