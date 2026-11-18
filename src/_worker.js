@@ -457,7 +457,7 @@ async function settingsPut(request, env) {
 async function authGuard(request, env) {
   if (typeof caches === "undefined") return null;
   const ip = request.headers.get("cf-connecting-ip") || "unknown";
-  const key = new Request("https://auth-guard.internal/" + encodeURIComponent(ip));
+  const key = new Request("https://auth-guard2.internal/" + encodeURIComponent(ip)); // guard2: صفّرنا العدّاد بعد غلط 18/11
   const cache = caches.default;
   const hit = await cache.match(key);
   const fails = hit ? parseInt(await hit.text()) || 0 : 0;
@@ -4712,8 +4712,13 @@ const koMain = {
       if (path.startsWith("/api/") && !env.STORE) return json({ error: "مخزن KV مو مربوط بإعدادات المشروع (الموجود: " + (Object.keys(rawEnv).filter((k) => k !== "ASSETS").join("، ") || "ولا شي") + ")" }, 500);
       if (path.startsWith("/api/") && request.headers.has("authorization")) {
         await resolveRole(request, env);
-        const blocked = await authGuard(request, env);
-        if (blocked) return blocked;
+        // صاحب المتجر (18 تشرين التاني 2026): «كاتبلي محاولات كتير جرّب بعد ربع ساعة» — توكن حساب الزبون (رقم.تاريخ.…) مو كلمة سر
+        // لوحة التحكم، فما لازم ينحسب محاولة غلط. قبل كانت صفحات البروفايل والتعليقات تسكّر الحساب بعد 8 طلبات.
+        const bearer = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+        if (!/^(09\d{8}|\+[1-9]\d{9,14})\.\d{10,}\.[^.]+\.[^.]+$/.test(bearer)) {
+          const blocked = await authGuard(request, env);
+          if (blocked) return blocked;
+        }
       }
       if (path === "/manifest.webmanifest" && m === "GET" && env.STORE) {
         // the app icon = the store logo (circular PNGs the dashboard generates when the logo is uploaded)
