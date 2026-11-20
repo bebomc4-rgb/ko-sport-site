@@ -1979,7 +1979,7 @@
   function exlDraw() {
     const L = exlList(), g = app.querySelector("[data-exl-grid]"); if (!g) return;
     app.querySelector("[data-exl-count]").textContent = L.length + " تمرين";
-    g.innerHTML = L.slice(0, exl.n).map((x) => `<button type="button" class="exl-card" data-exl-id="${x.i}"><span class="exl-pic"><img src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async" width="320" height="180">${x.v ? '<i class="exl-play" aria-hidden="true">▶</i>' : ""}</span><b dir="ltr">${esc(x.n)}</b><small>${esc(EXL_M[x.m] || x.m)} · ${esc(EXL_E[x.e] || x.e)}</small></button>`).join("") || '<div class="empty"><b>ما في تمارين هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>';
+    g.innerHTML = L.slice(0, exl.n).map((x) => `<button type="button" class="exl-card" data-exl-id="${x.i}"><span class="exl-pic">${x.v ? `<video src="/exlib/m/${x.i}.mp4" autoplay muted loop playsinline width="240" height="240" style="object-fit:cover;"></video>` : `<img src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async" width="240" height="240" style="object-fit:cover;">`}</span><b dir="ltr">${esc(x.n)}</b><small>${esc(EXL_M[x.m] || x.m)} · ${esc(EXL_E[x.e] || x.e)}</small></button>`).join("") || '<div class="empty"><b>ما في تمارين هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>';
     app.querySelector("[data-exl-more]").innerHTML = L.length > exl.n ? `<button type="button" class="btn btn-dark">عرض المزيد (${L.length - exl.n})</button>` : "";
   }
   function exlOpen(id) {
