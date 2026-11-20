@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#fdfbf7">
+<title>توقّعات KO SPORT</title>
+<link rel="icon" href="/brand/icon-192.png?v=3" type="image/png">
+<script>try{var t=localStorage.getItem("ko_theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches&&0))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
+<style>
+/* نفس هوية المتجر: أبيض/كريمي، حبر غامق، لمسات ذهبية، أزرار سودا، ووضع ليلي متل المتجر (ko_theme) */
+:root{--bg:#ffffff;--hdr:#fdfbf7;--ink:#100f14;--mut:#5f5c56;--line:#e4e0d8;--card:#ffffff;--card2:#f7f5f0;--gold:#c9a45c;--gold2:#a8843f;--goldbg:#fbf6ea;--btn:#100f14;--btnfg:#ffffff;--ok:#1f8f4e;--bad:#c62828;--r:14px;--shadow:0 1px 0 rgba(201,164,92,.3) inset,0 14px 34px -18px rgba(0,0,0,.35);color-scheme:light}
+html[data-theme=dark]{--bg:#0f0f12;--hdr:#141418;--ink:#f2f2f5;--mut:#a4a4af;--line:#2c2c34;--card:#1a1a20;--card2:#22222a;--goldbg:#2a2416;--btn:#f2f2f5;--btnfg:#100f14;--shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.4);color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;font-size:16px;line-height:1.55}
+a{color:var(--gold2)}
+.top{position:sticky;top:0;z-index:20;background:var(--hdr);border-bottom:1px solid var(--line)}
+.top-in{max-width:760px;margin:0 auto;height:64px;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;padding:0 10px}
+.top .back{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:var(--ink);text-decoration:none}
+.top .back:hover{background:var(--card2)}
+.top .logo{justify-self:center;display:block;height:48px}
+.top .logo img{height:48px;width:48px;border-radius:50%;display:block}
+.wrap{max-width:760px;margin:0 auto;padding:16px 14px 90px}
+.ptitle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 14px}
+.ptitle h1{margin:0;font-size:clamp(22px,5vw,28px);font-weight:800;letter-spacing:-.2px}
+.ptitle small{display:block;color:var(--mut);font-size:.85rem;font-weight:400}
+.badge{display:inline-block;background:var(--goldbg);color:var(--gold2);border:1px solid var(--gold);border-radius:99px;padding:3px 10px;font-size:.72rem;font-weight:700;white-space:nowrap}
+.me{background:linear-gradient(135deg,var(--goldbg),var(--card) 70%);border:1px solid var(--gold);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;box-shadow:var(--shadow)}
+.me b{font-size:2rem;color:var(--gold2);line-height:1}
+.me .sub{color:var(--mut);font-size:.85rem}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:7px 15px;font:inherit;font-size:.9rem;cursor:pointer}
+.chips button.on{background:var(--btn);color:var(--btnfg);border-color:var(--btn);font-weight:700}
+.chips.orgs button{font-size:.82rem;padding:6px 12px;background:var(--card2)}
+.chips.orgs button.on{background:var(--goldbg);color:var(--gold2);border-color:var(--gold)}
+.lgs h5{width:100%;margin:8px 0 0;color:var(--gold2);font-size:.8rem}
+h2{font-size:1.1rem;margin:20px 2px 10px;font-weight:800}
+.m{background:var(--card);border:1px solid rgba(201,164,92,.55);border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.m .hd{display:flex;justify-content:space-between;color:var(--mut);font-size:.78rem;margin-bottom:10px;gap:8px}
+.m .hd .sp{color:var(--gold2);font-weight:700}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opts.d3{grid-template-columns:1fr .8fr 1fr}
+.opts button{position:relative;overflow:hidden;background:var(--card2);color:var(--ink);border:1.5px solid var(--line);border-radius:12px;padding:10px 6px;font:inherit;font-size:.9rem;font-weight:600;cursor:pointer;min-height:48px}
+.opts button .bar{position:absolute;inset:auto 0 0 0;height:3px;background:var(--gold);opacity:.7}
+.opts button .pc{display:block;font-size:.72rem;color:var(--mut);font-weight:400}
+.opts button.mine{border-color:var(--gold);background:var(--goldbg)}
+.opts button.win{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok) inset}
+.opts button:disabled{cursor:default}
+.st{margin-top:10px;font-size:.82rem;color:var(--mut)}
+.st.ok{color:var(--ok);font-weight:600}.st.bad{color:var(--bad)}
+.board{background:var(--card);border:1px solid rgba(201,164,92,.55);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.board div{display:flex;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--line)}
+.board div:last-child{border-bottom:0}
+.board div.me1{background:var(--goldbg)}
+.board .rk{color:var(--gold2);width:2.2em;display:inline-block;font-weight:700}
+.empty{color:var(--mut);text-align:center;padding:18px}
+.msg{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;text-align:center;box-shadow:var(--shadow)}
+.msg input{width:100%;margin:10px 0;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit}
+.btn{background:var(--btn);color:var(--btnfg);border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:6px 10px;font-size:.8rem;font-weight:600;border-radius:9px}
+.btn.red{background:transparent;color:var(--bad);border:1px solid rgba(198,40,40,.35)}
+details.adm{background:var(--card);border:1px dashed var(--gold);border-radius:var(--r);padding:12px 14px;margin:14px 0}
+details.adm summary{cursor:pointer;color:var(--gold2);font-weight:700}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.f label{display:flex;flex-direction:column;font-size:.8rem;color:var(--mut);gap:4px}
+.f label.w{grid-column:1/-1}
+.f input,.f select{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px;font:inherit;font-size:.95rem}
+.f .chk{flex-direction:row;align-items:center;gap:8px}
+.ctl{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.ctl b{font-size:.78rem;color:var(--mut);width:100%}
+.side{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;min-width:0}
+.side img.lg{width:58px;height:58px;object-fit:contain}
+.side img.ph{width:68px;height:68px;object-fit:cover;object-position:top;border-radius:50%;background:var(--card2);border:2px solid var(--gold)}
+.side .av{width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3rem;letter-spacing:1px;color:var(--gold2);background:radial-gradient(circle at 30% 25%,var(--goldbg),var(--card2));border:2px solid var(--gold)}
+.side{position:relative}.side .av.sil{font-size:0}.picb{position:absolute;top:-6px;inset-inline-start:-4px;z-index:2;border:1px solid var(--gold);background:var(--card);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:.85rem;line-height:1;padding:0}
+.sh-hd .side img.ph,.sh-hd .side .av{width:104px;height:104px;font-size:1.9rem;box-shadow:0 10px 26px -10px rgba(201,164,92,.8)}
+.sh-hd .side .nm{font-size:1.08rem}
+.evno{display:inline-block;margin-bottom:6px;background:var(--ink);color:var(--gold);font-weight:900;font-size:.95rem;letter-spacing:1px;border-radius:10px;padding:3px 12px;border:1px solid var(--gold)}
+.info .row{position:relative;padding-bottom:12px}
+.info .row i.br{position:absolute;inset:auto 0 3px 0;height:4px;display:flex;gap:4px;direction:ltr}
+.info .row i.br em{flex:1;display:flex;border-radius:99px;background:var(--card2);overflow:hidden}
+.info .row i.br em:first-child{justify-content:flex-end}
+.info .row i.br em u{display:block;height:100%;border-radius:99px;background:var(--mut);opacity:.55;text-decoration:none}
+.info .row i.br em u.hi{background:var(--ok);opacity:1}.info .row i.br em u.lo{background:var(--bad);opacity:.8}
+.wm{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--card2);margin:4px 0 2px}.wm span{display:block;height:100%}
+.wm .k{background:#c62828}.wm .s{background:#c9a45c}.wm .d{background:#5f5c56}
+.wml{display:flex;gap:10px;justify-content:center;font-size:.72rem;color:var(--mut);margin:6px 0 2px}.wml i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:4px;vertical-align:middle}
+.side .nm{font-weight:800;font-size:.98rem;line-height:1.25;word-break:break-word}
+.side .inf{color:var(--mut);font-size:.72rem;display:flex;align-items:center;gap:4px}
+.side .inf img{width:16px;height:11px;object-fit:cover;border-radius:2px}
+.mid{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--mut);font-size:.8rem;padding-top:20px}
+.mid b{color:var(--ink);font-size:1.35rem}
+.vs2{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.evc{background:var(--goldbg);border:1px solid var(--gold,#c9a45c);border-radius:18px;padding:14px 14px 4px;margin:14px 0 18px;box-shadow:0 6px 22px rgba(201,164,92,.12)}
+.evc>.eh{text-align:center;margin-bottom:10px}.evc>.eh b{display:block;font-size:1.05rem;color:var(--gold2,#a8853f)}.evc>.eh small{color:var(--mut);font-size:.78rem}
+.evc h4{margin:14px 0 8px;font-size:.85rem;color:var(--mut);display:flex;align-items:center;gap:8px}.evc h4:after{content:"";flex:1;height:1px;background:var(--line,#e8e1d3)}
+.mevb{display:inline-block;background:var(--gold,#c9a45c);color:#111;font-weight:700;font-size:.7rem;border-radius:99px;padding:2px 10px;margin:0 auto 6px}
+.evn{color:var(--mut);font-size:.75rem;margin:-4px 0 8px;text-align:center}
+.sync{color:var(--mut);font-size:.75rem;text-align:center;margin:14px 0 0}
+.lgs{display:flex;flex-wrap:wrap;gap:8px 14px;margin:10px 0}
+.lgs label{display:flex;gap:6px;align-items:center;font-size:.85rem}
+.stb{margin-top:10px;width:100%;background:transparent;color:var(--gold2);border:1px solid var(--gold);border-radius:12px;padding:9px;font:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:background .2s}
+.stb:hover{background:var(--goldbg)}
+.sc2{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-top:4px}
+.sc2 input{width:100%;text-align:center;font:inherit;font-size:1.35rem;font-weight:800;background:var(--card2);color:var(--ink);border:1.5px solid var(--line);border-radius:12px;padding:8px 4px}
+.sc2 input:focus{outline:none;border-color:var(--gold)}
+.sc2 span{color:var(--mut)}
+.save{margin-top:8px;width:100%}
+.meths{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:center}
+.meths button{background:var(--card2);color:var(--ink);border:1.5px solid var(--line);border-radius:99px;padding:7px 13px;font:inherit;font-size:.85rem;cursor:pointer}
+.meths button.on{border-color:var(--gold);background:var(--goldbg);color:var(--gold2);font-weight:700}
+.hint{color:var(--mut);font-size:.72rem;margin-top:6px;text-align:center}
+/* نافذة الإحصائيات */
+.ov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(16,15,20,.28);-webkit-backdrop-filter:blur(7px) saturate(1.1);backdrop-filter:blur(7px) saturate(1.1);opacity:0;transition:opacity .25s ease}
+.ov.on{opacity:1}
+.sheet{position:relative;width:min(600px,100%);max-height:86vh;display:flex;flex-direction:column;background:var(--card);border:1px solid rgba(201,164,92,.6);border-radius:22px;box-shadow:0 30px 80px -20px rgba(0,0,0,.45),0 1px 0 rgba(201,164,92,.35) inset;transform:translateY(16px) scale(.97);transition:transform .32s cubic-bezier(.2,.9,.25,1.05);overflow:hidden}
+.ov.on .sheet{transform:none}
+.sheet::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.sh-hd{padding:18px 18px 12px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--goldbg),var(--card))}
+.sh-hd .t{text-align:center;color:var(--gold2);font-size:.78rem;font-weight:700;letter-spacing:.3px;margin-bottom:10px}
+.sh-hd .vs2{margin:0}
+.sh-x{position:absolute;top:12px;left:12px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.sh-bd{overflow:auto;padding:4px 16px 18px;overscroll-behavior:contain}
+@media (max-width:560px){.ov{align-items:flex-end;padding:0}.sheet{width:100%;max-height:90vh;border-radius:22px 22px 0 0;transform:translateY(40px)}}
+.info{font-size:.86rem}
+.info .row{display:grid;grid-template-columns:1fr 2.2fr 1fr;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);text-align:center}
+.info .row:last-child{border-bottom:0}
+.info .row b{font-size:1.02rem;font-weight:800}
+.info .row b.hi{color:var(--ok)}
+.info .row b.lo{color:var(--bad)}
+.sh-logo{display:block;width:54px;height:54px;border-radius:50%;margin:-2px auto 8px;box-shadow:0 0 0 3px var(--card),0 0 0 4px var(--gold),0 8px 20px -6px rgba(201,164,92,.7)}
+.info .row span{color:var(--mut);font-size:.8rem}
+.info .row b small{display:block;font-size:.7rem;color:var(--mut);font-weight:400}
+.info .sec{margin:16px 0 4px;color:var(--gold2);font-size:.82rem;font-weight:800;display:flex;align-items:center;gap:8px}
+.info .sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--gold),transparent);opacity:.5}
+.info .gl{margin-top:8px;color:var(--mut);font-size:.78rem;display:flex;flex-direction:column;gap:4px}
+.info .gl div{display:flex;justify-content:space-between}
+.info .two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.info .two>div{display:flex;flex-direction:column;gap:4px}
+.info .fm{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;font-size:.7rem;font-weight:700;color:#fff;flex:none}
+.fm.W{background:#1f8f4e}.fm.L{background:#c62828}.fm.D{background:#8a8a8a}
+.info .ln{display:flex;gap:6px;align-items:center;font-size:.76rem;color:var(--mut)}
+.info .ln b{color:var(--ink);font-weight:700}
+.info .meta{color:var(--mut);font-size:.78rem;text-align:center;margin-top:10px}
+.info .load{text-align:center;color:var(--mut);padding:30px 0}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--btn);color:var(--btnfg);padding:10px 18px;border-radius:99px;transition:.25s;z-index:60;font-size:.92rem;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+#toast.on{transform:translateX(-50%) translateY(0)}
+body.lock{overflow:hidden}
+.pz{border:1px solid var(--line);border-radius:var(--r);background:var(--card);padding:12px 14px;margin:10px 0 14px}
+.pz-h{display:flex;justify-content:space-between;align-items:center;font-size:.9rem}.pz-h span b{color:var(--gold2)}
+.pz-bar{height:10px;border-radius:99px;background:var(--card2);overflow:hidden;margin:10px 0 6px}.pz-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:99px;transition:width .6s}
+.pz-t{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.pz-t .btn{flex:1;min-width:90px}.pz-t .btn small{display:block;font-weight:500;opacity:.8}.pz-t .btn:disabled{opacity:.55;cursor:default}
+.pz-c{border:1px dashed var(--gold);border-radius:10px;padding:8px 10px;margin:6px 0;font-size:.9rem}.pz-c b{color:var(--gold2);letter-spacing:1px}.pz-c small{display:block;color:var(--mut);font-size:.75rem;margin-top:2px}
+.lv{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid var(--lc);color:var(--lc);margin-inline-start:4px;white-space:nowrap}
+.lv-l{display:flex;justify-content:space-between;gap:4px;margin-top:10px}.lv-l span{flex:1;text-align:center;font-size:1.2rem;opacity:.35;filter:grayscale(1)}.lv-l span.on{opacity:1;filter:none}.lv-l small{display:block;font-size:.62rem;color:var(--lc);font-weight:700}
+.emb .top{display:none}.emb body{background:transparent}.emb .wrap{padding-top:6px}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="back" href="/ar/" aria-label="رجوع للمتجر"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+  <a class="logo" href="/ar/" aria-label="KO SPORT"><img src="/brand/logo.webp?v=3" alt="KO SPORT" width="48" height="48"></a><span></span>
+</div></header>
+<div class="wrap">
+  <div class="ptitle"><div><h1>توقّعات KO</h1><small>توقّع مين بيربح، وكل توقّع صح بيعطيك نقاط بحسابك</small></div></div>
+  <div id="app"><div class="empty">عم يحمّل…</div></div>
+</div>
+<div id="toast"></div>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s), app = $("#app");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const ls = { get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} } };
+  let D = null, sport = "", busy = false;
+  // صاحب المتجر (17 تشرين التاني 2026): الصفحة للزباين بس. أدوات التحكم بتشتغل بس جوّا لوحة التحكم (admin.html → تبويب التوقعات، ?manage)
+  const EMBED = window.top !== window;
+  const MANAGE = EMBED && /[?&]manage\b/.test(location.search) && (() => { try { return /\/admin/.test(top.location.pathname); } catch { return false; } })();
+  if (EMBED) { document.documentElement.classList.add("emb"); const bs = document.createElement("base"); bs.target = "_top"; document.head.appendChild(bs);
+    const post = () => { try { parent.postMessage({ koPredH: Math.ceil(document.documentElement.scrollHeight) }, location.origin); } catch {} };
+    try { new ResizeObserver(post).observe(document.documentElement); } catch {} addEventListener("load", post); setInterval(post, 1500); }
+  const toast = (t) => { const e = $("#toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove("on"), 2600); };
+  const api = async (p, body) => {
+    const h = { "content-type": "application/json" }, pw = MANAGE ? ls.get("ko_admin") : ""; if (pw) h.authorization = "Bearer " + pw;
+    const r = await fetch(p, { method: body ? "POST" : "GET", headers: h, body: body ? JSON.stringify(body) : undefined, credentials: "same-origin", cache: "no-store" });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.error || "صار خطأ، جرّب كمان مرة"), { status: r.status }); return j;
+  };
+  const when = (ms) => new Date(ms).toLocaleString("ar-SY", { timeZone: "Asia/Damascus", weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
+  const left = (ms) => { const s = Math.max(0, ms - Date.now()) / 1000, d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+    return d ? `بعد ${d} يوم و${h} ساعة` : h ? `بعد ${h} ساعة و${m} دقيقة` : `بعد ${m} دقيقة`; };
+
+  function gate(status, msg) {
+    if (status === 403 || status === 401) { app.innerHTML = MANAGE ? `<div class="msg"><b>ادخل على لوحة التحكم من جديد</b></div>` : `<div class="msg"><b>التوقعات مسكّرة هلق</b><p class="sub" style="color:var(--mut)">رجعلنا بعد شوي 🙏</p></div>`; return; }
+    app.innerHTML = `<div class="msg">${esc(msg)}<br><br><button class="btn" onclick="location.reload()">جرّب كمان مرة</button></div>`;
+  }
+
+  async function load() {
+    try { D = await api("/api/pred"); draw(); }
+    catch (e) {
+      if (e.status === 403 || e.status === 401 || e.status === 429) { const had = MANAGE && !!ls.get("ko_admin"); gate(403); if (had) toast(e.status === 429 ? e.message : "كلمة السر غلط"); }
+      else gate(0, e.message);
+    }
+  }
+
+  const dayKey = (ms) => new Date(ms + 3 * 3600e3).toISOString().slice(0, 10);
+  const dayName = (k) => { const t = dayKey(Date.now()), tm = dayKey(Date.now() + 864e5); if (k === t) return "اليوم"; if (k === tm) return "بكرا";
+    return new Date(k + "T12:00:00Z").toLocaleDateString("ar-SY", { weekday: "long", day: "numeric", month: "numeric" }); };
+  const hm = (ms) => new Date(ms).toLocaleTimeString("ar-SY", { timeZone: "Asia/Damascus", hour: "numeric", minute: "2-digit" });
+  let day = "", org = ""; try { const f = JSON.parse(localStorage.getItem("ko_pred_f") || "{}"); sport = f.sport || ""; day = f.day || ""; org = f.org || ""; } catch {}
+  const saveF = () => { try { localStorage.setItem("ko_pred_f", JSON.stringify({ sport, day, org })); } catch {} };
+  const INF = {}, OPEN = new Set(), DR = {};
+  const SIL = `<svg viewBox="0 0 64 64" width="70%" height="70%" aria-hidden="true"><defs><linearGradient id="kg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f1d58a"/><stop offset="1" stop-color="#b8893a"/></linearGradient></defs><circle cx="32" cy="17" r="10" fill="url(#kg)"/><path d="M14 58c0-12 6-21 18-21s18 9 18 21z" fill="url(#kg)"/><path d="M6 34c3-4 8-5 11-2l-3 7c-3 1-6 0-8-5zM58 34c-3-4-8-5-11-2l3 7c3 1 6 0 8-5z" fill="url(#kg)" opacity=".9"/></svg>`;
+  function side(m, s) {
+    const img = m[s + "i"], person = m.sport === "ufc" || m.sport === "boxing", flag = m[s + "f"], rec = m[s + "r"];
+    const ini = esc(String(m[s] || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase());
+    // صاحب المتجر (17 تشرين التاني 2026): المقاتل يلي ما إلو صورة بيطلع ظل مقاتل ذهبي بدل الأحرف
+    const av = `<span class="av sil">${SIL}</span>`, avEsc = av.replace(/"/g, "&quot;");
+    const pic = D && D.owner && person ? `<button class="picb" data-pic="${esc(m.id)}" data-s="${s}" title="ارفع صورة">📷</button>` : "";
+    return `<div class="side">${pic}${img ? `<img class="${person ? "ph" : "lg"}" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="${person ? `this.outerHTML='${avEsc.replace(/'/g, "&#39;")}'` : "this.remove()"}">` : person ? av : ""}
+      <span class="nm">${esc(m[s])}</span>${flag || rec ? `<span class="inf">${flag ? `<img src="${esc(flag)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${rec ? `سجل ${esc(rec)}` : ""}</span>` : ""}</div>`;
+  }
+  function infoHtml(m) {
+    const v = INF[m.id];
+    if (!v) return `<div class="info"><div class="load">عم نجيب الإحصائيات…</div></div>`;
+    if (v.kind === "none" || v.err) return `<div class="info"><div class="load">ما في إحصائيات متوفرة لهالمباراة هلق</div></div>`;
+    const num = (x) => { const n = parseFloat(String(x ?? "").replace(/[^\d.\-]/g, "")); return Number.isFinite(n) ? n : null; };
+    const row = (x, label, y, low) => { const nx = num(x), ny = num(y), better = nx !== null && ny !== null && nx !== ny ? (low ? (nx < ny ? "a" : "b") : (nx > ny ? "a" : "b")) : "";
+      const V = (z) => z === undefined || z === null || z === "" ? "—" : /^[\d\s+\-#.%:'"/]+$/.test(String(z)) ? `<bdi dir="ltr">${z}</bdi>` : z;
+      const mx = Math.max(Math.abs(nx || 0), Math.abs(ny || 0)), bar = nx !== null && ny !== null && mx > 0 ? `<i class="br"><em><u class="${better === "b" ? "hi" : better === "a" ? "lo" : ""}" style="width:${Math.round(Math.abs(ny) * 100 / mx)}%"></u></em><em><u class="${better === "a" ? "hi" : better === "b" ? "lo" : ""}" style="width:${Math.round(Math.abs(nx) * 100 / mx)}%"></u></em></i>` : "";
+      return `<div class="row"><b class="${better === "a" ? "hi" : better === "b" ? "lo" : ""}">${V(x)}</b><span>${label}</span><b class="${better === "b" ? "hi" : better === "a" ? "lo" : ""}">${V(y)}</b>${bar}</div>`; };
+    const has = (x, y) => (x !== undefined && x !== null && x !== "") || (y !== undefined && y !== null && y !== "");
+    const head = `<div class="row"><b style="font-size:.8rem">${esc(m.a)}</b><span></span><b style="font-size:.8rem">${esc(m.b)}</b></div>`;
+    const sec = (t) => `<div class="sec">${t}</div>`, fmL = { W: "ف", D: "ت", L: "خ" };
+    const dt = (d) => d ? new Date(d).toLocaleDateString("ar-SY", { year: "2-digit", month: "numeric", day: "numeric" }) : "";
+    let h = `<div class="info">`;
+    if (v.kind === "team") {
+      if (v.prob) h += sec("نسبة الفوز المتوقعة (حسب ESPN)") + row(v.prob[0] + "%", "فرصة الفوز", v.prob[1] + "%");
+      const S = v.stand || [];
+      if (S[0] || S[1]) { const A = S[0] || {}, B = S[1] || {}; h += sec("الترتيب" + (A.grp || B.grp ? " · " + esc(A.grp || B.grp) : "")) + row(A.pos ? "#" + A.pos : null, "المركز", B.pos ? "#" + B.pos : null, true);
+        if (has(A.pts, B.pts)) h += row(A.pts, "النقاط", B.pts); if (has(A.gp, B.gp)) h += row(A.gp, "لعب", B.gp);
+        if (has(A.w, B.w)) h += row(A.w, "فاز", B.w); if (has(A.d, B.d)) h += row(A.d, "تعادل", B.d); if (has(A.l, B.l)) h += row(A.l, "خسر", B.l, true);
+        if (has(A.gd, B.gd)) h += row(A.gd, "فرق الأهداف", B.gd); if (has(A.pct, B.pct)) h += row(A.pct, "نسبة الفوز", B.pct); }
+      if (v.rec && (v.rec[0] || v.rec[1])) { h += sec("السجل بالموسم") + row(v.rec[0], m.sport === "football" ? "فوز-تعادل-خسارة" : "فوز-خسارة", v.rec[1]); if (v.split && (v.split[0] || v.split[1])) h += row(v.split[0] || "—", "", v.split[1] || "—"); }
+      const L5 = v.last5 || [[], []];
+      if (L5[0].length || L5[1].length) { h += sec("الفورمة (آخر 5 مباريات، الأحدث أول)") + `<div class="two">${L5.map((L) => `<div>${L.map((g) => `<div class="ln"><span class="fm ${g.r}">${fmL[g.r] || g.r}</span><b>${esc(g.s)}</b> ${g.h ? "ضد" : "عند"} ${esc(g.o || "")}</div>`).join("") || "—"}</div>`).join("")}</div>`; }
+      const H = v.h2h;
+      if (H) { if (!H.n) h += sec("تاريخ مواجهات الفريقين") + `<div class="meta">ما في مواجهات سابقة مسجّلة</div>`;
+        else h += sec(`تاريخ مواجهات الفريقين (آخر ${H.n} ${H.n === 1 ? "مباراة" : "مباريات"})`) + row(H.aw, "فوز", H.bw) + row(H.d, "تعادل", H.d) + row(H.bw, "هزيمة", H.aw, true) + row(H.ag, esc(H.unit), H.bg)
+          + `<div class="gl">${H.games.map((g) => `<div><span>${dt(g.d)}</span><span>${esc(m.a)} <b style="color:var(--txt)">${g.sa} - ${g.sb}</b> ${esc(m.b)}</span></div>`).join("")}</div>`; }
+      if ((v.season || []).length) h += sec("أرقام الموسم") + v.season.map((x) => row(x[1] || "—", esc(x[0]), x[2] || "—", /عليه|الضايعة/.test(x[0]))).join("");
+      if ((v.leaders || []).length) h += sec("أفضل اللاعبين") + v.leaders.map((x) => `<div class="row"><b style="font-size:.8rem">${x[1] ? esc(x[1].n) + `<small>${esc(x[1].v)}</small>` : "—"}</b><span>${esc(x[0])}</span><b style="font-size:.8rem">${x[2] ? esc(x[2].n) + `<small>${esc(x[2].v)}</small>` : "—"}</b></div>`).join("");
+      if (v.inj) h += sec("الغيابات والإصابات") + `<div class="two">${v.inj.map((L) => `<div>${L.map((x) => `<div class="ln"><b>${esc(x.n)}</b> · ${esc(x.s)}</div>`).join("") || `<div class="ln">ما في</div>`}</div>`).join("")}</div>`;
+      if (v.venue) h += `<div class="meta">🏟️ ${esc(v.venue)}${v.att ? " · الحضور " + Number(v.att).toLocaleString("ar-SY") : ""}</div>`;
+      return h + `</div>`;
+    }
+    const A = v.a || {}, B = v.b || {};
+    if (v.weight || v.sched) h += `<div class="meta">${esc([v.sched && v.sched.replace(/(\d+) round contest/i, "$1 جولات"), v.weight].filter(Boolean).join(" · "))}</div>`;
+    if ((v.belts || []).length) h += `<div class="meta">🏆 ${v.belts.map(esc).join(" · ")}</div>`;
+    const wmb = (X) => { const t = (+X.ko || 0) + (+X.sub || 0) + (+X.dec || 0); if (!t) return `<div class="wm"></div>`; const p = (n) => Math.round((+n || 0) * 100 / t); return `<div class="wm"><span class="k" style="width:${p(X.ko)}%"></span><span class="s" style="width:${p(X.sub)}%"></span><span class="d" style="width:${p(X.dec)}%"></span></div>`; };
+    h += sec("كيف بيربح كل واحد") + `<div class="two"><div><b style="font-size:.8rem">${esc(m.a)}</b>${wmb(A)}</div><div><b style="font-size:.8rem">${esc(m.b)}</b>${wmb(B)}</div></div><div class="wml"><span><i style="background:#c62828"></i>ضربة قاضية</span>${v.box ? "" : `<span><i style="background:#c9a45c"></i>إخضاع</span>`}<span><i style="background:#5f5c56"></i>قرار حكام</span></div>`;
+    h += sec("السجل وطرق الفوز") + row(A.w === undefined ? null : `${A.w}-${A.l}-${A.d}`, "السجل (فوز-خسارة-تعادل)", B.w === undefined ? null : `${B.w}-${B.l}-${B.d}`)
+      + row(A.ko, "الفوز بالضربة القاضية (KO/TKO)", B.ko) + row(v.box ? "—" : A.sub, "الفوز بالإخضاع (Submission)", v.box ? "—" : B.sub) + row(A.dec, "الفوز بقرار الحكام (Decision)", B.dec);
+    if (has(A.kop, B.kop)) h += row(A.kop !== undefined ? A.kop + "%" : null, "نسبة الفوز بالضربة القاضية", B.kop !== undefined ? B.kop + "%" : null);
+    if (has(A.kol, B.kol)) h += row(A.kol, v.box ? "انوقف (خسر بالضربة القاضية)" : "خسر بالضربة القاضية", B.kol, true);
+    if (!v.box && has(A.subl, B.subl)) h += row(A.subl, "خسر بالإخضاع", B.subl, true);
+    const info = [["age", "العمر", true], ["h", "الطول"], ["wt", "الوزن"], ["reach", "مدى الذراع"], ["stance", "الوقفة"], ["debut", "أول نزال احترافي", true], ["rounds", "جولات احترافية"], ["cty", "البلد"], ["team", "النادي"], ["nick", "اللقب"]].filter(([k]) => has(A[k], B[k]));
+    if (info.length) h += sec("المقاس والمعلومات") + info.map(([k, l, low]) => ["stance", "cty", "team", "nick", "h", "wt", "reach"].includes(k) ? `<div class="row"><b style="font-size:.8rem">${esc(A[k] ?? "—")}</b><span>${l}</span><b style="font-size:.8rem">${esc(B[k] ?? "—")}</b></div>` : row(A[k], l, B[k], low)).join("");
+    if (has(A.fights, B.fights)) h += sec("أرقام النزالات (من كل نزالاتو)") + row(A.fights, "نزالات فيها أرقام", B.fights) + row(A.ssAcc !== null && A.ssAcc !== undefined ? A.ssAcc + "%" : null, "دقة الضربات المهمة", B.ssAcc !== null && B.ssAcc !== undefined ? B.ssAcc + "%" : null)
+      + row(A.ssPer, "ضربات مهمة بالنزال", B.ssPer) + row(A.kd, "إسقاطات", B.kd) + row(A.tdAcc !== null && A.tdAcc !== undefined ? A.tdAcc + "%" : null, "دقة الإطاحة", B.tdAcc !== null && B.tdAcc !== undefined ? B.tdAcc + "%" : null) + row(A.td, "إطاحات", B.td) + row(A.subAtt, "محاولات إخضاع", B.subAtt);
+    if ((A.last || []).length || (B.last || []).length) h += sec("آخر النزالات (الأحدث أول)") + `<div class="two">${[A, B].map((X) => `<div>${(X.last || []).map((g) => `<div class="ln"><span class="fm ${g.r}">${fmL[g.r] || g.r}</span>ضد <b>${esc(g.o || "")}</b> ${dt(g.d)}</div>`).join("") || "—"}</div>`).join("")}</div>`;
+    if ((v.ranks || []).length) h += sec("التصنيف العالمي" + (v.rankAt ? " · " + esc(v.rankAt) : "")) + v.ranks.map((x) => row(x[1] === "-" ? "—" : "#" + x[1], esc(x[0]), x[2] === "-" ? "—" : "#" + x[2], true)).join("");
+    return h + `</div>`;
+  }
+  const METH = { ko: "بالضربة القاضية", sub: "بالإخضاع", dec: "بقرار الحكام", rtd: "بالانسحاب" };
+  const METH_OK = (m) => m.sport === "ufc" ? ["ko", "sub", "dec"] : ["ko", "dec", "rtd"];
+  const scoreSport = (m) => m.sport === "football" || m.sport === "basketball", fight = (m) => m.sport === "ufc" || m.sport === "boxing";
+  const pickTxt = (m, v) => !v ? "" : scoreSport(m) && v.sa !== undefined ? `${esc(m.a)} ${v.sa} - ${v.sb} ${esc(m.b)}` : v.k === "d" ? "تعادل" : `${esc(v.k === "a" ? m.a : m.b)}${v.m ? " " + METH[v.m] : ""}`;
+  const resTxt = (m) => m.res === "d" ? (scoreSport(m) && m.ra !== undefined ? `تعادل ${m.ra}-${m.rb}` : "تعادل") : scoreSport(m) && m.ra !== undefined ? `${esc(m.a)} ${m.ra} - ${m.rb} ${esc(m.b)}` : `فاز ${esc(m.res === "a" ? m.a : m.b)}${m.meth ? " " + METH[m.meth] : ""}`;
+  const hint = (m) => m.sport === "football" ? `الفايز أو التعادل صح = ${m.pts} نقطة · النتيجة بالزبط = ${m.pts * 2}` : m.sport === "basketball" ? `الفايز صح = ${m.pts} نقطة · ونتيجة قريبة (فرق المجموع 10 أو أقل) = ${m.pts * 2}` : fight(m) ? `الفايز صح = ${m.pts} نقطة · الفايز مع طريقة الفوز = ${m.pts * 2} · التعادل صح = ${m.pts * 2}` : `التوقّع الصح = ${m.pts} نقطة`;
+  function card(m) {
+    const locked = !!m.res || Date.now() >= m.at, tot = m.counts.a + m.counts.b + m.counts.d, mine = m.mine;
+    const pc = (k) => tot ? Math.round(m.counts[k] * 100 / tot) : 0, show = !!mine || locked;
+    const can = !locked && !!D.me, dr = DR[m.id] || (mine ? { ...mine } : {});
+    let body = "";
+    if (scoreSport(m)) {
+      if (can) body = `<div class="sc2"><input type="number" inputmode="numeric" min="0" max="300" data-sa="${m.id}" value="${dr.sa ?? ""}" placeholder="${m.sport === "football" ? "0" : "100"}"><span>-</span><input type="number" inputmode="numeric" min="0" max="300" data-sb="${m.id}" value="${dr.sb ?? ""}" placeholder="${m.sport === "football" ? "0" : "100"}"></div>
+        <button class="btn save" data-save="${m.id}">${mine ? "عدّل توقّعي" : "احفظ توقّعي"}</button>`;
+      if (show) body += `<div class="opts d3" style="margin-top:8px">${["a", "d", "b"].filter((k) => k !== "d" || m.draw).map((k) => `<button disabled class="${mine && mine.k === k ? "mine" : ""} ${m.res === k ? "win" : ""}">${k === "d" ? "تعادل" : esc(k === "a" ? m.a : m.b)}<span class="pc">${pc(k)}%</span><span class="bar" style="width:${pc(k)}%"></span></button>`).join("")}</div>`;
+    } else if (fight(m)) {
+      const opt = (k, label) => `<button data-k="${k}" data-id="${m.id}" class="${dr.k === k ? "mine" : ""} ${m.res === k ? "win" : ""}" ${can ? "" : "disabled"}>${esc(label)}${show ? `<span class="pc">${pc(k)}%</span><span class="bar" style="width:${pc(k)}%"></span>` : ""}</button>`;
+      body = `<div class="opts d3">${opt("a", m.a)}${opt("d", "تعادل")}${opt("b", m.b)}</div>`;
+      if (can && dr.k && dr.k !== "d") body += `<div class="meths">${METH_OK(m).map((x) => `<button data-m="${x}" data-id="${m.id}" class="${dr.m === x ? "on" : ""}">${METH[x]}</button>`).join("")}</div>`;
+      if (can && dr.k) body += `<button class="btn save" data-save="${m.id}">${mine ? "عدّل توقّعي" : "احفظ توقّعي"}</button>`;
+    } else {
+      const opt = (k, label) => `<button data-k="${k}" data-id="${m.id}" class="${dr.k === k ? "mine" : ""} ${m.res === k ? "win" : ""}" ${can ? "" : "disabled"}>${esc(label)}${show ? `<span class="pc">${pc(k)}%</span><span class="bar" style="width:${pc(k)}%"></span>` : ""}</button>`;
+      body = `<div class="opts ${m.draw ? "d3" : ""}">${opt("a", m.a)}${m.draw ? opt("d", "تعادل") : ""}${opt("b", m.b)}</div>`;
+      if (can && dr.k) body += `<button class="btn save" data-save="${m.id}">${mine ? "عدّل توقّعي" : "احفظ توقّعي"}</button>`;
+    }
+    let st = "";
+    if (m.res === "x") st = `<div class="st">تأجّلت أو انلغت · ما في نقاط عليها</div>`;
+    else if (m.res) st = `<div class="st">النتيجة: <b style="color:var(--txt)">${resTxt(m)}</b></div>` + (!mine ? `<div class="st">ما توقّعت عليها</div>` : m.got > 0 ? `<div class="st ok">✓ توقّعك (${pickTxt(m, mine)}) · +${m.got} نقطة</div>` : `<div class="st bad">✗ توقّعك (${pickTxt(m, mine)}) ما زبط</div>`);
+    else if (locked) st = `<div class="st">بلّشت · التوقعات انقفلت${mine ? ` · توقّعك: ${pickTxt(m, mine)}` : ""}، والنقاط بتنزل لحالها لما تخلص</div>`;
+    else st = `<div class="st">${mine ? `توقّعك: <b style="color:var(--gold2)">${pickTxt(m, mine)}</b> · فيك تعدّل لحد ما تبلّش · ` : ""}بتبلّش ${left(m.at)}</div><div class="hint">${hint(m)}</div>`;
+    const adm = D.owner ? `<div class="ctl"><b>لوحة المالك${m.auto ? " · النتيجة بتجي لحالها، وإذا غلطت صحّحها من هون" : ": حط النتيجة"}</b>
+      ${scoreSport(m) ? `<button class="btn sm ghost" data-setsc="${m.id}">حط النتيجة بالأرقام</button>` : `<button class="btn sm ghost" data-res="a" data-id="${m.id}">ربح ${esc(m.a)}</button>
+      ${m.draw ? `<button class="btn sm ghost" data-res="d" data-id="${m.id}">تعادل</button>` : ""}
+      <button class="btn sm ghost" data-res="b" data-id="${m.id}">ربح ${esc(m.b)}</button>`}
+      <button class="btn sm ghost" data-res="x" data-id="${m.id}">تأجّلت</button>
+      ${m.res ? `<button class="btn sm ghost" data-res="" data-id="${m.id}">شيل النتيجة</button>` : ""}
+      <button class="btn sm ghost" data-pts="${m.id}">النقاط: ${m.pts}</button>
+      <button class="btn sm red" data-del="${m.id}">احذف</button>
+      <span style="color:var(--mut);font-size:.75rem;width:100%">توقّعات: ${tot}</span></div>` : "";
+    const mid = m.res && m.res !== "x" && m.ra !== undefined ? `<b>${m.ra}-${m.rb}</b>` : m.dOnly ? `<span>ضد</span>` : `<span>${hm(m.at)}</span><span>ضد</span>`;
+    const inEv = !!(m.eid && m.seg);
+    return `<div class="m">${inEv && m.mev ? `<div style="text-align:center"><span class="mevb">⭐ النزال الرئيسي</span></div>` : ""}<div class="hd"><span class="sp">${esc(inEv ? (m.league.split(" · ")[1] || m.league) : (m.league || D.sports[m.sport] || ""))}</span><span>${m.dOnly ? "" : inEv ? hm(m.at) : when(m.at)}</span></div>
+      ${m.ev && !inEv ? `<div class="evn">${esc(m.ev)}</div>` : ""}
+      <div class="vs2">${side(m, "a")}<div class="mid">${mid}</div>${side(m, "b")}</div>
+      ${body}${st}
+      ${m.auto && !m.ns ? `<button class="stb" data-info="${m.id}">📊 الإحصائيات</button>` : ""}${adm}</div>`;
+  }
+
+  // نزالات MMA بتنجمع ببطاقة الحدث متل UFC: اسم البطاقة، المكان، وأقسام (الرئيسية، التمهيدية، المبكرة)، والنزال الرئيسي فوق
+  const SEG = [["main", "البطاقة الرئيسية"], ["prelim", "التمهيدية"], ["early", "التمهيدية المبكرة"]];
+  function list(arr) {
+    const out = [], seen = new Map();
+    for (const m of arr) {
+      if (!(m.eid && m.seg)) { out.push(card(m)); continue; }
+      if (!seen.has(m.eid)) { seen.set(m.eid, []); out.push({ eid: m.eid }); }
+      seen.get(m.eid).push(m);
+    }
+    return out.map((x) => typeof x === "string" ? x : (() => {
+      const L = seen.get(x.eid), f = L[0], segs = SEG.filter(([k]) => L.some((m) => m.seg === k));
+      const no = (String(f.evn || f.ev || "").match(/\b(UFC|PFL|ONE|Brave CF|UAE Warriors)\s+(\d{2,4})\b/i) || []);
+      return `<div class="evc"><div class="eh">${no[2] ? `<span class="evno">${esc(no[1].toUpperCase())} ${no[2]}</span>` : ""}<b>${esc(f.evn || f.ev || f.org)}</b><small>${esc(f.dOnly ? new Date(f.at + 3 * 3600e3).toLocaleDateString("ar-SY", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }) + " · التوقعات بتنقفل أول اليوم" : when(Math.min(...L.map((m) => m.at))))}${f.ven ? " · " + esc(f.ven) : ""} · ${L.length} نزال</small></div>` +
+        segs.map(([k, t]) => (segs.length > 1 ? `<h4>${t}</h4>` : "") + L.filter((m) => m.seg === k).sort((a, b) => b.ord - a.ord).map(card).join("")).join("") + `</div>`;
+    })()).join("");
+  }
+
+  // جوايز النقاط (16 تشرين التاني 2026): خصم بس. الرصيد = النقاط − المصروف.
+  // تصنيف الزباين (صاحب المتجر 16 تشرين التاني 2026): حسب مجموع نقاطو الكلية (مو الرصيد)، فلما يصرف نقاط على خصم تصنيفو ما بينزل.
+  const LV = [[0, "🥉", "برونزي", "#b87333"], [1000, "🥈", "فضي", "#9aa3ad"], [3000, "🥇", "ذهبي", "#d4a017"], [6000, "💠", "بلاتيني", "#3aa6b9"], [10000, "💚", "زمردي", "#1f9d68"], [16000, "💎", "ألماسي", "#5b7cfa"], [25000, "🏆", "ملكي", "#8e44ad"], [40000, "👑", "أسطورة", "#c0392b"]];
+  const lv = (p) => { let i = 0; LV.forEach((l, k) => { if ((p || 0) >= l[0]) i = k; }); return i; };
+  const badge = (p) => { const l = LV[lv(p)]; return `<span class="lv" style="--lc:${l[3]}">${l[1]} ${l[2]}</span>`; };
+  const rank = (p) => badge(p);
+  function lvBar() {
+    if (!D.me) return ""; const p = D.me.p || 0, i = lv(p), n = LV[i + 1], c = LV[i];
+    return `<div class="pz"><div class="pz-h"><b>تصنيفك: ${badge(p)}</b><span>${p} نقطة</span></div>${n ? `<div class="pz-bar"><i style="width:${Math.min(100, Math.round(((p - c[0]) / (n[0] - c[0])) * 100))}%"></i></div><p class="sub">باقيلك <b>${n[0] - p}</b> نقطة لتوصل ${n[1]} ${n[2]}</p>` : `<p class="sub">وصلت لأعلى تصنيف 👑</p>`}
+      <div class="lv-l">${LV.map((l, k) => `<span class="${k <= i ? "on" : ""}" style="--lc:${l[3]}">${l[1]}<small>${l[2]}</small></span>`).join("")}</div></div>`;
+  }
+  function prizes() {
+    const T = D.tiers || []; if (!D.me || !T.length) return "";
+    const bal = Math.max(0, (D.me.p || 0) - (D.me.s || 0)), next = T.find((t) => bal < t[0]), top = T[T.length - 1][0];
+    const cps = (D.me.cp || []).filter((x) => x.exp > Date.now());
+    return `<div class="pz"><div class="pz-h"><b>🎁 جوايزك</b><span>رصيدك: <b>${bal}</b> نقطة</span></div>
+      <div class="pz-bar"><i style="width:${Math.min(100, Math.round((bal / (next ? next[0] : top)) * 100))}%"></i></div>
+      <p class="sub">${next ? `باقيلك <b>${next[0] - bal}</b> نقطة لخصم ${next[1]}%` : "وصلت لأعلى خصم 👑"}</p>
+      <div class="pz-t">${T.map(([n, pc]) => `<button class="btn sm ${bal >= n ? "" : "ghost"}" data-rd="${n}" data-pc="${pc}" ${bal >= n ? "" : "disabled"}>خصم ${pc}%<small>${n} نقطة</small></button>`).join("")}</div>
+      ${cps.map((x) => `<div class="pz-c">كود خصم ${x.pct}%: <b dir="ltr">${esc(x.c)}</b><small>اكتبو بخانة كود الخصم وقت الطلب · لطلب واحد · صالح لـ ${new Date(x.exp).toLocaleDateString("ar-SY", { timeZone: "Asia/Damascus", day: "numeric", month: "long" })}</small></div>`).join("")}
+      <p class="sub">المباراة المهمة: الفايز صح = 100 نقطة والنتيجة بالزبط = 100 كمان. المباراة العادية: 30 و30. الخصم ما بينجمع مع خصم تاني.</p></div>`;
+  }
+  function draw() {
+    if (sport && !D.matches.some((m) => m.sport === sport)) sport = "";
+    const orgs = sport ? [...new Set(D.matches.filter((m) => m.sport === sport).map((m) => m.org || ""))].filter(Boolean) : [];
+    if (org && !orgs.includes(org)) org = "";
+    const bySport = D.matches.filter((m) => (!sport || m.sport === sport) && (!org || m.org === org));
+    const up = bySport.filter((m) => !m.res && Date.now() < m.at), run = bySport.filter((m) => !m.res && Date.now() >= m.at), done = bySport.filter((m) => m.res).reverse();
+    const dks = [...new Set(up.map((m) => dayKey(m.at)))];
+    if (day && !dks.includes(day)) day = "";
+    const shown = up.filter((m) => !day || dayKey(m.at) === day);
+    const used = [...new Set(D.matches.map((m) => m.sport))];
+    let h = D.me ? `<div class="me"><div><div class="sub">نقاطك يا ${esc(D.me.name.split(" ")[0])}</div><b>${D.me.p}</b></div><div class="sub" style="text-align:left">توقّعات صح: ${D.me.w} من ${D.me.t}</div></div>${lvBar()}${prizes()}`
+      : `<div class="msg" style="margin-bottom:14px">لازم تفوت على حسابك بالمتجر لتقدر تتوقّع.<br><br><a class="btn" href="/ar/account" style="text-decoration:none;display:inline-block">فوت على حسابي</a></div>`;
+    if (used.length > 1) h += `<div class="chips"><button class="${sport ? "" : "on"}" data-sp="">الكل</button>${used.map((s) => `<button class="${sport === s ? "on" : ""}" data-sp="${s}">${esc(D.sports[s])}</button>`).join("")}</div>`;
+    if (orgs.length > 1) { const cnt = (o) => D.matches.filter((m) => m.sport === sport && m.org === o && !m.res).length;
+      h += `<div class="chips orgs"><button class="${org ? "" : "on"}" data-org="">${sport === "football" ? "كل البطولات" : sport === "boxing" ? "كل البلدان" : "كل المنظمات"}</button>${orgs.sort((a, b) => cnt(b) - cnt(a)).map((o) => `<button class="${org === o ? "on" : ""}" data-org="${esc(o)}">${esc(o)} <small style="opacity:.6">${cnt(o)}</small></button>`).join("")}</div>`; }
+    if (D.owner) h += adminForm();
+    if (run.length) h += `<h2>🔴 عم تنلعب هلق</h2>` + list(run);
+    h += `<h2>المباريات الجاية</h2>`;
+    if (dks.length > 1) h += `<div class="chips days"><button class="${day ? "" : "on"}" data-day="">كل الأيام</button>${dks.map((k) => `<button class="${day === k ? "on" : ""}" data-day="${k}">${esc(dayName(k))}</button>`).join("")}</div>`;
+    h += shown.length ? list(shown) : `<div class="empty">ما في مباريات جاية هلق${D.owner ? " · ضيف وحدة من فوق" : ""}</div>`;
+    if (done.length) h += `<h2>خلصت</h2>` + list(done.slice(0, 40));
+    h += `<h2>🏆 الترتيب</h2><div class="board">${D.board.length ? D.board.map((r, i) => `<div class="${r.me ? "me1" : ""}"><span><span class="rk">${i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>${esc(r.n.split(" ").slice(0, 2).join(" "))} ${badge(r.p)}</span><span><b style="color:var(--gold)">${r.p}</b> نقطة</span></div>`).join("") : `<div class="empty" style="display:block">لسا ما في نتايج</div>`}</div>`;
+    if (D.sync) h += `<p class="sync">المواعيد والنتايج بتتحدّث لحالها · آخر تحديث ${hm(D.sync)}</p>`;
+    app.innerHTML = h;
+    app.querySelectorAll("[data-rd]").forEach((bt) => { bt.onclick = async () => {
+      if (!confirm(`بدك تبدّل ${bt.dataset.rd} نقطة بكود خصم ${bt.dataset.pc}%؟`)) return;
+      bt.disabled = true;
+      try { const j = await api("/api/pred/redeem", { pts: +bt.dataset.rd }); D.me = j.me; toast("مبروك 🎉 كود الخصم: " + j.code); draw(); } catch (er) { toast(er.message || "ما زبط"); bt.disabled = false; }
+    }; });
+  }
+
+  function adminForm() {
+    const now = new Date(Date.now() + 3600e3 - new Date().getTimezoneOffset() * 60e3).toISOString().slice(0, 16);
+    return `<details class="adm"><summary>⚙️ لوحة المالك</summary>
+      <p style="color:var(--mut);font-size:.85rem;margin:10px 0 4px">البطولات يلي بتنجاب لحالها (مواعيد، صور، نتايج):</p>
+      <div class="lgs">${["football", "basketball", "ufc", "boxing", "esports"].map((sp) => `<h5>${esc(D.sports[sp])}</h5>` + D.leagues.filter((l) => l.sp === sp).map((l) => `<label><input type="checkbox" data-lg="${l.k}" ${l.on ? "checked" : ""}>${esc(l.n)}</label>`).join("")).join("")}</div>
+      <p style="color:var(--mut);font-size:.85rem;margin:16px 0 4px">المنظمات والبطولات يلي بتبيّن بالصفحة (شيل العلامة لتخبّيها فوراً):</p>
+      <div class="lgs">${["football", "basketball", "ufc", "boxing", "esports"].map((sp) => { const L = (D.orgsAll || []).filter((o) => o.sp === sp); return L.length ? `<h5>${esc(D.sports[sp])}</h5>` + L.map((o) => `<label><input type="checkbox" data-og="${esc(o.k)}" ${o.hid ? "" : "checked"}>${esc(o.n)}</label>`).join("") : ""; }).join("")}</div>
+      <button class="btn sm" id="og_go">احفظ الإظهار</button>
+      <button class="btn sm" id="lg_go">احفظ البطولات وحدّث</button> <button class="btn sm ghost" id="sy_go">حدّث هلق</button>
+      <p style="color:var(--mut);font-size:.85rem;margin:16px 0 0">➕ ضيف مباراة بإيدك (متل الملاكمة):</p>
+      <div class="f">
+      <label>الرياضة<select id="a_sp">${Object.entries(D.sports).map(([k, v]) => `<option value="${k}" ${k === "boxing" ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>
+      <label>الدوري / البطولة<input id="a_lg" placeholder="مثلاً: بطولة العالم"></label>
+      <label>الطرف الأول<input id="a_a" placeholder="الاسم"></label>
+      <label>الطرف التاني<input id="a_b" placeholder="الاسم"></label>
+      <label>وقت البداية (بتوقيت سوريا)<input id="a_at" type="datetime-local" value="${now}"></label>
+      <label>نقاط التوقّع الصح<input id="a_pts" type="number" min="1" max="10000" value="100"></label>
+      <label class="chk w"><input id="a_d" type="checkbox"> في تعادل؟</label>
+      <button class="btn w" id="a_go" style="grid-column:1/-1">ضيف المباراة</button></div></details>`;
+  }
+
+  app.addEventListener("input", (e) => { const t = e.target, id = t.dataset.sa || t.dataset.sb; if (!id) return; const d = DR[id] || {}; if (t.dataset.sa) d.sa = t.value === "" ? undefined : +t.value; else d.sb = t.value === "" ? undefined : +t.value; DR[id] = d; });
+  app.addEventListener("change", (e) => { if (e.target.id === "a_sp") $("#a_d").checked = e.target.value === "football"; });
+  app.addEventListener("click", async (e) => {
+    const b = e.target.closest("button"); if (!b || busy) return;
+    try {
+      busy = true;
+      if (b.dataset.sp !== undefined) { sport = b.dataset.sp; day = ""; org = ""; saveF(); draw(); return; }
+      if (b.dataset.org !== undefined) { org = b.dataset.org; day = ""; saveF(); draw(); return; }
+      if (b.dataset.day !== undefined) { day = b.dataset.day; saveF(); draw(); return; }
+      if (b.dataset.info) { busy = false; openInfo(b.dataset.info); return; }
+      if (b.dataset.pic) { // صاحب المتجر بيرفع صورة مقاتل بإيدو، وبتنحفظ لهالاسم بكل النزالات
+        busy = false; const mt = D.matches.find((x) => x.id === b.dataset.pic); if (!mt) return; const name = mt[b.dataset.s];
+        const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+        inp.onchange = async () => { const f = inp.files && inp.files[0]; if (!f) return;
+          try { toast("عم نرفع الصورة…"); const pw = ls.get("ko_admin"), r = await fetch("/api/images", { method: "POST", headers: { "content-type": f.type || "image/jpeg", ...(pw ? { authorization: "Bearer " + pw } : {}) }, body: f });
+            const j = await r.json().catch(() => ({})); if (!r.ok || !j.url) throw new Error(j.error || "ما زبط الرفع");
+            await api("/api/pred/admin", { action: "pic", name, url: j.url }); toast("انحفظت صورة " + name); await load(); } catch (er) { toast(er.message); } };
+        inp.click(); return;
+      }
+      if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "100"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
+      if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(); }
+      if (b.id === "og_go") { const hide = [...document.querySelectorAll("[data-og]")].filter((x) => !x.checked).map((x) => x.dataset.og); await api("/api/pred/admin", { action: "orgs", hide }); toast("انحفظت ✓"); return await load(); }
+      if (b.id === "lg_go") { toast("عم حدّث…"); const ks = [...document.querySelectorAll("[data-lg]")].filter((x) => x.checked).map((x) => x.dataset.lg); const r = await api("/api/pred/admin", { action: "leagues", leagues: ks }); toast(`انحفظت ✓ (${r.total} مباراة)`); return await load(); }
+      if (b.dataset.k) { const id = b.dataset.id, m = D.matches.find((x) => x.id === id), d = DR[id] || (m.mine ? { ...m.mine } : {}); d.k = b.dataset.k; if (d.k === "d") delete d.m; DR[id] = d; draw(); return; }
+      if (b.dataset.m) { const id = b.dataset.id, d = DR[id] || {}; d.m = b.dataset.m; DR[id] = d; draw(); return; }
+      if (b.dataset.save) {
+        const id = b.dataset.save, m = D.matches.find((x) => x.id === id), d = DR[id] || (m.mine ? { ...m.mine } : {}); let body = { id };
+        if (scoreSport(m)) { const sa = document.querySelector(`[data-sa="${id}"]`).value, sb = document.querySelector(`[data-sb="${id}"]`).value; if (sa === "" || sb === "") { toast("اكتب النتيجة للفريقين"); return; } body.sa = +sa; body.sb = +sb; }
+        else { if (!d.k) { toast("اختار مين بيربح"); return; } if (fight(m) && d.k !== "d" && !d.m) { toast("اختار كيف بيربح"); return; } body.k = d.k; body.m = d.m; }
+        await api("/api/pred/pick", body); delete DR[id]; toast("انحفظ توقّعك ✓"); return await load(); }
+      if (b.dataset.setsc) { const v = prompt("النتيجة: الفريق الأول - الفريق التاني (مثلاً 2-1)"); if (!v) return; const mm = v.match(/(\d+)\D+(\d+)/); if (!mm) { toast("اكتبها متل 2-1"); return; } const ra = +mm[1], rb = +mm[2];
+        await api("/api/pred/admin", { action: "result", id: b.dataset.setsc, res: ra > rb ? "a" : ra < rb ? "b" : "d", ra, rb }); toast("انحطّت النتيجة وتوزّعت النقاط ✓"); return await load(); }
+      if (b.dataset.res !== undefined) { const m = D.matches.find((x) => x.id === b.dataset.id); let meth = "";
+        if ((b.dataset.res === "a" || b.dataset.res === "b") && fight(m)) { const opts = METH_OK(m); const v = prompt("كيف ربح؟ اكتب الرقم:\n" + opts.map((x, i) => `${i + 1} = ${METH[x]}`).join("\n")); if (v === null) return; meth = opts[+v - 1] || ""; }
+        await api("/api/pred/admin", { action: "result", id: b.dataset.id, res: b.dataset.res, meth }); toast(b.dataset.res === "x" ? "انعلّمت مأجّلة" : b.dataset.res ? "انحطّت النتيجة وتوزّعت النقاط ✓" : "انشالت النتيجة"); return await load(); }
+      if (b.dataset.del) { if (!confirm("أكيد بدك تحذف هالمباراة مع توقّعاتها؟")) return; await api("/api/pred/admin", { action: "del", id: b.dataset.del }); toast("انحذفت"); return await load(); }
+      if (b.id === "a_go") {
+        const at = new Date($("#a_at").value).getTime();
+        await api("/api/pred/admin", { action: "add", sport: $("#a_sp").value, league: $("#a_lg").value, a: $("#a_a").value, b: $("#a_b").value, at, pts: +$("#a_pts").value, draw: $("#a_d").checked });
+        toast("انضافت المباراة ✓"); return await load();
+      }
+    } catch (err) { toast(err.message); } finally { busy = false; }
+  });
+  // نافذة الإحصائيات: فخمة، ووراها بلور خفيف. بتسكّر بـ ✕ أو بالكبس برّاها أو بزر الرجوع أو Esc
+  let OV = null;
+  function closeInfo(fromPop) {
+    if (!OV) return; const o = OV; OV = null; o.classList.remove("on"); document.body.classList.remove("lock");
+    setTimeout(() => o.remove(), 260); if (!fromPop && history.state && history.state.koInfo) history.back();
+  }
+  async function openInfo(id) {
+    const m = D.matches.find((x) => x.id === id); if (!m) return;
+    if (INF[id] && (INF[id].kind === "none" || INF[id].err)) delete INF[id];
+    closeInfo(true);
+    const o = document.createElement("div"); o.className = "ov"; o.setAttribute("role", "dialog"); o.setAttribute("aria-modal", "true");
+    const paint = () => { o.innerHTML = `<div class="sheet"><button class="sh-x" aria-label="سكّر">✕</button>
+      <div class="sh-hd"><img class="sh-logo" src="/brand/logo.webp?v=3" alt="KO SPORT" width="54" height="54"><div class="t">📊 الإحصائيات · ${esc(m.league || D.sports[m.sport] || "")}</div><div class="vs2">${side(m, "a")}<div class="mid"><span>${hm(m.at)}</span><span>ضد</span></div>${side(m, "b")}</div></div>
+      <div class="sh-bd">${infoHtml(m)}</div></div>`; };
+    paint(); document.body.appendChild(o); document.body.classList.add("lock"); OV = o;
+    requestAnimationFrame(() => o.classList.add("on"));
+    try { history.pushState({ koInfo: 1 }, ""); } catch {}
+    o.addEventListener("click", (e) => { if (e.target === o || e.target.closest(".sh-x")) closeInfo(); });
+    if (!INF[id]) { try { INF[id] = await api("/api/pred/info?id=" + encodeURIComponent(id)); } catch { INF[id] = { err: 1 }; } if (OV === o) { const sc = o.querySelector(".sh-bd"); paint(); } }
+  }
+  addEventListener("popstate", () => closeInfo(true));
+  addEventListener("keydown", (e) => { if (e.key === "Escape") closeInfo(); });
+  setInterval(() => { const ad = document.querySelector("details.adm"); if (D && !document.hidden && !busy && !(ad && ad.open) && !(document.activeElement && document.activeElement.tagName === "INPUT")) draw(); }, 30000);
+  load();
+})();
+</script>
+</body>
+</html>

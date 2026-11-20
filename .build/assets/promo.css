@@ -1,0 +1,64 @@
+/* Promotional ads: popup / floating card / top banner */
+.pm{--pm-bg:#121212;--pm-fg:#fff;--pm-ac:var(--red,#d9232d);--pm-ac-fg:#fff;--pm-soft:rgba(255,255,255,.1);font-family:inherit;color:var(--pm-fg);direction:rtl;text-align:right;-webkit-font-smoothing:antialiased}
+.pm.th-light{--pm-bg:#fff;--pm-fg:#121212;--pm-soft:rgba(0,0,0,.06)}
+.pm.th-brand{--pm-bg:var(--red,#d9232d);--pm-fg:#fff;--pm-ac:#fff;--pm-ac-fg:#111;--pm-soft:rgba(255,255,255,.18)}
+.pm.th-gradient{--pm-bg:linear-gradient(135deg,#1a1a2e 0%,#7b1fa2 55%,#d9232d 100%);--pm-fg:#fff;--pm-ac:#fff;--pm-ac-fg:#111;--pm-soft:rgba(255,255,255,.16)}
+.pm *{box-sizing:border-box}
+.pm-x{position:absolute;top:10px;inset-inline-start:10px;z-index:3;width:34px;height:34px;border:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:15px;line-height:1;cursor:pointer;display:grid;place-items:center;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:transform .2s,background .2s}
+.pm-x:hover{background:rgba(0,0,0,.7);transform:rotate(90deg)}
+.pm-img{position:relative;overflow:hidden;background:var(--pm-soft)}
+.pm-img img{display:block;width:100%;height:100%;object-fit:cover}
+.pm-body{padding:20px 22px 22px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.pm-badge{display:inline-block;background:var(--pm-ac);color:var(--pm-ac-fg);font-size:.72rem;font-weight:800;letter-spacing:.02em;padding:3px 11px;border-radius:999px}
+.pm-title{margin:0;font-size:1.45rem;line-height:1.25;font-weight:800}
+.pm-text{margin:0;opacity:.82;font-size:.95rem;line-height:1.55;white-space:pre-line}
+.pm-cd{display:flex;gap:8px;direction:ltr}
+.pm-cd div{min-width:52px;padding:7px 6px 5px;border-radius:12px;background:var(--pm-soft);text-align:center;line-height:1}
+.pm-cd b{display:block;font-size:1.3rem;font-variant-numeric:tabular-nums;font-weight:800}
+.pm-cd small{display:block;font-size:.62rem;opacity:.7;margin-top:3px}
+.pm-code{display:inline-flex;align-items:center;gap:10px;border:1.5px dashed var(--pm-ac);border-radius:12px;padding:6px 6px 6px 14px;background:var(--pm-soft)}
+.pm-code code{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;letter-spacing:.12em;font-size:1.02rem;direction:ltr}
+.pm-code button{border:0;border-radius:8px;background:var(--pm-ac);color:var(--pm-ac-fg);font-weight:700;font-size:.78rem;padding:7px 12px;cursor:pointer}
+.pm-btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 26px;border-radius:999px;background:var(--pm-ac);color:var(--pm-ac-fg);font-weight:800;font-size:1rem;text-decoration:none;border:0;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25);transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s}
+.pm-btn:active{transform:scale(.96)}
+.pm-btn::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-120%);animation:pmShine 3.2s 1s infinite}
+@keyframes pmShine{to{transform:translateX(120%)}}
+
+/* popup */
+.pm-ov{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:18px;background:rgba(8,8,12,.55);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);opacity:0;transition:opacity .3s}
+.pm-ov.on{opacity:1}
+.pm-popup{position:relative;width:min(430px,100%);max-height:calc(100dvh - 36px);overflow:auto;border-radius:24px;background:var(--pm-bg);box-shadow:0 30px 80px rgba(0,0,0,.5);transform:translate3d(0,26px,0) scale(.94);opacity:0;transition:transform .45s cubic-bezier(.2,.9,.25,1.1),opacity .3s;overscroll-behavior:contain}
+.pm-ov.on .pm-popup{transform:none;opacity:1}
+.pm-popup .pm-img{aspect-ratio:16/10}
+.pm-ov.on .pm-popup .pm-img img{animation:pmZoom 9s ease-out both}
+@keyframes pmZoom{from{transform:scale(1.12)}to{transform:scale(1)}}
+.pm-popup .pm-body{align-items:stretch;text-align:center;align-items:center}
+.pm-popup .pm-btn{align-self:stretch}
+.pm-nothx{background:none;border:0;color:inherit;opacity:.6;font-size:.82rem;cursor:pointer;padding:2px 8px;margin-top:-2px}
+html.pm-lock,html.pm-lock body{overflow:hidden!important}
+
+/* floating card */
+.pm-card{position:fixed;z-index:2147482000;bottom:calc(86px + env(safe-area-inset-bottom));inset-inline-start:14px;width:min(360px,calc(100vw - 28px));border-radius:20px;background:var(--pm-bg);box-shadow:0 18px 50px rgba(0,0,0,.4);overflow:hidden;display:flex;transform:translate3d(0,40px,0) scale(.96);opacity:0;transition:transform .5s cubic-bezier(.2,.9,.25,1.1),opacity .35s}
+.pm-card.on{transform:none;opacity:1}
+.pm-card .pm-img{flex:0 0 108px}
+.pm-card .pm-body{padding:14px 14px 14px;gap:7px;flex:1;min-width:0}
+.pm-card .pm-title{font-size:1.02rem}.pm-card .pm-text{font-size:.82rem}
+.pm-card .pm-btn{min-height:38px;padding:0 18px;font-size:.88rem}
+.pm-card .pm-x{width:28px;height:28px;font-size:12px;top:6px;inset-inline-start:6px}
+.pm-card .pm-cd div{min-width:42px;padding:5px 4px 4px}.pm-card .pm-cd b{font-size:1.02rem}
+.pm-card .pm-code code{font-size:.9rem}
+@media(min-width:900px){.pm-card{bottom:24px;inset-inline-start:24px}}
+
+/* top banner (pushes the page down, no overlap) */
+.pm-banner{display:grid;grid-template-rows:0fr;transition:grid-template-rows .5s cubic-bezier(.2,.8,.2,1);background:var(--pm-bg);position:relative;z-index:60}
+.pm-banner.on{grid-template-rows:1fr}
+.pm-banner>div{overflow:hidden}
+.pm-bar{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;padding:9px 46px 9px 16px;min-height:46px;text-align:center}
+.pm-bar .pm-title{font-size:.95rem}
+.pm-bar .pm-text{font-size:.85rem}
+.pm-bar .pm-cd div{min-width:38px;padding:4px 4px 3px;border-radius:9px}.pm-bar .pm-cd b{font-size:.95rem}.pm-bar .pm-cd small{font-size:.55rem;margin-top:2px}
+.pm-bar .pm-btn{min-height:32px;padding:0 16px;font-size:.82rem;box-shadow:none}
+.pm-bar .pm-code{padding:3px 3px 3px 10px}.pm-bar .pm-code code{font-size:.85rem}.pm-bar .pm-code button{padding:5px 9px}
+.pm-bar .pm-x{top:50%;inset-inline-start:auto;inset-inline-end:10px;transform:translateY(-50%);width:28px;height:28px;background:var(--pm-soft);color:inherit}
+.pm-bar .pm-x:hover{transform:translateY(-50%) rotate(90deg)}
+@media(prefers-reduced-motion:reduce){.pm *,.pm-ov,.pm-card,.pm-banner{transition-duration:.01ms!important;animation:none!important}}

@@ -2097,7 +2097,6 @@ html[data-logo-round=on] header.top .logo>img{animation:koGlow 4.8s ease-in-out 
 
 .pred-fr{display:block;width:100%;min-height:70vh;border:0;background:transparent;margin:0 auto;max-width:900px}
 
-.wk-fr{display:block;width:100%;height:calc(100vh - 140px);height:calc(100dvh - 140px);min-height:560px;border:0;margin:0 auto;max-width:1200px;background:transparent}
 
 /* البروفايل والتصنيف والتعليقات متل الفيسبوك (18/11/2026) */
 .so-page{max-width:640px;margin:0 auto;padding:4px 2px 24px}
