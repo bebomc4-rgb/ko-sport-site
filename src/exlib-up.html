@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>رفع مكتبة التمارين | KO SPORT</title>
+<style>
+:root{--bg:#ffffff;--ink:#100f14;--mut:#5f5c56;--line:#e4e0d8;--card:#ffffff;--gold:#c9a45c;--gold2:#a8843f;--goldbg:#fbf6ea;--btn:#100f14;--btnfg:#fff;--ok:#1f8f4e;--bad:#c62828;--r:14px}
+*{box-sizing:border-box}body{margin:0;background:#f5f3ef;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;line-height:1.7}
+.w{max-width:640px;margin:0 auto;padding:22px 16px}
+h1{font-size:22px;margin:0 0 4px}.s{color:var(--mut);margin:0 0 18px}
+.c{background:var(--card);border:1px solid var(--gold);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:0 14px 34px -18px rgba(0,0,0,.35)}
+label.b,button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:12px 22px;font:inherit;font-weight:700;background:var(--btn);color:var(--btnfg);cursor:pointer}
+button[disabled]{opacity:.5;cursor:default}
+input[type=password]{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font:inherit;margin:6px 0 12px}
+.bar{height:12px;background:var(--goldbg);border:1px solid var(--gold);border-radius:99px;overflow:hidden;margin:14px 0 6px}.bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .3s}
+.st{font-weight:700}.ok{color:var(--ok)}.bad{color:var(--bad)}small{color:var(--mut)}
+ol{padding-inline-start:20px;margin:0}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>رفع مكتبة التمارين</h1>
+  <p class="s">الملفات بتنحفظ بتخزين خاص، وما بيشوفها إلا حسابك 0938986875.</p>
+
+  <div class="c" id="pwBox" hidden>
+    <b>كلمة سر لوحة التحكم</b>
+    <input type="password" id="pw" autocomplete="current-password">
+    <button id="pwGo">متابعة</button>
+  </div>
+
+  <div class="c" id="main" hidden>
+    <ol>
+      <li>اكبس الزر تحت، واختار المجلد <b>exlib-upload</b> (جوّا Documents\KO).</li>
+      <li>إذا المتصفح سألك «رفع كل الملفات؟» اكبس <b>رفع</b>.</li>
+      <li>خلّي الصفحة مفتوحة لحتى يخلص. إذا انقطع، افتحها من جديد واختار نفس المجلد، وبيكمّل من وين وقف.</li>
+    </ol>
+    <p style="margin:16px 0 0"><label class="b" for="dir">📁 اختار المجلد وابدأ الرفع</label>
+    <input type="file" id="dir" webkitdirectory directory multiple hidden></p>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="st" id="st">جاهز</div>
+    <small id="sub"></small>
+  </div>
+</div>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  let pass = ""; try { pass = localStorage.getItem("ko_admin") || ""; } catch (e) {}
+  const H = () => ({ authorization: "Bearer " + pass });
+  async function check() {
+    const r = await fetch("/api/exlib/have", { headers: H(), cache: "no-store" });
+    if (r.status === 401 || r.status === 403) { $("#pwBox").hidden = false; $("#main").hidden = true; return null; }
+    if (!r.ok) throw new Error("خطأ " + r.status);
+    $("#pwBox").hidden = true; $("#main").hidden = false; return r.json();
+  }
+  $("#pwGo").onclick = async () => { pass = $("#pw").value.trim(); try { localStorage.setItem("ko_admin", pass); } catch (e) {} const j = await check().catch(() => null); if (!j) alert("كلمة السر غلط"); };
+  check().catch((e) => { $("#st").textContent = e.message; $("#main").hidden = false; });
+
+  const NAME = /^[a-f0-9]{10}\.(mp4|jpg)$/;
+  $("#dir").onchange = async (e) => {
+    const all = [...e.target.files];
+    const idx = all.find((f) => f.name === "index.json");
+    const media = all.filter((f) => NAME.test(f.name));
+    if (!idx || !media.length) { $("#st").innerHTML = '<span class="bad">هاد مو المجلد الصح. اختار exlib-upload</span>'; return; }
+    $("#st").textContent = "عم شوف شو انرفع من قبل…";
+    const j = await check(); if (!j) return;
+    const have = new Set(j.have);
+    const todo = media.filter((f) => !have.has(f.name));
+    let done = media.length - todo.length, fail = 0, bytes = 0; const total = media.length, t0 = Date.now();
+    const show = () => {
+      $("#bar").style.width = (done / total * 100).toFixed(1) + "%";
+      $("#st").textContent = `انرفع ${done} من ${total}` + (fail ? ` — ${fail} ما زبطو (رح نعيدهن)` : "");
+      const sec = (Date.now() - t0) / 1000, rate = bytes / Math.max(sec, 1);
+      $("#sub").textContent = rate > 0 ? `السرعة تقريباً ${(rate / 1e6).toFixed(1)} ميغا/ثانية` : "";
+    };
+    show();
+    const put = async (f, tries = 4) => {
+      for (let k = 0; k < tries; k++) {
+        try {
+          const r = await fetch("/api/exlib/f/" + f.name, { method: "PUT", headers: { ...H(), "content-type": f.name.endsWith(".mp4") ? "video/mp4" : "image/jpeg" }, body: f });
+          if (r.ok) return true;
+          if (r.status === 401) throw new Error("auth");
+        } catch (err) { if (err.message === "auth") throw err; }
+        await new Promise((ok) => setTimeout(ok, 1500 * (k + 1)));
+      }
+      return false;
+    };
+    let q = todo.slice(), failed = [];
+    const worker = async () => { while (q.length) { const f = q.shift(); if (await put(f)) { done++; bytes += f.size; } else { fail++; failed.push(f); } show(); } };
+    try {
+      await Promise.all(Array.from({ length: 8 }, worker));
+      if (failed.length) { q = failed; failed = []; fail = 0; await Promise.all(Array.from({ length: 3 }, worker)); }
+      $("#st").textContent = "عم نرفع لائحة التمارين…";
+      const r = await fetch("/api/exlib/index", { method: "PUT", headers: { ...H(), "content-type": "application/json" }, body: await idx.text() });
+      const k = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(k.error || "خطأ " + r.status);
+      $("#bar").style.width = "100%";
+      $("#st").innerHTML = failed.length
+        ? `<span class="bad">خلص، بس ${failed.length} ملف ما انرفعو. افتح الصفحة من جديد واختار نفس المجلد.</span>`
+        : `<span class="ok">✓ خلص! ${k.count} تمرين صارو بالمكتبة. افتحها من حسابك بالمتجر ← مكتبة التمارين.</span>`;
+    } catch (err) {
+      $("#st").innerHTML = `<span class="bad">${err.message === "auth" ? "كلمة السر انتهت، افتح الصفحة من جديد" : "انقطع الرفع: " + err.message + ". افتح الصفحة من جديد واختار نفس المجلد."}</span>`;
+    }
+  };
+})();
+</script>
+</body>
+</html>

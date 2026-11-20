@@ -4454,6 +4454,63 @@ async function qdSync(env) {
   }
 }
 
+// ---------- مكتبة التمارين الخاصة (صاحب المتجر 21/11/2026) ----------
+// الملفات (فيديو mp4 مصغّر + صورة jpg) شاريها صاحب المتجر، فممنوع تنحط بالريبو (عام) أو تنعرض لغير حسابو.
+// التخزين: exlib:f:<id>.mp4|jpg و exlib:index (لائحة التمارين). الرفع من /exlib-up.html بكلمة سر لوحة التحكم.
+const EXLIB_NAME = /^[a-f0-9]{10}\.(mp4|jpg)$/;
+async function exlibOwner(request, env) {
+  const a = await acctFromReq(request, env).catch(() => null);
+  return !!(a && PRED_TESTERS.includes(a.phone));
+}
+async function exlibMedia(request, env, name) {
+  if (!EXLIB_NAME.test(name)) return new Response("not found", { status: 404 });
+  if (!(await exlibOwner(request, env))) return new Response("forbidden", { status: 403, headers: { "cache-control": "no-store" } });
+  const buf = await env.STORE.get("exlib:f:" + name, "arrayBuffer");
+  if (!buf) return new Response("not found", { status: 404, headers: { "cache-control": "no-store" } });
+  const type = name.endsWith(".mp4") ? "video/mp4" : "image/jpeg", len = buf.byteLength;
+  const h = { "content-type": type, "cache-control": "private, max-age=2592000", "accept-ranges": "bytes", "x-robots-tag": "noindex" };
+  // آيفون بيطلب الفيديو بقطع (Range)
+  const rg = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") || "");
+  if (rg && (rg[1] || rg[2])) {
+    let s = rg[1] ? +rg[1] : Math.max(0, len - +rg[2]), e = rg[1] && rg[2] ? Math.min(+rg[2], len - 1) : len - 1;
+    if (s >= len || s > e) return new Response(null, { status: 416, headers: { "content-range": `bytes */${len}` } });
+    return new Response(buf.slice(s, e + 1), { status: 206, headers: { ...h, "content-range": `bytes ${s}-${e}/${len}`, "content-length": String(e - s + 1) } });
+  }
+  return new Response(buf, { headers: { ...h, "content-length": String(len) } });
+}
+async function exlibApi(request, env, path, m) {
+  const nos = { "cache-control": "no-store" };
+  // لائحة التمارين: لصاحب المتجر بس (من حسابو بالمتجر)
+  if (path === "/api/exlib/list" && m === "GET") {
+    if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
+    const t = await env.STORE.get("exlib:index");
+    return new Response(t || "[]", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=300" } });
+  }
+  // الرفع: بكلمة سر لوحة التحكم (المالك بس)
+  if (!isAdmin(request, env, "owner")) return denied();
+  if (path === "/api/exlib/have" && m === "GET") {
+    const have = []; let cursor;
+    do { const r = await env.STORE.list({ prefix: "exlib:f:", cursor, limit: 1000 }); r.keys.forEach((k) => have.push(k.name.slice(8))); cursor = r.list_complete ? null : r.cursor; } while (cursor);
+    return json({ have, index: !!(await env.STORE.get("exlib:index")) }, 200, nos);
+  }
+  if (path.startsWith("/api/exlib/f/") && m === "PUT") {
+    const name = path.slice(13);
+    if (!EXLIB_NAME.test(name)) return json({ error: "اسم الملف غلط" }, 400);
+    const buf = await request.arrayBuffer();
+    if (!buf.byteLength || buf.byteLength > 20 * 1024 * 1024) return json({ error: "حجم الملف غلط" }, 400);
+    await env.STORE.put("exlib:f:" + name, buf);
+    return json({ ok: true }, 200, nos);
+  }
+  if (path === "/api/exlib/index" && m === "PUT") {
+    const t = await request.text();
+    let L; try { L = JSON.parse(t); } catch { return json({ error: "الملف مو JSON" }, 400); }
+    if (!Array.isArray(L) || !L.length || !L.every((x) => x && /^[a-f0-9]{10}$/.test(x.i) && typeof x.n === "string")) return json({ error: "لائحة التمارين غلط" }, 400);
+    await env.STORE.put("exlib:index", JSON.stringify(L));
+    return json({ ok: true, count: L.length }, 200, nos);
+  }
+  return json({ error: "not found" }, 404, nos);
+}
+
 const koMain = {
   async fetch(request, rawEnv, ctx) {
     // Accept the KV binding whatever it was named (STORE, store, KV...).
@@ -4467,8 +4524,10 @@ const koMain = {
     const url = new URL(request.url);
     const path = url.pathname;
     const m = request.method;
-    // مكتبة التمارين انحذفت بطلب صاحب المتجر (20/11/2026)
+    // مكتبة التمارين القديمة انحذفت بطلب صاحب المتجر (20/11/2026)
     if (path.indexOf("/exdb/") === 0) return new Response("not found", { status: 404 });
+    // مكتبة التمارين الخاصة (21/11/2026): ملفات صاحب المتجر (شاريها) بالـ KV بس، مو بالريبو العام، وبتنفتح بس لحسابو
+    if (m === "GET" && path.indexOf("/exlib/m/") === 0 && env.STORE) return exlibMedia(request, env, path.slice(9));
     if (m === "GET" && ctx && ctx.waitUntil && (path === "/sitemap.xml" || path === "/ar" || path === "/ar/")) ctx.waitUntil(indexNowAll(request, env, ctx, false).catch(() => {}));
     if (!migDone && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMigrations(env, request).catch(() => {}));
     if (migDone && !mig2Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig2(env).catch(() => {}));
@@ -4633,6 +4692,7 @@ const koMain = {
       }
       if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
       if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m, ctx);
+      if (path.startsWith("/api/exlib/")) return exlibApi(request, env, path, m);
       if (path.startsWith("/api/acct/")) {
         if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
         const r = await acctApi(request, env, path, m);

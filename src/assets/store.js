@@ -1929,6 +1929,66 @@
   // صاحب المتجر (17/11/2026): التوقعات والبروفايل والتصنيف بس لحسابو (0938986875)، مخفية عن كل الزباين.
   // (20/11/2026) انحذفت برامج التدريب والتمرين التفاعلي ومكتبة التمارين بطلبو.
   function koOwn() { const a = acct(); const p = String((a && a.account && a.account.phone) || "").replace(/\D/g, ""); return p.slice(-9) === "938986875"; }
+  // ---------- مكتبة التمارين الخاصة (صاحب المتجر 21/11/2026) ----------
+  // تمارين صاحب المتجر (شاريها): الملفات بالـ KV (/exlib/m/<id>.mp4|jpg)، مو بالريبو، والسيرفر ما بيعطيها إلا لحسابو.
+  const EXL_M = { Back: "الظهر", Biceps: "الباي (البايسبس)", Calves: "السمانة", Cardio: "كارديو", Chest: "الصدر", Forearms: "الساعد", "Full Body": "الجسم كامل", Hamstrings: "الفخذ الخلفي", Hips: "الورك والمؤخرة", Neck: "الرقبة", Other: "منوعات", Plyometrics: "قفز وانفجار", Quadriceps: "الفخذ الأمامي", Shoulders: "الأكتاف", Stretching: "إطالة", Thighs: "الفخاد", Triceps: "التراي (الترايسبس)", "Upper Arms": "الذراع", Waist: "البطن والخصر", Weightlifting: "رفع أثقال", Yoga: "يوغا" };
+  const EXL_E = { Assisted: "بمساعدة", Band: "مطاط", Barbell: "بار", "Battling Rope": "حبل المعركة", "Body weight": "وزن الجسم", "Bosu ball": "كرة بوسو", Cable: "كابل", Dumbbell: "دمبل", "EZ Barbell": "بار EZ", Hammer: "مطرقة", Kettlebell: "كيتل بيل", "Leverage machine": "آلة", "Medicine Ball": "كرة طبية", "Olympic barbell": "بار أولمبي", "Power Sled": "زلّاجة دفع", "Resistance Band": "مطاط مقاومة", Roll: "رول", Rollball: "كرة مساج", Rope: "حبل", "Sled machine": "آلة زلّاجة", "Smith machine": "سميث", "Stability ball": "كرة اللياقة", Stick: "عصا", Suspension: "حبال تعليق", "Trap bar": "تراب بار", "Vibrate Plate": "منصة اهتزاز", Weighted: "بأوزان", "Wheel roller": "عجلة البطن" };
+  const exl = { L: null, m: "", e: "", q: "", n: 24, busy: false };
+  async function exlibPage() {
+    document.title = "مكتبة التمارين | " + (C.name || "");
+    if (!exl.L) {
+      app.innerHTML = '<div class="loading">جاري التحميل…</div>';
+      try {
+        const r = await fetch("/api/exlib/list", { headers: socAuth(), credentials: "same-origin" });
+        if (!r.ok) throw 0;
+        exl.L = await r.json();
+      } catch (e) { if (curRoute().indexOf("/exlib") === 0) app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح المكتبة</b>جرّب كمان مرة<a href="#/account">رجوع لحسابي</a></div>'; return; }
+      if (curRoute().indexOf("/exlib") !== 0) return;
+    }
+    if (!exl.L.length) { app.innerHTML = '<div class="empty"><b>المكتبة لسا فاضية</b>ارفع التمارين من صفحة الرفع أول شي<a href="#/account">رجوع لحسابي</a></div>'; return; }
+    const cnt = (k, v) => exl.L.filter((x) => x[k] === v).length;
+    const ms = Object.keys(EXL_M).filter((k) => cnt("m", k));
+    const es = [...new Set(exl.L.filter((x) => !exl.m || x.m === exl.m).map((x) => x.e))].sort((a, b) => (EXL_E[a] || a).localeCompare(EXL_E[b] || b, "ar"));
+    app.innerHTML = `
+      <div class="crumbs"><a href="#/account">حسابي</a></div>
+      <h1 class="page-title">📚 مكتبة التمارين</h1>
+      <div class="exl-bar">
+        <input type="search" class="exl-q" placeholder="دوّر على تمرين بالإنكليزي… bench, curl, squat" value="${esc(exl.q)}" aria-label="بحث">
+        <div class="exl-row"><span class="exl-lb">العضلة</span><button class="chip${exl.m ? "" : " on"}" data-exm="">الكل</button>${ms.map((k) => `<button class="chip${exl.m === k ? " on" : ""}" data-exm="${esc(k)}">${esc(EXL_M[k])}</button>`).join("")}</div>
+        <div class="exl-row"><span class="exl-lb">الأداة</span><button class="chip${exl.e ? "" : " on"}" data-exe="">الكل</button>${es.map((k) => `<button class="chip${exl.e === k ? " on" : ""}" data-exe="${esc(k)}">${esc(EXL_E[k] || k)}</button>`).join("")}</div>
+      </div>
+      <div class="exl-count" data-exl-count></div>
+      <div class="exl-grid" data-exl-grid></div>
+      <div class="exl-more" data-exl-more></div>`;
+    exlDraw();
+    const qi = app.querySelector(".exl-q"); let qt;
+    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { exl.q = qi.value.trim(); exl.n = 24; exlDraw(); }, 200); };
+    app.onchange = null;
+    app.onclick = (ev) => {
+      const t = ev.target.closest("[data-exm],[data-exe],[data-exl-more] button,[data-exl-id]"); if (!t) return;
+      if (t.hasAttribute("data-exm")) { exl.m = t.dataset.exm; exl.e = ""; exl.n = 24; exlibPage(); }
+      else if (t.hasAttribute("data-exe")) { exl.e = t.dataset.exe; exl.n = 24; exlibPage(); }
+      else if (t.hasAttribute("data-exl-id")) exlOpen(t.dataset.exlId);
+      else { exl.n += 24; exlDraw(); }
+    };
+  }
+  function exlList() {
+    const q = exl.q.toLowerCase().split(/\s+/).filter(Boolean);
+    return exl.L.filter((x) => (!exl.m || x.m === exl.m) && (!exl.e || x.e === exl.e) && q.every((w) => x.n.toLowerCase().includes(w)));
+  }
+  function exlDraw() {
+    const L = exlList(), g = app.querySelector("[data-exl-grid]"); if (!g) return;
+    app.querySelector("[data-exl-count]").textContent = L.length + " تمرين";
+    g.innerHTML = L.slice(0, exl.n).map((x) => `<button type="button" class="exl-card" data-exl-id="${x.i}"><span class="exl-pic"><img src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async" width="320" height="180">${x.v ? '<i class="exl-play" aria-hidden="true">▶</i>' : ""}</span><b dir="ltr">${esc(x.n)}</b><small>${esc(EXL_M[x.m] || x.m)} · ${esc(EXL_E[x.e] || x.e)}</small></button>`).join("") || '<div class="empty"><b>ما في تمارين هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>';
+    app.querySelector("[data-exl-more]").innerHTML = L.length > exl.n ? `<button type="button" class="btn btn-dark">عرض المزيد (${L.length - exl.n})</button>` : "";
+  }
+  function exlOpen(id) {
+    const x = exl.L.find((y) => y.i === id); if (!x) return;
+    const media = x.v
+      ? `<video class="exl-vid" src="/exlib/m/${x.i}.mp4" poster="/exlib/m/${x.i}.jpg" autoplay loop muted playsinline controls preload="auto"></video>`
+      : `<img class="exl-vid" src="/exlib/m/${x.i}.jpg" alt="">`;
+    openSheet(x.n, `${media}<p class="exl-meta">العضلة: <b>${esc(EXL_M[x.m] || x.m)}</b> · الأداة: <b>${esc(EXL_E[x.e] || x.e)}</b></p>`);
+  }
   // ---------- البروفايل، التصنيف العالمي، والتعليقات متل الفيسبوك (صاحب المتجر 18 تشرين التاني 2026) ----------
   // مخفي عن الكل إلا حساب صاحب المتجر (koOwn) لحتى يقول «انشرها». السيرفر كمان مسكّر (SOCIAL_LIVE=false).
   const SOC_LV = [[0, "🥉", "برونزي", "#b87333"], [1000, "🥈", "فضي", "#8e98a3"], [3000, "🥇", "ذهبي", "#c9a227"], [6000, "💠", "بلاتيني", "#2f9fb3"], [10000, "💚", "زمردي", "#1f9d68"], [16000, "💎", "ألماسي", "#5b7cfa"], [25000, "🏆", "ملكي", "#8e44ad"], [40000, "👑", "أسطورة", "#c0392b"]];
@@ -2092,7 +2152,7 @@
         <span class="qd-note"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 10.5v6M12 7.4v.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>لازم يكون التلغرام على نفس الرقم المسجّل على الوصل</span>
         <span class="qd-cta"><span>افتح البوت</span><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </a>
-${koOwn() ? `<a class="acc-card acc-pred acc-me2" href="#/me"><span class="apr-l"><b>👤 بروفايلي ونقاطي</b><small>صورتك، مستواك، نقاطك وترتيبك بالعالم</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/rank"><span class="apr-l"><b>🏆 التصنيف العالمي</b><small>أقوى الزباين بالتوقعات والتعليقات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a>` : ""}
+${koOwn() ? `<a class="acc-card acc-pred acc-me2" href="#/me"><span class="apr-l"><b>👤 بروفايلي ونقاطي</b><small>صورتك، مستواك، نقاطك وترتيبك بالعالم</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/rank"><span class="apr-l"><b>🏆 التصنيف العالمي</b><small>أقوى الزباين بالتوقعات والتعليقات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/exlib"><span class="apr-l"><b>📚 مكتبة التمارين</b><small>تمارينك بالفيديو حسب العضلة والأداة</small></span><span class="apr-go">افتح ›</span></a>` : ""}
       <section class="acc-card"><h2>طلباتي</h2><div data-myorders>${(myOrdOwner(), myOrdersHtml(myOrdCache))}</div></section>
       <section class="acc-card acc-links"><a href="#/cart">🛒 السلة</a><a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">💬 تواصل معنا على واتساب</a></section>`;
     app.onclick = (e) => {
@@ -2847,11 +2907,12 @@ ${trustH()}
     else if (a === "page") page(b || "");
     else if (a === "games" && gamesOn()) gamesPage();
     else if (["train", "workout", "exercises"].includes(a)) { location.replace("#/account"); return; } // انحذفت (20/11/2026)
-    else if (["predict", "me", "rank", "u"].includes(a) && !koOwn()) { location.replace("#/account"); return; } // مخفية عن الزباين
+    else if (["predict", "me", "rank", "u", "exlib"].includes(a) && !koOwn()) { location.replace("#/account"); return; } // مخفية عن الزباين
     else if (a === "me") mePage();
     else if (a === "rank") rankPage(b);
     else if (a === "u" && b) userPage(decodeURIComponent(b));
     else if (a === "predict") predictPage();
+    else if (a === "exlib") exlibPage();
     else if (a === "o" && b) orderPage(b);
     else home();
     finishRoute(hs, keepScroll, keepY, revisit);

@@ -1,6 +1,6 @@
 /* KO SPORT service worker — fast repeat visits + offline fallback.
    Products/prices are always fetched fresh from the network first. */
-const V = "ko-v357";
+const V = "ko-v358";
 const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
 const KEEP = [SHELL, ASSET, IMG, DATA];
 
@@ -78,7 +78,7 @@ self.addEventListener("fetch", (e) => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== location.origin) return;
   const p = url.pathname;
-  if (p.startsWith("/admin") || p.startsWith("/media/") || p === "/sw.js" || p === "/reset" || p === "/review" || p === "/map" || p.startsWith("/api/diag") || req.headers.has("range") || p.endsWith(".mp4")) return;
+  if (p.startsWith("/admin") || p.startsWith("/media/") || p.startsWith("/exlib") || p.startsWith("/api/exlib") || p === "/sw.js" || p === "/reset" || p === "/review" || p === "/map" || p.startsWith("/api/diag") || req.headers.has("range") || p.endsWith(".mp4")) return;
 
   // pages: network first, fall back to the last cached home page
   if (req.mode === "navigate") {
