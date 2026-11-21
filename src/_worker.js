@@ -4487,7 +4487,7 @@ async function exlibAll(env) {
   let ar = {}; try { ar = (await env.STORE.get("exlib:ar", "json")) || {}; } catch { ar = {}; }
   return { L, ed, ar, merged: L.map((x) => { const o = ed[x.i] ? { ...x, ...ed[x.i], x: 1 } : x; return ar[x.i] ? { ...o, a: ar[x.i] } : o; }) };
 }
-const EXLIB_CFG_DEF = { theme: "site", size: 240, layout: "grid", speed: 1.5, autoplay: true, showEn: true };
+const EXLIB_CFG_DEF = { theme: "site", size: 240, layout: "grid", speed: 1.5, autoplay: true, showEn: true, mCols: 3, eCols: 3, xCols: 2, shape: "round", showCount: true };
 function exlibCfgClean(b, cur) {
   const o = { ...EXLIB_CFG_DEF, ...(cur || {}) };
   if (!b || typeof b !== "object") return o;
@@ -4495,6 +4495,12 @@ function exlibCfgClean(b, cur) {
   if (["grid", "list"].includes(b.layout)) o.layout = b.layout;
   if (b.size != null && isFinite(+b.size)) o.size = Math.min(320, Math.max(120, Math.round(+b.size / 10) * 10));
   if (b.speed != null && isFinite(+b.speed)) o.speed = Math.min(3, Math.max(0.5, Math.round(+b.speed * 4) / 4));
+  const cl = (v, a, z) => Math.min(z, Math.max(a, Math.round(+v)));
+  if (b.mCols != null && isFinite(+b.mCols)) o.mCols = cl(b.mCols, 1, 6);
+  if (b.eCols != null && isFinite(+b.eCols)) o.eCols = cl(b.eCols, 1, 6);
+  if (b.xCols != null && isFinite(+b.xCols)) o.xCols = cl(b.xCols, 1, 4);
+  if (["square", "round", "circle"].includes(b.shape)) o.shape = b.shape;
+  if (b.showCount != null) o.showCount = !!b.showCount;
   if (b.autoplay != null) o.autoplay = !!b.autoplay;
   if (b.showEn != null) o.showEn = !!b.showEn;
   return o;

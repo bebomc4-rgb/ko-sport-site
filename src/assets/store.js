@@ -1937,10 +1937,13 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=361"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=362"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
+  const EXL_MORD = ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Forearms", "Waist", "Hips", "Quadriceps", "Hamstrings", "Calves", "Neck", "Cardio", "Upper Arms", "Thighs", "Full Body", "Plyometrics", "Stretching", "Weightlifting", "Yoga", "Other"];
+  const exlN = (v, a, b, d) => Math.min(b, Math.max(a, Math.round(+v) || d));
+  // المكتبة بـ 3 خطوات: العضلات ← الأدوات ← التمارين. الشكل والأعداد من لوحة التحكم (exlib:cfg)
   async function exlibPage() {
     document.title = "مكتبة التمارين | " + (C.name || "");
     if (!exl.L) {
@@ -1955,38 +1958,56 @@
       if (curRoute().indexOf("/exlib") !== 0) return;
     }
     if (!exl.L.length) { app.innerHTML = '<div class="empty"><b>المكتبة لسا فاضية</b>ارفع التمارين من صفحة الرفع أول شي<a href="#/account">رجوع لحسابي</a></div>'; return; }
+    exl.m = ""; exl.e = ""; exl.q = ""; exl.n = 24; // دايماً بتفتح على العضلات
     const c = exl.cfg || {};
-    const cnt = (k, v) => exl.L.filter((x) => x[k] === v).length;
-    const ms = Object.keys(EXL_M).filter((k) => cnt("m", k));
-    const es = [...new Set(exl.L.filter((x) => !exl.m || x.m === exl.m).map((x) => x.e))].sort((a, b) => (EXL_E[a] || a).localeCompare(EXL_E[b] || b, "ar"));
     app.innerHTML = `
-      <div class="exl exl-t-${esc(c.theme || "site")}">
+      <div class="exl exl-t-${esc(c.theme || "site")} exl-sh-${esc(c.shape || "round")}">
       <div class="crumbs"><a href="#/account">حسابي</a></div>
       <h1 class="page-title">📚 مكتبة التمارين</h1>
-      <div class="exl-bar">
-        <input type="search" class="exl-q" placeholder="دوّر على تمرين بالعربي أو الإنكليزي" value="${esc(exl.q)}" aria-label="بحث">
-        <div class="exl-row"><span class="exl-lb">العضلة</span><button class="chip${exl.m ? "" : " on"}" data-exm="">الكل</button>${ms.map((k) => `<button class="chip${exl.m === k ? " on" : ""}" data-exm="${esc(k)}">${exlI("m", k)}${esc(EXL_M[k])}</button>`).join("")}</div>
-        <div class="exl-row"><span class="exl-lb">الأداة</span><button class="chip${exl.e ? "" : " on"}" data-exe="">الكل</button>${es.map((k) => `<button class="chip${exl.e === k ? " on" : ""}" data-exe="${esc(k)}">${exlI("e", k)}${esc(EXL_E[k] || k)}</button>`).join("")}</div>
-      </div>
-      <div class="exl-count" data-exl-count></div>
-      <div class="exl-grid" data-exl-grid></div>
-      <div class="exl-more" data-exl-more></div>
+      <input type="search" class="exl-q" placeholder="دوّر على تمرين بالعربي أو الإنكليزي" aria-label="بحث">
+      <div class="exl-nav" data-exl-nav></div>
+      <div data-exl-body></div>
       </div>`;
-    exlDraw();
+    exlBody();
     const qi = app.querySelector(".exl-q"); let qt;
-    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { exl.q = qi.value.trim(); exl.n = 24; exlDraw(); }, 200); };
+    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { exl.q = qi.value.trim(); exl.n = 24; exlBody(); }, 200); };
     app.onchange = null;
     app.onclick = (ev) => {
-      const t = ev.target.closest("[data-exm],[data-exe],[data-exl-more] button,[data-exl-id]"); if (!t) return;
-      if (t.hasAttribute("data-exm")) { exl.m = t.dataset.exm; exl.e = ""; exl.n = 24; exlibPage(); }
-      else if (t.hasAttribute("data-exe")) { exl.e = t.dataset.exe; exl.n = 24; exlibPage(); }
-      else if (t.hasAttribute("data-exl-id")) exlOpen(t.dataset.exlId);
-      else { exl.n += 24; exlDraw(); }
+      const t = ev.target.closest("[data-exl-m],[data-exl-e],[data-exl-go],[data-exl-more] button,[data-exl-id]"); if (!t) return;
+      if (t.hasAttribute("data-exl-id")) return exlOpen(t.dataset.exlId);
+      if (t.closest("[data-exl-more]")) { exl.n += 24; return exlDraw(); }
+      if (t.hasAttribute("data-exl-m")) { exl.m = t.dataset.exlM; exl.e = ""; }
+      else if (t.hasAttribute("data-exl-e")) exl.e = t.dataset.exlE;
+      else if (t.dataset.exlGo === "0") { exl.m = ""; exl.e = ""; }
+      else exl.e = "";
+      exl.q = ""; qi.value = ""; exl.n = 24; exlBody(); window.scrollTo({ top: 0 });
     };
+  }
+  const exlTile = (att, ic, label, n, c) => `<button type="button" class="exl-tile" ${att}><span class="exl-ti">${ic}</span><b>${esc(label)}</b>${c.showCount !== false && n != null ? `<small>${n} تمرين</small>` : ""}</button>`;
+  function exlBody() {
+    const body = app.querySelector("[data-exl-body]"), nav = app.querySelector("[data-exl-nav]"); if (!body) return;
+    const c = exl.cfg || {}, step = exl.q ? 3 : !exl.m ? 1 : !exl.e ? 2 : 3;
+    if (exl.io) exl.io.disconnect();
+    const tr = [];
+    if (exl.m) tr.push('<button type="button" data-exl-go="0">العضلات</button>', step === 2 ? `<b>${esc(EXL_M[exl.m] || exl.m)}</b>` : `<button type="button" data-exl-go="1">${esc(EXL_M[exl.m] || exl.m)}</button>`);
+    if (exl.e && !exl.q) tr.push(`<b>${exl.e === "*" ? "كل الأدوات" : esc(EXL_E[exl.e] || exl.e)}</b>`);
+    nav.innerHTML = tr.join('<span class="exl-sep">‹</span>');
+    if (step === 1) {
+      const cm = {}; exl.L.forEach((x) => { cm[x.m] = (cm[x.m] || 0) + 1; });
+      const ks = EXL_MORD.filter((k) => cm[k]).concat(Object.keys(cm).filter((k) => EXL_MORD.indexOf(k) < 0));
+      body.innerHTML = `<h2 class="exl-h">اختار العضلة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(`data-exl-m="${esc(k)}"`, exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
+    } else if (step === 2) {
+      const sub = exl.L.filter((x) => x.m === exl.m), ce = {}; sub.forEach((x) => { ce[x.e] = (ce[x.e] || 0) + 1; });
+      const ks = Object.keys(ce).sort((a, b) => ce[b] - ce[a]);
+      body.innerHTML = `<h2 class="exl-h">اختار الأداة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${exlTile('data-exl-e="*"', exlI("m", exl.m), "كل الأدوات", sub.length, c)}${ks.map((k) => exlTile(`data-exl-e="${esc(k)}"`, exlI("e", k), EXL_E[k] || k, ce[k], c)).join("")}</div>`;
+    } else {
+      body.innerHTML = '<div class="exl-count" data-exl-count></div><div class="exl-grid" data-exl-grid></div><div class="exl-more" data-exl-more></div>';
+      exlDraw();
+    }
   }
   function exlList() {
     const q = exlArq(exl.q).split(/\s+/).filter(Boolean);
-    return exl.L.filter((x) => (!exl.m || x.m === exl.m) && (!exl.e || x.e === exl.e) && q.every((w) => x.s.includes(w)));
+    return exl.L.filter((x) => (!exl.m || x.m === exl.m) && (!exl.e || exl.e === "*" || x.e === exl.e) && q.every((w) => x.s.includes(w)));
   }
   // الفيديو متل صورة متحركة: بيشتغل لحالو، بيعيد، بلا صوت، بالسرعة من اللوحة (افتراضي 1.5)، وبيوقف لما يطلع من الشاشة
   function exlVids(root, slot) {
@@ -2011,7 +2032,7 @@
     if (!g) return;
     const sz = Math.min(320, Math.max(120, +c.size || 240)), list = c.layout === "list";
     g.className = "exl-grid" + (list ? " exl-list" : "");
-    g.style.gridTemplateColumns = list ? "" : `repeat(auto-fill,minmax(${sz}px,1fr))`;
+    g.style.gridTemplateColumns = list ? "" : `repeat(${exlN(c.xCols, 1, 4, 2)},minmax(0,1fr))`;
     g.style.setProperty("--exl-pic", sz + "px");
     app.querySelector("[data-exl-count]").textContent = L.length + " تمرين";
     const auto = c.autoplay !== false, en = c.showEn !== false;

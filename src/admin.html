@@ -16,10 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Changa:wght@700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/store.css?v=361">
-<link rel="stylesheet" href="/assets/admin.css?v=361">
-<link rel="stylesheet" href="/assets/promo.css?v=361">
-<link rel="stylesheet" href="/assets/pwabar.css?v=361">
+<link rel="stylesheet" href="/assets/store.css?v=362">
+<link rel="stylesheet" href="/assets/admin.css?v=362">
+<link rel="stylesheet" href="/assets/promo.css?v=362">
+<link rel="stylesheet" href="/assets/pwabar.css?v=362">
 </head>
 <body class="admin wuilt">
 <aside class="w-side" data-side>
@@ -694,10 +694,14 @@
       <div class="sub-grid">
         <label>الثيم<select data-exc="theme"><option value="site">متل ثيم الموقع</option><option value="gold">ذهبي فاخر</option><option value="light">أبيض</option><option value="dark">داكن</option></select></label>
         <label>العرض<select data-exc="layout"><option value="grid">شبكة (بطاقات)</option><option value="list">قائمة (سطر لكل تمرين)</option></select></label>
-        <label>حجم البطاقة <b data-exc-sz></b><input type="range" data-exc="size" min="120" max="320" step="10"></label>
+        <label>عدد العضلات بالسطر<select data-exc="mCols"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></label>
+        <label>عدد الأدوات بالسطر<select data-exc="eCols"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></label>
+        <label>عدد التمارين بالسطر (شبكة)<select data-exc="xCols"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+        <label>شكل الأيقونات<select data-exc="shape"><option value="square">مربّع كامل</option><option value="round">زوايا مدوّرة</option><option value="circle">دائري</option></select></label>
+        <label>حجم صورة التمرين بالقائمة <b data-exc-sz></b><input type="range" data-exc="size" min="120" max="320" step="10"></label>
         <label>سرعة الفيديو<select data-exc="speed"><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2">2×</option></select></label>
       </div>
-      <div class="ab-acts"><label class="sub-off"><input type="checkbox" data-exc="autoplay"> الفيديو يشتغل لحالو (متل صورة متحركة تعيد)</label><label class="sub-off"><input type="checkbox" data-exc="showEn"> اسم التمرين بالإنكليزي تحت العربي (بخط صغير)</label></div>
+      <div class="ab-acts"><label class="sub-off"><input type="checkbox" data-exc="showCount"> عدد التمارين تحت كل عضلة وأداة</label><label class="sub-off"><input type="checkbox" data-exc="autoplay"> الفيديو يشتغل لحالو (متل صورة متحركة تعيد)</label><label class="sub-off"><input type="checkbox" data-exc="showEn"> اسم التمرين بالإنكليزي تحت العربي (بخط صغير)</label></div>
     </div>
     <div class="w-card exl-cfg">
       <h2>الترجمة للعربي</h2>
@@ -988,12 +992,12 @@
 <datalist id="cat-list"></datalist>
 
 <div class="toast" data-toast role="status" aria-live="polite"></div>
-<script src="/assets/media.js?v=361"></script>
-<script src="/assets/pwa.js?v=361"></script>
-<script src="/assets/promo.js?v=361"></script>
-<script src="/assets/imgstudio.js?v=361"></script>
-<script src="/assets/themes.js?v=361"></script>
-<script src="/assets/packs.js?v=361"></script>
-<script src="/assets/admin.js?v=361"></script>
+<script src="/assets/media.js?v=362"></script>
+<script src="/assets/pwa.js?v=362"></script>
+<script src="/assets/promo.js?v=362"></script>
+<script src="/assets/imgstudio.js?v=362"></script>
+<script src="/assets/themes.js?v=362"></script>
+<script src="/assets/packs.js?v=362"></script>
+<script src="/assets/admin.js?v=362"></script>
 </body>
 </html>
