@@ -2164,10 +2164,11 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-row .chip{white-space:nowrap;flex:none;color:var(--c-card-fg);display:inline-flex;align-items:center;gap:6px}
 .exl-lb{flex:none;font-size:13px;font-weight:700;color:#a8843f;margin-inline-end:4px}
 .exl-count{font-size:13px;color:var(--muted);margin:4px 0 10px}
-.exl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.exl-grid{align-items:start;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
 .exl-card{display:flex;flex-direction:column;text-align:start;gap:6px;padding:0 0 12px;background:var(--xc-bg);color:var(--xc-fg);border:1px solid var(--xc-line);border-radius:var(--radius);overflow:hidden;font:inherit;cursor:pointer}
-.exl-pic{position:relative;display:block;aspect-ratio:1;background:#fff;flex:none}
-.exl-pic img,.exl-pic video{width:100%;height:100%;object-fit:contain;display:block}
+.exl-pic{position:relative;display:block;background:#fff;flex:none}
+/* كل تمرين بحجم صورتو الطبيعي (الإطار بيتبع الصورة، ما في مربّع ثابت) عشان يبين كامل وكبير */
+.exl-pic img,.exl-pic video{width:100%;height:auto;aspect-ratio:auto 4/5;object-fit:contain;display:block}
 .exl-tx{display:flex;flex-direction:column;gap:4px;padding:0 12px;min-width:0}
 .exl-card b{font-size:15px;line-height:1.45;font-weight:800}
 .exl-en{font-size:11px;line-height:1.35;color:var(--xc-mut);font-weight:500;margin:0}
@@ -2192,7 +2193,7 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 @keyframes exlh{50%{transform:scale(1.14)}}
 .exl-more{text-align:center;margin:18px 0}
 .exl-vw{position:relative;background:#fff;border-radius:12px;overflow:hidden}
-.exl-vid{display:block;width:100%;height:min(104vw,78vh);background:#fff;border-radius:12px;object-fit:contain;cursor:zoom-in}
+.exl-vid{display:block;width:100%;height:auto;max-height:78vh;aspect-ratio:auto 4/5;background:#fff;border-radius:12px;object-fit:contain;cursor:zoom-in}
 .exl-zoom{position:absolute;inset-block-end:10px;inset-inline-start:10px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(0,0,0,.62);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .exl-lb{position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center}
 .exl-lb img,.exl-lb video{max-width:100vw;max-height:100vh;width:100%;height:100%;object-fit:contain;background:#fff}
@@ -2201,7 +2202,7 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-meta .exl-sm{height:26px}
 .exl-list{grid-template-columns:1fr}
 .exl-list .exl-card{flex-direction:row;align-items:center;padding:0 0 0 12px;gap:12px}
-.exl-list .exl-pic{width:min(var(--exl-pic,240px),38vw);height:min(var(--exl-pic,240px),38vw);aspect-ratio:auto}
+.exl-list .exl-pic{width:min(var(--exl-pic,240px),52vw);height:auto}
 .exl-list .exl-tx{padding:8px 0}
 
 .exl-h{font-size:17px;margin:8px 0 12px}
