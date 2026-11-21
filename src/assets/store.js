@@ -1933,34 +1933,45 @@
   // تمارين صاحب المتجر (شاريها): الملفات بالـ KV (/exlib/m/<id>.mp4|jpg)، مو بالريبو، والسيرفر ما بيعطيها إلا لحسابو.
   const EXL_M = { Back: "الظهر", Biceps: "الباي (البايسبس)", Calves: "السمانة", Cardio: "كارديو", Chest: "الصدر", Forearms: "الساعد", "Full Body": "الجسم كامل", Hamstrings: "الفخذ الخلفي", Hips: "الورك والمؤخرة", Neck: "الرقبة", Other: "منوعات", Plyometrics: "قفز وانفجار", Quadriceps: "الفخذ الأمامي", Shoulders: "الأكتاف", Stretching: "إطالة", Thighs: "الفخاد", Triceps: "التراي (الترايسبس)", "Upper Arms": "الذراع", Waist: "البطن والخصر", Weightlifting: "رفع أثقال", Yoga: "يوغا" };
   const EXL_E = { Assisted: "بمساعدة", Band: "مطاط", Barbell: "بار", "Battling Rope": "حبل المعركة", "Body weight": "وزن الجسم", "Bosu ball": "كرة بوسو", Cable: "كابل", Dumbbell: "دمبل", "EZ Barbell": "بار EZ", Hammer: "مطرقة", Kettlebell: "كيتل بيل", "Leverage machine": "آلة", "Medicine Ball": "كرة طبية", "Olympic barbell": "بار أولمبي", "Power Sled": "زلّاجة دفع", "Resistance Band": "مطاط مقاومة", Roll: "رول", Rollball: "كرة مساج", Rope: "حبل", "Sled machine": "آلة زلّاجة", "Smith machine": "سميث", "Stability ball": "كرة اللياقة", Stick: "عصا", Suspension: "حبال تعليق", "Trap bar": "تراب بار", "Vibrate Plate": "منصة اهتزاز", Weighted: "بأوزان", "Wheel roller": "عجلة البطن" };
-  const exl = { L: null, m: "", e: "", q: "", n: 24, busy: false };
-  function exlSettings() { try { return JSON.parse(localStorage.getItem("exlib_settings") || "{}"); } catch (e) { return {}; } }
+  const exl = { L: null, cfg: null, m: "", e: "", q: "", n: 24, io: null, io2: null };
+  // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
+  function exlLoad() {
+    if (window.KOExl) return Promise.resolve();
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=360"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+  }
+  const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
+  const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
   async function exlibPage() {
     document.title = "مكتبة التمارين | " + (C.name || "");
     if (!exl.L) {
       app.innerHTML = '<div class="loading">جاري التحميل…</div>';
       try {
-        const r = await fetch("/api/exlib/list", { headers: socAuth(), credentials: "same-origin" });
+        const [r, rc] = await Promise.all([fetch("/api/exlib/list", { headers: socAuth(), credentials: "same-origin" }), fetch("/api/exlib/cfg", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }), exlLoad()]);
         if (!r.ok) throw 0;
         exl.L = await r.json();
+        exl.cfg = rc.ok ? await rc.json() : {};
+        exl.L.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
       } catch (e) { if (curRoute().indexOf("/exlib") === 0) app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح المكتبة</b>جرّب كمان مرة<a href="#/account">رجوع لحسابي</a></div>'; return; }
       if (curRoute().indexOf("/exlib") !== 0) return;
     }
     if (!exl.L.length) { app.innerHTML = '<div class="empty"><b>المكتبة لسا فاضية</b>ارفع التمارين من صفحة الرفع أول شي<a href="#/account">رجوع لحسابي</a></div>'; return; }
+    const c = exl.cfg || {};
     const cnt = (k, v) => exl.L.filter((x) => x[k] === v).length;
     const ms = Object.keys(EXL_M).filter((k) => cnt("m", k));
     const es = [...new Set(exl.L.filter((x) => !exl.m || x.m === exl.m).map((x) => x.e))].sort((a, b) => (EXL_E[a] || a).localeCompare(EXL_E[b] || b, "ar"));
     app.innerHTML = `
+      <div class="exl exl-t-${esc(c.theme || "site")}">
       <div class="crumbs"><a href="#/account">حسابي</a></div>
       <h1 class="page-title">📚 مكتبة التمارين</h1>
       <div class="exl-bar">
-        <input type="search" class="exl-q" placeholder="دوّر على تمرين بالإنكليزي… bench, curl, squat" value="${esc(exl.q)}" aria-label="بحث">
-        <div class="exl-row"><span class="exl-lb">العضلة</span><button class="chip${exl.m ? "" : " on"}" data-exm="">الكل</button>${ms.map((k) => `<button class="chip${exl.m === k ? " on" : ""}" data-exm="${esc(k)}">${esc(EXL_M[k])}</button>`).join("")}</div>
-        <div class="exl-row"><span class="exl-lb">الأداة</span><button class="chip${exl.e ? "" : " on"}" data-exe="">الكل</button>${es.map((k) => `<button class="chip${exl.e === k ? " on" : ""}" data-exe="${esc(k)}">${esc(EXL_E[k] || k)}</button>`).join("")}</div>
+        <input type="search" class="exl-q" placeholder="دوّر على تمرين بالعربي أو الإنكليزي" value="${esc(exl.q)}" aria-label="بحث">
+        <div class="exl-row"><span class="exl-lb">العضلة</span><button class="chip${exl.m ? "" : " on"}" data-exm="">الكل</button>${ms.map((k) => `<button class="chip${exl.m === k ? " on" : ""}" data-exm="${esc(k)}">${exlI("m", k)}${esc(EXL_M[k])}</button>`).join("")}</div>
+        <div class="exl-row"><span class="exl-lb">الأداة</span><button class="chip${exl.e ? "" : " on"}" data-exe="">الكل</button>${es.map((k) => `<button class="chip${exl.e === k ? " on" : ""}" data-exe="${esc(k)}">${exlI("e", k)}${esc(EXL_E[k] || k)}</button>`).join("")}</div>
       </div>
       <div class="exl-count" data-exl-count></div>
       <div class="exl-grid" data-exl-grid></div>
-      <div class="exl-more" data-exl-more></div>`;
+      <div class="exl-more" data-exl-more></div>
+      </div>`;
     exlDraw();
     const qi = app.querySelector(".exl-q"); let qt;
     qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { exl.q = qi.value.trim(); exl.n = 24; exlDraw(); }, 200); };
@@ -1974,29 +1985,48 @@
     };
   }
   function exlList() {
-    const q = exl.q.toLowerCase().split(/\s+/).filter(Boolean);
-    return exl.L.filter((x) => (!exl.m || x.m === exl.m) && (!exl.e || x.e === exl.e) && q.every((w) => x.n.toLowerCase().includes(w)));
+    const q = exlArq(exl.q).split(/\s+/).filter(Boolean);
+    return exl.L.filter((x) => (!exl.m || x.m === exl.m) && (!exl.e || x.e === exl.e) && q.every((w) => x.s.includes(w)));
+  }
+  // الفيديو متل صورة متحركة: بيشتغل لحالو، بيعيد، بلا صوت، بالسرعة من اللوحة (افتراضي 1.5)، وبيوقف لما يطلع من الشاشة
+  function exlVids(root, slot) {
+    const sp = Math.min(3, Math.max(0.5, +(exl.cfg && exl.cfg.speed) || 1.5));
+    if (exl[slot || "io"]) exl[slot || "io"].disconnect();
+    const vs = root.querySelectorAll("video[data-src]"); if (!vs.length) return;
+    const rate = (v) => { v.defaultPlaybackRate = v.playbackRate = sp; };
+    const io = exl[slot || "io"] = new IntersectionObserver((es) => es.forEach((en) => {
+      const v = en.target;
+      if (en.isIntersecting) { if (!v.getAttribute("src")) v.src = v.dataset.src; rate(v); const p = v.play(); if (p && p.catch) p.catch(() => {}); }
+      else if (v.getAttribute("src")) v.pause();
+    }), { rootMargin: "160px" });
+    vs.forEach((v) => { v.addEventListener("loadedmetadata", () => rate(v)); v.addEventListener("play", () => rate(v)); io.observe(v); });
+  }
+  function exlMedia(x, cls, auto) {
+    return x.v && auto
+      ? `<video class="${cls}" data-src="/exlib/m/${x.i}.mp4" poster="/exlib/m/${x.i}.jpg" muted loop playsinline disablepictureinpicture preload="none"></video>`
+      : `<img class="${cls}" src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async">`;
   }
   function exlDraw() {
-    const L = exlList(), g = app.querySelector("[data-exl-grid]"), s = exlSettings();
+    const L = exlList(), g = app.querySelector("[data-exl-grid]"), c = exl.cfg || {};
     if (!g) return;
-    const sz = s.cardSize || 240;
-    g.style.gridTemplateColumns = `repeat(auto-fill,minmax(${sz}px,1fr))`;
+    const sz = Math.min(320, Math.max(120, +c.size || 240)), list = c.layout === "list";
+    g.className = "exl-grid" + (list ? " exl-list" : "");
+    g.style.gridTemplateColumns = list ? "" : `repeat(auto-fill,minmax(${sz}px,1fr))`;
+    g.style.setProperty("--exl-pic", sz + "px");
     app.querySelector("[data-exl-count]").textContent = L.length + " تمرين";
-    const autoplay = s.autoplay !== false;
-    const showEn = s.showEnName !== false;
+    const auto = c.autoplay !== false, en = c.showEn !== false;
     g.innerHTML = L.slice(0, exl.n).map((x) => {
-      const enName = x.e_n || ""; // استخرجت الاسم الإنجليزي من البيانات
-      return `<button type="button" class="exl-card" data-exl-id="${x.i}"><span class="exl-pic">${x.v && autoplay ? `<video src="/exlib/m/${x.i}.mp4" autoplay muted loop playsinline width="${sz}" height="${sz}" style="object-fit:cover;"></video>` : `<img src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async" width="${sz}" height="${sz}" style="object-fit:cover;">`}</span><b dir="ltr">${esc(x.n)}</b>${showEn && enName ? `<small style="font-size:10px;color:var(--muted);">${esc(enName)}</small>` : ""}<small>${esc(EXL_M[x.m] || x.m)} · ${esc(EXL_E[x.e] || x.e)}</small></button>`;
+      const ar = x.a || "";
+      const main = ar || x.n; // إذا ما في ترجمة بعد، الاسم الإنكليزي هو الأساسي
+      return `<button type="button" class="exl-card" data-exl-id="${x.i}"><span class="exl-pic">${exlMedia(x, "", auto)}</span><span class="exl-tx"><b${ar ? "" : ' dir="ltr"'}>${esc(main)}</b>${en && ar ? `<small class="exl-en" dir="ltr">${esc(x.n)}</small>` : ""}<span class="exl-tags"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span><span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></span></span></button>`;
     }).join("") || '<div class="empty"><b>ما في تمارين هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>';
     app.querySelector("[data-exl-more]").innerHTML = L.length > exl.n ? `<button type="button" class="btn btn-dark">عرض المزيد (${L.length - exl.n})</button>` : "";
+    exlVids(g);
   }
   function exlOpen(id) {
     const x = exl.L.find((y) => y.i === id); if (!x) return;
-    const media = x.v
-      ? `<video class="exl-vid" src="/exlib/m/${x.i}.mp4" poster="/exlib/m/${x.i}.jpg" autoplay loop muted playsinline controls preload="auto"></video>`
-      : `<img class="exl-vid" src="/exlib/m/${x.i}.jpg" alt="">`;
-    openSheet(x.n, `${media}<p class="exl-meta">العضلة: <b>${esc(EXL_M[x.m] || x.m)}</b> · الأداة: <b>${esc(EXL_E[x.e] || x.e)}</b></p>`);
+    const c = exl.cfg || {}, ar = x.a || "";
+    openSheet(ar || x.n, `<div class="exl exl-t-${esc(c.theme || "site")}"><div class="exl-vw">${exlMedia(x, "exl-vid", true)}</div>${c.showEn !== false && ar ? `<p class="exl-en exl-en-big" dir="ltr">${esc(x.n)}</p>` : ""}<p class="exl-meta"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span> <span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></p></div>`, (root) => { const r = root || document; exlVids(r, "io2"); r.querySelectorAll("video[data-src]").forEach((v) => { v.onclick = () => (v.paused ? v.play() : v.pause()); }); });
   }
   // ---------- البروفايل، التصنيف العالمي، والتعليقات متل الفيسبوك (صاحب المتجر 18 تشرين التاني 2026) ----------
   // مخفي عن الكل إلا حساب صاحب المتجر (koOwn) لحتى يقول «انشرها». السيرفر كمان مسكّر (SOCIAL_LIVE=false).
@@ -2161,7 +2191,7 @@
         <span class="qd-note"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 10.5v6M12 7.4v.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>لازم يكون التلغرام على نفس الرقم المسجّل على الوصل</span>
         <span class="qd-cta"><span>افتح البوت</span><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </a>
-${koOwn() ? `<a class="acc-card acc-pred acc-me2" href="#/me"><span class="apr-l"><b>👤 بروفايلي ونقاطي</b><small>صورتك، مستواك، نقاطك وترتيبك بالعالم</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/rank"><span class="apr-l"><b>🏆 التصنيف العالمي</b><small>أقوى الزباين بالتوقعات والتعليقات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/exlib"><span class="apr-l"><b>📚 مكتبة التمارين</b><small>تمارينك بالفيديو حسب العضلة والأداة</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="/exlib-settings.html" target="_blank" rel="noopener"><span class="apr-l"><b>⚙️ إعدادات المكتبة</b><small>حجم البطاقات، autoplay، والإظهار</small></span><span class="apr-go">افتح ›</span></a>` : ""}
+${koOwn() ? `<a class="acc-card acc-pred acc-me2" href="#/me"><span class="apr-l"><b>👤 بروفايلي ونقاطي</b><small>صورتك، مستواك، نقاطك وترتيبك بالعالم</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/rank"><span class="apr-l"><b>🏆 التصنيف العالمي</b><small>أقوى الزباين بالتوقعات والتعليقات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/exlib"><span class="apr-l"><b>📚 مكتبة التمارين</b><small>تمارينك بالعربي بفيديو متحرك حسب العضلة والأداة</small></span><span class="apr-go">افتح ›</span></a>` : ""}
       <section class="acc-card"><h2>طلباتي</h2><div data-myorders>${(myOrdOwner(), myOrdersHtml(myOrdCache))}</div></section>
       <section class="acc-card acc-links"><a href="#/cart">🛒 السلة</a><a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">💬 تواصل معنا على واتساب</a></section>`;
     app.onclick = (e) => {

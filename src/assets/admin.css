@@ -1107,3 +1107,6 @@ body.m-dragging{cursor:grabbing;user-select:none}
 .exl-th{width:64px;height:64px;border-radius:10px;object-fit:cover;background:var(--line,#e4e0d8)}
 .exl-hid{opacity:.55}
 .dc-st.bad{background:#fee2e2;color:#b91c1c}.dc-st.ok{background:#dcfce7;color:#166534}
+.exl-cfg{margin-bottom:12px;padding:14px}
+.exl-cfg h2{font-size:16px;margin:0 0 4px}
+.exl-cfg input[type=range]{width:100%}

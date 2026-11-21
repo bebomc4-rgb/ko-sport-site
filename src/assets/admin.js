@@ -727,8 +727,8 @@
   async function loadExlib() {
     const box = $("[data-exl-list]"); if (!box) return;
     box.innerHTML = '<div class="w-card dc-empty"><b>جاري التحميل…</b></div>';
-    try { const j = await api("/api/exlib/adm"); EXL = j.list || []; } catch (e) { box.innerHTML = ""; toast(e.message); return; }
-    exlFillFilters(); exlShown = 40; renderExlib();
+    try { const j = await api("/api/exlib/adm"); EXL = j.list || []; exlCfgFill(j.cfg); } catch (e) { box.innerHTML = ""; toast(e.message); return; }
+    exlFillFilters(); exlShown = 40; renderExlib(); exlTStat();
   }
   function exlFillFilters() {
     const fill = (sel, key, map, all) => {
@@ -741,7 +741,7 @@
   }
   function exlFiltered() {
     const q = ($("[data-exl-q]").value || "").trim().toLowerCase(), m = $("[data-exl-m]").value, e = $("[data-exl-e]").value, s = $("[data-exl-s]").value;
-    return EXL.filter((x) => (!q || String(x.n).toLowerCase().includes(q)) && (!m || x.m === m) && (!e || x.e === e) && (s === "h" ? x.h : s === "x" ? x.x : true));
+    return EXL.filter((x) => (!q || String(x.n).toLowerCase().includes(q) || String(x.a || "").includes(q)) && (!m || x.m === m) && (!e || x.e === e) && (s === "h" ? x.h : s === "x" ? x.x : s === "na" ? !x.a : true));
   }
   function exlOpts(map, cur) {
     const keys = Object.keys(map); if (cur && !map[cur]) keys.push(cur);
@@ -755,7 +755,8 @@
     box.innerHTML = shown.map((x) => `<div class="w-card exl-r${x.h ? " exl-hid" : ""}" data-exid="${esc(x.i)}">
       <img class="exl-th" src="/exlib/m/${esc(x.i)}.jpg" alt="" loading="lazy" decoding="async" width="64" height="64">
       <div class="sub-grid exl-f">
-        <label class="wide">الاسم<input data-exf="n" dir="ltr" value="${esc(x.n)}" maxlength="120"></label>
+        <label class="wide">الاسم بالعربي<input data-exf="a" value="${esc(x.a || "")}" maxlength="90" placeholder="لسا ما انترجم"></label>
+        <label class="wide">الاسم بالإنكليزي<input data-exf="n" dir="ltr" value="${esc(x.n)}" maxlength="120"></label>
         <label>العضلة<select data-exf="m">${exlOpts(EXL_M, x.m)}</select></label>
         <label>الأداة<select data-exf="e">${exlOpts(EXL_E, x.e)}</select></label>
       </div>
@@ -764,7 +765,7 @@
   }
   async function exlSave(row, reset) {
     const x = EXL.find((v) => v.i === row.dataset.exid); if (!x) return;
-    const body = reset ? { i: x.i, reset: true } : { i: x.i, n: row.querySelector('[data-exf="n"]').value, m: row.querySelector('[data-exf="m"]').value, e: row.querySelector('[data-exf="e"]').value, h: row.querySelector('[data-exf="h"]').checked };
+    const body = reset ? { i: x.i, reset: true } : { i: x.i, a: row.querySelector('[data-exf="a"]').value, n: row.querySelector('[data-exf="n"]').value, m: row.querySelector('[data-exf="m"]').value, e: row.querySelector('[data-exf="e"]').value, h: row.querySelector('[data-exf="h"]').checked };
     try {
       const j = await api("/api/exlib/edit", { method: "POST", body: JSON.stringify(body) });
       const k = EXL.findIndex((v) => v.i === x.i); if (k >= 0) EXL[k] = j.item;
@@ -772,9 +773,41 @@
       if (reset) renderExlib(); else { row.classList.toggle("exl-hid", !!j.item.h); if (j.item.x && !row.querySelector("[data-exreset]")) row.querySelector(".ab-acts").insertAdjacentHTML("beforeend", '<button type="button" class="btn btn-ghost sm" data-exreset>رجّع الأصلي</button>'); }
     } catch (e) { toast(e.message); }
   }
+  // مظهر المكتبة + الترجمة (21/11/2026)
+  let EXC = {};
+  function exlCfgFill(c) {
+    EXC = c || {};
+    document.querySelectorAll("[data-exc]").forEach((el) => { const k = el.dataset.exc, v = EXC[k]; if (el.type === "checkbox") el.checked = v !== false && v != null ? !!v : v == null; else if (v != null) el.value = String(v); });
+    const z = $("[data-exc-sz]"); if (z) z.textContent = (EXC.size || 240) + "px";
+  }
+  let excT = 0;
+  function exlCfgSave() {
+    const o = {}; document.querySelectorAll("[data-exc]").forEach((el) => { o[el.dataset.exc] = el.type === "checkbox" ? el.checked : el.type === "range" ? +el.value : el.dataset.exc === "speed" ? +el.value : el.value; });
+    const z = $("[data-exc-sz]"); if (z) z.textContent = o.size + "px";
+    clearTimeout(excT); excT = setTimeout(async () => { try { const j = await api("/api/exlib/cfg", { method: "POST", body: JSON.stringify(o) }); EXC = j.cfg; toast("✓ انحفظ"); } catch (e) { toast(e.message); } }, 500);
+  }
+  function exlTStat() { const el = $("[data-exl-tstat]"); if (!el) return; const d = EXL.filter((x) => x.a).length; el.textContent = `مترجم ${nf(d)} من ${nf(EXL.length)} تمرين` + (d < EXL.length ? ` — ناقص ${nf(EXL.length - d)}` : " ✓"); }
+  let exlTRun = false;
+  async function exlTranslateAll() {
+    const go = $("[data-exl-tgo]"), stop = $("[data-exl-tstop]"), el = $("[data-exl-tstat]");
+    exlTRun = true; go.disabled = true; stop.hidden = false;
+    try {
+      while (exlTRun) {
+        const j = await api("/api/exlib/translate", { method: "POST", body: "{}" });
+        el.textContent = `عم يترجم… ${nf(j.done)} من ${nf(j.total)}` + (j.failed ? ` (تخطّى ${j.failed} بهالدفعة)` : "");
+        if (!j.left) break;
+      }
+    } catch (e) { toast(e.message); }
+    exlTRun = false; go.disabled = false; stop.hidden = true;
+    loadExlib();
+  }
   { const v = $('[data-view="exlib"]');
     if (v) {
       v.addEventListener("change", (e) => { const row = e.target.closest("[data-exid]"); if (row && e.target.dataset.exf) exlSave(row, false); });
+      v.addEventListener("input", (e) => { if (e.target.matches("[data-exc]")) exlCfgSave(); });
+      v.addEventListener("change", (e) => { if (e.target.matches("[data-exc]")) exlCfgSave(); });
+      $("[data-exl-tgo]").addEventListener("click", exlTranslateAll);
+      $("[data-exl-tstop]").addEventListener("click", () => { exlTRun = false; });
       v.addEventListener("click", (e) => { const rs = e.target.closest("[data-exreset]"); if (rs) exlSave(rs.closest("[data-exid]"), true); });
       v.addEventListener("error", (e) => { if (e.target.tagName === "IMG") e.target.style.visibility = "hidden"; }, true);
       let qT = 0; v.addEventListener("input", (e) => { if (e.target.matches("[data-exl-q]")) { clearTimeout(qT); qT = setTimeout(() => { exlShown = 40; renderExlib(); }, 250); } });

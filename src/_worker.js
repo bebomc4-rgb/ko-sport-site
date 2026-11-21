@@ -4480,10 +4480,70 @@ async function exlibMedia(request, env, name) {
 }
 // تعديلات صاحب المتجر على التمارين (21/11/2026): اسم/عضلة/أداة/إخفاء، محفوظة لحالها بـ exlib:edits ({id:{n,m,e,h}})
 // عشان تضل حتى لو انعاد رفع exlib:index. الإخفاء ما بيمسح الفيديو ولا الصورة.
+// (21/11/2026) + الاسم بالعربي بـ exlib:ar ({id:اسم}) وإعدادات المظهر بـ exlib:cfg
 async function exlibAll(env) {
   let L = []; try { L = JSON.parse((await env.STORE.get("exlib:index")) || "[]"); } catch { L = []; }
   let ed = {}; try { ed = (await env.STORE.get("exlib:edits", "json")) || {}; } catch { ed = {}; }
-  return { L, ed, merged: L.map((x) => (ed[x.i] ? { ...x, ...ed[x.i], x: 1 } : x)) };
+  let ar = {}; try { ar = (await env.STORE.get("exlib:ar", "json")) || {}; } catch { ar = {}; }
+  return { L, ed, ar, merged: L.map((x) => { const o = ed[x.i] ? { ...x, ...ed[x.i], x: 1 } : x; return ar[x.i] ? { ...o, a: ar[x.i] } : o; }) };
+}
+const EXLIB_CFG_DEF = { theme: "site", size: 240, layout: "grid", speed: 1.5, autoplay: true, showEn: true };
+function exlibCfgClean(b, cur) {
+  const o = { ...EXLIB_CFG_DEF, ...(cur || {}) };
+  if (!b || typeof b !== "object") return o;
+  if (["site", "gold", "dark", "light"].includes(b.theme)) o.theme = b.theme;
+  if (["grid", "list"].includes(b.layout)) o.layout = b.layout;
+  if (b.size != null && isFinite(+b.size)) o.size = Math.min(320, Math.max(120, Math.round(+b.size / 10) * 10));
+  if (b.speed != null && isFinite(+b.speed)) o.speed = Math.min(3, Math.max(0.5, Math.round(+b.speed * 4) / 4));
+  if (b.autoplay != null) o.autoplay = !!b.autoplay;
+  if (b.showEn != null) o.showEn = !!b.showEn;
+  return o;
+}
+async function exlibCfg(env) { let c = null; try { c = await env.STORE.get("exlib:cfg", "json"); } catch {} return exlibCfgClean(c, null); }
+// ترجمة أسماء التمارين للعربي: دفعات من 30 اسم بالذكاء الاصطناعي (Workers AI)، النتيجة بتنحفظ بـ exlib:ar، والفاشل 3 مرات بيتخطّاه (بيعبّيه صاحب المتجر يدوي)
+const EXL_GLOSS = `Curl=كيرل (ثني) | Press=برس (ضغط) | Bench Press=بنش برس | Row=رو (سحب أفقي) | Pulldown=سحب علوي | Pull-up=عقلة | Chin-up=عقلة بقبضة عكسية | Push-up=ضغط | Squat=سكوات | Lunge=لانج (طعن) | Deadlift=ديدلفت | Fly/Flye=فلاي (فتح) | Raise=رفع | Lateral Raise=رفع جانبي | Front Raise=رفع أمامي | Extension=مد (إكستنشن) | Kickback=كيك باك | Crunch=كرنش | Sit-up=جلوس من الاستلقاء | Plank=بلانك | Shrug=شراغ (رفع الأكتاف) | Dip=متوازي (ديبس) | Twist=التفاف | Stretch=إطالة | Walk=مشي | Jump=قفز | Hop=نطّ | Swing=أرجحة | Clean=كلين | Snatch=سنتش | Jerk=جيرك | Thruster=ثراستر | Burpee=بيربي | Mountain Climber=متسلق الجبل | Hip Thrust=هيب ثراست | Glute Bridge=جسر المؤخرة | Leg Press=ضغط الأرجل | Leg Curl=ثني الفخذ الخلفي | Leg Extension=مد الأرجل | Calf Raise=رفع السمانة | Pullover=بول أوفر | Skull Crusher=سكال كراشر | Preacher=بريتشر | Incline=مائل للأعلى | Decline=مائل للأسفل | Seated=جلوس | Standing=وقوف | Lying=استلقاء | Bent Over=انحناء | One Arm=بذراع واحدة | Single Leg=برجل واحدة | Reverse=عكسي | Wide Grip=قبضة واسعة | Close Grip=قبضة ضيقة | Alternate=بالتناوب | Overhead=فوق الراس | Sumo=سومو | Romanian=روماني | Bulgarian Split Squat=سكوات بلغاري | Good Morning=غود مورنينغ | Face Pull=فيس بول | Arnold Press=أرنولد برس | Lat=الظهر العريض | Hammer=هامر | Neck=الرقبة | Wrist=الرسغ | Forearm=الساعد`;
+const arOk = (s) => typeof s === "string" && (s.match(/[؀-ۿ]/g) || []).length >= 2 && s.length <= 90 && (s.match(/[A-Za-z]/g) || []).length <= Math.max(6, s.length / 3);
+async function exlibTranslate(request, env) {
+  if (!env.AI) return json({ error: "الذكاء الاصطناعي مو مربوط: Settings ← Bindings ← Add ← Workers AI، واسمه AI، وبعدين ارفع الموقع من جديد" }, 500);
+  const { merged, ar } = await exlibAll(env);
+  let fail = {}; try { fail = (await env.STORE.get("exlib:arfail", "json")) || {}; } catch { fail = {}; }
+  const todo = merged.filter((x) => !ar[x.i] && (fail[x.i] || 0) < 3);
+  const stat = (extra) => ({ ok: true, total: merged.length, done: merged.filter((x) => ar[x.i]).length, left: merged.filter((x) => !ar[x.i] && (fail[x.i] || 0) < 3).length, ...extra });
+  if (!todo.length) return json(stat({ got: 0 }), 200, { "cache-control": "no-store" });
+  const batch = todo.slice(0, 30);
+  const system = `You translate gym exercise names from English to Arabic for a Syrian sports store.
+Rules:
+- Keep it SHORT (2-5 words). Use gym slang that Syrian trainees say: transliterate common loanwords (بنش برس، سكوات، ديدلفت، كيرل، فلاي، لانج) and translate descriptive words (دمبل، بار، كيتل بيل، كابل، مائل، جلوس، وقوف).
+- Use equipment names in Arabic: Dumbbell=دمبل, Barbell=بار, Kettlebell=كيتل بيل, Cable=كابل, Band=مطاط, Smith=سميث, Machine/Lever=آلة, Body weight=وزن الجسم.
+- Word order: exercise first, then equipment/position (e.g. "Barbell Bench Press" -> "بنش برس بالبار", "Dumbbell Seated Curl" -> "كيرل بالدمبل جلوس").
+- Do NOT leave English words except letters like EZ, V, T. Do NOT add explanations.
+- Glossary: ${EXL_GLOSS}
+Return ONLY a JSON object mapping each number to its Arabic name, e.g. {"1":"...","2":"..."} with no markdown.`;
+  const user = batch.map((x, i) => `${i + 1}. ${String(x.n).slice(0, 120)}`).join("\n");
+  let last = "", got = {};
+  for (const model of AI_MODELS) {
+    try {
+      const out = await env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 3000, temperature: 0.2 });
+      let t = typeof out === "string" ? out : out.response ?? out.result?.response ?? (out.choices && out.choices[0]?.message?.content) ?? "";
+      if (typeof t !== "string") t = JSON.stringify(t);
+      t = t.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/```(json)?/g, "");
+      let j = null; const m = t.match(/\{[\s\S]*\}/); if (m) { try { j = JSON.parse(m[0]); } catch {} }
+      if (!j) { j = {}; t.split("\n").forEach((ln) => { const r = /^\s*"?(\d+)"?\s*[.:)\-]\s*"?(.+?)"?,?\s*$/.exec(ln); if (r) j[r[1]] = r[2]; }); }
+      Object.keys(j).forEach((k) => { const x = batch[+k - 1], v = typeof j[k] === "string" ? j[k].trim() : ""; if (x && arOk(v)) got[x.i] = v; });
+      if (Object.keys(got).length) break;
+      last = "رد غير مفهوم";
+    } catch (e) { last = String(e && e.message || e); }
+  }
+  const nGot = Object.keys(got).length;
+  if (!nGot && last) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + last }, 502);
+  // أعد قراءة الخريطة قبل الكتابة (تعديل يدوي ممكن يكون صار بنص الطلب) وما نكتب فوق اسم موجود
+  let ar2 = {}; try { ar2 = (await env.STORE.get("exlib:ar", "json")) || {}; } catch { ar2 = {}; }
+  Object.keys(got).forEach((i) => { if (!ar2[i]) ar2[i] = got[i]; });
+  await env.STORE.put("exlib:ar", JSON.stringify(ar2));
+  let changed = false; batch.forEach((x) => { if (!got[x.i]) { fail[x.i] = (fail[x.i] || 0) + 1; changed = true; } });
+  if (changed) await env.STORE.put("exlib:arfail", JSON.stringify(fail));
+  const done = merged.filter((x) => ar2[x.i]).length;
+  return json({ ok: true, total: merged.length, done, left: merged.filter((x) => !ar2[x.i] && (fail[x.i] || 0) < 3).length, got: nGot, failed: batch.length - nGot }, 200, { "cache-control": "no-store" });
 }
 async function exlibApi(request, env, path, m) {
   const nos = { "cache-control": "no-store" };
@@ -4494,20 +4554,39 @@ async function exlibApi(request, env, path, m) {
     const out = merged.filter((x) => !x.h).map(({ x, h, ...r }) => r);
     return new Response(JSON.stringify(out), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=60" } });
   }
+  // إعدادات المظهر (ثيم، حجم، عرض، سرعة الفيديو): لحساب صاحب المتجر
+  if (path === "/api/exlib/cfg" && m === "GET") {
+    if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
+    return json(await exlibCfg(env), 200, nos);
+  }
   // الرفع والتعديل: بكلمة سر لوحة التحكم (المالك بس)
   if (!isAdmin(request, env, "owner")) return denied();
   // لوحة التحكم ← التمارين: كل اللائحة مع المخفية والمعدّلة
   if (path === "/api/exlib/adm" && m === "GET") {
     const { merged } = await exlibAll(env);
-    return json({ list: merged }, 200, nos);
+    return json({ list: merged, cfg: await exlibCfg(env) }, 200, nos);
   }
+  if (path === "/api/exlib/cfg" && m === "POST") {
+    let b; try { b = await request.json(); } catch { return json({ error: "الطلب غلط" }, 400); }
+    const c = exlibCfgClean(b, await exlibCfg(env));
+    await env.STORE.put("exlib:cfg", JSON.stringify(c));
+    return json({ ok: true, cfg: c }, 200, nos);
+  }
+  if (path === "/api/exlib/translate" && m === "POST") return exlibTranslate(request, env);
   if (path === "/api/exlib/edit" && m === "POST") {
     let b; try { b = await request.json(); } catch { return json({ error: "الطلب غلط" }, 400); }
     const id = String((b && b.i) || "");
     if (!/^[a-f0-9]{10}$/.test(id)) return json({ error: "رقم التمرين غلط" }, 400);
-    const { L, ed } = await exlibAll(env);
+    const { L, ed, ar } = await exlibAll(env);
     const base = L.find((x) => x.i === id);
     if (!base) return json({ error: "التمرين مو موجود" }, 404);
+    // الاسم بالعربي (تعديل يدوي): فاضي = بيمسح الترجمة، وبعدها الترجمة التلقائية بتعبّيه من جديد
+    if (b.a !== undefined) {
+      const a = String(b.a || "").trim().slice(0, 90);
+      if (a) ar[id] = a; else delete ar[id];
+      await env.STORE.put("exlib:ar", JSON.stringify(ar));
+      if (!a) { let f = {}; try { f = (await env.STORE.get("exlib:arfail", "json")) || {}; } catch {} if (f[id]) { delete f[id]; await env.STORE.put("exlib:arfail", JSON.stringify(f)); } }
+    }
     if (b.reset) delete ed[id];
     else {
       const pick = (v, d, max) => String(v == null ? d : v).trim().slice(0, max);
@@ -4521,7 +4600,9 @@ async function exlibApi(request, env, path, m) {
       if (Object.keys(e2).length) ed[id] = e2; else delete ed[id];
     }
     await env.STORE.put("exlib:edits", JSON.stringify(ed));
-    return json({ ok: true, item: ed[id] ? { ...base, ...ed[id], x: 1 } : base }, 200, nos);
+    const item = ed[id] ? { ...base, ...ed[id], x: 1 } : { ...base };
+    if (ar[id]) item.a = ar[id];
+    return json({ ok: true, item }, 200, nos);
   }
   if (path === "/api/exlib/have" && m === "GET") {
     const have = []; let cursor;
