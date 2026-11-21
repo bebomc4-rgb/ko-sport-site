@@ -1937,7 +1937,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=362"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=363"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2044,10 +2044,24 @@
     app.querySelector("[data-exl-more]").innerHTML = L.length > exl.n ? `<button type="button" class="btn btn-dark">عرض المزيد (${L.length - exl.n})</button>` : "";
     exlVids(g);
   }
+  // تكبير ملء الشاشة: الصورة أو الفيديو كامل، وبتكبس بأي مكان لتسكّر
+  function exlZoom(x) {
+    const sp = Math.min(3, Math.max(0.5, +(exl.cfg && exl.cfg.speed) || 1.5));
+    const w = document.createElement("div"); w.className = "exl-lb";
+    w.innerHTML = '<button type="button" aria-label="إغلاق">✕</button>' + (x.v ? `<video src="/exlib/m/${x.i}.mp4" poster="/exlib/m/${x.i}.jpg" autoplay muted loop playsinline></video>` : `<img src="/exlib/m/${x.i}.jpg" alt="">`);
+    const v = w.querySelector("video"); if (v) { const r = () => { v.defaultPlaybackRate = v.playbackRate = sp; }; v.addEventListener("loadedmetadata", r); v.addEventListener("play", r); }
+    w.onclick = () => w.remove();
+    document.body.appendChild(w);
+  }
   function exlOpen(id) {
     const x = exl.L.find((y) => y.i === id); if (!x) return;
     const c = exl.cfg || {}, ar = x.a || "";
-    openSheet(ar || x.n, `<div class="exl exl-t-${esc(c.theme || "site")}"><div class="exl-vw">${exlMedia(x, "exl-vid", true)}</div>${c.showEn !== false && ar ? `<p class="exl-en exl-en-big" dir="ltr">${esc(x.n)}</p>` : ""}<p class="exl-meta"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span> <span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></p></div>`, (root) => { const r = root || document; exlVids(r, "io2"); r.querySelectorAll("video[data-src]").forEach((v) => { v.onclick = () => (v.paused ? v.play() : v.pause()); }); });
+    openSheet(ar || x.n, `<div class="exl exl-t-${esc(c.theme || "site")}"><div class="exl-vw">${exlMedia(x, "exl-vid", true)}<button type="button" class="exl-zoom" data-exl-zoom aria-label="تكبير">⤢</button></div>${c.showEn !== false && ar ? `<p class="exl-en exl-en-big" dir="ltr">${esc(x.n)}</p>` : ""}<p class="exl-meta"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span> <span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></p></div>`, (root) => {
+      const r = root || document; exlVids(r, "io2");
+      const m = r.querySelector(".exl-vid");
+      if (m) m.onclick = () => { if (m.tagName === "VIDEO") (m.paused ? m.play() : m.pause()); else exlZoom(x); };
+      r.querySelector("[data-exl-zoom]").onclick = () => exlZoom(x);
+    });
   }
   // ---------- البروفايل، التصنيف العالمي، والتعليقات متل الفيسبوك (صاحب المتجر 18 تشرين التاني 2026) ----------
   // مخفي عن الكل إلا حساب صاحب المتجر (koOwn) لحتى يقول «انشرها». السيرفر كمان مسكّر (SOCIAL_LIVE=false).
