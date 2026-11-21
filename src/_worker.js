@@ -4478,16 +4478,51 @@ async function exlibMedia(request, env, name) {
   }
   return new Response(buf, { headers: { ...h, "content-length": String(len) } });
 }
+// تعديلات صاحب المتجر على التمارين (21/11/2026): اسم/عضلة/أداة/إخفاء، محفوظة لحالها بـ exlib:edits ({id:{n,m,e,h}})
+// عشان تضل حتى لو انعاد رفع exlib:index. الإخفاء ما بيمسح الفيديو ولا الصورة.
+async function exlibAll(env) {
+  let L = []; try { L = JSON.parse((await env.STORE.get("exlib:index")) || "[]"); } catch { L = []; }
+  let ed = {}; try { ed = (await env.STORE.get("exlib:edits", "json")) || {}; } catch { ed = {}; }
+  return { L, ed, merged: L.map((x) => (ed[x.i] ? { ...x, ...ed[x.i], x: 1 } : x)) };
+}
 async function exlibApi(request, env, path, m) {
   const nos = { "cache-control": "no-store" };
-  // لائحة التمارين: لصاحب المتجر بس (من حسابو بالمتجر)
+  // لائحة التمارين: لصاحب المتجر بس (من حسابو بالمتجر)، بدون المخفية
   if (path === "/api/exlib/list" && m === "GET") {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
-    const t = await env.STORE.get("exlib:index");
-    return new Response(t || "[]", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=300" } });
+    const { merged } = await exlibAll(env);
+    const out = merged.filter((x) => !x.h).map(({ x, h, ...r }) => r);
+    return new Response(JSON.stringify(out), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=60" } });
   }
-  // الرفع: بكلمة سر لوحة التحكم (المالك بس)
+  // الرفع والتعديل: بكلمة سر لوحة التحكم (المالك بس)
   if (!isAdmin(request, env, "owner")) return denied();
+  // لوحة التحكم ← التمارين: كل اللائحة مع المخفية والمعدّلة
+  if (path === "/api/exlib/adm" && m === "GET") {
+    const { merged } = await exlibAll(env);
+    return json({ list: merged }, 200, nos);
+  }
+  if (path === "/api/exlib/edit" && m === "POST") {
+    let b; try { b = await request.json(); } catch { return json({ error: "الطلب غلط" }, 400); }
+    const id = String((b && b.i) || "");
+    if (!/^[a-f0-9]{10}$/.test(id)) return json({ error: "رقم التمرين غلط" }, 400);
+    const { L, ed } = await exlibAll(env);
+    const base = L.find((x) => x.i === id);
+    if (!base) return json({ error: "التمرين مو موجود" }, 404);
+    if (b.reset) delete ed[id];
+    else {
+      const pick = (v, d, max) => String(v == null ? d : v).trim().slice(0, max);
+      const n = pick(b.n, base.n, 120), mu = pick(b.m, base.m, 40), eq = pick(b.e, base.e, 40);
+      if (!n) return json({ error: "الاسم فاضي" }, 400);
+      const e2 = {};
+      if (n !== base.n) e2.n = n;
+      if (mu !== base.m) e2.m = mu;
+      if (eq !== base.e) e2.e = eq;
+      if (b.h) e2.h = 1;
+      if (Object.keys(e2).length) ed[id] = e2; else delete ed[id];
+    }
+    await env.STORE.put("exlib:edits", JSON.stringify(ed));
+    return json({ ok: true, item: ed[id] ? { ...base, ...ed[id], x: 1 } : base }, 200, nos);
+  }
   if (path === "/api/exlib/have" && m === "GET") {
     const have = []; let cursor;
     do { const r = await env.STORE.list({ prefix: "exlib:f:", cursor, limit: 1000 }); r.keys.forEach((k) => have.push(k.name.slice(8))); cursor = r.list_complete ? null : r.cursor; } while (cursor);

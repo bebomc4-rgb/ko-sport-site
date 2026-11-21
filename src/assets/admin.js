@@ -41,7 +41,7 @@
   });
   let ROLE = "owner", ROLE_NAME = "";
   const ALLOW = { orders: ["dash", "orders", "carts", "customers"], manager: null, owner: null };
-  const allowed = (tab) => { const a = ALLOW[ROLE]; if (a) return a.includes(tab); if (ROLE === "manager") return !["staff", "dev"].includes(tab); return true; };
+  const allowed = (tab) => { const a = ALLOW[ROLE]; if (a) return a.includes(tab); if (ROLE === "manager") return !["staff", "dev", "exlib"].includes(tab); return true; };
   async function login() {
     const j = await api("/api/login", { method: "POST" });
     ROLE = j.role || "owner"; ROLE_NAME = j.name || "";
@@ -70,7 +70,7 @@
     fetch("/api/settings").then((r) => r.json()).then((st) => { const n = $("[data-store-name]"); if (n && st.store && st.store.name) n.textContent = st.store.name; }).catch(() => {});
     setInterval(() => { if (!$("[data-view=orders]").hidden) loadOrders(true).catch(() => {}); }, 60000);
   }
-  const TAB_TITLES = { pred: "التوقعات", bot: "المجيب K FAST", colledit: "المجموعة", domain: "النطاق", legal: "الصفحات القانونية", apps: "التطبيقات", general: "الإعدادات العامة", tax: "الضريبة", staff: "الموظفون", dev: "أدوات المطورين", carts: "السلّات المتروكة", discounts: "الخصومات", pages: "الصفحات", dash: "الرئيسية", orders: "الطلبات", products: "المنتجات", collections: "المجموعات", customers: "العملاء", delivery: "الشحن", payments: "الدفع", reviews: "التقييمات", push: "الإشعارات", promos: "الإعلانات الترويجية", themes: "قوالب التصميم", appearance: "المظهر", reports: "التقارير", images: "الصور" };
+  const TAB_TITLES = { pred: "التوقعات", exlib: "التمارين", bot: "المجيب K FAST", colledit: "المجموعة", domain: "النطاق", legal: "الصفحات القانونية", apps: "التطبيقات", general: "الإعدادات العامة", tax: "الضريبة", staff: "الموظفون", dev: "أدوات المطورين", carts: "السلّات المتروكة", discounts: "الخصومات", pages: "الصفحات", dash: "الرئيسية", orders: "الطلبات", products: "المنتجات", collections: "المجموعات", customers: "العملاء", delivery: "الشحن", payments: "الدفع", reviews: "التقييمات", push: "الإشعارات", promos: "الإعلانات الترويجية", themes: "قوالب التصميم", appearance: "المظهر", reports: "التقارير", images: "الصور" };
   // every dashboard page is a step in the browser history, so the mouse «back» button / phone back gesture goes to the previous page
   window.addEventListener("popstate", (e) => { const t = e.state && e.state.koTab; if (t && started && !(e.state && e.state.koAp)) show(t, true); });
   function show(tab, fromHistory) {
@@ -96,6 +96,7 @@
     if (tab === "dash") renderDash();
     if (tab === "carts") loadCarts();
     if (tab === "subs") loadSubs();
+    if (tab === "exlib") loadExlib();
     if (tab === "pred") { const fr = $("[data-pred-fr]"); if (fr && !fr.src) { fr.src = "/predict?manage"; addEventListener("message", (e) => { if (e.origin === location.origin && e.data && e.data.koPredH) fr.style.height = Math.max(500, +e.data.koPredH) + "px"; }); } }
     if (tab === "discounts") loadUsed();
     if (tab === "customers") loadCustomers();
@@ -719,6 +720,68 @@
         <div class="ab-acts"><label class="sub-off"><input type="checkbox" data-f="off"${x.off ? " checked" : ""}> وقّف التذكير</label>${x.url ? `<a class="btn btn-ghost sm" target="_blank" rel="noopener" href="${esc(x.url)}">فتح الرابط</a>` : ""}<button type="button" class="btn btn-ghost sm" data-sub-del="${i}">حذف</button></div></div>`;
     }).join("") || `<div class="w-card dc-empty"><b>ما في اشتراكات</b><p class="hint">اكبس «اشتراك جديد».</p></div>`;
   }
+  // ---- التمارين (مكتبة صاحب المتجر الخاصة): تعديل الاسم/العضلة/الأداة وإخفاء تمرين. الحفظ بـ /api/exlib/edit، والملفات ما بتنمسح ----
+  const EXL_M = { Back: "الظهر", Biceps: "الباي (البايسبس)", Calves: "السمانة", Cardio: "كارديو", Chest: "الصدر", Forearms: "الساعد", "Full Body": "الجسم كامل", Hamstrings: "الفخذ الخلفي", Hips: "الورك والمؤخرة", Neck: "الرقبة", Other: "منوعات", Plyometrics: "قفز وانفجار", Quadriceps: "الفخذ الأمامي", Shoulders: "الأكتاف", Stretching: "إطالة", Thighs: "الفخاد", Triceps: "التراي (الترايسبس)", "Upper Arms": "الذراع", Waist: "البطن والخصر", Weightlifting: "رفع أثقال", Yoga: "يوغا" };
+  const EXL_E = { Assisted: "بمساعدة", Band: "مطاط", Barbell: "بار", "Battling Rope": "حبل المعركة", "Body weight": "وزن الجسم", "Bosu ball": "كرة بوسو", Cable: "كابل", Dumbbell: "دمبل", "EZ Barbell": "بار EZ", Hammer: "مطرقة", Kettlebell: "كيتل بيل", "Leverage machine": "آلة", "Medicine Ball": "كرة طبية", "Olympic barbell": "بار أولمبي", "Power Sled": "زلّاجة دفع", "Resistance Band": "مطاط مقاومة", Roll: "رول", Rollball: "كرة مساج", Rope: "حبل", "Sled machine": "آلة زلّاجة", "Smith machine": "سميث", "Stability ball": "كرة اللياقة", Stick: "عصا", Suspension: "حبال تعليق", "Trap bar": "تراب بار", "Vibrate Plate": "منصة اهتزاز", Weighted: "بأوزان", "Wheel roller": "عجلة البطن" };
+  let EXL = [], exlShown = 40;
+  async function loadExlib() {
+    const box = $("[data-exl-list]"); if (!box) return;
+    box.innerHTML = '<div class="w-card dc-empty"><b>جاري التحميل…</b></div>';
+    try { const j = await api("/api/exlib/adm"); EXL = j.list || []; } catch (e) { box.innerHTML = ""; toast(e.message); return; }
+    exlFillFilters(); exlShown = 40; renderExlib();
+  }
+  function exlFillFilters() {
+    const fill = (sel, key, map, all) => {
+      const el = $(sel), cur = el.value;
+      const vals = [...new Set(EXL.map((x) => x[key]).filter(Boolean))].sort((a, b) => (map[a] || a).localeCompare(map[b] || b, "ar"));
+      el.innerHTML = `<option value="">${all}</option>` + vals.map((v) => `<option value="${esc(v)}">${esc(map[v] || v)}</option>`).join("");
+      el.value = vals.includes(cur) ? cur : "";
+    };
+    fill("[data-exl-m]", "m", EXL_M, "كل العضلات"); fill("[data-exl-e]", "e", EXL_E, "كل الأدوات");
+  }
+  function exlFiltered() {
+    const q = ($("[data-exl-q]").value || "").trim().toLowerCase(), m = $("[data-exl-m]").value, e = $("[data-exl-e]").value, s = $("[data-exl-s]").value;
+    return EXL.filter((x) => (!q || String(x.n).toLowerCase().includes(q)) && (!m || x.m === m) && (!e || x.e === e) && (s === "h" ? x.h : s === "x" ? x.x : true));
+  }
+  function exlOpts(map, cur) {
+    const keys = Object.keys(map); if (cur && !map[cur]) keys.push(cur);
+    return keys.map((k) => `<option value="${esc(k)}"${k === cur ? " selected" : ""}>${esc(map[k] || k)}</option>`).join("");
+  }
+  function renderExlib() {
+    const box = $("[data-exl-list]"); if (!box) return;
+    const L = exlFiltered(), shown = L.slice(0, exlShown);
+    $("[data-exl-count]").textContent = `${nf(L.length)} من ${nf(EXL.length)} تمرين`;
+    $("[data-exl-more]").hidden = L.length <= exlShown;
+    box.innerHTML = shown.map((x) => `<div class="w-card exl-r${x.h ? " exl-hid" : ""}" data-exid="${esc(x.i)}">
+      <img class="exl-th" src="/exlib/m/${esc(x.i)}.jpg" alt="" loading="lazy" decoding="async" width="64" height="64">
+      <div class="sub-grid exl-f">
+        <label class="wide">الاسم<input data-exf="n" dir="ltr" value="${esc(x.n)}" maxlength="120"></label>
+        <label>العضلة<select data-exf="m">${exlOpts(EXL_M, x.m)}</select></label>
+        <label>الأداة<select data-exf="e">${exlOpts(EXL_E, x.e)}</select></label>
+      </div>
+      <div class="ab-acts"><label class="sub-off"><input type="checkbox" data-exf="h"${x.h ? " checked" : ""}> خبّي التمرين</label>${x.x ? '<button type="button" class="btn btn-ghost sm" data-exreset>رجّع الأصلي</button>' : ""}</div>
+    </div>`).join("") || '<div class="w-card dc-empty"><b>ما في تمارين</b><p class="hint">غيّر الفلتر أو اكبس «تحديث».</p></div>';
+  }
+  async function exlSave(row, reset) {
+    const x = EXL.find((v) => v.i === row.dataset.exid); if (!x) return;
+    const body = reset ? { i: x.i, reset: true } : { i: x.i, n: row.querySelector('[data-exf="n"]').value, m: row.querySelector('[data-exf="m"]').value, e: row.querySelector('[data-exf="e"]').value, h: row.querySelector('[data-exf="h"]').checked };
+    try {
+      const j = await api("/api/exlib/edit", { method: "POST", body: JSON.stringify(body) });
+      const k = EXL.findIndex((v) => v.i === x.i); if (k >= 0) EXL[k] = j.item;
+      toast("✓ انحفظ");
+      if (reset) renderExlib(); else { row.classList.toggle("exl-hid", !!j.item.h); if (j.item.x && !row.querySelector("[data-exreset]")) row.querySelector(".ab-acts").insertAdjacentHTML("beforeend", '<button type="button" class="btn btn-ghost sm" data-exreset>رجّع الأصلي</button>'); }
+    } catch (e) { toast(e.message); }
+  }
+  { const v = $('[data-view="exlib"]');
+    if (v) {
+      v.addEventListener("change", (e) => { const row = e.target.closest("[data-exid]"); if (row && e.target.dataset.exf) exlSave(row, false); });
+      v.addEventListener("click", (e) => { const rs = e.target.closest("[data-exreset]"); if (rs) exlSave(rs.closest("[data-exid]"), true); });
+      v.addEventListener("error", (e) => { if (e.target.tagName === "IMG") e.target.style.visibility = "hidden"; }, true);
+      let qT = 0; v.addEventListener("input", (e) => { if (e.target.matches("[data-exl-q]")) { clearTimeout(qT); qT = setTimeout(() => { exlShown = 40; renderExlib(); }, 250); } });
+      v.addEventListener("change", (e) => { if (e.target.matches("[data-exl-m],[data-exl-e],[data-exl-s]")) { exlShown = 40; renderExlib(); } });
+      $("[data-exl-more]").addEventListener("click", () => { exlShown += 40; renderExlib(); });
+      $("[data-exl-refresh]").addEventListener("click", loadExlib);
+    } }
   let subsT = 0;
   const subsSave = () => { clearTimeout(subsT); subsT = setTimeout(async () => { try { const j = await api("/api/subs", { method: "PUT", body: JSON.stringify({ subs: SUBS }) }); SUBS = j.subs; subsBadge(); toast("✓ انحفظ"); } catch (e) { toast(e.message); } }, 700); };
   document.addEventListener("change", (e) => {
