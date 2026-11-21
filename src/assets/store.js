@@ -2037,7 +2037,9 @@
   }
   function exlList() {
     const q = exlArq(exl.q).split(/\s+/).filter(Boolean);
-    return exl.L.filter((x) => (!exl.m || x.m === exl.m) && (!exl.e || exl.e === "*" || x.e === exl.e) && q.every((w) => x.s.includes(w)));
+    const r = exl.L.filter((x) => (!exl.m || x.m === exl.m) && (!exl.e || exl.e === "*" || x.e === exl.e) && q.every((w) => x.s.includes(w)));
+    // الفيديوهات (متحركة) فوق، والتمارين بصورة ثابتة بس بالآخر (طلب صاحب المتجر 21/11/2026). الترتيب جوّا كل مجموعة بيضل متل ما هو.
+    return r.filter((x) => x.v).concat(r.filter((x) => !x.v));
   }
   // الفيديو متل صورة متحركة: بيشتغل لحالو، بيعيد، بلا صوت، بالسرعة من اللوحة (افتراضي 1.5)، وبيوقف لما يطلع من الشاشة
   function exlVids(root, slot) {
