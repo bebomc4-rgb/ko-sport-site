@@ -1990,7 +1990,7 @@
     if (hm === "programs") return exlProgPage(he);
     exl.m = hm && exl.L.some((x) => x.m === hm) ? hm : "";
     exl.e = exl.m && he && (he === "*" || exl.L.some((x) => x.m === exl.m && x.e === he)) ? he : "";
-    exl.q = ""; exl.n = 24;
+    exl.q = ""; exl.n = exlPerN();
     const c = exl.cfg || {};
     app.innerHTML = `
       <div class="exl exl-t-${esc(c.theme || "site")} exl-sh-${esc(c.shape || "round")}">
@@ -2002,12 +2002,11 @@
       </div>`;
     exlBody();
     const qi = app.querySelector(".exl-q"); let qt;
-    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { const was = !!exl.q; exl.q = qi.value.trim(); exl.n = 24; if (exl.q && !was) ovOpen("exq", () => { exl.q = ""; qi.value = ""; exl.n = 24; exlBody(); }); else if (!exl.q && was) ovShut("exq"); exlBody(); }, 200); };
+    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { const was = !!exl.q; exl.q = qi.value.trim(); exl.n = exlPerN(); if (exl.q && !was) ovOpen("exq", () => { exl.q = ""; qi.value = ""; exl.n = 24; exlBody(); }); else if (!exl.q && was) ovShut("exq"); exlBody(); }, 200); };
     app.onchange = null;
     app.onclick = (ev) => {
       const t = ev.target.closest("[data-exl-more] button,[data-exl-id]"); if (!t) return;
       if (t.hasAttribute("data-exl-id")) return exlOpen(t.dataset.exlId);
-      exl.n += 24; exlDraw();
     };
   }
   // ---------- برامج التمرين (صاحب المتجر 21/11/2026): #/exlib/programs ← #/exlib/programs/<رقم> ----------
@@ -2039,7 +2038,7 @@
     if (curRoute().indexOf("/exlib/programs") !== 0) return;
     if (!D) { app.innerHTML = '<div class="empty"><b>ما في برامج لسا</b>ارفع ملف البرامج من لوحة التحكم ← التمارين<a href="#/exlib">رجوع للمكتبة</a></div>'; return; }
     document.title = "برامج التمرين | " + (C.name || "");
-    exl.pf = exl.pf || { q: "", lv: 0, dy: 0, sort: "dl", n: 30 };
+    exl.pf = exl.pf || { q: "", lv: 0, dy: 0, sort: "dl", n: exlPerN() };
     const n = idx === "" ? -1 : +idx, p = n >= 0 ? D.P[n] : null;
     const wrap = (inner) => `<div class="exl exl-t-${esc(c.theme || "site")} exl-sh-${esc(c.shape || "round")}"><div class="crumbs"><a href="#/account">حسابي</a></div>${inner}</div>`;
     if (p) {
@@ -2063,6 +2062,7 @@
     const f = exl.pf, q = exlArq(f.q);
     const L = D.P.map((x, i) => [x, i]).filter(([x]) => (!f.lv || x.lv === f.lv) && (!f.dy || (f.dy === 7 ? x.dy >= 7 : x.dy === f.dy)) && (!q || exlArq(x.t).includes(q)));
     L.sort((a, b) => f.sort === "r" ? (b[0].r || 0) - (a[0].r || 0) : f.sort === "dl" ? (b[0].dl || 0) - (a[0].dl || 0) : a[1] - b[1]);
+    const pgCard = ([x, i]) => `<a class="exl-pg-card" href="#/exlib/programs/${i}"><span class="exl-pg-cv">${exlCover(x)}</span><b dir="ltr">${esc(x.t)}</b><small>${esc(exlMeta(x))}</small></a>`;
     const chip = (k, v, label, cur) => `<button type="button" class="chip exl-chip${cur === v ? " on" : ""}" data-pf="${k}" data-v="${v}">${label}</button>`;
     app.innerHTML = wrap(`<div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><b>البرامج</b></div>
       <h1 class="page-title">📋 برامج التمرين</h1>
@@ -2071,15 +2071,30 @@
       <div class="exl-pg-fl"><span class="exl-pgl">الأيام</span>${chip("dy", 0, "الكل", f.dy)}${[2, 3, 4, 5, 6, 7].map((v) => chip("dy", v, v === 7 ? "7+" : v, f.dy)).join("")}</div>
       <div class="exl-pg-fl"><span class="exl-pgl">رتّب</span>${chip("sort", "dl", "الأكتر تحميلاً", f.sort)}${chip("sort", "r", "الأعلى تقييماً", f.sort)}${chip("sort", "o", "الترتيب الأصلي", f.sort)}</div>
       <div class="exl-count">${L.length} برنامج</div>
-      <div class="exl-pg-grid">${L.slice(0, f.n).map(([x, i]) => `<a class="exl-pg-card" href="#/exlib/programs/${i}"><span class="exl-pg-cv">${exlCover(x)}</span><b dir="ltr">${esc(x.t)}</b><small>${esc(exlMeta(x))}</small></a>`).join("") || '<div class="empty"><b>ما في برامج هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>'}</div>
-      ${L.length > f.n ? `<div class="exl-more"><button type="button" class="btn btn-dark" data-pmore>عرض المزيد (${L.length - f.n})</button></div>` : ""}`);
+      <div class="exl-pg-grid">${L.slice(0, f.n).map(pgCard).join("") || '<div class="empty"><b>ما في برامج هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>'}</div>
+      <div class="exl-more">${L.length > f.n ? '<div class="exl-sent" data-psent>…</div>' : ""}</div>`);
+    // شكل البطاقات من لوحة التحكم + النزول لتحت بيفتح باقي البرامج لحالو
+    const pg = app.querySelector(".exl-pg-grid"), ps = app.querySelector("[data-psent]");
+    exlLook(pg, c); const pc = exlN(c.pCols, 0, 6, 0); if (pc) pg.style.gridTemplateColumns = `repeat(${pc},minmax(0,1fr))`;
+    if (exl.pio) { exl.pio.disconnect(); exl.pio = null; }
+    if (ps) {
+      if (!("IntersectionObserver" in window)) { pg.insertAdjacentHTML("beforeend", L.slice(f.n).map(pgCard).join("")); ps.remove(); }
+      else {
+        exl.pio = new IntersectionObserver((es) => {
+          if (!es.some((e) => e.isIntersecting)) return;
+          const from = f.n; f.n += exlPerN();
+          pg.insertAdjacentHTML("beforeend", L.slice(from, f.n).map(pgCard).join(""));
+          if (f.n >= L.length) { ps.remove(); exl.pio.disconnect(); } else { exl.pio.unobserve(ps); exl.pio.observe(ps); }
+        }, { rootMargin: "700px" });
+        exl.pio.observe(ps);
+      }
+    }
     const qi = app.querySelector("[data-pq]"); let qt;
-    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { f.q = qi.value.trim(); f.n = 30; exlProgPage(""); }, 250); };
+    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { f.q = qi.value.trim(); f.n = exlPerN(); exlProgPage(""); }, 250); };
     app.onchange = null;
     app.onclick = (ev) => {
       const b = ev.target.closest("[data-pf]");
-      if (b) { f[b.dataset.pf] = b.dataset.pf === "sort" ? b.dataset.v : +b.dataset.v; f.n = 30; return exlProgPage(""); }
-      if (ev.target.closest("[data-pmore]")) { f.n += 30; exlProgPage(""); }
+      if (b) { f[b.dataset.pf] = b.dataset.pf === "sort" ? b.dataset.v : +b.dataset.v; f.n = exlPerN(); return exlProgPage(""); }
     };
   }
   const exlTile = (href, ic, label, n, c) => `<a class="exl-tile" href="${href}"><span class="exl-ti">${ic}</span><b>${esc(label)}</b>${c.showCount !== false && n != null ? `<small>${n} تمرين</small>` : ""}</a>`;
@@ -2132,22 +2147,36 @@
       ? `<video class="${cls}" data-src="/exlib/m/${x.i}.mp4" poster="/exlib/m/${x.i}.jpg" muted loop playsinline disablepictureinpicture preload="none"></video>`
       : `<img class="${cls}" src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async">`;
   }
-  function exlDraw() {
+  const exlPerN = () => exlN((exl.cfg || {}).per, 12, 60, 24);
+  function exlLook(g, c) { g.style.setProperty("--exl-gap", exlN(c.gap, 0, 30, 12) + "px"); g.style.setProperty("--exl-r", exlN(c.radius, 0, 30, 14) + "px"); }
+  function exlCardHtml(x, auto, en) {
+      const ar = x.a || "";
+      const main = ar || x.n; // إذا ما في ترجمة بعد، الاسم الإنكليزي هو الأساسي
+      return `<button type="button" class="exl-card" data-exl-id="${x.i}"><span class="exl-pic">${exlMedia(x, "", auto)}</span><span class="exl-tx"><b${ar ? "" : ' dir="ltr"'}>${esc(main)}</b>${en && ar ? `<small class="exl-en" dir="ltr">${esc(x.n)}</small>` : ""}<span class="exl-tags"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span><span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></span></span></button>`;
+  }
+  // النزول لتحت بيفتح باقي التمارين لحالو (بلا زر «عرض المزيد»): دفعة جديدة بتنضاف لما توصل لآخر القائمة تقريباً
+  function exlInf() {
+    if (exl.sio) { exl.sio.disconnect(); exl.sio = null; }
+    const s = app.querySelector("[data-exl-sent]"); if (!s) return;
+    if (!("IntersectionObserver" in window)) { exl.n = 1e9; exlDraw(true); return; }
+    exl.sio = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { exl.sio.disconnect(); exl.n += exlPerN(); exlDraw(true); } }, { rootMargin: "700px" });
+    exl.sio.observe(s);
+  }
+  function exlDraw(more) {
     const L = exlList(), g = app.querySelector("[data-exl-grid]"), c = exl.cfg || {};
     if (!g) return;
     const sz = Math.min(320, Math.max(120, +c.size || 240)), list = c.layout === "list";
     g.className = "exl-grid" + (list ? " exl-list" : "");
     g.style.gridTemplateColumns = list ? "" : `repeat(${exlN(c.xCols, 1, 4, 2)},minmax(0,1fr))`;
-    g.style.setProperty("--exl-pic", sz + "px");
+    g.style.setProperty("--exl-pic", sz + "px"); exlLook(g, c);
     app.querySelector("[data-exl-count]").textContent = L.length + " تمرين";
     const auto = c.autoplay !== false, en = c.showEn !== false;
-    g.innerHTML = L.slice(0, exl.n).map((x) => {
-      const ar = x.a || "";
-      const main = ar || x.n; // إذا ما في ترجمة بعد، الاسم الإنكليزي هو الأساسي
-      return `<button type="button" class="exl-card" data-exl-id="${x.i}"><span class="exl-pic">${exlMedia(x, "", auto)}</span><span class="exl-tx"><b${ar ? "" : ' dir="ltr"'}>${esc(main)}</b>${en && ar ? `<small class="exl-en" dir="ltr">${esc(x.n)}</small>` : ""}<span class="exl-tags"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span><span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></span></span></button>`;
-    }).join("") || '<div class="empty"><b>ما في تمارين هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>';
-    app.querySelector("[data-exl-more]").innerHTML = L.length > exl.n ? `<button type="button" class="btn btn-dark">عرض المزيد (${L.length - exl.n})</button>` : "";
-    exlVids(g);
+    const from = more && g._n ? g._n : 0, to = Math.min(L.length, exl.n);
+    const html = L.slice(from, to).map((x) => exlCardHtml(x, auto, en)).join("");
+    if (from) g.insertAdjacentHTML("beforeend", html); else g.innerHTML = html || '<div class="empty"><b>ما في تمارين هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>';
+    g._n = to;
+    app.querySelector("[data-exl-more]").innerHTML = L.length > to ? '<div class="exl-sent" data-exl-sent>…</div>' : "";
+    exlVids(g); exlInf();
   }
   // تكبير ملء الشاشة: الصورة أو الفيديو كامل، وبتكبس بأي مكان لتسكّر
   function exlZoom(x) {

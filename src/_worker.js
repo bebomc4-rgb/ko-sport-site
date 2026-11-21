@@ -4488,7 +4488,7 @@ async function exlibAll(env) {
   let ar = {}; try { ar = (await env.STORE.get("exlib:ar", "json")) || {}; } catch { ar = {}; }
   return { L, ed, ar, merged: L.map((x) => { const o = ed[x.i] ? { ...x, ...ed[x.i], x: 1 } : x; return ar[x.i] ? { ...o, a: ar[x.i] } : o; }) };
 }
-const EXLIB_CFG_DEF = { theme: "site", size: 240, layout: "grid", speed: 1.5, autoplay: true, showEn: true, mCols: 3, eCols: 3, xCols: 2, shape: "round", showCount: true, hideM: ["Other"], skipE: ["Stretching"] };
+const EXLIB_CFG_DEF = { theme: "site", size: 240, layout: "grid", speed: 1.5, autoplay: true, showEn: true, mCols: 3, eCols: 3, xCols: 2, shape: "round", showCount: true, hideM: ["Other"], skipE: ["Stretching"], per: 24, pCols: 0, gap: 12, radius: 14 };
 function exlibCfgClean(b, cur) {
   const o = { ...EXLIB_CFG_DEF, ...(cur || {}) };
   if (!b || typeof b !== "object") return o;
@@ -4507,6 +4507,11 @@ function exlibCfgClean(b, cur) {
   if (ks(b.skipE)) o.skipE = ks(b.skipE);
   if (b.autoplay != null) o.autoplay = !!b.autoplay;
   if (b.showEn != null) o.showEn = !!b.showEn;
+  // التحميل التلقائي عند النزول: كم بطاقة بكل دفعة، أعمدة البرامج (0 = تلقائي)، المسافة بين البطاقات، وانحناء الزوايا
+  if (b.per != null && isFinite(+b.per)) o.per = cl(b.per, 12, 60);
+  if (b.pCols != null && isFinite(+b.pCols)) o.pCols = cl(b.pCols, 0, 6);
+  if (b.gap != null && isFinite(+b.gap)) o.gap = cl(b.gap, 0, 30);
+  if (b.radius != null && isFinite(+b.radius)) o.radius = cl(b.radius, 0, 30);
   return o;
 }
 async function exlibCfg(env) { let c = null; try { c = await env.STORE.get("exlib:cfg", "json"); } catch {} return exlibCfgClean(c, null); }
