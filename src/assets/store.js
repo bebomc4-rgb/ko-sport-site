@@ -1970,11 +1970,16 @@
   const exlN = (v, a, b, d) => Math.min(b, Math.max(a, Math.round(+v) || d));
   // نسبة الصورة/الفيديو (عرض÷ارتفاع) بتنقاس مرة وحدة وبتتثبّت، فالبطاقة ما بتكبر وتصغر وإنت عم تسكرول. بتنحفظ بالجهاز، فالفتحة الجاية بتكون ثابتة من أول لحظة.
   async function exlRatio() {
-    let r = 0; try { r = +localStorage.getItem("ko_exar") || 0; } catch (e) {}
+    const fx = +((exl.cfg || {}).ratio); // نسبة إطار التمرين من لوحة التحكم (0 أو غير موجود = تلقائي)
+    let r = fx > 0 ? fx : 0;
+    if (!(r > 0)) { try { r = +localStorage.getItem("ko_exar2") || 0; } catch (e) {} }
     if (!(r > 0) && exl.L && exl.L.length) {
       const it = exl.L.find((x) => x.v) || exl.L[0];
-      r = await new Promise((res) => { const im = new Image(), t = setTimeout(() => res(0), 2500); im.onload = () => { clearTimeout(t); res(im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 0); }; im.onerror = () => { clearTimeout(t); res(0); }; im.src = "/exlib/m/" + it.i + ".jpg"; });
-      if (r > 0) try { localStorage.setItem("ko_exar", String(r)); } catch (e) {}
+      const tm = (f) => new Promise((res) => { let d = 0; const end = (v) => { if (!d) { d = 1; res(v); } }; setTimeout(() => end(0), 3000); f(end); });
+      // نسبة الفيديو نفسو أول شي (هي يلي بتبين بالآخر)، وإذا ما انقاست بنقيس الصورة
+      if (it.v) r = await tm((end) => { const v = document.createElement("video"); v.muted = true; v.preload = "metadata"; v.onloadedmetadata = () => end(v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : 0); v.onerror = () => end(0); v.src = "/exlib/m/" + it.i + ".mp4"; });
+      if (!(r > 0)) r = await tm((end) => { const im = new Image(); im.onload = () => end(im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 0); im.onerror = () => end(0); im.src = "/exlib/m/" + it.i + ".jpg"; });
+      if (r > 0) try { localStorage.setItem("ko_exar2", String(r)); } catch (e) {}
     }
     r = r > 0 ? Math.min(2.4, Math.max(0.4, r)) : 1;
     document.documentElement.style.setProperty("--exl-ar", r.toFixed(4));
