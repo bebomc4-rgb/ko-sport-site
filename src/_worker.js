@@ -4487,7 +4487,7 @@ async function exlibAll(env) {
   let ar = {}; try { ar = (await env.STORE.get("exlib:ar", "json")) || {}; } catch { ar = {}; }
   return { L, ed, ar, merged: L.map((x) => { const o = ed[x.i] ? { ...x, ...ed[x.i], x: 1 } : x; return ar[x.i] ? { ...o, a: ar[x.i] } : o; }) };
 }
-const EXLIB_CFG_DEF = { theme: "site", size: 240, layout: "grid", speed: 1.5, autoplay: true, showEn: true, mCols: 3, eCols: 3, xCols: 2, shape: "round", showCount: true };
+const EXLIB_CFG_DEF = { theme: "site", size: 240, layout: "grid", speed: 1.5, autoplay: true, showEn: true, mCols: 3, eCols: 3, xCols: 2, shape: "round", showCount: true, hideM: ["Other"], skipE: ["Stretching"] };
 function exlibCfgClean(b, cur) {
   const o = { ...EXLIB_CFG_DEF, ...(cur || {}) };
   if (!b || typeof b !== "object") return o;
@@ -4501,6 +4501,9 @@ function exlibCfgClean(b, cur) {
   if (b.xCols != null && isFinite(+b.xCols)) o.xCols = cl(b.xCols, 1, 4);
   if (["square", "round", "circle"].includes(b.shape)) o.shape = b.shape;
   if (b.showCount != null) o.showCount = !!b.showCount;
+  const ks = (v) => (Array.isArray(v) ? [...new Set(v.map((x) => String(x).slice(0, 30)).filter((x) => /^[A-Za-z ]+$/.test(x)))].slice(0, 30) : null);
+  if (ks(b.hideM)) o.hideM = ks(b.hideM);
+  if (ks(b.skipE)) o.skipE = ks(b.skipE);
   if (b.autoplay != null) o.autoplay = !!b.autoplay;
   if (b.showEn != null) o.showEn = !!b.showEn;
   return o;

@@ -1110,3 +1110,4 @@ body.m-dragging{cursor:grabbing;user-select:none}
 .exl-cfg{margin-bottom:12px;padding:14px}
 .exl-cfg h2{font-size:16px;margin:0 0 4px}
 .exl-cfg input[type=range]{width:100%}
+.exl-pick{margin:10px 0}.exl-pick small{color:var(--muted,#777)}.exl-chk{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}

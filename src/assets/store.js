@@ -1937,7 +1937,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=363"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=364"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -1953,6 +1953,8 @@
         if (!r.ok) throw 0;
         exl.L = await r.json();
         exl.cfg = rc.ok ? await rc.json() : {};
+        const hid = Array.isArray(exl.cfg.hideM) ? exl.cfg.hideM : ["Other"]; // عضلات مخبّية من المكتبة (من لوحة التحكم)
+        exl.L = exl.L.filter((x) => hid.indexOf(x.m) < 0);
         exl.L.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
       } catch (e) { if (curRoute().indexOf("/exlib") === 0) app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح المكتبة</b>جرّب كمان مرة<a href="#/account">رجوع لحسابي</a></div>'; return; }
       if (curRoute().indexOf("/exlib") !== 0) return;
@@ -1986,11 +1988,14 @@
   const exlTile = (att, ic, label, n, c) => `<button type="button" class="exl-tile" ${att}><span class="exl-ti">${ic}</span><b>${esc(label)}</b>${c.showCount !== false && n != null ? `<small>${n} تمرين</small>` : ""}</button>`;
   function exlBody() {
     const body = app.querySelector("[data-exl-body]"), nav = app.querySelector("[data-exl-nav]"); if (!body) return;
-    const c = exl.cfg || {}, step = exl.q ? 3 : !exl.m ? 1 : !exl.e ? 2 : 3;
+    const c = exl.cfg || {};
+    const skip = (Array.isArray(c.skipE) ? c.skipE : ["Stretching"]).indexOf(exl.m) >= 0; // عضلة بتفتح على التمارين مباشرة بلا اختيار أداة
+    if (skip && exl.m && !exl.e) exl.e = "*";
+    const step = exl.q ? 3 : !exl.m ? 1 : !exl.e ? 2 : 3;
     if (exl.io) exl.io.disconnect();
     const tr = [];
-    if (exl.m) tr.push('<button type="button" data-exl-go="0">العضلات</button>', step === 2 ? `<b>${esc(EXL_M[exl.m] || exl.m)}</b>` : `<button type="button" data-exl-go="1">${esc(EXL_M[exl.m] || exl.m)}</button>`);
-    if (exl.e && !exl.q) tr.push(`<b>${exl.e === "*" ? "كل الأدوات" : esc(EXL_E[exl.e] || exl.e)}</b>`);
+    if (exl.m) tr.push('<button type="button" data-exl-go="0">العضلات</button>', step === 2 || skip ? `<b>${esc(EXL_M[exl.m] || exl.m)}</b>` : `<button type="button" data-exl-go="1">${esc(EXL_M[exl.m] || exl.m)}</button>`);
+    if (exl.e && !exl.q && !skip) tr.push(`<b>${exl.e === "*" ? "كل الأدوات" : esc(EXL_E[exl.e] || exl.e)}</b>`);
     nav.innerHTML = tr.join('<span class="exl-sep">‹</span>');
     if (step === 1) {
       const cm = {}; exl.L.forEach((x) => { cm[x.m] = (cm[x.m] || 0) + 1; });

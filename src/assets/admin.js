@@ -779,10 +779,16 @@
     EXC = c || {};
     document.querySelectorAll("[data-exc]").forEach((el) => { const k = el.dataset.exc, v = EXC[k]; if (el.type === "checkbox") el.checked = v !== false && v != null ? !!v : v == null; else if (v != null) el.value = String(v); });
     const z = $("[data-exc-sz]"); if (z) z.textContent = (EXC.size || 240) + "px";
+    const lst = (k, d) => (Array.isArray(EXC[k]) ? EXC[k] : d);
+    [["hideM", "[data-exl-hidem]", ["Other"]], ["skipE", "[data-exl-skipe]", ["Stretching"]]].forEach(([k, sel, d]) => {
+      const box = $(sel), on = lst(k, d); if (!box) return;
+      box.innerHTML = Object.keys(EXL_M).map((m) => `<label class="sub-off"><input type="checkbox" data-exp="${k}" value="${esc(m)}"${on.includes(m) ? " checked" : ""}> ${esc(EXL_M[m])}</label>`).join("");
+    });
   }
   let excT = 0;
   function exlCfgSave() {
     const o = {}; document.querySelectorAll("[data-exc]").forEach((el) => { o[el.dataset.exc] = el.type === "checkbox" ? el.checked : el.type === "range" ? +el.value : el.dataset.exc === "speed" ? +el.value : el.value; });
+    ["hideM", "skipE"].forEach((k) => { o[k] = [...document.querySelectorAll(`[data-exp="${k}"]:checked`)].map((e) => e.value); });
     const z = $("[data-exc-sz]"); if (z) z.textContent = o.size + "px";
     clearTimeout(excT); excT = setTimeout(async () => { try { const j = await api("/api/exlib/cfg", { method: "POST", body: JSON.stringify(o) }); EXC = j.cfg; toast("✓ انحفظ"); } catch (e) { toast(e.message); } }, 500);
   }
@@ -804,8 +810,8 @@
   { const v = $('[data-view="exlib"]');
     if (v) {
       v.addEventListener("change", (e) => { const row = e.target.closest("[data-exid]"); if (row && e.target.dataset.exf) exlSave(row, false); });
-      v.addEventListener("input", (e) => { if (e.target.matches("[data-exc]")) exlCfgSave(); });
-      v.addEventListener("change", (e) => { if (e.target.matches("[data-exc]")) exlCfgSave(); });
+      v.addEventListener("input", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); });
+      v.addEventListener("change", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); });
       $("[data-exl-tgo]").addEventListener("click", exlTranslateAll);
       $("[data-exl-tstop]").addEventListener("click", () => { exlTRun = false; });
       v.addEventListener("click", (e) => { const rs = e.target.closest("[data-exreset]"); if (rs) exlSave(rs.closest("[data-exid]"), true); });
