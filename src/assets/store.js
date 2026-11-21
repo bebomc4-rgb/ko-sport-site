@@ -1987,6 +1987,7 @@
     if (!exl.L.length) { app.innerHTML = '<div class="empty"><b>المكتبة لسا فاضية</b>ارفع التمارين من صفحة الرفع أول شي<a href="#/account">رجوع لحسابي</a></div>'; return; }
     // الخطوة من العنوان: /exlib ← /exlib/<العضلة> ← /exlib/<العضلة>/<الأداة|*>. كل خطوة خانة بسجل المتصفح، فزر الرجوع بيرجع خطوة وحدة
     const sg = curRoute().split("/"), hm = sg[2] || "", he = sg[3] || "";
+    if (hm === "programs") return exlProgPage(he);
     exl.m = hm && exl.L.some((x) => x.m === hm) ? hm : "";
     exl.e = exl.m && he && (he === "*" || exl.L.some((x) => x.m === exl.m && x.e === he)) ? he : "";
     exl.q = ""; exl.n = 24;
@@ -2009,6 +2010,78 @@
       exl.n += 24; exlDraw();
     };
   }
+  // ---------- برامج التمرين (صاحب المتجر 21/11/2026): #/exlib/programs ← #/exlib/programs/<رقم> ----------
+  // البيانات ({EX:[[عضلة،أداة،ملف،اسم]], P:[برامج]}) بـ KV exlib:prog، وأغلفة pcNNN.webp بمخزن ملفات المكتبة؛ لحساب المالك بس. تمارين البرنامج بتنربط بتمارين المكتبة (عضلة+أداة+اسم) وبتعرض فيديوهاتها.
+  const EXL_LV = { 1: "مبتدئ", 2: "متوسط", 3: "متقدم" };
+  const exlNm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  async function exlProgLoad() {
+    if (!exl.prog) {
+      const r = await fetch("/api/exlib/prog", { headers: socAuth(), credentials: "same-origin" });
+      exl.prog = r.ok ? await r.json() : null;
+      if (!exl.prog) return null;
+      const full = {}, byName = {}; // m|e|اسم ← تمرين، واسم لحالو (للاحتياط)
+      exl.L.forEach((x) => { const n = exlNm(x.n); full[x.m + "|" + x.e + "|" + n] = full[x.m + "|" + x.e + "|" + n] || x; (byName[n] = byName[n] || []).push(x); });
+      exl.pmap = exl.prog.EX.map((e) => {
+        const n = exlNm(e[2]), n2 = exlNm(e[3]), hit = full[e[0] + "|" + e[1] + "|" + n] || full[e[0] + "|" + e[1] + "|" + n2];
+        if (hit) return hit;
+        const c = (byName[n] || byName[n2] || []).filter((x) => x.m === e[0]);
+        return c.length === 1 ? c[0] : (byName[n] || []).length === 1 ? byName[n][0] : null;
+      });
+    }
+    return exl.prog;
+  }
+  const exlCover = (p) => (p.c ? `<img src="/exlib/m/pc${String(p.c).padStart(3, "0")}.webp" alt="" loading="lazy" decoding="async" width="480" height="480">` : `<span class="exl-pgph"><b>${p.dy || ""}</b><small>${p.dy ? "أيام" : "برنامج"}</small></span>`);
+  const exlMeta = (p) => [p.dy ? p.dy + " أيام بالأسبوع" : "", p.wk ? p.wk + " أسابيع" : "", EXL_LV[p.lv] || ""].filter(Boolean).join(" · ");
+  async function exlProgPage(idx) {
+    const c = exl.cfg || {};
+    app.innerHTML = '<div class="loading">جاري تحميل البرامج…</div>';
+    let D = null; try { D = await exlProgLoad(); } catch (e) { D = null; }
+    if (curRoute().indexOf("/exlib/programs") !== 0) return;
+    if (!D) { app.innerHTML = '<div class="empty"><b>ما في برامج لسا</b>ارفع ملف البرامج من لوحة التحكم ← التمارين<a href="#/exlib">رجوع للمكتبة</a></div>'; return; }
+    document.title = "برامج التمرين | " + (C.name || "");
+    exl.pf = exl.pf || { q: "", lv: 0, dy: 0, sort: "dl", n: 30 };
+    const n = idx === "" ? -1 : +idx, p = n >= 0 ? D.P[n] : null;
+    const wrap = (inner) => `<div class="exl exl-t-${esc(c.theme || "site")} exl-sh-${esc(c.shape || "round")}"><div class="crumbs"><a href="#/account">حسابي</a></div>${inner}</div>`;
+    if (p) {
+      let tot = 0, hit = 0;
+      const ws = p.w.map((w) => `<h2 class="exl-h">${esc(w[0] || "اليوم")}</h2><div class="exl-pg-ex">${w[1].map((x) => {
+        const e = D.EX[x[0]], it = exl.pmap[x[0]]; tot++; if (it) hit++;
+        const nm = it ? (it.a || it.n) : e[3], en = it && it.a ? it.n : (it ? "" : "");
+        const sn = x[1], det = [sn === 1 ? "مجموعة" : sn === 2 ? "مجموعتين" : sn <= 10 ? sn + " مجموعات" : sn + " مجموعة", x[2] ? "× " + x[2] : "", x[3] ? "راحة " + x[3] + " ث" : ""].filter(Boolean).join(" ");
+        const pic = it ? `<span class="exl-pic exl-pg-pic">${exlMedia(it, "", c.autoplay !== false)}</span>` : '<span class="exl-pic exl-pg-pic exl-pg-no">—</span>';
+        return `<button type="button" class="exl-card exl-pg-row"${it ? ` data-exl-id="${it.i}"` : " disabled"}>${pic}<span class="exl-tx"><b dir="auto">${esc(nm)}</b>${en && c.showEn !== false ? `<small class="exl-en" dir="ltr">${esc(en)}</small>` : ""}<small class="exl-pg-set">${esc(det)}</small></span></button>`;
+      }).join("")}</div>`).join("");
+      app.innerHTML = wrap(`<div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><a href="#/exlib/programs">البرامج</a></div>
+        <h1 class="page-title exl-pg-t" dir="ltr">${esc(p.t)}</h1>
+        <div class="exl-pg-hd"><span class="exl-pg-cv">${exlCover(p)}</span><div><p class="exl-pg-m">${esc(exlMeta(p))}</p>${p.r ? `<p class="exl-pg-m">⭐ ${esc(p.r)}</p>` : ""}${hit < tot ? `<p class="exl-pg-m">${hit} من ${tot} تمرين مربوطة بفيديو من المكتبة</p>` : ""}</div></div>
+        ${p.d ? `<details class="exl-pg-d"><summary>وصف البرنامج</summary><p dir="ltr">${esc(p.d)}</p></details>` : ""}${ws}`);
+      app.onchange = null;
+      app.onclick = (ev) => { const t = ev.target.closest("[data-exl-id]"); if (t) exlOpen(t.dataset.exlId); };
+      exlVids(app, "io3");
+      return;
+    }
+    const f = exl.pf, q = exlArq(f.q);
+    const L = D.P.map((x, i) => [x, i]).filter(([x]) => (!f.lv || x.lv === f.lv) && (!f.dy || (f.dy === 7 ? x.dy >= 7 : x.dy === f.dy)) && (!q || exlArq(x.t).includes(q)));
+    L.sort((a, b) => f.sort === "r" ? (b[0].r || 0) - (a[0].r || 0) : f.sort === "dl" ? (b[0].dl || 0) - (a[0].dl || 0) : a[1] - b[1]);
+    const chip = (k, v, label, cur) => `<button type="button" class="chip exl-chip${cur === v ? " on" : ""}" data-pf="${k}" data-v="${v}">${label}</button>`;
+    app.innerHTML = wrap(`<div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><b>البرامج</b></div>
+      <h1 class="page-title">📋 برامج التمرين</h1>
+      <input type="search" class="exl-q" data-pq placeholder="دوّر على برنامج… PPL, split, full body" value="${esc(f.q)}" aria-label="بحث">
+      <div class="exl-pg-fl"><span class="exl-pgl">المستوى</span>${chip("lv", 0, "الكل", f.lv)}${[1, 2, 3].map((v) => chip("lv", v, EXL_LV[v], f.lv)).join("")}</div>
+      <div class="exl-pg-fl"><span class="exl-pgl">الأيام</span>${chip("dy", 0, "الكل", f.dy)}${[2, 3, 4, 5, 6, 7].map((v) => chip("dy", v, v === 7 ? "7+" : v, f.dy)).join("")}</div>
+      <div class="exl-pg-fl"><span class="exl-pgl">رتّب</span>${chip("sort", "dl", "الأكتر تحميلاً", f.sort)}${chip("sort", "r", "الأعلى تقييماً", f.sort)}${chip("sort", "o", "الترتيب الأصلي", f.sort)}</div>
+      <div class="exl-count">${L.length} برنامج</div>
+      <div class="exl-pg-grid">${L.slice(0, f.n).map(([x, i]) => `<a class="exl-pg-card" href="#/exlib/programs/${i}"><span class="exl-pg-cv">${exlCover(x)}</span><b dir="ltr">${esc(x.t)}</b><small>${esc(exlMeta(x))}</small></a>`).join("") || '<div class="empty"><b>ما في برامج هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>'}</div>
+      ${L.length > f.n ? `<div class="exl-more"><button type="button" class="btn btn-dark" data-pmore>عرض المزيد (${L.length - f.n})</button></div>` : ""}`);
+    const qi = app.querySelector("[data-pq]"); let qt;
+    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { f.q = qi.value.trim(); f.n = 30; exlProgPage(""); }, 250); };
+    app.onchange = null;
+    app.onclick = (ev) => {
+      const b = ev.target.closest("[data-pf]");
+      if (b) { f[b.dataset.pf] = b.dataset.pf === "sort" ? b.dataset.v : +b.dataset.v; f.n = 30; return exlProgPage(""); }
+      if (ev.target.closest("[data-pmore]")) { f.n += 30; exlProgPage(""); }
+    };
+  }
   const exlTile = (href, ic, label, n, c) => `<a class="exl-tile" href="${href}"><span class="exl-ti">${ic}</span><b>${esc(label)}</b>${c.showCount !== false && n != null ? `<small>${n} تمرين</small>` : ""}</a>`;
   const exlH = (...p) => "#/exlib" + p.map((x) => "/" + encodeURIComponent(x)).join("");
   function exlBody() {
@@ -2025,7 +2098,7 @@
     if (step === 1) {
       const cm = {}; exl.L.forEach((x) => { cm[x.m] = (cm[x.m] || 0) + 1; });
       const ks = EXL_MORD.filter((k) => cm[k]).concat(Object.keys(cm).filter((k) => EXL_MORD.indexOf(k) < 0));
-      body.innerHTML = `<h2 class="exl-h">اختار العضلة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(exlH(k), exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
+      body.innerHTML = `<a class="exl-prog-bn" href="#/exlib/programs"><span>📋</span><b>برامج التمرين</b><small>برامج جاهزة بأيامها وتمارينها، والتمارين مربوطة بالفيديوهات</small></a><h2 class="exl-h">اختار العضلة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(exlH(k), exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
     } else if (step === 2) {
       const sub = exl.L.filter((x) => x.m === exl.m), ce = {}; sub.forEach((x) => { ce[x.e] = (ce[x.e] || 0) + 1; });
       const ks = Object.keys(ce).sort((a, b) => ce[b] - ce[a]);

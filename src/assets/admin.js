@@ -96,7 +96,7 @@
     if (tab === "dash") renderDash();
     if (tab === "carts") loadCarts();
     if (tab === "subs") loadSubs();
-    if (tab === "exlib") loadExlib();
+    if (tab === "exlib") { loadExlib(); progStat(); }
     if (tab === "pred") { const fr = $("[data-pred-fr]"); if (fr && !fr.src) { fr.src = "/predict?manage"; addEventListener("message", (e) => { if (e.origin === location.origin && e.data && e.data.koPredH) fr.style.height = Math.max(500, +e.data.koPredH) + "px"; }); } }
     if (tab === "discounts") loadUsed();
     if (tab === "customers") loadCustomers();
@@ -821,6 +821,32 @@
       $("[data-exl-more]").addEventListener("click", () => { exlShown += 40; renderExlib(); });
       $("[data-exl-refresh]").addEventListener("click", loadExlib);
     } }
+  // ---- برامج التمرين: رفع حزمة ko-programs.json (البيانات + الأغلفة pcNNN.webp) ----
+  async function progStat() {
+    const el = $("[data-prog-st]"); if (!el) return;
+    try { const r = await fetch("/api/exlib/prog", { headers: { authorization: "Bearer " + pass }, cache: "no-store" }); const d = await r.json(); el.textContent = d && d.P ? `مرفوع: ${nf(d.P.length)} برنامج، ${nf(d.EX.length)} تمرين مربوط.` : "لسا ما انرفع شي."; } catch (e) { el.textContent = "ما قدرت أقرا الحالة."; }
+  }
+  async function progUpload(file) {
+    const msg = $("[data-prog-msg]");
+    let B; try { B = JSON.parse(await file.text()); } catch (e) { msg.textContent = "الملف مو JSON صحيح."; return; }
+    if (!B || B.kind !== "ko-programs" || !B.data || !B.covers) { msg.textContent = "هاد مو ملف برامج KO."; return; }
+    const ks = Object.keys(B.covers); let done = 0;
+    try {
+      for (let i = 0; i < ks.length; i += 4) {
+        await Promise.all(ks.slice(i, i + 4).map(async (k) => {
+          const bin = Uint8Array.from(atob(B.covers[k]), (c) => c.charCodeAt(0));
+          await api("/api/exlib/f/pc" + String(k).padStart(3, "0") + ".webp", { method: "PUT", body: new Blob([bin], { type: "image/webp" }) });
+          done++;
+        }));
+        msg.textContent = `عم يرفع الأغلفة… ${done} من ${ks.length}`;
+      }
+      msg.textContent = "عم يرفع البيانات…";
+      const j = await api("/api/exlib/prog", { method: "PUT", body: JSON.stringify(B.data) });
+      msg.textContent = `✓ انرفع ${j.count} برنامج و${ks.length} غلاف. افتح المكتبة ← برامج التمرين.`;
+    } catch (e) { msg.textContent = "وقف: " + e.message + " — كبس الزر وارفع الملف مرة تانية، بيكمّل."; }
+    progStat();
+  }
+  { const pf = $("#progFile"); if (pf) pf.addEventListener("change", () => { if (pf.files[0]) progUpload(pf.files[0]); pf.value = ""; }); }
   let subsT = 0;
   const subsSave = () => { clearTimeout(subsT); subsT = setTimeout(async () => { try { const j = await api("/api/subs", { method: "PUT", body: JSON.stringify({ subs: SUBS }) }); SUBS = j.subs; subsBadge(); toast("✓ انحفظ"); } catch (e) { toast(e.message); } }, 700); };
   document.addEventListener("change", (e) => {

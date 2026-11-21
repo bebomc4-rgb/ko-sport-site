@@ -2222,3 +2222,27 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-tile .exl-se{width:58%;height:58%}
 .exl-sh-round .exl-ti{width:calc(100% - 16px);margin-top:8px;border-radius:14px}
 .exl-sh-circle .exl-ti{width:calc(100% - 24px);margin-top:12px;border-radius:50%}
+/* برامج التمرين (مكتبة التمارين، صاحب المتجر فقط) */
+.exl-prog-bn{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:14px 16px;border-radius:var(--radius);border:1px solid color-mix(in srgb,#c9a45c 55%,transparent);background:linear-gradient(135deg,#100f14,#2a2416);color:#f4d98b;text-decoration:none}
+.exl-prog-bn span{font-size:26px}.exl-prog-bn b{font-size:17px}.exl-prog-bn small{flex-basis:100%;color:#c9b07a;font-size:12px}
+.exl-pg-fl{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;align-items:center;margin:8px 0}.exl-pg-fl::-webkit-scrollbar{display:none}
+.exl-pg-fl .chip{flex:none;white-space:nowrap}
+.exl-pg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:8px}
+@media(min-width:720px){.exl-pg-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.exl-pg-card{display:flex;flex-direction:column;gap:5px;padding:0 0 10px;border-radius:var(--radius);overflow:hidden;border:1px solid color-mix(in srgb,#c9a45c 45%,transparent);background:var(--c-card-bg);color:var(--c-card-fg);text-decoration:none}
+.exl-pg-card b{padding:0 10px;font-size:14px;line-height:1.35;text-align:left}.exl-pg-card small{padding:0 10px;font-size:12px;color:var(--muted)}
+.exl-pg-cv{display:block;aspect-ratio:1;overflow:hidden;background:#100f14}
+.exl-pg-cv img{width:100%;height:100%;object-fit:cover;display:block}
+.exl-pgph{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;background:linear-gradient(135deg,#100f14,#2a2416);color:#c9a45c}.exl-pgph b{font-size:44px;line-height:1}.exl-pgph small{font-size:13px}
+.exl-pg-t{text-align:left;margin-top:6px}
+.exl-pg-hd{display:flex;gap:14px;align-items:center;margin:8px 0 12px}.exl-pg-hd .exl-pg-cv{width:110px;flex:none;border-radius:12px}
+.exl-pg-m{margin:2px 0;font-size:13px;color:var(--muted)}
+.exl-pg-d{margin:6px 0 12px;font-size:13px}.exl-pg-d summary{cursor:pointer;font-weight:700}.exl-pg-d p{white-space:pre-wrap;line-height:1.7;color:var(--muted);text-align:left}
+.exl-pg-ex{display:grid;gap:8px}
+.exl-pg-row{display:flex;flex-direction:row;align-items:center;gap:12px;padding:8px}
+.exl-pg-row .exl-pg-pic{width:96px;flex:none;border-radius:10px;overflow:hidden;aspect-ratio:auto}
+.exl-pg-row .exl-pg-pic img,.exl-pg-row .exl-pg-pic video{width:100%;height:auto;display:block}
+.exl-pg-no{display:grid;place-items:center;min-height:70px;background:#f0ece3;color:#a8843f}
+.exl-pg-set{color:#a8843f!important;font-weight:700}
+.exl-pg-row[disabled]{opacity:.7}
+.exl-pgl{flex:none;font-size:13px;font-weight:700;color:#a8843f;margin-inline-end:4px}

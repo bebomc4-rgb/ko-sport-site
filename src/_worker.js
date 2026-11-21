@@ -4457,7 +4457,8 @@ async function qdSync(env) {
 // ---------- مكتبة التمارين الخاصة (صاحب المتجر 21/11/2026) ----------
 // الملفات (فيديو mp4 مصغّر + صورة jpg) شاريها صاحب المتجر، فممنوع تنحط بالريبو (عام) أو تنعرض لغير حسابو.
 // التخزين: exlib:f:<id>.mp4|jpg و exlib:index (لائحة التمارين). الرفع من /exlib-up.html بكلمة سر لوحة التحكم.
-const EXLIB_NAME = /^[a-f0-9]{10}\.(mp4|jpg)$/;
+// pcNNN.webp = أغلفة برامج التمرين (قسم «البرامج» بالمكتبة، 21/11/2026) بنفس مخزن الملفات ونفس صلاحية المالك
+const EXLIB_NAME = /^([a-f0-9]{10}\.(mp4|jpg)|pc\d{3}\.webp)$/;
 async function exlibOwner(request, env) {
   const a = await acctFromReq(request, env).catch(() => null);
   return !!(a && PRED_TESTERS.includes(a.phone));
@@ -4467,7 +4468,7 @@ async function exlibMedia(request, env, name) {
   if (!(await exlibOwner(request, env))) return new Response("forbidden", { status: 403, headers: { "cache-control": "no-store" } });
   const buf = await env.STORE.get("exlib:f:" + name, "arrayBuffer");
   if (!buf) return new Response("not found", { status: 404, headers: { "cache-control": "no-store" } });
-  const type = name.endsWith(".mp4") ? "video/mp4" : "image/jpeg", len = buf.byteLength;
+  const type = name.endsWith(".mp4") ? "video/mp4" : name.endsWith(".webp") ? "image/webp" : "image/jpeg", len = buf.byteLength;
   const h = { "content-type": type, "cache-control": "private, max-age=2592000", "accept-ranges": "bytes", "x-robots-tag": "noindex" };
   // آيفون بيطلب الفيديو بقطع (Range)
   const rg = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") || "");
@@ -4563,6 +4564,12 @@ async function exlibApi(request, env, path, m) {
     const out = merged.filter((x) => !x.h).map(({ x, h, ...r }) => r);
     return new Response(JSON.stringify(out), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=60" } });
   }
+  // برامج التمرين (قسم «البرامج»): بيانات مضغوطة {v,EX,P} بـ KV `exlib:prog`، لحساب المالك بس
+  if (path === "/api/exlib/prog" && m === "GET") {
+    if (!(await exlibOwner(request, env)) && !isAdmin(request, env, "owner")) return json({ error: "forbidden" }, 403, nos);
+    const t = await env.STORE.get("exlib:prog");
+    return new Response(t || "null", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=120", "x-robots-tag": "noindex" } });
+  }
   // إعدادات المظهر (ثيم، حجم، عرض، سرعة الفيديو): لحساب صاحب المتجر
   if (path === "/api/exlib/cfg" && m === "GET") {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
@@ -4612,6 +4619,14 @@ async function exlibApi(request, env, path, m) {
     const item = ed[id] ? { ...base, ...ed[id], x: 1 } : { ...base };
     if (ar[id]) item.a = ar[id];
     return json({ ok: true, item }, 200, nos);
+  }
+  if (path === "/api/exlib/prog" && m === "PUT") {
+    const t = await request.text();
+    let D; try { D = JSON.parse(t); } catch { return json({ error: "الملف مو JSON" }, 400); }
+    if (!D || D.v !== 1 || !Array.isArray(D.EX) || !Array.isArray(D.P) || !D.P.length) return json({ error: "ملف البرامج غلط" }, 400);
+    if (t.length > 20 * 1024 * 1024) return json({ error: "الملف كبير" }, 400);
+    await env.STORE.put("exlib:prog", t);
+    return json({ ok: true, count: D.P.length }, 200, nos);
   }
   if (path === "/api/exlib/have" && m === "GET") {
     const have = []; let cursor;
