@@ -33,7 +33,12 @@
     Weightlifting: '<g class="hi"><path fill="none" stroke-width="3" stroke-linecap="round" d="M5 28H35"/><rect x="8" y="18" width="4" height="20" rx="1.5"/><rect x="28" y="18" width="4" height="20" rx="1.5"/><rect x="3" y="23" width="3.2" height="10" rx="1"/><rect x="33.8" y="23" width="3.2" height="10" rx="1"/></g>',
     Other: '<g class="hi"><circle cx="9" cy="28" r="3.2"/><circle cx="20" cy="28" r="3.2"/><circle cx="31" cy="28" r="3.2"/></g>'
   };
+  // صور حقيقية (أيقونات صاحب المتجر 21/11/2026) بـ /assets/exl/: لما تتوفر صورة للمفتاح بتنعرض، وإلا بيرجع الرسم SVG
+  var PM = { Back: "Back", Biceps: "Biceps", "Upper Arms": "Biceps", Calves: "Calves", Cardio: "Cardio", Chest: "Chest", Forearms: "Forearms", Hamstrings: "Hamstrings", Hips: "Hips", Neck: "Neck", Quadriceps: "Quadriceps", Thighs: "Quadriceps", Shoulders: "Shoulders", Triceps: "Triceps", Waist: "Waist" };
+  var PE = { Band: "Band", Barbell: "Barbell", "Olympic barbell": "Barbell", "Battling Rope": "Battling_Rope", "Body weight": "Body_weight", "Bosu ball": "Bosu_ball", Cable: "Cable", Dumbbell: "Dumbbell", "EZ Barbell": "EZ_Barbell", Kettlebell: "Kettlebell", "Leverage machine": "Leverage_machine", "Medicine Ball": "Medicine_Ball", "Power Sled": "Power_Sled", "Resistance Band": "Resistance_Band", Roll: "Roll", Rollball: "Rollball", Rope: "Rope", "Sled machine": "Sled_machine", "Smith machine": "Smith_machine", "Stability ball": "Stability_ball", Suspension: "Suspension", "Trap bar": "Trap_bar", Weighted: "Weighted", "Wheel roller": "Wheel_roller" };
+  function ph(t, f) { return '<img class="exl-ph exl-p' + t + '" src="/assets/exl/' + t + "_" + f + '.webp?v=361" alt="" width="96" height="96" loading="lazy" decoding="async">'; }
   function m(k) {
+    if (PM[k]) return ph("m", PM[k]);
     var inner;
     if (SPECIAL[k]) inner = SPECIAL[k];
     else if (BACK[k]) inner = BASE + '<g class="hi">' + BACK[k] + "</g>";
@@ -72,6 +77,7 @@
     "Wheel roller": '<circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.5"/><path d="M2 12h4M18 12h4"/>'
   };
   function e(k) {
+    if (PE[k]) return ph("e", PE[k]);
     return '<svg class="exl-sv exl-se" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (E[k] || DB) + "</svg>";
   }
   window.KOExl = { m: m, e: e };

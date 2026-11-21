@@ -2181,6 +2181,12 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-sv .bd{fill:currentColor;stroke:currentColor;opacity:.3}
 .exl-sv .hi{fill:var(--exl-hi);stroke:var(--exl-hi);animation:exlp 2.4s ease-in-out infinite}
 .exl-sv .hi.pulse{transform-origin:20px 32px;animation:exlh 1.3s ease-in-out infinite}
+.exl-ph{display:block;width:28px;height:28px;object-fit:cover;border-radius:8px;background:#fff}
+.exl-pm{background:#1b1b1b}
+.exl-row .exl-ph{width:34px;height:34px}
+.exl-tag .exl-ph{width:30px;height:30px}
+.exl-meta .exl-ph{width:46px;height:46px}
+.exl-tag:has(.exl-ph){padding:3px 12px 3px 4px}
 .exl-row .exl-sm{height:20px}
 @keyframes exlp{50%{opacity:.4}}
 @keyframes exlh{50%{transform:scale(1.14)}}
