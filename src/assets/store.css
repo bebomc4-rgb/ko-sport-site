@@ -2253,3 +2253,4 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-my-row{display:flex;align-items:center;gap:10px;padding:8px;margin-bottom:8px;background:var(--xc-bg,#fff);border:1px solid var(--xc-line,#ddd);border-radius:12px}.exl-my-row img{width:84px;height:84px;object-fit:contain;background:#fff;border-radius:8px;flex:none}.exl-my-row b{flex:1;min-width:0;font-size:14px}
 .exl-my-sr{display:flex;align-items:center;gap:4px}.exl-my-sr input{width:46px;padding:6px 2px;text-align:center;border-radius:8px;border:1px solid var(--line,#ddd)}.exl-my-ac{display:flex;flex-direction:column;gap:2px}.exl-my-ac button{padding:2px 8px;font-size:12px}
 .exl-my-bar{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.exl-pic video,video.exl-vid,.exl-lb video{opacity:0;transition:opacity .15s}.exl-pic video.on,video.exl-vid.on,.exl-lb video.on{opacity:1}

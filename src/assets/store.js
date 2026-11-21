@@ -2158,12 +2158,14 @@
       const v = en.target;
       if (en.isIntersecting) { if (!v.getAttribute("src")) v.src = v.dataset.src; rate(v); const p = v.play(); if (p && p.catch) p.catch(() => {}); }
       else if (v.getAttribute("src")) v.pause();
-    }), { rootMargin: "160px" });
+    }), { rootMargin: "500px" });
     vs.forEach((v) => { v.addEventListener("loadedmetadata", () => rate(v)); v.addEventListener("play", () => rate(v)); io.observe(v); });
   }
+  // الفيديو بيضل مخفي (أبيض) لحد ما يبلّش يشتغل فعلياً، فما بتبين أي لقطة مغبّشة ولا علامة تشغيل قبلو
+  document.addEventListener("playing", (ev) => { const v = ev.target; if (v && v.tagName === "VIDEO") v.classList.add("on"); }, true);
   function exlMedia(x, cls, auto) {
     return x.v && auto
-      ? `<video class="${cls}" data-src="/exlib/m/${x.i}.mp4" muted loop playsinline disablepictureinpicture preload="metadata"></video>`
+      ? `<video class="${cls}" data-src="/exlib/m/${x.i}.mp4" muted loop playsinline disablepictureinpicture preload="auto"></video>`
       : `<img class="${cls}" src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async">`;
   }
   const exlPerN = () => exlN((exl.cfg || {}).per, 12, 60, 24);
