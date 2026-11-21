@@ -298,10 +298,33 @@
   // fires the same «hashchange» the shop already listens for, so every existing handler keeps working
   window.KORoute = curRoute; // promo.js / pwa.js / fx.js ask the shop which page is open
   const fireNav = () => window.dispatchEvent(new Event("hashchange"));
+  // ---------- زر الرجوع = خطوة وحدة لورا (21/11/2026) ----------
+  // كل نافذة أو قائمة مفتوحة (sheet، قائمة الموقع، مستكشف الأقسام، تكبير الصورة، بحث المكتبة) بتاخد خانة بسجل المتصفح،
+  // فزر الرجوع بيسكّرها هي بس وبيضل بنفس الصفحة، بدل ما يطلّعك منها. وإذا انسكّرت بزر ✕ بترجع الخانة لحالها.
+  const OV = { st: [], until: 0 };
+  const ovDepth = () => { const h = history.state; return (h && h.ov) || 0; };
+  function ovOpen(key, fn) {
+    if (!CLEAN) return;
+    const o = OV.st.find((x) => x.key === key); if (o) { o.fn = fn; return; }
+    OV.st.push({ key, fn });
+    if (ovDepth() < OV.st.length) { try { history.pushState({ ...(history.state || {}), ov: OV.st.length }, ""); } catch (e) {} }
+  }
+  function ovShut(key) {
+    const i = OV.st.findIndex((x) => x.key === key); if (i < 0) return;
+    OV.st.splice(i, 1); setTimeout(ovSettle, 0); // بعد لحظة: ممكن نافذة تانية تنفتح بنفس الدورة وتاخد نفس الخانة
+  }
+  function ovSettle() { const extra = ovDepth() - OV.st.length; if (extra > 0) { OV.until = Date.now() + 800; history.go(-extra); } }
+  function ovPop() {
+    if (OV.until && Date.now() < OV.until) { OV.until = 0; return true; } // الرجوع هاد احنا عملناه
+    const d = ovDepth(); if (OV.st.length <= d) return false;
+    while (OV.st.length > d) { const o = OV.st.pop(); try { o.fn(); } catch (e) {} }
+    return true;
+  }
   function navTo(r, replace) {
     const u = routeHref(r);
     if (!CLEAN) { if (location.hash !== u) location.replace(u); return; }
     if (location.pathname === u) { fireNav(); return; }
+    if (OV.st.length) { replace = true; OV.st.length = 0; } // نافذة مفتوحة: الصفحة الجديدة بتاخد مكان خانتها بالسجل
     try { history[replace ? "replaceState" : "pushState"]({}, "", u); } catch (e) { location.assign(u); return; }
     fireNav();
   }
@@ -321,7 +344,7 @@
       if (href.indexOf("#/") === 0) { e.preventDefault(); navTo(href); return; }
       if (a.origin === location.origin && (a.pathname === BASE || a.pathname.indexOf(BASE + "/") === 0)) { e.preventDefault(); navTo(a.pathname.slice(BASE.length) || "/"); }
     });
-    window.addEventListener("popstate", fireNav);
+    window.addEventListener("popstate", () => { if (ovPop()) return; fireNav(); });
     // an old #/… address (or the installed app) turns into a clean one without reloading
     if (location.hash.indexOf("#/") === 0) { try { history.replaceState({}, "", routeHref(decodeURIComponent(location.hash.slice(1)))); } catch (e) {} }
   }
@@ -1183,7 +1206,7 @@
 
   // ---------- bottom sheet (filter, sort, write a review) ----------
   function openSheet(title, html, bind) {
-    closeSheet();
+    closeSheetDom();
     const w = document.createElement("div");
     w.className = "sheet-wrap"; w.setAttribute("data-sheet", "");
     w.innerHTML = `<div class="sheet" role="dialog" aria-label="${esc(title)}"><div class="sheet-head"><b>${esc(title)}</b><button type="button" class="icon-btn" data-sheet-x aria-label="إغلاق">✕</button></div><div class="sheet-body">${html}</div></div>`;
@@ -1199,9 +1222,11 @@
     const chk = () => { more.hidden = !(sh.scrollHeight - sh.scrollTop - sh.clientHeight > 24); };
     sh.addEventListener("scroll", chk, { passive: true }); w._chk = chk;
     requestAnimationFrame(() => requestAnimationFrame(chk));
+    ovOpen("sheet", closeSheet);
     if (bind) bind(w.querySelector(".sheet-body"));
   }
-  function closeSheet() { document.querySelectorAll("[data-sheet]").forEach((x) => x.remove()); document.documentElement.classList.remove("sheet-lock"); }
+  function closeSheetDom() { document.querySelectorAll("[data-sheet]").forEach((x) => x.remove()); document.documentElement.classList.remove("sheet-lock"); }
+  function closeSheet() { closeSheetDom(); ovShut("sheet"); }
 
 
   // ---------- filters: brand, size, colour (read from the product names and options) ----------
@@ -1960,7 +1985,11 @@
       if (curRoute().indexOf("/exlib") !== 0) return;
     }
     if (!exl.L.length) { app.innerHTML = '<div class="empty"><b>المكتبة لسا فاضية</b>ارفع التمارين من صفحة الرفع أول شي<a href="#/account">رجوع لحسابي</a></div>'; return; }
-    exl.m = ""; exl.e = ""; exl.q = ""; exl.n = 24; // دايماً بتفتح على العضلات
+    // الخطوة من العنوان: /exlib ← /exlib/<العضلة> ← /exlib/<العضلة>/<الأداة|*>. كل خطوة خانة بسجل المتصفح، فزر الرجوع بيرجع خطوة وحدة
+    const sg = curRoute().split("/"), hm = sg[2] || "", he = sg[3] || "";
+    exl.m = hm && exl.L.some((x) => x.m === hm) ? hm : "";
+    exl.e = exl.m && he && (he === "*" || exl.L.some((x) => x.m === exl.m && x.e === he)) ? he : "";
+    exl.q = ""; exl.n = 24;
     const c = exl.cfg || {};
     app.innerHTML = `
       <div class="exl exl-t-${esc(c.theme || "site")} exl-sh-${esc(c.shape || "round")}">
@@ -1972,20 +2001,16 @@
       </div>`;
     exlBody();
     const qi = app.querySelector(".exl-q"); let qt;
-    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { exl.q = qi.value.trim(); exl.n = 24; exlBody(); }, 200); };
+    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { const was = !!exl.q; exl.q = qi.value.trim(); exl.n = 24; if (exl.q && !was) ovOpen("exq", () => { exl.q = ""; qi.value = ""; exl.n = 24; exlBody(); }); else if (!exl.q && was) ovShut("exq"); exlBody(); }, 200); };
     app.onchange = null;
     app.onclick = (ev) => {
-      const t = ev.target.closest("[data-exl-m],[data-exl-e],[data-exl-go],[data-exl-more] button,[data-exl-id]"); if (!t) return;
+      const t = ev.target.closest("[data-exl-more] button,[data-exl-id]"); if (!t) return;
       if (t.hasAttribute("data-exl-id")) return exlOpen(t.dataset.exlId);
-      if (t.closest("[data-exl-more]")) { exl.n += 24; return exlDraw(); }
-      if (t.hasAttribute("data-exl-m")) { exl.m = t.dataset.exlM; exl.e = ""; }
-      else if (t.hasAttribute("data-exl-e")) exl.e = t.dataset.exlE;
-      else if (t.dataset.exlGo === "0") { exl.m = ""; exl.e = ""; }
-      else exl.e = "";
-      exl.q = ""; qi.value = ""; exl.n = 24; exlBody(); window.scrollTo({ top: 0 });
+      exl.n += 24; exlDraw();
     };
   }
-  const exlTile = (att, ic, label, n, c) => `<button type="button" class="exl-tile" ${att}><span class="exl-ti">${ic}</span><b>${esc(label)}</b>${c.showCount !== false && n != null ? `<small>${n} تمرين</small>` : ""}</button>`;
+  const exlTile = (href, ic, label, n, c) => `<a class="exl-tile" href="${href}"><span class="exl-ti">${ic}</span><b>${esc(label)}</b>${c.showCount !== false && n != null ? `<small>${n} تمرين</small>` : ""}</a>`;
+  const exlH = (...p) => "#/exlib" + p.map((x) => "/" + encodeURIComponent(x)).join("");
   function exlBody() {
     const body = app.querySelector("[data-exl-body]"), nav = app.querySelector("[data-exl-nav]"); if (!body) return;
     const c = exl.cfg || {};
@@ -1994,17 +2019,17 @@
     const step = exl.q ? 3 : !exl.m ? 1 : !exl.e ? 2 : 3;
     if (exl.io) exl.io.disconnect();
     const tr = [];
-    if (exl.m) tr.push('<button type="button" data-exl-go="0">العضلات</button>', step === 2 || skip ? `<b>${esc(EXL_M[exl.m] || exl.m)}</b>` : `<button type="button" data-exl-go="1">${esc(EXL_M[exl.m] || exl.m)}</button>`);
+    if (exl.m) tr.push(`<a href="${exlH()}">العضلات</a>`, step === 2 || skip ? `<b>${esc(EXL_M[exl.m] || exl.m)}</b>` : `<a href="${exlH(exl.m)}">${esc(EXL_M[exl.m] || exl.m)}</a>`);
     if (exl.e && !exl.q && !skip) tr.push(`<b>${exl.e === "*" ? "كل الأدوات" : esc(EXL_E[exl.e] || exl.e)}</b>`);
     nav.innerHTML = tr.join('<span class="exl-sep">‹</span>');
     if (step === 1) {
       const cm = {}; exl.L.forEach((x) => { cm[x.m] = (cm[x.m] || 0) + 1; });
       const ks = EXL_MORD.filter((k) => cm[k]).concat(Object.keys(cm).filter((k) => EXL_MORD.indexOf(k) < 0));
-      body.innerHTML = `<h2 class="exl-h">اختار العضلة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(`data-exl-m="${esc(k)}"`, exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
+      body.innerHTML = `<h2 class="exl-h">اختار العضلة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(exlH(k), exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
     } else if (step === 2) {
       const sub = exl.L.filter((x) => x.m === exl.m), ce = {}; sub.forEach((x) => { ce[x.e] = (ce[x.e] || 0) + 1; });
       const ks = Object.keys(ce).sort((a, b) => ce[b] - ce[a]);
-      body.innerHTML = `<h2 class="exl-h">اختار الأداة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${exlTile('data-exl-e="*"', exlI("m", exl.m), "كل الأدوات", sub.length, c)}${ks.map((k) => exlTile(`data-exl-e="${esc(k)}"`, exlI("e", k), EXL_E[k] || k, ce[k], c)).join("")}</div>`;
+      body.innerHTML = `<h2 class="exl-h">اختار الأداة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${exlTile(exlH(exl.m, "*"), exlI("m", exl.m), "كل الأدوات", sub.length, c)}${ks.map((k) => exlTile(exlH(exl.m, k), exlI("e", k), EXL_E[k] || k, ce[k], c)).join("")}</div>`;
     } else {
       body.innerHTML = '<div class="exl-count" data-exl-count></div><div class="exl-grid" data-exl-grid></div><div class="exl-more" data-exl-more></div>';
       exlDraw();
@@ -2055,8 +2080,9 @@
     const w = document.createElement("div"); w.className = "exl-lb";
     w.innerHTML = '<button type="button" aria-label="إغلاق">✕</button>' + (x.v ? `<video src="/exlib/m/${x.i}.mp4" poster="/exlib/m/${x.i}.jpg" autoplay muted loop playsinline></video>` : `<img src="/exlib/m/${x.i}.jpg" alt="">`);
     const v = w.querySelector("video"); if (v) { const r = () => { v.defaultPlaybackRate = v.playbackRate = sp; }; v.addEventListener("loadedmetadata", r); v.addEventListener("play", r); }
-    w.onclick = () => w.remove();
-    document.body.appendChild(w);
+    const shut = () => { w.remove(); ovShut("zoom"); };
+    w.onclick = shut;
+    document.body.appendChild(w); ovOpen("zoom", () => w.remove());
   }
   function exlOpen(id) {
     const x = exl.L.find((y) => y.i === id); if (!x) return;
@@ -3241,6 +3267,7 @@ ${trustH()}
     } catch {}
   }
   const closeMenu = () => { $("[data-drawer]").hidden = true; closeExplorer(true); };
+  { const dw = $("[data-drawer]"); if (dw && CLEAN) new MutationObserver(() => { if (!dw.hidden) ovOpen("drawer", () => { dw.hidden = true; }); else ovShut("drawer"); }).observe(dw, { attributes: true, attributeFilter: ["hidden"] }); }
   // ---------- products explorer: the page blurs, the main groups pop up; picking one lifts it to the top and its sections appear ----------
   let kx = null;
   const GROUP_IC = ["🥊", "🏋️", "⚽", "🎒", "🏃", "🧤", "🎾", "🏊"];
@@ -3255,11 +3282,12 @@ ${trustH()}
     el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "الأقسام");
     el.innerHTML = `<div class="kx-bg" data-kx-close></div><div class="kx-in"><div class="kx-top"><button type="button" class="kx-back" data-kx-back hidden aria-label="رجوع">‹ رجوع</button><span class="kx-title" data-kx-title></span><button type="button" class="kx-x" data-kx-close aria-label="إغلاق">✕</button></div><div class="kx-stage" data-kx-stage></div></div>`;
     document.body.appendChild(el); document.documentElement.classList.add("kx-open"); kx = { el };
+    ovOpen("kx", () => closeExplorer());
     showGroups(true);
     el.addEventListener("click", onKx);
   }
   function closeExplorer(now) {
-    if (!kx) return; const el = kx.el; kx = null;
+    if (!kx) return; const el = kx.el; kx = null; ovShut("kx");
     document.documentElement.classList.remove("kx-open");
     if (now) { el.remove(); return; }
     el.classList.add("out"); setTimeout(() => el.remove(), 320);
