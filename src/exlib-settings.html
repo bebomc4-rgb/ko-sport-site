@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>إعدادات مكتبة التمارين | KO SPORT</title>
+<style>
+:root{--bg:#ffffff;--ink:#100f14;--mut:#5f5c56;--line:#e4e0d8;--card:#ffffff;--gold:#c9a45c;--gold2:#a8843f;--goldbg:#fbf6ea;--btn:#100f14;--btnfg:#fff;--ok:#1f8f4e;--bad:#c62828;--r:14px}
+*{box-sizing:border-box}body{margin:0;background:#f5f3ef;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;line-height:1.7}
+.w{max-width:640px;margin:0 auto;padding:22px 16px}
+h1{font-size:22px;margin:0 0 4px}.s{color:var(--mut);margin:0 0 18px}
+.c{background:var(--card);border:1px solid var(--gold);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:0 14px 34px -18px rgba(0,0,0,.35)}
+label{display:block;margin:12px 0 6px;font-weight:700}
+input[type=password]{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font:inherit;margin:6px 0 12px}
+input[type=number],input[type=range]{width:100%;padding:8px;margin:6px 0}
+input[type=checkbox]{margin-inline-end:8px}
+.row{display:flex;gap:12px;align-items:center;margin:12px 0}
+button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:12px 22px;font:inherit;font-weight:700;background:var(--btn);color:var(--btnfg);cursor:pointer}
+button[disabled]{opacity:.5;cursor:default}
+.ok{color:var(--ok)}.bad{color:var(--bad)}small{color:var(--mut)}
+.range-val{font-weight:700;color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>⚙️ إعدادات مكتبة التمارين</h1>
+  <p class="s">للمالك فقط (0938986875)</p>
+
+  <div class="c" id="pwBox">
+    <b>كلمة سر لوحة التحكم</b>
+    <input type="password" id="pw" autocomplete="current-password">
+    <button id="pwGo">دخول</button>
+  </div>
+
+  <div class="c" id="main" hidden>
+    <h2 style="font-size:16px;margin-top:0">البطاقات والعرض</h2>
+
+    <label>حجم البطاقة (بكسل)</label>
+    <div class="row">
+      <input type="range" id="cardSize" min="120" max="300" step="10" value="240">
+      <span class="range-val" id="cardSizeVal">240px</span>
+    </div>
+    <small>تحكم بحجم بطاقات التمارين في المكتبة</small>
+
+    <label style="margin-top:18px">
+      <input type="checkbox" id="autoplay" checked> تشغيل الفيديوهات تلقائياً
+    </label>
+    <small>الفيديوهات بتشتغل بالبطاقات (autoplay)</small>
+
+    <label style="margin-top:18px">
+      <input type="checkbox" id="showPublic" checked> إظهار المكتبة للكل
+    </label>
+    <small>إذا طفيت: بتظهر لحسابك بس (0938986875)</small>
+
+    <hr style="margin:18px 0;border:none;border-top:1px solid var(--line)">
+    <h2 style="font-size:16px;margin-top:0">الترجمة والأسماء</h2>
+
+    <label style="margin-top:18px">
+      <input type="checkbox" id="showEnName" checked> إظهار الاسم الإنجليزي
+    </label>
+    <small>يظهر تحت الاسم العربي بخط أصغر</small>
+
+    <hr style="margin:18px 0;border:none;border-top:1px solid var(--line)">
+    <h2 style="font-size:16px;margin-top:0">الحفظ</h2>
+
+    <button id="save" style="width:100%;margin-top:12px">💾 حفظ الإعدادات</button>
+    <small id="msg" style="display:block;margin-top:8px;text-align:center"></small>
+  </div>
+</div>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  let pass = ""; try { pass = localStorage.getItem("ko_admin") || ""; } catch (e) {}
+
+  async function check() {
+    const r = await fetch("/api/exlib/have", { headers: { authorization: "Bearer " + pass }, cache: "no-store" });
+    if (r.status === 401 || r.status === 403) { $("#pwBox").hidden = false; $("#main").hidden = true; return false; }
+    $("#pwBox").hidden = true; $("#main").hidden = false; return true;
+  }
+
+  $("#pwGo").onclick = async () => {
+    pass = $("#pw").value.trim();
+    try { localStorage.setItem("ko_admin", pass); } catch (e) {}
+    if (await check()) loadSettings();
+    else { $("#pw").value = ""; alert("كلمة السر غلط"); }
+  };
+
+  function loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem("exlib_settings") || "{}");
+      $("#cardSize").value = s.cardSize || 240;
+      $("#autoplay").checked = s.autoplay !== false;
+      $("#showPublic").checked = s.showPublic !== false;
+      $("#showEnName").checked = s.showEnName !== false;
+      $("#cardSizeVal").textContent = $("#cardSize").value + "px";
+    } catch (e) {}
+  }
+
+  $("#cardSize").oninput = () => { $("#cardSizeVal").textContent = $("#cardSize").value + "px"; };
+
+  $("#save").onclick = () => {
+    const s = {
+      cardSize: +$("#cardSize").value,
+      autoplay: $("#autoplay").checked,
+      showPublic: $("#showPublic").checked,
+      showEnName: $("#showEnName").checked
+    };
+    try { localStorage.setItem("exlib_settings", JSON.stringify(s)); } catch (e) {}
+
+    // إرسال للـ worker (اختياري للحفاظ على المزامنة)
+    fetch("/api/exlib/settings", {
+      method: "POST",
+      headers: { authorization: "Bearer " + pass, "content-type": "application/json" },
+      body: JSON.stringify(s)
+    }).catch(() => {});
+
+    $("#msg").innerHTML = '<span class="ok">✓ تم الحفظ</span>';
+    setTimeout(() => { $("#msg").innerHTML = ""; }, 2000);
+  };
+
+  check().then(ok => { if (ok) loadSettings(); });
+})();
+</script>
+</body>
+</html>
