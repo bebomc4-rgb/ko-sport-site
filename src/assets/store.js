@@ -1968,6 +1968,17 @@
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
   const EXL_MORD = ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Forearms", "Waist", "Hips", "Quadriceps", "Hamstrings", "Calves", "Neck", "Cardio", "Upper Arms", "Thighs", "Full Body", "Plyometrics", "Stretching", "Weightlifting", "Yoga", "Other"];
   const exlN = (v, a, b, d) => Math.min(b, Math.max(a, Math.round(+v) || d));
+  // نسبة الصورة/الفيديو (عرض÷ارتفاع) بتنقاس مرة وحدة وبتتثبّت، فالبطاقة ما بتكبر وتصغر وإنت عم تسكرول. بتنحفظ بالجهاز، فالفتحة الجاية بتكون ثابتة من أول لحظة.
+  async function exlRatio() {
+    let r = 0; try { r = +localStorage.getItem("ko_exar") || 0; } catch (e) {}
+    if (!(r > 0) && exl.L && exl.L.length) {
+      const it = exl.L.find((x) => x.v) || exl.L[0];
+      r = await new Promise((res) => { const im = new Image(), t = setTimeout(() => res(0), 2500); im.onload = () => { clearTimeout(t); res(im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 0); }; im.onerror = () => { clearTimeout(t); res(0); }; im.src = "/exlib/m/" + it.i + ".jpg"; });
+      if (r > 0) try { localStorage.setItem("ko_exar", String(r)); } catch (e) {}
+    }
+    r = r > 0 ? Math.min(2.4, Math.max(0.4, r)) : 1;
+    document.documentElement.style.setProperty("--exl-ar", r.toFixed(4));
+  }
   // المكتبة بـ 3 خطوات: العضلات ← الأدوات ← التمارين. الشكل والأعداد من لوحة التحكم (exlib:cfg)
   async function exlibPage() {
     document.title = "مكتبة التمارين | " + (C.name || "");
@@ -1980,6 +1991,7 @@
         exl.cfg = rc.ok ? await rc.json() : {};
         const hid = Array.isArray(exl.cfg.hideM) ? exl.cfg.hideM : ["Other"]; // عضلات مخبّية من المكتبة (من لوحة التحكم)
         exl.L = exl.L.filter((x) => hid.indexOf(x.m) < 0);
+        await exlRatio();
         exl.L.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
       } catch (e) { if (curRoute().indexOf("/exlib") === 0) app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح المكتبة</b>جرّب كمان مرة<a href="#/account">رجوع لحسابي</a></div>'; return; }
       if (curRoute().indexOf("/exlib") !== 0) return;
@@ -2035,6 +2047,7 @@
     const c = exl.cfg || {};
     app.innerHTML = '<div class="loading">جاري تحميل البرامج…</div>';
     let D = null; try { D = await exlProgLoad(); } catch (e) { D = null; }
+    try { await exlRatio(); } catch (e) {}
     if (curRoute().indexOf("/exlib/programs") !== 0) return;
     if (!D) { app.innerHTML = '<div class="empty"><b>ما في برامج لسا</b>ارفع ملف البرامج من لوحة التحكم ← التمارين<a href="#/exlib">رجوع للمكتبة</a></div>'; return; }
     document.title = "برامج التمرين | " + (C.name || "");

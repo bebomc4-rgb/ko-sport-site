@@ -2168,7 +2168,7 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-card{display:flex;flex-direction:column;text-align:start;gap:6px;padding:0 0 12px;background:var(--xc-bg);color:var(--xc-fg);border:1px solid var(--xc-line);border-radius:var(--exl-r,var(--radius));overflow:hidden;font:inherit;cursor:pointer}
 .exl-pic{position:relative;display:block;background:#fff;flex:none}
 /* كل تمرين بحجم صورتو الطبيعي (الإطار بيتبع الصورة، ما في مربّع ثابت) عشان يبين كامل وكبير */
-.exl-pic img,.exl-pic video{width:100%;height:auto;aspect-ratio:auto 4/5;object-fit:contain;display:block}
+.exl-pic img,.exl-pic video{width:100%;height:auto;aspect-ratio:var(--exl-ar,1);object-fit:contain;display:block;background:#fff}
 .exl-tx{display:flex;flex-direction:column;gap:4px;padding:0 12px;min-width:0}
 .exl-card b{font-size:15px;line-height:1.45;font-weight:800}
 .exl-en{font-size:11px;line-height:1.35;color:var(--xc-mut);font-weight:500;margin:0}
@@ -2193,7 +2193,7 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 @keyframes exlh{50%{transform:scale(1.14)}}
 .exl-more{text-align:center;margin:18px 0}
 .exl-vw{position:relative;background:#fff;border-radius:12px;overflow:hidden}
-.exl-vid{display:block;width:100%;height:auto;max-height:78vh;aspect-ratio:auto 4/5;background:#fff;border-radius:12px;object-fit:contain;cursor:zoom-in}
+.exl-vid{display:block;width:100%;height:auto;max-height:78vh;aspect-ratio:var(--exl-ar,1);background:#fff;border-radius:12px;object-fit:contain;cursor:zoom-in}
 .exl-zoom{position:absolute;inset-block-end:10px;inset-inline-start:10px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(0,0,0,.62);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .exl-lb{position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center}
 .exl-lb img,.exl-lb video{max-width:100vw;max-height:100vh;width:100%;height:100%;object-fit:contain;background:#fff}
@@ -2241,7 +2241,7 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-pg-ex{display:grid;gap:8px}
 .exl-pg-row{display:flex;flex-direction:row;align-items:center;gap:12px;padding:8px}
 .exl-pg-row .exl-pg-pic{width:96px;flex:none;border-radius:10px;overflow:hidden;aspect-ratio:auto}
-.exl-pg-row .exl-pg-pic img,.exl-pg-row .exl-pg-pic video{width:100%;height:auto;display:block}
+.exl-pg-row .exl-pg-pic img,.exl-pg-row .exl-pg-pic video{width:100%;height:auto;aspect-ratio:var(--exl-ar,1);object-fit:contain;display:block}
 .exl-pg-no{display:grid;place-items:center;min-height:70px;background:#f0ece3;color:#a8843f}
 .exl-pg-set{color:#a8843f!important;font-weight:700}
 .exl-pg-row[disabled]{opacity:.7}
