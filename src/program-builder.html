@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#fdfbf7">
+<title>اعمل برنامجك | KO SPORT</title>
+<link rel="icon" href="/brand/icon-192.png?v=3" type="image/png">
+<script>try{var t=localStorage.getItem("ko_theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
+<style>
+/* نفس هوية المتجر (متل predict.html): أبيض/كريمي، حبر غامق، لمسات ذهبية، أزرار سودا، ووضع ليلي من ko_theme */
+:root{--bg:#ffffff;--hdr:#fdfbf7;--ink:#100f14;--mut:#5f5c56;--line:#e4e0d8;--card:#ffffff;--card2:#f7f5f0;--gold:#c9a45c;--gold2:#a8843f;--goldbg:#fbf6ea;--btn:#100f14;--btnfg:#ffffff;--ok:#1f8f4e;--bad:#c62828;--r:14px;--shadow:0 1px 0 rgba(201,164,92,.3) inset,0 14px 34px -18px rgba(0,0,0,.35);color-scheme:light}
+html[data-theme=dark]{--bg:#0f0f12;--hdr:#141418;--ink:#f2f2f5;--mut:#a4a4af;--line:#2c2c34;--card:#1a1a20;--card2:#22222a;--goldbg:#2a2416;--btn:#f2f2f5;--btnfg:#100f14;--shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.4);color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;font-size:16px;line-height:1.55}
+a{color:var(--gold2)}
+.top{position:sticky;top:0;z-index:20;background:var(--hdr);border-bottom:1px solid var(--line)}
+.top-in{max-width:760px;margin:0 auto;height:64px;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;padding:0 10px}
+.top .back{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:var(--ink);text-decoration:none}
+.top .back:hover{background:var(--card2)}
+.top .logo{justify-self:center;display:block;height:48px}
+.top .logo img{height:48px;width:48px;border-radius:50%;display:block}
+.wrap{max-width:760px;margin:0 auto;padding:16px 14px 90px}
+.ptitle{margin:2px 0 14px}
+.ptitle h1{margin:0;font-size:clamp(22px,5vw,28px);font-weight:800;letter-spacing:-.2px}
+.ptitle small{display:block;color:var(--mut);font-size:.85rem;font-weight:400}
+h2{font-size:1.05rem;margin:18px 2px 8px;font-weight:800}
+.card{background:var(--card);border:1px solid rgba(201,164,92,.55);border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 8px;font-size:1rem;color:var(--gold2)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{flex:none;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:8px 15px;font:inherit;font-size:.9rem;cursor:pointer;min-height:40px}
+.chips button.on{background:var(--btn);color:var(--btnfg);border-color:var(--btn);font-weight:700}
+.chips.eq button.on{background:var(--goldbg);color:var(--gold2);border-color:var(--gold)}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.g3 label{display:flex;flex-direction:column;font-size:.8rem;color:var(--mut);gap:4px}
+.g3 input{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:1rem;width:100%;text-align:center}
+.g3 input:focus{outline:none;border-color:var(--gold)}
+.hint{color:var(--mut);font-size:.78rem;margin:8px 0 0}
+.btn{background:var(--btn);color:var(--btnfg);border:0;border-radius:12px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.w{width:100%;font-size:1.05rem;padding:14px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.bar .btn{flex:1;min-width:130px;text-align:center;padding:10px 12px;font-size:.9rem}
+.err{background:#fdecec;color:var(--bad);border:1px solid rgba(198,40,40,.35);border-radius:12px;padding:10px 12px;margin:10px 0;font-size:.9rem}
+html[data-theme=dark] .err{background:#2a1517}
+.sum{background:linear-gradient(135deg,var(--goldbg),var(--card) 70%);border:1px solid var(--gold);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.sum b{font-size:1.15rem}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{background:var(--goldbg);color:var(--gold2);border:1px solid var(--gold);border-radius:99px;padding:2px 10px;font-size:.78rem;font-weight:700}
+.dy .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.dy .hd b{font-size:1.02rem}
+.dy .hd span{color:var(--mut);font-size:.78rem}
+.dy .wu{color:var(--mut);font-size:.82rem;border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:4px}
+.ex{padding:9px 0;border-bottom:1px solid var(--line)}
+.ex:last-of-type{border-bottom:0}
+.ex .n{font-weight:700}
+.ex .n em{font-style:normal;color:var(--gold2);font-size:.75rem;font-weight:600;margin-inline-start:6px}
+.ex .p{display:flex;gap:12px;flex-wrap:wrap;margin-top:2px;font-size:.92rem}
+.ex .p b{color:var(--gold2)}
+.ex .p span{color:var(--mut)}
+.ex .t{color:var(--mut);font-size:.76rem;margin-top:2px}
+.fin{background:var(--goldbg);border:1px solid var(--gold);border-radius:12px;padding:9px 12px;margin-top:8px;font-size:.88rem}
+.fin b{color:var(--gold2)}
+.cd{color:var(--mut);font-size:.8rem;margin-top:8px}
+ul.nt{margin:0;padding-inline-start:20px;font-size:.9rem}
+ul.nt li{margin:4px 0}
+.nu{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;margin-top:6px}
+.nu div{background:var(--card2);border-radius:12px;padding:8px 4px}
+.nu b{display:block;font-size:1.15rem;color:var(--gold2)}
+.nu small{color:var(--mut);font-size:.72rem}
+.shop{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.shop a{border:1px solid var(--gold);background:var(--goldbg);color:var(--gold2);border-radius:99px;padding:6px 14px;text-decoration:none;font-size:.88rem;font-weight:700}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--btn);color:var(--btnfg);padding:10px 18px;border-radius:99px;transition:.25s;z-index:60;font-size:.92rem;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+#toast.on{transform:translateX(-50%) translateY(0)}
+.emb .top{display:none}.emb body{background:transparent}.emb .wrap{padding-top:6px}
+@media (max-width:420px){.nu{grid-template-columns:repeat(2,1fr)}}
+@media print{.top,.noprint,#toast{display:none!important}html,body{background:#fff;color:#000}.card,.sum{box-shadow:none;break-inside:avoid;border-color:#bbb}.wrap{max-width:none;padding:0}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="back" href="/ar/" aria-label="رجوع للمتجر"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+  <a class="logo" href="/ar/" aria-label="KO SPORT"><img src="/brand/logo.webp?v=3" alt="KO SPORT" width="48" height="48"></a><span></span>
+</div></header>
+<div class="wrap">
+  <div class="ptitle"><h1>اعمل برنامجك</h1><small>جاوب عالأسئلة وبيطلعلك برنامج تمرين وتغذية على قدّك</small></div>
+  <div id="app"></div>
+</div>
+<div id="toast"></div>
+<script>
+/*GEN*/
+const EQN={db:"دمبلات",bb:"بار وأقراص",kb:"كيتل بيل",bd:"أحبال مقاومة",pu:"عقلة أو متوازي",bn:"بنش",mc:"أجهزة نادي وكابلات",bg:"كيس ملاكمة",jr:"حبل قفز"};
+const LVN=["مبتدئ","متوسط","متقدّم"];
+const GOALN={mus:"بناء عضل وحجم",fat:"تنشيف وخسارة دهون",str:"قوة",pow:"سرعة وانفجارية",end:"تحمّل ولياقة قلب",gen:"لياقة عامة وصحة"};
+// [الاسم، النمط، الأدوات المطلوبة، أقل مستوى (0 مبتدئ)، النوع: c مركّب، i عزل، h تثبيت بالثواني، p قفز، يد/رجل وحدة]
+const RAW=[
+["سكوات بوزن الجسم","sq","",0,"c"],["سكوات بوقفة واسعة","sq","",0,"c"],["سكوات كأسي بدمبل","sq","db",0,"c"],["سكوات كأسي بكيتل بيل","sq","kb",0,"c"],["ضغط أرجل بالجهاز","sq","mc",0,"c"],["سكوات بوقفة ثانية بالنص","sq","",1,"c"],["سكوات بالبار","sq","bb",1,"c"],["سكوات أمامي بالبار","sq","bb",2,"c"],["سكوات مسدّس بمساعدة","sq","",2,"c",1],
+["انحناء الورك بوزن الجسم","hi","",0,"c"],["ديدلفت رومانياني بدمبلات","hi","db",0,"c"],["ديدلفت رومانياني بحبل المقاومة","hi","bd",0,"c"],["سوينغ بالكيتل بيل","hi","kb",0,"c"],["ثني الأرجل الخلفي بالجهاز","hi","mc",0,"i"],["تمديد الظهر (سوبرمان)","hi","",0,"i"],["ديدلفت رومانياني بالبار","hi","bb",1,"c"],["ديدلفت رومانياني على رجل وحدة بوزن الجسم","hi","",1,"c",1],["ديدلفت على رجل وحدة بدمبل","hi","db",1,"c",1],["ديدلفت تقليدي بالبار","hi","bb",2,"c"],
+["لانجز تبادلي بوزن الجسم","lu","",0,"c",1],["لانجز بدمبلات","lu","db",0,"c",1],["صعود ستيب أب على مصطبة ثابتة","lu","bn",0,"c",1],["لانجز جانبي","lu","",1,"c",1],["سكوات بلغاري","lu","",1,"c",1],["سكوات بلغاري بدمبلات","lu","db,bn",1,"c",1],["لانجز بالكيتل بيل","lu","kb",1,"c",1],
+["ضغط (بوش أب)","hp","",0,"c"],["ضغط من الركبتين","hp","",0,"c"],["ضغط دمبلات عالأرض","hp","db",0,"c"],["ضغط صدر بالدمبلات عالبنش","hp","db,bn",0,"c"],["ضغط صدر بالجهاز","hp","mc",0,"c"],["ضغط بحبل المقاومة","hp","bd",0,"c"],["ضغط مرفوع القدمين","hp","",1,"c"],["ضغط صدر مائل بالدمبلات","hp","db,bn",1,"c"],["ضغط صدر بالبار عالبنش","hp","bb,bn",1,"c"],["ضغط أركر (على كل جهة)","hp","",2,"c"],["متوازي (ديبس)","hp","pu",2,"c"],["فتح صدر بالدمبلات","hp","db,bn",1,"i"],["فتح صدر بالكابل","hp","mc",1,"i"],
+["ضغط بايك مخفّف (ركب مثنية)","vp","",0,"c"],["ضغط أكتاف بالدمبلات","vp","db",0,"c"],["ضغط أكتاف بالجهاز","vp","mc",0,"c"],["ضغط أكتاف بحبل المقاومة","vp","bd",0,"c"],["ضغط بايك","vp","",1,"c"],["ضغط أكتاف بالبار","vp","bb",1,"c"],["ضغط أكتاف بالكيتل بيل","vp","kb",1,"c",1],["ضغط الوقوف على اليدين عالحيط","vp","",2,"c"],
+["تجديف مقلوب تحت طاولة ثقيلة وثابتة","hr","",0,"c"],["تجديف بدمبل بيد وحدة","hr","db",0,"c",1],["تجديف بحبل المقاومة","hr","bd",0,"c"],["تجديف بالكابل جالس","hr","mc",0,"c"],["تجديف مقلوب تحت بار ثابت","hr","pu",0,"c"],["تجديف بالكيتل بيل","hr","kb",0,"c",1],["تجديف بالبار","hr","bb",1,"c"],["رفع الذراعين Y-T-W وانت منبطح","hr","",0,"i"],
+["عقلة بمساعدة حبل مقاومة","vr","pu,bd",0,"c"],["سحب علوي بالجهاز","vr","mc",0,"c"],["سحب علوي بحبل المقاومة","vr","bd",0,"c"],["تعليق ثابت عالعقلة","vr","pu",0,"h"],["عقلة بقبضة عكسية","vr","pu",1,"c"],["عقلة","vr","pu",2,"c"],
+["جسر الورك","gl","",0,"c"],["ركلة خلفية بحبل المقاومة","gl","bd",0,"i",1],["ركلة خلفية بالكابل","gl","mc",0,"i",1],["جسر الورك على رجل وحدة","gl","",1,"c",1],["رفع الورك بدمبل عالبنش","gl","db,bn",1,"c"],["رفع الورك بالبار عالبنش","gl","bb,bn",2,"c"],
+["رفع سمانة وقوف","ca","",0,"i"],["رفع سمانة بدمبل","ca","db",0,"i"],["رفع سمانة بالجهاز","ca","mc",0,"i"],["رفع سمانة على رجل وحدة","ca","",1,"i",1],
+["بايسبس بالدمبلات","bi","db",0,"i"],["بايسبس بالبار","bi","bb",0,"i"],["بايسبس بحبل المقاومة","bi","bd",0,"i"],["بايسبس بالكابل","bi","mc",0,"i"],["بايسبس هامر بالدمبلات","bi","db",0,"i"],
+["ضغط ضيق للترايسبس","tr","",0,"i"],["ديبس ترايسبس على كرسي ثابت","tr","",0,"i"],["ترايسبس بالدمبل فوق الراس","tr","db",0,"i"],["ترايسبس بالكابل","tr","mc",0,"i"],["ترايسبس بحبل المقاومة","tr","bd",0,"i"],["ترايسبس بالبار وانت مستلقي","tr","bb,bn",1,"i"],
+["رفرفة جانبية بالدمبلات","sd","db",0,"i"],["رفرفة جانبية بحبل المقاومة","sd","bd",0,"i"],["رفرفة جانبية بالكابل","sd","mc",0,"i",1],
+["سحب الحبل لوجهك (فيس بول)","rd","bd",0,"i"],["رفرفة خلفية بالدمبلات","rd","db",0,"i"],["رفرفة خلفية بالكابل","rd","mc",0,"i"],["رفع الذراعين على شكل T وانت منبطح","rd","",0,"i"],
+["بلانك","co","",0,"h"],["بلانك جانبي","co","",0,"h",1],["ديد باغ","co","",0,"i"],["رفع الأرجل وانت مستلقي","co","",0,"i"],["دوران روسي","co","",0,"i"],["هولو هولد","co","",1,"h"],["بالوف برس بحبل المقاومة","co","bd",0,"i",1],["حطب بالكابل","co","mc",0,"i",1],["كرنش بالكابل","co","mc",0,"i"],["مشي المزارع بالدمبلات","co","db",0,"h"],["رفع الأرجل معلّق عالعقلة","co","pu",1,"i"],
+["رفع الركب العالي","pl","",0,"p"],["قفز حبل","pl","jr",0,"p"],["قفز من الثبات","pl","",1,"p"],["قفز عريض للأمام","pl","",1,"p"],["قفز جانبي متبادل","pl","",1,"p"],["قفز على مصطبة ثابتة","pl","bn",1,"p"]
+];
+const EX=RAW.map(([n,p,r,l,k,u])=>({n,p,r,l,k,u:!!u}));
+const TIP={sq:"ظهرك مستقيم وركبك باتجاه أصابع رجليك",hi:"حرّك الورك لورا وظهرك ثابت، والوزن قريب من جسمك",lu:"خطوة طويلة وجذعك منتصب",hp:"كتافك لورا وصدرك لقدّام، ونزّل بتحكّم",vp:"شد بطنك وما تقوّس ظهرك",hr:"اسحب بمرفقك لورا وشد لوحي الكتف",vr:"ابدأ من كتافك مو من دراعاتك",gl:"اعصر المؤخرة فوق وثبّت لحظة",ca:"طلوع كامل ونزول بطيء",bi:"مرفقك ثابت جنب جسمك",tr:"مرفقك ثابت والحركة من الساعد",sd:"ارفع لمستوى الكتف وبلا تأرجح",rd:"اسحب لورا وانت عاصر لوحي الكتف",co:"شد بطنك وتنفّس بانتظام",pl:"انزل بنعومة وبركب مثنية"};
+const SP={
+gen:{n:"لياقة عامة"},
+cal:{n:"كالستنكس",pref:/ضغط|عقلة|ديبس|بلانك|هولو|بايك|تعليق|مسدّس|أركر|اليدين|رفع الأرجل/,fin:()=>"4 جولات: 30 ثانية تعليق عالعقلة (أو بلانك) + 10 ضغطات + 15 سكوات، راحة دقيقة بين الجولة والتانية",tips:["اتقن الحركة بالتدرّج: كل أسبوعين صعّب الحركة شوي (مثلاً من عقلة بمساعدة لعقلة عادية)","الوقفة على اليدين والحركات الصعبة بتنعمل بعد ما تتقن الأساسيات"]},
+bod:{n:"كمال أجسام",more:["sd","rd","bi","tr","ca"],tips:["ركّز على الإحساس بالعضلة وبتحكّم بالنزول (ثانيتين لتلاتة)","كل ٨-١٢ أسبوع خفّف الحمل أسبوع مشان جسمك يتعافى"]},
+pwr:{n:"قوة ورفع أثقال",pref:/بالبار/,tips:["ركّز على السكوات والبنش والديدلفت، وزيد الوزن شوي شوي","استعمل مساعد أو حامل أمان بالأوزان الثقيلة"]},
+fb:{n:"كرة قدم",pl:1,pref:/بلغاري|رجل وحدة|ديدلفت|قفز|لانجز/,fin:()=>"ركض تسارع: 8 × 30 متر بأقصى سرعة، راحة 60 ثانية بين كل ركضة",tips:["خلّي تمارين الأرجل الثقيلة بعيدة 24-48 ساعة عن المباراة","ركّز على قوة الرجل الواحدة وتمارين الفخد الخلفي لحماية الركبة"]},
+bk:{n:"كرة سلة",pl:1,pref:/قفز|رجل وحدة|لانجز|سمانة/,fin:()=>"6 جولات: ركض ذهاب وإياب بين خطّين 20 ثانية جهد عالي، راحة 40 ثانية",tips:["النزول من القفزة بنعومة وبركب مثنية بيحمي ركبك وكاحلك","قوّي الكاحلين بالوقوف على رجل وحدة (30 ثانية لكل رجل)"]},
+vb:{n:"كرة طائرة",pl:1,pref:/قفز|رفرفة|فيس|بلانك/,fin:()=>"قفزات عمودية: 4 × 6 قفزات بأقصى ارتفاع، راحة دقيقة بين كل مجموعة",tips:["اهتم بأكتافك: تمارين السحب الخلفي مهمة بقدر الضغط","القفز وانت تعبان بيزيد الإصابات، فاخلّي القفز بأول الحصة"]},
+box:{n:"ملاكمة",pref:/بالوف|حطب|دوران|رفرفة|فيس|بلانك|حبل/,fin:a=>a.has("bg")?"6 جولات × 3 دقايق على الكيس بنص قوتك، راحة دقيقة بين الجولات":"6 جولات × 3 دقايق شادو بوكسينغ (ملاكمة بالهوا)، راحة دقيقة بين الجولات",tips:["قوة الدوران من الورك والجذع، فخلّي تمارين الكور من أساس البرنامج","حبل القفز بالتسخين بيحسّن خفة الرجلين والتحمّل"]},
+mma:{n:"قتال ومصارعة",pref:/تعليق|مشي المزارع|عقلة|كيتل|ديدلفت|تجديف/,fin:()=>"5 جولات × 3 دقايق شادو أو دريلات حرّة بشدّة متوسطة، راحة دقيقة",tips:["قوة القبضة والسحب أهم من العضلات الكبيرة","خلّي حصص التمرين الثقيلة بعيدة عن حصص السباراغ القاسية"]},
+run:{n:"جري",pref:/رجل وحدة|لانجز|سمانة|جسر|بلغاري/,fin:()=>"6 × 100 متر ركض متسارع بالتدريج (ستريدز)، والرجوع مشي",tips:["قوة الرجل الواحدة والسمانة بتقلّل إصابات الركض","الجري الخفيف بيظل أساس البرنامج، والحديد بيكمّله"]},
+tn:{n:"تنس",pl:1,pref:/بالوف|حطب|دوران|رفرفة|فيس|لانجز/,fin:()=>"8 × 20 ثانية نقلات جانبية سريعة، راحة 40 ثانية",tips:["كتف سليم = لعب أطول: ركّز على الكتف الخلفي والدوران","التبديل السريع بالاتجاه بيحتاج رجلين قوية ومرنة"]}
+};
+const PR={mus:{c:[4,"6-10",90],i:[3,"10-15",60]},str:{c:[5,"3-5",150],i:[3,"6-8",90]},fat:{c:[3,"10-15",45],i:[3,"12-15",30]},end:{c:[3,"15-20",30],i:[2,"15-20",30]},pow:{c:[4,"3-5",120],i:[3,"8-10",60]},gen:{c:[3,"8-12",60],i:[2,"12-15",45]}};
+const DAYS={
+fbA:{t:"جسم كامل (أ)",ty:"fb",s:["sq","hp","hr","vp","hi","co","tr"]},
+fbB:{t:"جسم كامل (ب)",ty:"fb",s:["hi","vp","vr","lu","hp","co","bi"]},
+fbC:{t:"جسم كامل (ج)",ty:"fb",s:["lu","hp","hr","gl","vp","co","ca"]},
+up:{t:"جزء علوي (أ)",ty:"up",s:["hp","hr","vp","vr","rd","tr","bi"]},
+upB:{t:"جزء علوي (ب)",ty:"up",s:["vp","vr","hp","hr","sd","bi","tr"]},
+lo:{t:"جزء سفلي (أ)",ty:"lo",s:["sq","hi","lu","ca","co","gl"]},
+loB:{t:"جزء سفلي (ب)",ty:"lo",s:["hi","sq","gl","lu","ca","co"]},
+push:{t:"دفع: صدر وأكتاف وترايسبس",ty:"up",s:["hp","vp","hp","sd","tr","co"]},
+pull:{t:"سحب: ظهر وبايسبس",ty:"up",s:["vr","hr","rd","bi","co","bi"]},
+legs:{t:"أرجل",ty:"lo",s:["sq","hi","lu","gl","ca","co"]}
+};
+const WD={2:["السبت","الأربعاء"],3:["السبت","الإثنين","الأربعاء"],4:["السبت","الأحد","الأربعاء","الخميس"],5:["السبت","الأحد","الإثنين","الأربعاء","الخميس"],6:["السبت","الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس"]};
+const WARM={up:"5 دقايق (مشي سريع أو حبل) + دوران كتافين ×10 + ضغط ×8 + سحب بحبل أو تجديف خفيف ×10",lo:"5 دقايق (مشي سريع أو حبل) + دوران ورك ×10 + سكوات بوزن الجسم ×10 + جسر الورك ×10",fb:"5 دقايق (مشي سريع أو حبل) + دوران مفاصل (كتاف، ورك، ركب) + سكوات ×8 + ضغط ×6"};
+const hsh=s=>{let x=2166136261;for(let i=0;i<s.length;i++)x=Math.imul(x^s.charCodeAt(i),16777619);return(x>>>0)%1000/1000};
+function goalFin(G,A){
+  const base=A.has("bg")?"كيس ملاكمة: 6 جولات × دقيقتين جهد عالي، راحة 45 ثانية":A.has("jr")?"حبل قفز: 10 جولات × (45 ثانية قفز / 15 ثانية راحة)":A.has("kb")?"سوينغ بالكيتل بيل: 10 جولات × (30 ثانية جهد / 30 ثانية راحة)":"8 جولات × (30 ثانية جهد / 30 ثانية راحة): بيربي، قفز سكوات، تسلّق الجبل، رفع الركب";
+  return G==="end"?{t:"ختام تحمّل",x:"15 دقيقة كارديو متواصل بإيقاع بتقدر تحكي فيه جملة قصيرة (ركض خفيف، مشي سريع، دراجة) — أو: "+base,m:12}:{t:"ختام حرق دهون",x:base,m:8};
+}
+function splitFor(I){
+  const d=I.days,b=I.lv===0,sp=SP[I.sp],ath=!!sp.pl||["box","mma","run","tn"].includes(I.sp);
+  if(d===2)return[DAYS.fbA,DAYS.fbB];
+  if(d===3)return(b||ath)?[DAYS.fbA,DAYS.fbB,DAYS.fbC]:[DAYS.push,DAYS.pull,DAYS.legs];
+  if(d===4)return[DAYS.up,DAYS.lo,DAYS.upB,DAYS.loB];
+  if(d===5)return b?[DAYS.up,DAYS.lo,DAYS.fbC,DAYS.upB,DAYS.loB]:[DAYS.push,DAYS.pull,DAYS.legs,DAYS.up,DAYS.lo];
+  return[DAYS.push,DAYS.pull,DAYS.legs,DAYS.push,DAYS.pull,DAYS.legs];
+}
+function nutri(I){
+  const bmr=10*I.w+6.25*I.h-5*I.age+(I.g==="m"?5:-161),tdee=bmr*(1.2+.075*I.days);
+  let k=tdee;
+  if(I.goal==="mus")k=tdee+(I.lv===0?300:200);
+  else if(I.goal==="fat")k=Math.max(tdee*(I.age<18?.9:.82),bmr,I.g==="m"?1500:1200);
+  k=Math.round(k/50)*50;
+  const pk={mus:1.8,fat:2,str:1.8,pow:1.6,end:1.4,gen:1.5}[I.goal],p=Math.round(I.w*pk),f=Math.round(I.w*.9),c=Math.max(80,Math.round((k-p*4-f*9)/4));
+  return{k,p,f,c,water:Math.round((I.w*.035+.5)*10)/10};
+}
+function gen(I,seed){
+  seed=seed||0;
+  const lv=I.lv,A=new Set(I.eq),sp=SP[I.sp],G=I.goal,short=I.min<=40;
+  const bmi=I.w/((I.h/100)**2),effG=(I.age<16&&G==="str")?"gen":G,maxL=I.age<16?Math.min(lv,1):lv,lowImp=I.age>=50||bmi>=32;
+  const has=r=>!r||r.split(",").every(t=>A.has(t));
+  const used={},FB={vr:"hr",vp:"hp",hp:"vp",hi:"gl",sq:"lu",lu:"sq",gl:"hi"};
+  const sc=e=>{let s=e.l;if(e.r&&["mus","str","pow"].includes(effG))s+=1;if(sp.pref&&sp.pref.test(e.n))s+=2;s-=(used[e.n]||0)*(effG==="str"?.4:1.5);if(seed)s+=hsh(e.n+seed)*1.2;return s};
+  function pick(slot,dayUsed){
+    const[p0,k]=slot.split(":");
+    for(const p of[p0,FB[p0]]){
+      if(!p)continue;
+      let c=EX.filter(e=>e.p===p&&e.l<=maxL&&has(e.r)&&!dayUsed.has(e.n)&&!(lowImp&&e.k==="p"));
+      if(k==="i"){const x=c.filter(e=>e.k==="i");if(x.length)c=x}else{const x=c.filter(e=>e.k==="c");if(x.length)c=x}
+      if(!c.length)continue;
+      return c.map((e,i)=>[sc(e),-i,e]).sort((a,b)=>b[0]-a[0]||b[1]-a[1])[0][2];
+    }
+    return null;
+  }
+  function rx(e){
+    if(e.k==="h")return{s:lv?3:2,r:["20-30 ث","30-45 ث","45-60 ث"][lv],rest:45,h:1};
+    if(e.k==="p")return e.r==="jr"?{s:3,r:"60 ث",rest:45,h:1}:{s:lv?4:3,r:lv?"5-6":"4-5",rest:75};
+    let[s,r,rest]=PR[effG][e.k==="c"?"c":"i"];
+    if(e.k==="c"&&lv===0){s=Math.min(s,3);if(effG==="str"){r="5-8";rest=120}if(effG==="pow")r="5-6"}
+    if(short){s=Math.min(s,e.k==="c"?3:2);rest=Math.round(rest*.75)}
+    if(I.age>=50)rest+=15;
+    return{s,r,rest};
+  }
+  const est=(e,x)=>x.s*((x.h?45:e.k==="p"?20:40)+x.rest)/60+1;
+  const split=splitFor(I),warm=short?5:8,days=[];
+  split.forEach((tp,di)=>{
+    const dayUsed=new Set(),rows=[];
+    let slots=tp.s.slice();
+    if((tp.ty==="lo"||tp.ty==="fb")&&(sp.pl||G==="pow"))slots.unshift("pl");
+    if(sp.more&&lv>0)slots=slots.concat(sp.more);
+    const last=di>=split.length-2,sf=sp.fin&&last?sp.fin(A):null;
+    let fin=null;
+    if(sf)fin={t:"ختام رياضي",x:sf,m:short?6:8};
+    else if((G==="fat"||G==="end")&&(split.length<=3||di%2===0)){fin=goalFin(G,A);if(short)fin.m=Math.min(fin.m,6)}
+    const budget=I.min-warm-(short?3:4)-(fin?fin.m:0),maxN=[6,7,8][lv]+(sp.more?1:0);
+    let spent=0,n=0;
+    for(const sl of slots){
+      if(n>=maxN)break;
+      const e=pick(sl,dayUsed);if(!e)continue;
+      const r=rx(e);let t=est(e,r);
+      if(n<3){const allow=Math.max(4,(budget-spent)/(3-n));while(t>allow&&r.s>2){r.s--;t=est(e,r)}while(t>allow&&r.rest>60){r.rest-=15;t=est(e,r)}}
+      else if(spent+t>budget)continue;
+      dayUsed.add(e.n);used[e.n]=(used[e.n]||0)+1;spent+=t;n++;
+      rows.push({n:e.n,u:e.u,k:e.k,s:r.s,r:r.r,rest:r.rest,h:!!r.h,tip:TIP[e.p]||""});
+    }
+    days.push({t:tp.t,wd:WD[I.days][di],ty:tp.ty,warm:WARM[tp.ty],rows,fin,total:Math.round(warm+(short?3:4)+spent+(fin?fin.m:0))});
+  });
+  const notes=[];
+  notes.push("اختار وزن بيخليك تخلّص التكرارات وبيضل عندك تكرارين أو تلاتة احتياط. الجودة قبل الوزن.");
+  notes.push("التقدّم: أسبوع 1 خفيف لتتعلّم الحركة. أسابيع 2 و3 زيد وزن صغير (2.5-5%) أو تكرار. أسبوع 4 خفّف الحجم للنص وارتاح، وبعدها ابدأ دورة جديدة وبدّل التمارين.");
+  if(["mus","str","pow"].includes(G))notes.push("نام 7-9 ساعات، والعضلة بتكبر وقت الراحة مو وقت التمرين.");
+  if(G==="fat")notes.push("ضيف 2-3 جلسات كارديو خفيف (مشي سريع أو ركض خفيف 25-40 دقيقة) بالأيام الفاضية.");
+  if(G==="end")notes.push("ضيف جلستين كارديو متواصل 30-45 دقيقة بالأسبوع، وزيد المدة 5 دقايق كل أسبوع.");
+  if(I.lv===0&&I.days>4)notes.push("للمبتدئ: ابدأ بـ 3-4 أيام أول 4 أسابيع، وبعدها زيد إذا جسمك ارتاح منيح.");
+  if(I.age<16)notes.push("بعمرك ركّز على التقنية الصح وحمل خفيف أو متوسط، وبلا رفع أقصى. يفضّل تتمرّن بإشراف مدرّب.");
+  if(I.age>=50)notes.push("زدنا الراحة بين المجموعات وشلنا القفزات القوية. سخّن أكتر، وإذا عندك مشكلة بالقلب أو المفاصل استشر دكتورك قبل ما تبدأ.");
+  if(bmi>=32)notes.push("شلنا القفزات والتمارين القوية عالمفاصل وركّزنا عالحركات الآمنة. ابدأ بالتدريج وزيد الشدّة مع الوقت.");
+  (sp.tips||[]).forEach(t=>notes.push(t));
+  const lvl=(A.has("mc")||(A.has("bb")&&A.has("bn")))?0:1;
+  const shop=[];
+  if(!A.has("mc")){[["db","دمبل"],["bd","حبل مقاومة"],["pu","عقلة"],["jr","حبل قفز"],["kb","كيتل بيل"]].forEach(([t,w])=>{if(!A.has(t)&&shop.length<4)shop.push(w)});
+    if(["box","mma"].includes(I.sp)&&!A.has("bg")&&shop.length<4)shop.push("كيس ملاكمة")}
+  const b=Math.round(bmi*10)/10,bc=b<18.5?"نحيف":b<25?"طبيعي":b<30?"زيادة وزن":"سمنة";
+  return{days,notes,nu:nutri(I),bmi:b,bmiC:bc,shop:lvl?shop:[],G,sp:sp.n,lv:LVN[lv],split:split.length};
+}
+/*END*/
+
+(()=>{
+  const $=s=>document.querySelector(s),app=$("#app");
+  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const KEY="ko_pb";
+  let S={g:"m",age:"",h:"",w:"",lv:1,sp:"gen",goal:"gen",eq:["db"],days:4,min:60},seed=0,R=null,I=null;
+  try{const o=JSON.parse(localStorage.getItem(KEY)||"{}");Object.assign(S,o)}catch{}
+  if(window.top!==window)document.documentElement.classList.add("emb");
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}};
+  const toast=t=>{const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2400)};
+  const ch=(k,opts,multi)=>`<div class="chips ${multi?"eq":""}">${opts.map(([v,l])=>`<button type="button" data-k="${k}" data-v="${v}" class="${(multi?S[k].includes(v):S[k]===v)?"on":""}">${esc(l)}</button>`).join("")}</div>`;
+  function form(msg){
+    R=null;
+    app.innerHTML=`${msg?`<div class="err">${esc(msg)}</div>`:""}
+    <div class="card"><h3>1) معلوماتك</h3>${ch("g",[["m","ذكر"],["f","أنثى"]])}
+      <div class="g3"><label>العمر (سنة)<input id="i_age" type="number" inputmode="numeric" min="12" max="80" value="${esc(S.age)}" placeholder="25"></label>
+      <label>الطول (سم)<input id="i_h" type="number" inputmode="numeric" min="120" max="230" value="${esc(S.h)}" placeholder="175"></label>
+      <label>الوزن (كغ)<input id="i_w" type="number" inputmode="decimal" min="30" max="250" value="${esc(S.w)}" placeholder="75"></label></div>
+      <p class="hint">الجنس والعمر والطول والوزن بنستعملهم لحساب احتياجك من الأكل بس.</p></div>
+    <div class="card"><h3>2) مستواك</h3>${ch("lv",[[0,"مبتدئ (أقل من 6 شهور)"],[1,"متوسط (سنة تقريباً)"],[2,"متقدّم (أكتر من سنتين)"]])}</div>
+    <div class="card"><h3>3) رياضتك</h3>${ch("sp",Object.entries(SP).map(([k,v])=>[k,v.n]))}</div>
+    <div class="card"><h3>4) هدفك</h3>${ch("goal",Object.entries(GOALN))}</div>
+    <div class="card"><h3>5) شو الأدوات المتوفرة عندك؟</h3>${ch("eq",Object.entries(EQN),true)}<p class="hint">وزن الجسم دايماً متوفر. إذا ما عندك شي، خلّيها فاضية وبنعملك برنامج بلا أدوات.</p></div>
+    <div class="card"><h3>6) وقتك</h3><p class="hint" style="margin:0 0 8px">كم يوم بالأسبوع؟</p>${ch("days",[2,3,4,5,6].map(x=>[x,x+" أيام"]))}<p class="hint" style="margin-top:12px">كم دقيقة للحصة؟</p>${ch("min",[30,45,60,75,90].map(x=>[x,x+" دقيقة"]))}</div>
+    <button class="btn w" id="go" type="button">اعمل برنامجي</button>`;
+  }
+  function chk(){
+    const a=+S.age,h=+S.h,w=+S.w;
+    if(!(a>=12&&a<=80))return"اكتب عمرك (من 12 لـ 80 سنة)";
+    if(!(h>=120&&h<=230))return"اكتب طولك بالسنتيمتر (من 120 لـ 230)";
+    if(!(w>=30&&w<=250))return"اكتب وزنك بالكيلو (من 30 لـ 250)";
+    return"";
+  }
+  const num=s=>`<bdi dir="ltr">${esc(s)}</bdi>`;
+  const rest=s=>s%60===0?num(s/60)+" د":num(s)+" ث";
+  function show(){
+    const r=R,N=r.nu;
+    app.innerHTML=`<div class="sum"><b>برنامجك جاهز 💪</b>
+      <div class="tags"><span class="tag">${esc(r.sp)}</span><span class="tag">${esc(GOALN[r.G])}</span><span class="tag">${esc(r.lv)}</span><span class="tag">${num(S.days)} أيام بالأسبوع</span><span class="tag">${num(S.min)} دقيقة</span></div></div>
+    <div class="bar noprint"><button class="btn" id="re">🔀 نسخة تانية</button><button class="btn ghost" id="pr">🖨 طباعة / PDF</button><button class="btn ghost" id="cp">📋 انسخ كنص</button><button class="btn ghost" id="ed">✏️ عدّل إجاباتي</button></div>
+    ${r.days.map((d,i)=>`<div class="card dy"><div class="hd"><b>اليوم ${num(i+1)} · ${esc(d.wd)} · ${esc(d.t)}</b><span>حوالي ${num(d.total)} د</span></div>
+      <div class="wu">🔥 تسخين: ${esc(d.warm)}</div>
+      ${d.rows.map(x=>`<div class="ex"><div class="n">${esc(x.n)}${x.u?`<em>لكل جهة</em>`:""}</div><div class="p"><b>${num(x.s)} × ${num(x.r)}${x.h?"":" تكرار"}</b><span>راحة ${rest(x.rest)}</span></div>${x.tip?`<div class="t">${esc(x.tip)}</div>`:""}</div>`).join("")}
+      ${d.fin?`<div class="fin"><b>${esc(d.fin.t)} (${num(d.fin.m)} د):</b> ${esc(d.fin.x)}</div>`:""}
+      <div class="cd">🧘 تبريد: مشي خفيف وإطالة للعضلات يلي اشتغلت (20-30 ثانية لكل عضلة)</div></div>`).join("")}
+    <div class="card"><h3>🍽 تغذيتك (تقدير تقريبي)</h3><div class="nu"><div><b>${num(N.k)}</b><small>سعرة باليوم</small></div><div><b>${num(N.p)}</b><small>غ بروتين</small></div><div><b>${num(N.c)}</b><small>غ كربوهيدرات</small></div><div><b>${num(N.f)}</b><small>غ دهون</small></div></div>
+      <p class="hint">مؤشر كتلة الجسم عندك ${num(r.bmi)} (${esc(r.bmiC)}). المي: حوالي ${num(N.water)} ليتر باليوم. الأرقام تقديرية (±10%): تابع وزنك كل أسبوعين وعدّل حسب النتيجة.</p></div>
+    <div class="card"><h3>📌 ملاحظات</h3><ul class="nt">${r.notes.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
+    ${r.shop.length?`<div class="card noprint"><h3>🛒 جهّز أدواتك من المتجر</h3><div class="shop">${r.shop.map(w=>`<a href="/#/search/${encodeURIComponent(w)}" target="_top">${esc(w)}</a>`).join("")}</div></div>`:""}
+    <p class="hint">هالبرنامج إرشادي عام، مو بديل عن مدرّب أو دكتور. إذا عندك إصابة أو مرض، استشر دكتورك قبل ما تبدأ، ووقّف فوراً إذا حسّيت بألم حاد.</p>`;
+    window.scrollTo({top:0});
+  }
+  function asText(){
+    const r=R,L=[`برنامجي من KO SPORT — ${r.sp} · ${GOALN[r.G]} · ${r.lv}`,""];
+    r.days.forEach((d,i)=>{L.push(`اليوم ${i+1} (${d.wd}) — ${d.t}`,`تسخين: ${d.warm}`);d.rows.forEach(x=>L.push(`• ${x.n}${x.u?" (لكل جهة)":""}: ${x.s} × ${x.r}${x.h?"":" تكرار"} · راحة ${x.rest} ث`));if(d.fin)L.push(`${d.fin.t}: ${d.fin.x}`);L.push("")});
+    const N=r.nu;L.push(`التغذية: ${N.k} سعرة · ${N.p}غ بروتين · ${N.c}غ كربوهيدرات · ${N.f}غ دهون · مي ${N.water} ل`,"",...r.notes.map(t=>"- "+t));
+    return L.join("\n");
+  }
+  app.addEventListener("input",e=>{const t=e.target;if(t.id==="i_age")S.age=t.value;if(t.id==="i_h")S.h=t.value;if(t.id==="i_w")S.w=t.value;save()});
+  app.addEventListener("click",async e=>{
+    const b=e.target.closest("button");if(!b)return;
+    if(b.dataset.k){const k=b.dataset.k,v=b.dataset.v;
+      if(k==="eq"){const i=S.eq.indexOf(v);i<0?S.eq.push(v):S.eq.splice(i,1);b.classList.toggle("on")}
+      else{S[k]=["lv","days","min"].includes(k)?+v:v;b.parentNode.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))}
+      save();return}
+    if(b.id==="go"){const m=chk();if(m){form(m);window.scrollTo({top:0});return}seed=0;I={...S,age:+S.age,h:+S.h,w:+S.w};R=gen(I,seed);show();return}
+    if(b.id==="re"){seed++;R=gen(I,seed);show();toast("هي نسخة تانية بتمارين مختلفة");return}
+    if(b.id==="ed"){form();return}
+    if(b.id==="pr"){window.print();return}
+    if(b.id==="cp"){const t=asText();try{await navigator.clipboard.writeText(t);toast("اننسخ البرنامج ✓")}catch{const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("اننسخ البرنامج ✓")}catch{toast("ما زبط النسخ")}a.remove()}}
+  });
+  form();
+})();
+</script>
+</body>
+</html>
