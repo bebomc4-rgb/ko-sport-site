@@ -346,13 +346,22 @@ function gen(I,seed){
     const N=r.nu;L.push(`التغذية: ${N.k} سعرة · ${N.p}غ بروتين · ${N.c}غ كربوهيدرات · ${N.f}غ دهون · مي ${N.water} ل`,"",...r.notes.map(t=>"- "+t));
     return L.join("\n");
   }
-  function printProgram(){
+  async function printProgram(){
     if(!R){toast("اعمل برنامجك أول شي");return}
+    toast("عم يجهّز البرنامج مع الصور…");
+    await lib();
     const copy=document.querySelector(".wrap").cloneNode(true);
+    copy.querySelectorAll(".ex[data-q]").forEach(el=>{
+      const x=find(el.dataset.q);if(!x)return;
+      const img=document.createElement("img");
+      img.className="print-ex-img";img.src="/exlib/m/"+encodeURIComponent(x.i)+".jpg";
+      img.alt=el.querySelector(".n")?.textContent||"";img.loading="eager";
+      const title=el.querySelector(".n");if(title)el.insertBefore(img,title);
+    });
     copy.querySelectorAll(".noprint,video,button").forEach(x=>x.remove());
     const data=JSON.stringify({html:copy.innerHTML});
     try{localStorage.setItem("ko_pb_print",data)}catch(e){}
-    const url="/program-print.html?v=403#"+encodeURIComponent(data);
+    const url="/program-print.html?v=404#"+encodeURIComponent(data);
     try{window.top.location.assign(url)}
     catch(e){location.assign(url)}
   }
