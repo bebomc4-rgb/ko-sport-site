@@ -2274,3 +2274,8 @@ html.sheet-lock,html.sheet-lock body{overscroll-behavior:none}.sheet-wrap,.sheet
 .exl-my-pic img,.exl-my-pic video{width:100%;height:auto;object-fit:contain;display:block}
 .exl-my-row.exl-my-big .exl-my-f{grid-template-columns:1fr 1fr}
 .pb-fr{display:block;width:100%;min-height:80vh;border:0;background:transparent;margin:0 auto;max-width:900px}
+/* بلا علامة تشغيل ولا لقطة: المربع أبيض لحد ما يشتغل الفيديو (طلب صاحب المتجر 22/11/2026) */
+.exl-pic,.exl-vw,.exl-my-pic{background:#fff}
+.exl-pic video,.exl-vw video,.exl-lb video,.exl-my-pic video,.xmw video{background:#fff}
+video::-webkit-media-controls,video::-webkit-media-controls-start-playback-button,video::-webkit-media-controls-overlay-play-button,video::-webkit-media-controls-panel,video::-webkit-media-controls-enclosure{display:none!important;-webkit-appearance:none;opacity:0!important}
+video{pointer-events:none}

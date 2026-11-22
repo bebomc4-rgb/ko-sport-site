@@ -2003,22 +2003,46 @@
   // زر الرجوع: ارجع لنفس مكان السكرول بعد ما ينرسم المحتوى (بعضو بيجي async)، وبنفس عدد التمارين يلي كانت مفتوحة
   const exlRY = () => { try { const k = (history.state || {}).koK; return k != null && scrollMem[k] > 0 ? scrollMem[k] : 0; } catch (e) { return 0; } };
   const exlRest = (y) => { if (y) scrollRestore(y, (history.state || {}).koK); };
+  // تحميل المكتبة بسرعة: نسخة محفوظة بالجهاز بتنفتح فوراً وبيتحدّث من النت بالخلفية (stale-while-revalidate)، وبتنحمّل مسبقاً وقت الفراغ
+  const EXLC = "ko_exl_cache";
+  function exlApply(L, cfg) {
+    const c = cfg || {}, hid = Array.isArray(c.hideM) ? c.hideM : ["Other"]; // عضلات مخبّية من المكتبة (من لوحة التحكم)
+    const A = L.filter((x) => hid.indexOf(x.m) < 0);
+    A.forEach((x) => { x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; else if (x.m === "Thighs") x.m = exlThigh(x.n); }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
+    A.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
+    exl.cfg = c; exl.L = A;
+  }
+  async function exlLoadData() {
+    let cached = null; try { cached = JSON.parse(localStorage.getItem(EXLC) || "null"); } catch (e) {}
+    const net = (async () => {
+      const [r, rc] = await Promise.all([fetch("/api/exlib/list", { headers: socAuth(), credentials: "same-origin" }), fetch("/api/exlib/cfg", { headers: socAuth(), credentials: "same-origin", cache: "no-store" })]);
+      if (!r.ok) throw 0;
+      const L = await r.json(), cfg = rc.ok ? await rc.json() : {};
+      try { localStorage.setItem(EXLC, JSON.stringify({ L, cfg })); } catch (e) {}
+      return { L, cfg };
+    })();
+    net.catch(() => {});
+    if (cached && Array.isArray(cached.L) && cached.L.length) {
+      exlApply(cached.L, cached.cfg || {});
+      await Promise.all([exlLoad(), exlRatio()]);
+      net.then((f) => { const old = exl.L && exl.L.length; exlApply(f.L, f.cfg); if (old !== exl.L.length && curRoute().indexOf("/exlib") === 0 && !curRoute().startsWith("/exlib/programs")) exlibPage(); }).catch(() => {});
+      return;
+    }
+    const f = await net; exlApply(f.L, f.cfg);
+    await Promise.all([exlLoad(), exlRatio()]);
+  }
+  let exlWarmed = 0;
+  function exlWarm() { // بيتحمّل مسبقاً لحساب المالك بس، بعد ما تهدى الصفحة
+    if (exlWarmed || exl.L || !koOwn()) return; exlWarmed = 1;
+    const go = () => { if (!exl.L) exlLoadData().catch(() => {}); try { fetch("/predict?embed", { credentials: "same-origin" }).catch(() => {}); } catch (e) {} };
+    if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 4000 }); else setTimeout(go, 2500);
+  }
   async function exlibPage() {
     const ry = exlRY();
     document.title = "مكتبة التمارين | " + (C.name || "");
     if (!exl.L) {
       app.innerHTML = '<div class="loading">جاري التحميل…</div>';
-      try {
-        const [r, rc] = await Promise.all([fetch("/api/exlib/list", { headers: socAuth(), credentials: "same-origin" }), fetch("/api/exlib/cfg", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }), exlLoad()]);
-        if (!r.ok) throw 0;
-        exl.L = await r.json();
-        exl.cfg = rc.ok ? await rc.json() : {};
-        const hid = Array.isArray(exl.cfg.hideM) ? exl.cfg.hideM : ["Other"]; // عضلات مخبّية من المكتبة (من لوحة التحكم)
-        exl.L = exl.L.filter((x) => hid.indexOf(x.m) < 0);
-        exl.L.forEach((x) => { x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; else if (x.m === "Thighs") x.m = exlThigh(x.n); }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
-        await exlRatio();
-        exl.L.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
-      } catch (e) { if (curRoute().indexOf("/exlib") === 0) app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح المكتبة</b>جرّب كمان مرة<a href="#/account">رجوع لحسابي</a></div>'; return; }
+      try { await exlLoadData(); } catch (e) { if (curRoute().indexOf("/exlib") === 0) app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح المكتبة</b>جرّب كمان مرة<a href="#/account">رجوع لحسابي</a></div>'; return; }
       if (curRoute().indexOf("/exlib") !== 0) return;
     }
     if (!exl.L.length) { app.innerHTML = '<div class="empty"><b>المكتبة لسا فاضية</b>ارفع التمارين من صفحة الرفع أول شي<a href="#/account">رجوع لحسابي</a></div>'; return; }
@@ -2460,6 +2484,14 @@
     return new Date(at).toLocaleDateString("ar-SY", { day: "numeric", month: "long" });
   }
   async function socGet(u) { const r = await fetch(u, { headers: socAuth(), cache: "no-store" }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "صار خطأ"); return j; }
+  // سرعة: آخر نسخة بتنعرض فوراً من الجهاز وبيتحدّث من النت بالخلفية (ما بيرسم تاني إذا ما تغيّر شي)
+  async function socSWR(u, draw, fail) {
+    const A = acct(), k = "ko_swr:" + u + ":" + String((A && A.account && A.account.phone) || ""); let c = null, shown = "";
+    try { c = JSON.parse(localStorage.getItem(k) || "null"); } catch (e) {}
+    if (c) { shown = JSON.stringify(c); draw(c); }
+    try { const d = await socGet(u); try { localStorage.setItem(k, JSON.stringify(d)); } catch (e) {} if (JSON.stringify(d) !== shown) draw(d); }
+    catch (e) { if (!c) fail(e); }
+  }
   async function socPost(u, body) { const r = await fetch(u, { method: "POST", headers: { "content-type": "application/json", ...socAuth() }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "صار خطأ"); return j; }
   // صورة البروفايل: منصغّرها بالموبايل لـ 320×320 (قص مربع من النص) قبل الرفع
   function socPickAvatar(done) {
@@ -2496,13 +2528,15 @@
   async function mePage() {
     document.title = "بروفايلي | " + (C.name || "");
     app.innerHTML = `<div class="so-page"><div class="loading">لحظة…</div></div>`;
-    let d; try { d = await socGet("/api/social/me"); } catch (e) { app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; return; }
-    if (!document.body.dataset.page || document.body.dataset.page !== "me") return;
+    const draw = (d) => {
+      if (!document.body.dataset.page || document.body.dataset.page !== "me") return;
     app.innerHTML = `<div class="so-page">${socCard(d, true)}
       <div class="so-two"><div class="so-box"><small>نقاط التوقعات</small><b>${socNum(d.p)}</b></div><div class="so-box"><small>نقاط التعليقات</small><b>${socNum(d.rv)}</b></div><div class="so-box"><small>هالشهر</small><b>${socNum(d.mpts)}</b>${d.mrank ? `<em>#${socNum(d.mrank)}</em>` : ""}</div><div class="so-box"><small>رصيدك للخصم</small><b>${socNum(Math.max(0, d.tot - (d.s || 0)))}</b></div></div>
       <a class="acc-card acc-pred" href="#/rank"><span class="apr-l"><b>🏆 التصنيف العالمي</b><small>شوف ترتيبك بين كل الزباين، وأقوى اللاعبين هالشهر</small></span><span class="apr-go">افتح ›</span></a>
       <div class="so-how"><b>كيف بتجمع نقاط؟</b><p>🔮 كل توقّع صح بالتوقعات: من 30 لـ 200 نقطة.<br>💬 تعليق على منتج: 150 نقطة (تعليق واحد على كل منتج، والنقاط لحد 3 تعليقات باليوم).<br>👍 الإعجابات على تعليقاتك بتبيّن ببروفايلك.</p></div></div>`;
     app.onclick = (e) => { if (e.target.closest("[data-so-av]")) socPickAvatar(() => mePage()); };
+    };
+    await socSWR("/api/social/me", draw, (e) => { app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; });
   }
   async function userPage(uid) {
     app.innerHTML = `<div class="so-page"><div class="loading">لحظة…</div></div>`;
@@ -2524,7 +2558,8 @@
     const demo = /^demo/.test(scope || ""); scope = /month/.test(scope || "") ? "month" : "all";
     document.title = "التصنيف العالمي | " + (C.name || "");
     app.innerHTML = `<div class="so-page"><div class="loading">لحظة…</div></div>`;
-    let d; if (demo) d = socDemo(scope); else try { d = await socGet("/api/social/rank?scope=" + scope); } catch (e) { app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; return; }
+    const draw = (d) => {
+      if (!/^\/rank/.test(curRoute())) return;
     const uh = (x) => d.demo ? "#/rank/demo" : "#/u/" + esc(x.uid);
     const row = (x) => `<a class="so-row${d.me && x.uid === d.me.uid ? " me" : ""}" href="${uh(x)}"><span class="so-n">${x.rank}</span>${socAv(x.av, x.n, x.uid, 40)}<span class="so-nm"><b>${esc(x.n)}</b>${socBadge(x.tot)}</span><span class="so-pt"><b>${socNum(x.pts)}</b><small>${x.t ? Math.round((x.w / x.t) * 100) + "% دقة" : "نقطة"}</small></span></a>`;
     const [a, b, c] = d.top, pod = (x, k) => x ? `<a class="so-pod p${k}" href="${uh(x)}"><span class="so-crown">${["🥇", "🥈", "🥉"][k - 1]}</span>${socAv(x.av, x.n, x.uid, k === 1 ? 76 : 60)}<b>${esc(x.n)}</b><small>${socNum(x.pts)}</small><i></i></a>` : "<span></span>";
@@ -2536,6 +2571,8 @@
       ${d.me ? `<div class="so-mebar">${row(d.me)}</div>` : ""}
       <p class="so-foot">${socNum(d.of)} لاعب بالترتيب · النقاط من التوقعات والتعليقات</p></div>`;
     app.onclick = null;
+    };
+    if (demo) draw(socDemo(scope)); else await socSWR("/api/social/rank?scope=" + scope, draw, (e) => { app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; });
   }
   // التعليقات تحت المنتج متل الفيسبوك (لصاحب المتجر بس هلق)
   function fbComments(p) {
@@ -3383,6 +3420,7 @@ ${trustH()}
     else if (a === "predict") predictPage();
     else if (a === "build") buildPage();
     else if (a === "exlib") exlibPage();
+    if (a !== "exlib") exlWarm();
     else if (a === "o" && b) orderPage(b);
     else home();
     finishRoute(hs, keepScroll, keepY, revisit);

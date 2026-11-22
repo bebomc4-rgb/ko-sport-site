@@ -1854,7 +1854,7 @@ async function predImg(request, url, ctx) {
 }
 async function predPage(request, env) {
   const r = await env.ASSETS.fetch(new URL("/predict.html", request.url));
-  return new Response(r.body, { status: r.status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" } });
+  return new Response(r.body, { status: r.status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "private, max-age=300", "x-robots-tag": "noindex, nofollow" } });
 }
 
 // ---------- views: how many times customers opened each product / section (صاحب المتجر، 16 تشرين التاني 2026) ----------

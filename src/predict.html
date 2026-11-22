@@ -196,8 +196,11 @@ body.lock{overflow:hidden}
     app.innerHTML = `<div class="msg">${esc(msg)}<br><br><button class="btn" onclick="location.reload()">جرّب كمان مرة</button></div>`;
   }
 
+  // سرعة: آخر نسخة من التوقعات محفوظة بالجهاز بتنعرض فوراً، وبيتحدّث من النت بالخلفية
+  const PC = "ko_pred_c", who = () => { try { const a = JSON.parse(localStorage.getItem("ko_acct") || "null"); return (a && a.account && a.account.phone) || ""; } catch { return ""; } };
   async function load() {
-    try { D = await api("/api/pred"); draw(); }
+    if (!MANAGE && !D) { try { const c = JSON.parse(localStorage.getItem(PC) || "null"); if (c && c.k && c.k === who() && c.D) { D = c.D; draw(); } } catch {} }
+    try { const nd = await api("/api/pred"); if (!MANAGE) { try { localStorage.setItem(PC, JSON.stringify({ k: who(), D: nd })); } catch {} } D = nd; draw(); }
     catch (e) {
       if (e.status === 403 || e.status === 401 || e.status === 429) { const had = MANAGE && !!ls.get("ko_admin"); gate(403); if (had) toast(e.status === 429 ? e.message : "كلمة السر غلط"); }
       else gate(0, e.message);
