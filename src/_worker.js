@@ -4562,30 +4562,32 @@ Return ONLY a JSON object mapping each number to its Arabic name, e.g. {"1":"...
   return json({ ok: true, total: merged.length, done, left: merged.filter((x) => !ar2[x.i] && (fail[x.i] || 0) < 3).length, got: nGot, failed: batch.length - nGot }, 200, { "cache-control": "no-store" });
 }
 // ترجمة عناوين برامج التمرين للعربي (exlib:progar = {رقم البرنامج: عنوان}) بدفعات 30
-async function exlibProgTr(env) {
+async function exlibProgTr(env, desc) {
+  const KA = desc ? "exlib:progdar" : "exlib:progar", KF = desc ? "exlib:progdfail" : "exlib:progfail", FLD = desc ? "d" : "t";
   if (!env.AI) return json({ error: "الذكاء الاصطناعي مو مربوط: Settings ← Bindings ← Add ← Workers AI، واسمه AI" }, 500);
   let D = null; try { D = await env.STORE.get("exlib:prog", "json"); } catch {}
   if (!D || !Array.isArray(D.P)) return json({ error: "ارفع ملف البرامج أول شي" }, 400);
-  let ar = {}; try { ar = (await env.STORE.get("exlib:progar", "json")) || {}; } catch { ar = {}; }
-  let fail = {}; try { fail = (await env.STORE.get("exlib:progfail", "json")) || {}; } catch { fail = {}; }
-  const left = () => D.P.map((x, i) => i).filter((i) => !ar[i] && (fail[i] || 0) < 3);
+  let ar = {}; try { ar = (await env.STORE.get(KA, "json")) || {}; } catch { ar = {}; }
+  let fail = {}; try { fail = (await env.STORE.get(KF, "json")) || {}; } catch { fail = {}; }
+  const left = () => D.P.map((x, i) => i).filter((i) => (!desc || D.P[i].d) && !ar[i] && (fail[i] || 0) < 3);
   const todo = left();
   if (!todo.length) return json({ ok: true, total: D.P.length, done: Object.keys(ar).length, left: 0, got: 0 }, 200, { "cache-control": "no-store" });
-  const batch = todo.slice(0, 30);
-  const system = `You translate gym workout PROGRAM titles from English to Arabic for a Syrian sports store.
+  const batch = todo.slice(0, desc ? 4 : 30);
+  const system = desc ? `You translate gym workout program DESCRIPTIONS from English to Arabic for a Syrian sports store. Use clear simple Arabic with gym words Syrian trainees say (Push Pull Legs = دفع سحب أرجل، Full Body = كامل الجسم، Dumbbell = دمبل، Barbell = بار، Reps = تكرار، Sets = مجموعات، Deload = أسبوع راحة). Keep numbers and abbreviations. Translate fully, no explanations.
+Return ONLY a JSON object mapping each number to its Arabic translation, e.g. {"1":"...","2":"..."} with no markdown.` : `You translate gym workout PROGRAM titles from English to Arabic for a Syrian sports store.
 Rules: keep it short; use gym words Syrian trainees say (Push Pull Legs = دفع سحب أرجل، Full Body = كامل الجسم، Split = سبليت، Beginner = مبتدئ، Mass = تضخيم، Strength = قوة، Cutting = تنشيف، Home = بالبيت، Dumbbell = دمبل). Keep numbers, brand names and abbreviations like PPL, 5x5, GZCLP as they are. Do NOT add explanations.
 Return ONLY a JSON object mapping each number to its Arabic title, e.g. {"1":"...","2":"..."} with no markdown.`;
-  const user = batch.map((i, k) => `${k + 1}. ${String(D.P[i].t || "").slice(0, 120)}`).join("\n");
+  const user = batch.map((i, k) => `${k + 1}. ${String(D.P[i][FLD] || "").slice(0, desc ? 1500 : 120)}`).join("\n");
   let last = "", got = {};
   for (const model of AI_MODELS) {
     try {
-      const out = await env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 3000, temperature: 0.2 });
+      const out = await env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: desc ? 6000 : 3000, temperature: 0.2 });
       let t = typeof out === "string" ? out : out.response ?? out.result?.response ?? (out.choices && out.choices[0]?.message?.content) ?? "";
       if (typeof t !== "string") t = JSON.stringify(t);
       t = t.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/```(json)?/g, "");
       let j = null; const mm = t.match(/\{[\s\S]*\}/); if (mm) { try { j = JSON.parse(mm[0]); } catch {} }
       if (!j) { j = {}; t.split("\n").forEach((ln) => { const r = /^\s*"?(\d+)"?\s*[.:)\-]\s*"?(.+?)"?,?\s*$/.exec(ln); if (r) j[r[1]] = r[2]; }); }
-      Object.keys(j).forEach((k) => { const i = batch[+k - 1], v = typeof j[k] === "string" ? j[k].trim() : ""; if (i != null && v && (v.match(/[؀-ۿ]/g) || []).length >= 2 && v.length <= 120) got[i] = v; });
+      Object.keys(j).forEach((k) => { const i = batch[+k - 1], v = typeof j[k] === "string" ? j[k].trim() : ""; if (i != null && v && (v.match(/[؀-ۿ]/g) || []).length >= 2 && v.length <= (desc ? 4000 : 120)) got[i] = v; });
       if (Object.keys(got).length) break;
       last = "رد غير مفهوم";
     } catch (e) { last = String(e && e.message || e); }
@@ -4593,9 +4595,9 @@ Return ONLY a JSON object mapping each number to its Arabic title, e.g. {"1":"..
   const nGot = Object.keys(got).length;
   if (!nGot && last) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + last }, 502);
   Object.keys(got).forEach((i) => { ar[i] = got[i]; });
-  await env.STORE.put("exlib:progar", JSON.stringify(ar));
+  await env.STORE.put(KA, JSON.stringify(ar));
   let ch = false; batch.forEach((i) => { if (!got[i]) { fail[i] = (fail[i] || 0) + 1; ch = true; } });
-  if (ch) await env.STORE.put("exlib:progfail", JSON.stringify(fail));
+  if (ch) await env.STORE.put(KF, JSON.stringify(fail));
   return json({ ok: true, total: D.P.length, done: Object.keys(ar).length, left: left().length, got: nGot, failed: batch.length - nGot }, 200, { "cache-control": "no-store" });
 }
 async function exlibApi(request, env, path, m) {
@@ -4632,10 +4634,10 @@ async function exlibApi(request, env, path, m) {
     return json({ ok: true, cfg: c }, 200, nos);
   }
   if (path === "/api/exlib/translate" && m === "POST") return exlibTranslate(request, env);
-  if (path === "/api/exlib/progtr" && m === "POST") return exlibProgTr(env);
+  if (path === "/api/exlib/progtr" && m === "POST") { let b = {}; try { b = await request.json(); } catch {} return exlibProgTr(env, !!(b && b.d)); }
   if (path === "/api/exlib/progar" && m === "GET") {
     if (!(await exlibOwner(request, env)) && !isAdmin(request, env, "owner")) return json({ error: "forbidden" }, 403, nos);
-    return new Response((await env.STORE.get("exlib:progar")) || "{}", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+    return new Response((await env.STORE.get(new URL(request.url).searchParams.get("d") ? "exlib:progdar" : "exlib:progar")) || "{}", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   }
   if (path === "/api/exlib/edit" && m === "POST") {
     let b; try { b = await request.json(); } catch { return json({ error: "الطلب غلط" }, 400); }

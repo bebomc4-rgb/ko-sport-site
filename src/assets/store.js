@@ -2036,7 +2036,7 @@
       const r = await fetch("/api/exlib/prog", { headers: socAuth(), credentials: "same-origin" });
       exl.prog = r.ok ? await r.json() : null;
       if (!exl.prog) return null;
-      try { const ra = await fetch("/api/exlib/progar", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progAr = ra.ok ? await ra.json() : {}; } catch (e) { exl.progAr = {}; }
+      try { const ra = await fetch("/api/exlib/progar", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progAr = ra.ok ? await ra.json() : {}; const rd = await fetch("/api/exlib/progar?d=1", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progDar = rd.ok ? await rd.json() : {}; } catch (e) { exl.progAr = exl.progAr || {}; exl.progDar = exl.progDar || {}; }
       const full = {}, byName = {}; // m|e|اسم ← تمرين، واسم لحالو (للاحتياط)
       exl.L.forEach((x) => { const n = exlNm(x.n); full[x.m + "|" + x.e + "|" + n] = full[x.m + "|" + x.e + "|" + n] || x; (byName[n] = byName[n] || []).push(x); });
       exl.pmap = exl.prog.EX.map((e) => {
@@ -2074,7 +2074,7 @@
       app.innerHTML = wrap(`<div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><a href="#/exlib/programs">البرامج</a></div>
         <h1 class="page-title exl-pg-t" dir="auto">${esc(exlPT(n, p))}</h1>${exl.progAr && exl.progAr[n] ? `<p class="exl-en" dir="ltr">${esc(p.t)}</p>` : ""}
         <div class="exl-pg-hd"><span class="exl-pg-cv">${exlCover(p)}</span><div><p class="exl-pg-m">${esc(exlMeta(p))}</p>${p.r ? `<p class="exl-pg-m">⭐ ${esc(p.r)}</p>` : ""}${hit < tot ? `<p class="exl-pg-m">${hit} من ${tot} تمرين مربوطة بفيديو من المكتبة</p>` : ""}</div></div>
-        ${p.d ? `<details class="exl-pg-d"><summary>وصف البرنامج</summary><p dir="ltr">${esc(p.d)}</p></details>` : ""}${ws}`);
+        ${p.d ? `<div class="exl-pg-d"><b>وصف البرنامج</b>${exl.progDar && exl.progDar[n] ? `<p dir="auto">${esc(exl.progDar[n])}</p><details><summary>النص الأصلي (إنكليزي)</summary><p dir="ltr">${esc(p.d)}</p></details>` : `<p dir="ltr">${esc(p.d)}</p>`}</div>` : ""}${ws}`);
       app.onchange = null;
       app.onclick = (ev) => { const t = ev.target.closest("[data-exl-id]"); if (t) exlOpen(t.dataset.exlId); };
       exlVids(app, "io3");
