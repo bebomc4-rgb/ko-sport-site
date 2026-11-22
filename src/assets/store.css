@@ -2268,3 +2268,8 @@ html.sheet-lock,html.sheet-lock body{overscroll-behavior:none}.sheet-wrap,.sheet
 .exl-my-gap{padding:2px 12px 10px;margin:-2px 0 6px;border-inline-start:3px solid #a8843f;font-size:12px}
 .exl-my-grs input,.exl-my-gap input{width:90px;box-sizing:border-box;padding:6px 4px;text-align:center;border-radius:8px;border:1px solid var(--line,#ddd)}
 .exl-my-day.dragging .exl-my-gap{display:none}
+.exl-my-row.exl-my-big{flex-direction:column;align-items:stretch;gap:8px}
+.exl-my-top{display:flex;align-items:center;gap:6px}.exl-my-top b{flex:1;min-width:0;font-size:15px}
+.exl-my-pic{display:block;width:min(320px,86%);margin:0 auto;background:#fff;border-radius:10px;overflow:hidden}
+.exl-my-pic img,.exl-my-pic video{width:100%;height:auto;object-fit:contain;display:block}
+.exl-my-row.exl-my-big .exl-my-f{grid-template-columns:1fr 1fr}
