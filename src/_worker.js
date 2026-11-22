@@ -4572,16 +4572,19 @@ async function exlibProgTr(env, desc) {
   const left = () => D.P.map((x, i) => i).filter((i) => (!desc || D.P[i].d) && !ar[i] && (fail[i] || 0) < 3);
   const todo = left();
   if (!todo.length) return json({ ok: true, total: D.P.length, done: Object.keys(ar).length, left: 0, got: 0 }, 200, { "cache-control": "no-store" });
-  const batch = todo.slice(0, desc ? 4 : 30);
+  // الجداد أول، والبرامج يلي فشلت قبل بتنعاد بدفعات صغيرة: عنوان غريب واحد كان يخرّب ردّ الدفعة كلها
+  const fresh = todo.filter((i) => !(fail[i] || 0));
+  const batch = fresh.length ? fresh.slice(0, desc ? 4 : 30) : todo.slice(0, desc ? 2 : 5);
   const system = desc ? `You translate gym workout program DESCRIPTIONS from English to Arabic for a Syrian sports store. Use clear simple Arabic with gym words Syrian trainees say (Push Pull Legs = دفع سحب أرجل، Full Body = كامل الجسم، Dumbbell = دمبل، Barbell = بار، Reps = تكرار، Sets = مجموعات، Deload = أسبوع راحة). Keep numbers and abbreviations. Translate fully, no explanations.
 Return ONLY a JSON object mapping each number to its Arabic translation, e.g. {"1":"...","2":"..."} with no markdown.` : `You translate gym workout PROGRAM titles from English to Arabic for a Syrian sports store.
 Rules: keep it short; use gym words Syrian trainees say (Push Pull Legs = دفع سحب أرجل، Full Body = كامل الجسم، Split = سبليت، Beginner = مبتدئ، Mass = تضخيم، Strength = قوة، Cutting = تنشيف، Home = بالبيت، Dumbbell = دمبل). Keep numbers, brand names and abbreviations like PPL, 5x5, GZCLP as they are. Do NOT add explanations.
 Return ONLY a JSON object mapping each number to its Arabic title, e.g. {"1":"...","2":"..."} with no markdown.`;
   const user = batch.map((i, k) => `${k + 1}. ${String(D.P[i][FLD] || "").slice(0, desc ? 1500 : 120)}`).join("\n");
-  let last = "", got = {};
+  let last = "", got = {}, replied = false;
   for (const model of AI_MODELS) {
     try {
       const out = await env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: desc ? 6000 : 3000, temperature: 0.2 });
+      replied = true;
       let t = typeof out === "string" ? out : out.response ?? out.result?.response ?? (out.choices && out.choices[0]?.message?.content) ?? "";
       if (typeof t !== "string") t = JSON.stringify(t);
       t = t.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/```(json)?/g, "");
@@ -4593,7 +4596,8 @@ Return ONLY a JSON object mapping each number to its Arabic title, e.g. {"1":"..
     } catch (e) { last = String(e && e.message || e); }
   }
   const nGot = Object.keys(got).length;
-  if (!nGot && last) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + last }, 502);
+  // خطأ بس إذا الذكاء ما ردّ أبداً (شبكة/حصة). إذا ردّ ورفضنا الرد، بنعدّ فشل للدفعة وبنكمّل، وبعد 3 مرات البرنامج بيطلع من الدور (كان يعلق على نفس الدفعة للأبد)
+  if (!nGot && !replied) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + (last || "ما في رد") }, 502);
   Object.keys(got).forEach((i) => { ar[i] = got[i]; });
   await env.STORE.put(KA, JSON.stringify(ar));
   let ch = false; batch.forEach((i) => { if (!got[i]) { fail[i] = (fail[i] || 0) + 1; ch = true; } });

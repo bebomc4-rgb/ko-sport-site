@@ -815,7 +815,7 @@
       $("[data-exl-tgo]").addEventListener("click", exlTranslateAll);
       { let pRun = false; const pg = $("[data-ptr-go]"), ps = $("[data-ptr-stop]"), pt = $("[data-ptr-st]");
         pg.addEventListener("click", async () => { pRun = true; pg.disabled = true; ps.hidden = false;
-          try { for (const d of [0, 1]) { while (pRun) { const j = await api("/api/exlib/progtr", { method: "POST", body: JSON.stringify({ d }) }); pt.textContent = `عم يترجم ${d ? "الوصف" : "العناوين"}… ${nf(j.done)}`; if (!j.left) break; } } if (pRun) pt.textContent = "تمت ترجمة العناوين والوصف ✓"; } catch (e) { toast(e.message); }
+          try { for (const d of [0, 1]) { while (pRun) { const j = await api("/api/exlib/progtr", { method: "POST", body: JSON.stringify({ d }) }); pt.textContent = `عم يترجم ${d ? "الوصف" : "العناوين"}… ${nf(j.done)} · باقي ${nf(j.left)}`; if (!j.left) break; } } if (pRun) pt.textContent = "تمت ترجمة العناوين والوصف ✓"; } catch (e) { pt.textContent = "وقفت الترجمة: " + e.message; toast(e.message); }
           pRun = false; pg.disabled = false; ps.hidden = true; });
         ps.addEventListener("click", () => { pRun = false; }); }
       $("[data-exl-tstop]").addEventListener("click", () => { exlTRun = false; });
