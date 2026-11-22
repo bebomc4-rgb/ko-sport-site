@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>برنامجي — PDF</title>
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:#111;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{width:min(900px,calc(100% - 32px));margin:20px auto}
+h1{text-align:center;font-size:24px;margin:0 0 18px}
+h2{font-size:18px;margin:18px 0 7px;border-bottom:2px solid #a8843f;padding-bottom:5px;break-after:avoid}
+.rest{font-size:15px;font-weight:700;margin:0 0 8px}
+.row{display:flex;align-items:center;gap:12px;margin:0 0 8px;padding:6px;border:1px solid #ddd;border-radius:8px;break-inside:avoid}
+.row img{width:150px;height:150px;object-fit:contain;background:#fff;border-radius:6px;flex:none}
+.row div{display:flex;flex-direction:column;gap:5px}
+.row b{font-size:16px}.row span{font-size:18px;color:#a8843f;font-weight:700}.row em{font-size:13px;color:#555;font-style:normal}
+.bar{position:sticky;top:0;z-index:2;text-align:center;padding:10px;background:#fff;border-bottom:1px solid #ddd}
+.bar button{border:0;border-radius:10px;padding:10px 18px;background:#171717;color:#fff;font:700 16px system-ui,sans-serif;cursor:pointer}
+.empty{text-align:center;padding:50px 20px;color:#666}
+@media print{
+  .bar{display:none!important}
+  body{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  .wrap{width:auto;margin:10mm}
+}
+@media(max-width:500px){.row img{width:110px;height:110px}.wrap{width:calc(100% - 20px)}}
+</style>
+</head>
+<body>
+<div class="bar"><button type="button" id="print">🖨 طباعة / حفظ PDF</button></div>
+<main class="wrap" id="box"><div class="empty">جاري تجهيز البرنامج…</div></main>
+<script>
+(function(){
+  const $=(q)=>document.querySelector(q), esc=(v)=>String(v==null?"":v).replace(/[&<>"']/g,(s)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));
+  let d={days:[]};
+  try{d=JSON.parse(localStorage.getItem("ko_exmy")||"null")||d}catch(e){}
+  if(!Array.isArray(d.days))d.days=[];
+  if(!d.days.length){$("box").innerHTML='<div class="empty"><b>برنامجك فاضي</b><br>رجع للمكتبة وأضف تمارين</div>';return}
+  let ar=[];
+  try{const c=JSON.parse(localStorage.getItem("ko_exl_cache")||"null");if(c&&Array.isArray(c.index))ar=c.index}catch(e){}
+  const name=(id)=>{const x=ar.find((y)=>y&&y.i===id);return x?(x.a||x.n||""):id};
+  const wd=["السبت","الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"];
+  const html=(d.rs?'<p class="rest">⏱ راحة بين المجموعات: '+esc(d.rs)+' ث</p>':"")+d.days.map((dy)=>'<section><h2>'+esc(dy.t||"")+'</h2>'+((dy.ex||[]).map((e)=>'<div class="row"><img src="/exlib/m/'+encodeURIComponent(e.i)+'.jpg" alt=""><div><b>'+esc(name(e.i))+'</b><span>'+esc(e.s||1)+' × '+esc(e.r||1)+'</span>'+((e.rx)>0?'<em>راحة بعد التمرين '+esc(e.rx)+' ث</em>':'')+'</div></div>').join(""))+'</section>').join("");
+  $("box").innerHTML="<h1>برنامجي — KO SPORT</h1>"+html;
+  $("print").addEventListener("click",()=>window.print());
+  const imgs=[...document.images];let left=imgs.length,done=false;
+  const go=()=>{left-=1;if(left<=0&&!done){done=true;if(location.search.indexOf("v=")>=0)setTimeout(()=>window.print(),300)}};
+  if(!imgs.length){if(location.search.indexOf("v=")>=0)setTimeout(()=>window.print(),300)}
+  else imgs.forEach((im)=>{if(im.complete)go();else{im.onload=go;im.onerror=go}});
+  setTimeout(()=>{if(!done){done=true;window.print()}},8000);
+})();
+</script>
+</body>
+</html>
