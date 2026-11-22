@@ -806,12 +806,16 @@
     clearTimeout(excT); excT = setTimeout(async () => { try { const j = await api("/api/exlib/cfg", { method: "POST", body: JSON.stringify(o) }); EXC = j.cfg; toast("✓ انحفظ"); } catch (e) { toast(e.message); } }, 500);
   }
   function exlTStat() { const el = $("[data-exl-tstat]"); if (!el) return; const d = EXL.filter((x) => x.a).length; el.textContent = `مترجم ${nf(d)} من ${nf(EXL.length)} تمرين` + (d < EXL.length ? ` — ناقص ${nf(EXL.length - d)}` : " ✓"); }
-  let exlTranslationPoll = 0, exlTranslationPollBusy = false, exlTranslationLastStatus = "", exlTrCron = false;
-  // إذا عامل الـ Cron مو شغّال (ما في سر، أو الشغل ما تحرّك من 75 ثانية) اللوحة بتشغّل الدفعة بنفسها وهي مفتوحة
+  let exlTranslationPoll = 0, exlTranslationPollBusy = false, exlTranslationLastStatus = "", exlTrCron = false, exlTrSelf = false, exlTrSeen = { u: 0, at: 0 };
+  // إذا عامل الـ Cron مو شغّال (ما في سر، أو الشغل ما تحرّك من 45 ثانية) اللوحة بتشغّل الدفعات بنفسها ورا بعض وهي مفتوحة
   async function exlTrStep(job) {
     if (!job || job.status !== "running") return job;
-    if (exlTrCron && Date.now() - (job.updatedAt || 0) < 75000) return job;
-    try { const r = await api("/api/exlib/translation/step", { method: "POST" }); return r.job || job; } catch (e) { return job; }
+    if (job.updatedAt !== exlTrSeen.u) exlTrSeen = { u: job.updatedAt, at: Date.now() };
+    if (exlTrCron && !exlTrSelf) {
+      if (Date.now() - exlTrSeen.at < 45000 && Date.now() - (job.updatedAt || 0) < 45000) return job;
+      exlTrSelf = true; // الـ Cron واقف: من هلق اللوحة بتكمّل لحالها
+    }
+    try { const r = await api("/api/exlib/translation/step", { method: "POST" }); return r.job || job; } catch (e) { toast("دفعة الترجمة فشلت: " + e.message); return job; }
   }
   function renderExlTranslation(job) {
     const active = !!job && job.status === "running";
@@ -823,11 +827,11 @@
     const progress = `${nf(job.done)} من ${nf(job.total)} (${pct}٪)`;
     const state = job.status === "running" ? "عم يترجم بالخلفية" : job.status === "completed" ? "خلصت الترجمة" : job.status === "stopped" ? "وقفت الترجمة" : "الترجمة توقفت بسبب خطأ";
     if (job.kind === "exercises") {
-      if (exercise) exercise.textContent = `${state}: ${progress}${active ? (exlTrCron ? " — بتكمل لو سكّرت اللوحة" : " — خلّي اللوحة مفتوحة لحد ما تخلص") : job.failed ? ` — تعذّر بهالدفعة ${nf(job.failed)}` : " ✓"}${job.error ? " — " + job.error : ""}`;
+      if (exercise) exercise.textContent = `${state}: ${progress}${active ? (exlTrCron && !exlTrSelf ? " — بتكمل لو سكّرت اللوحة" : " — خلّي اللوحة مفتوحة لحد ما تخلص") : job.failed ? ` — تعذّر بهالدفعة ${nf(job.failed)}` : " ✓"}${job.error ? " — " + job.error : ""}`;
       if (programs) programs.textContent = "";
     } else {
       const phase = job.phase === "descriptions" ? "الأوصاف" : "العناوين";
-      if (programs) programs.textContent = `${state} ${phase}: ${progress}${active ? (exlTrCron ? " — بتكمل لو سكّرت اللوحة" : " — خلّي اللوحة مفتوحة لحد ما تخلص") : job.failed ? ` — تعذّر بهالدفعة ${nf(job.failed)}` : " ✓"}${job.error ? " — " + job.error : ""}`;
+      if (programs) programs.textContent = `${state} ${phase}: ${progress}${active ? (exlTrCron && !exlTrSelf ? " — بتكمل لو سكّرت اللوحة" : " — خلّي اللوحة مفتوحة لحد ما تخلص") : job.failed ? ` — تعذّر بهالدفعة ${nf(job.failed)}` : " ✓"}${job.error ? " — " + job.error : ""}`;
       if (exercise) exercise.textContent = `مترجم ${nf(EXL.filter((x) => x.a).length)} من ${nf(EXL.length)} تمرين`;
     }
   }
@@ -843,7 +847,7 @@
       if (exlTranslationLastStatus === "running" && status && status !== "running") { await loadExlib(); await progStat(); renderExlTranslation(job); }
       exlTranslationLastStatus = status;
       clearTimeout(exlTranslationPoll);
-      if (status === "running") exlTranslationPoll = setTimeout(refreshExlTranslation, exlTrCron ? 3000 : 300);
+      if (status === "running") exlTranslationPoll = setTimeout(refreshExlTranslation, exlTrCron && !exlTrSelf ? 3000 : 300);
     } catch (e) {
       const el = $("[data-exl-tstat]"); if (el) el.textContent = "ما قدرت أقرا تقدّم الترجمة: " + e.message;
     } finally { exlTranslationPollBusy = false; }
