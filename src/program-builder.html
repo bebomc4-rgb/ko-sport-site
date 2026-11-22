@@ -56,6 +56,8 @@ html[data-theme=dark] .err{background:#2a1517}
 .ex:last-of-type{border-bottom:0}
 .ex .n{font-weight:700}
 .xmw{background:#fff;border-radius:10px;overflow:hidden;margin:0 0 8px;max-width:340px}.xm{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain}
+video.xm{background:#fff;aspect-ratio:auto 1;opacity:0;transition:opacity .15s;pointer-events:none}video.xm.on{opacity:1}
+video.xm::-webkit-media-controls,video.xm::-webkit-media-controls-panel,video.xm::-webkit-media-controls-start-playback-button,video.xm::-webkit-media-controls-overlay-play-button,video.xm::-webkit-media-controls-enclosure{display:none!important;-webkit-appearance:none}
 .ex .n em{font-style:normal;color:var(--gold2);font-size:.75rem;font-weight:600;margin-inline-start:6px}
 .ex .p{display:flex;gap:12px;flex-wrap:wrap;margin-top:2px;font-size:.92rem}
 .ex .p b{color:var(--gold2)}
@@ -322,6 +324,8 @@ function gen(I,seed){
     return null;
   }
   let MIO=null;
+  // الفيديو بيظهر بس وهو شغّال (قبلها مربع أبيض، بلا علامة التشغيل الرمادية)
+  document.addEventListener("playing",e=>{if(e.target&&e.target.tagName==="VIDEO")e.target.classList.add("on")},true);
   async function media(){
     if(CFG.media===false)return;
     await lib();if(!LIB.length)return;
