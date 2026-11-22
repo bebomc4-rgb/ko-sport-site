@@ -1993,7 +1993,11 @@
     if (/glute|hip thrust|\bbridge|kickback|kick back|donkey|abduct|adduct|hydrant|clam|hip extension|\bhip\b|pull.?through/.test(t)) return "Hips";
     return "Quadriceps";
   }
+  // زر الرجوع: ارجع لنفس مكان السكرول بعد ما ينرسم المحتوى (بعضو بيجي async)، وبنفس عدد التمارين يلي كانت مفتوحة
+  const exlRY = () => { try { const k = (history.state || {}).koK; return k != null && scrollMem[k] > 0 ? scrollMem[k] : 0; } catch (e) { return 0; } };
+  const exlRest = (y) => { if (!y) return; const de = document.documentElement.style; de.setProperty("scroll-behavior", "auto", "important"); window.scrollTo(0, y); requestAnimationFrame(() => { window.scrollTo(0, y); de.removeProperty("scroll-behavior"); }); };
   async function exlibPage() {
+    const ry = exlRY();
     document.title = "مكتبة التمارين | " + (C.name || "");
     if (!exl.L) {
       app.innerHTML = '<div class="loading">جاري التحميل…</div>';
@@ -2017,7 +2021,7 @@
     if (hm === "my") return exlMyPage();
     exl.m = hm && exl.L.some((x) => x.m === hm) ? hm : "";
     exl.e = exl.m && he && (he === "*" || exl.L.some((x) => x.m === exl.m && x.e === he)) ? he : "";
-    exl.q = ""; exl.n = exlPerN();
+    exl.q = ""; exl.n = (exl.nm && exl.nm[curRoute()]) || exlPerN();
     const c = exl.cfg || {};
     app.innerHTML = `
       <div class="exl exl-t-${esc(c.theme || "site")} exl-sh-${esc(c.shape || "round")}">
@@ -2035,6 +2039,7 @@
       const t = ev.target.closest("[data-exl-more] button,[data-exl-id]"); if (!t) return;
       if (t.hasAttribute("data-exl-id")) return exlOpen(t.dataset.exlId);
     };
+    exlRest(ry);
   }
   // ---------- برامج التمرين (صاحب المتجر 21/11/2026): #/exlib/programs ← #/exlib/programs/<رقم> ----------
   // البيانات ({EX:[[عضلة،أداة،ملف،اسم]], P:[برامج]}) بـ KV exlib:prog، وأغلفة pcNNN.webp بمخزن ملفات المكتبة؛ لحساب المالك بس. تمارين البرنامج بتنربط بتمارين المكتبة (عضلة+أداة+اسم) وبتعرض فيديوهاتها.
@@ -2061,6 +2066,7 @@
   const exlPT = (i, p) => (exl.progAr && exl.progAr[i]) || p.t;
   const exlMeta = (p) => [p.dy ? p.dy + " أيام بالأسبوع" : "", p.wk ? p.wk + " أسابيع" : "", EXL_LV[p.lv] || ""].filter(Boolean).join(" · ");
   async function exlProgPage(idx) {
+    const ry = exlRY();
     const c = exl.cfg || {};
     app.innerHTML = '<div class="loading">جاري تحميل البرامج…</div>';
     let D = null; try { D = await exlProgLoad(); } catch (e) { D = null; }
@@ -2086,7 +2092,7 @@
         ${p.d ? `<div class="exl-pg-d"><b>وصف البرنامج</b>${exl.progDar && exl.progDar[n] ? `<p dir="auto">${esc(exl.progDar[n])}</p><details><summary>النص الأصلي (إنكليزي)</summary><p dir="ltr">${esc(p.d)}</p></details>` : `<p dir="ltr">${esc(p.d)}</p>`}</div>` : ""}${ws}`);
       app.onchange = null;
       app.onclick = (ev) => { const t = ev.target.closest("[data-exl-id]"); if (t) exlOpen(t.dataset.exlId); };
-      exlVids(app, "io3");
+      exlVids(app, "io3"); exlRest(ry);
       return;
     }
     const f = exl.pf, q = exlArq(f.q);
@@ -2126,6 +2132,7 @@
       const b = ev.target.closest("[data-pf]");
       if (b) { f[b.dataset.pf] = b.dataset.pf === "sort" ? b.dataset.v : +b.dataset.v; f.n = exlPerN(); return exlProgPage(""); }
     };
+    exlRest(ry);
   }
   const exlTile = (href, ic, label, n, c) => `<a class="exl-tile" href="${href}"><span class="exl-ti">${ic}</span><b>${esc(label)}</b>${c.showCount !== false && n != null ? `<small>${n} تمرين</small>` : ""}</a>`;
   const exlH = (...p) => "#/exlib" + p.map((x) => "/" + encodeURIComponent(x)).join("");
@@ -2191,7 +2198,7 @@
     if (exl.sio) { exl.sio.disconnect(); exl.sio = null; }
     const s = app.querySelector("[data-exl-sent]"); if (!s) return;
     if (!("IntersectionObserver" in window)) { exl.n = 1e9; exlDraw(true); return; }
-    exl.sio = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { exl.sio.disconnect(); exl.n += exlPerN(); exlDraw(true); } }, { rootMargin: "700px" });
+    exl.sio = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { exl.sio.disconnect(); exl.n += exlPerN(); (exl.nm = exl.nm || {})[curRoute()] = exl.n; exlDraw(true); } }, { rootMargin: "700px" });
     exl.sio.observe(s);
   }
   function exlDraw(more) {
