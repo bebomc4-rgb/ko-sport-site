@@ -2258,3 +2258,7 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-pk{max-height:62vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;margin-top:8px}.exl-pk .exl-my-row{height:100px;box-sizing:border-box;margin-bottom:8px}.exl-pk .exl-tile{font:inherit;cursor:pointer}.exl-pk .exl-my-pick{width:100%}
 .exl-pg-d{margin:10px 0}.exl-pg-d>b{display:block;margin-bottom:4px}.exl-pg-d p{white-space:pre-line;line-height:1.7}.exl-pg-d details{margin-top:6px;font-size:13px}
 html.sheet-lock,html.sheet-lock body{overscroll-behavior:none}.sheet-wrap,.sheet{overscroll-behavior:contain}
+.exl-my-row{align-items:center}.exl-my-grip{flex:none;touch-action:none;cursor:grab;font-size:22px;line-height:1;padding:10px 6px;border:0;background:none;color:#a8843f;user-select:none}
+.exl-my-row.drag{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.25);position:relative;z-index:2}
+.exl-my-bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.exl-my-f{display:grid;grid-template-columns:1fr 1fr;gap:6px}.exl-my-f label{display:flex;flex-direction:column;gap:2px}.exl-my-f small{font-size:11px;opacity:.75;line-height:1.2}.exl-my-f input{width:100%;box-sizing:border-box;padding:6px 4px;text-align:center;border-radius:8px;border:1px solid var(--line,#ddd)}
+.exl-my-rm{flex:none;border:0;background:none;font-size:18px;color:#c0392b;padding:8px}.exl-pk .exl-my-row{height:100px}.exl-my-day .exl-my-row{height:auto}

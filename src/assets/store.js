@@ -2295,16 +2295,22 @@
       draw();
     });
   }
+  const exlMyRest = (e) => [e.rs ? "راحة بين المجموعات " + e.rs + " ث" : "", e.rx ? "راحة بعد التمرين " + e.rx + " ث" : ""].filter(Boolean).join(" · ");
   const exlMyName = (id) => { const x = (exl.L || []).find((y) => y.i === id); return x ? (x.a || x.n) : ""; };
   function exlMyPage() {
     document.title = "برنامجي | " + (C.name || "");
     const d = exlMyGet();
-    const days = d.days.map((dy, k) => `<section class="exl-my-day" data-day="${k}"><div class="exl-my-hd"><b class="exl-my-t">${esc(dy.t)}</b><button type="button" class="btn btn-dark sm" data-my-addex="${esc(dy.t)}">➕ أضف تمرين</button><button type="button" data-my-del-day="${k}" aria-label="حذف اليوم">🗑</button></div>${dy.ex.length ? dy.ex.map((e, j) => `<div class="exl-my-row"><img src="/exlib/m/${esc(e.i)}.jpg" alt="" loading="lazy"><b>${esc(exlMyName(e.i))}</b><span class="exl-my-sr"><input type="number" min="1" max="20" value="${e.s}" data-my-s="${k}.${j}" aria-label="مجموعات"> × <input type="number" min="1" max="100" value="${e.r}" data-my-r="${k}.${j}" aria-label="تكرار"></span><span class="exl-my-ac"><button type="button" data-my-up="${k}.${j}" aria-label="فوق">▲</button><button type="button" data-my-dn="${k}.${j}" aria-label="تحت">▼</button><button type="button" data-my-rm="${k}.${j}" aria-label="حذف">✕</button></span></div>`).join("") : '<p class="exl-count">اليوم فاضي، اكبس «أضف تمرين».</p>'}</section>`).join("");
+    const days = d.days.map((dy, k) => `<section class="exl-my-day" data-day="${k}"><div class="exl-my-hd"><b class="exl-my-t">${esc(dy.t)}</b><button type="button" class="btn btn-dark sm" data-my-addex="${esc(dy.t)}">➕ أضف تمرين</button><button type="button" data-my-del-day="${k}" aria-label="حذف اليوم">🗑</button></div>${dy.ex.length ? dy.ex.map((e, j) => `<div class="exl-my-row" data-row="${j}"><button type="button" class="exl-my-grip" data-my-drag aria-label="اسحب لترتيب التمرين" title="اسحب للترتيب">⠿</button><img src="/exlib/m/${esc(e.i)}.jpg" alt="" loading="lazy"><div class="exl-my-bd"><b>${esc(exlMyName(e.i))}</b><div class="exl-my-f"><label><small>مجموعات</small><input type="number" inputmode="numeric" min="1" max="20" value="${e.s}" data-my-s="${k}.${j}"></label><label><small>تكرار</small><input type="number" inputmode="numeric" min="1" max="100" value="${e.r}" data-my-r="${k}.${j}"></label><label><small>راحة بين المجموعات (ث)</small><input type="number" inputmode="numeric" min="0" max="600" placeholder="اختياري" value="${e.rs || ""}" data-my-rs="${k}.${j}"></label><label><small>راحة بعد التمرين (ث)</small><input type="number" inputmode="numeric" min="0" max="900" placeholder="اختياري" value="${e.rx || ""}" data-my-rx="${k}.${j}"></label></div></div><button type="button" class="exl-my-rm" data-my-rm="${k}.${j}" aria-label="حذف">✕</button></div>`).join("") : '<p class="exl-count">اليوم فاضي، اكبس «أضف تمرين».</p>'}</section>`).join("");
     app.innerHTML = `<div class="exl exl-t-${esc((exl.cfg || {}).theme || "site")}"><div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><a href="#/exlib/my">برنامجي</a></div><h1 class="page-title">🗂 برنامجي</h1>${d.days.length ? days : '<div class="empty"><b>برنامجك فاضي</b>اختار يوم من تحت وضيف تمارينو، أو افتح أي تمرين بالمكتبة واكبس «أضف لبرنامجي»</div>'}<div class="exl-my-bar">${EXMY_WD.filter((w) => !d.days.some((y) => y.t === w)).map((w) => `<button type="button" class="chip exl-chip" data-my-newday="${w}">+ ${w}</button>`).join("")}</div><div class="exl-my-bar">${d.days.length ? '<button type="button" class="btn btn-dark" data-my-png>🖼 تصدير صور</button><button type="button" class="btn btn-dark" data-my-pdf>📄 PDF</button>' : ""}</div></div>`;
     app.onchange = (ev) => {
       const t = ev.target, dd = exlMyGet();
       if (t.classList.contains("exl-my-t")) { dd.days[+t.closest("[data-day]").dataset.day].t = t.value.trim() || "يوم"; }
-      else if (t.dataset.myS || t.dataset.myR) { const k = t.dataset.myS || t.dataset.myR, [a, b] = k.split(".").map(Number), e = dd.days[a].ex[b]; const v = Math.max(1, Math.min(t.dataset.myS ? 20 : 100, parseInt(t.value) || 1)); if (t.dataset.myS) e.s = v; else e.r = v; t.value = v; }
+      else if (t.dataset.myS || t.dataset.myR || t.dataset.myRs || t.dataset.myRx) {
+        const f = t.dataset.myS ? "s" : t.dataset.myR ? "r" : t.dataset.myRs ? "rs" : "rx", k = t.dataset.myS || t.dataset.myR || t.dataset.myRs || t.dataset.myRx, [a, b] = k.split(".").map(Number), e = dd.days[a].ex[b];
+        const mx = { s: 20, r: 100, rs: 600, rx: 900 }[f], v = parseInt(t.value);
+        if (f === "rs" || f === "rx") { if (v > 0) e[f] = Math.min(mx, v); else delete e[f]; t.value = e[f] || ""; }
+        else { e[f] = Math.max(1, Math.min(mx, v || 1)); t.value = e[f]; }
+      }
       else return;
       exlMySave(dd);
     };
@@ -2314,22 +2320,41 @@
       else if (t.dataset.myAddex) return exlMySearch(t.dataset.myAddex);
       else if (t.dataset.myDelDay != null) { if (!confirm("حذف اليوم؟")) return; dd.days.splice(+t.dataset.myDelDay, 1); }
       else if (t.dataset.myRm) { const [a, b] = g("myRm"); dd.days[a].ex.splice(b, 1); }
-      else if (t.dataset.myUp) { const [a, b] = g("myUp"); if (b > 0) dd.days[a].ex.splice(b - 1, 0, dd.days[a].ex.splice(b, 1)[0]); }
-      else if (t.dataset.myDn) { const [a, b] = g("myDn"); if (b < dd.days[a].ex.length - 1) dd.days[a].ex.splice(b + 1, 0, dd.days[a].ex.splice(b, 1)[0]); }
       else if (t.hasAttribute("data-my-png")) return exlMyPng();
       else if (t.hasAttribute("data-my-pdf")) return exlMyPdf();
       else return;
       exlMySave(dd); exlMyPage();
     };
+    // ترتيب التمارين بالضغط والسحب من المقبض ⠿ (جوّا نفس اليوم)
+    app.onpointerdown = (ev) => {
+      const gp = ev.target.closest("[data-my-drag]"); if (!gp) return;
+      const row = gp.closest(".exl-my-row"), sec = row.closest("[data-day]"), di = +sec.dataset.day; ev.preventDefault();
+      try { gp.setPointerCapture(ev.pointerId); } catch (e) {}
+      row.classList.add("drag");
+      const mv = (e) => {
+        if (e.clientY < 70) window.scrollBy(0, -14); else if (e.clientY > innerHeight - 70) window.scrollBy(0, 14);
+        const rows = [...sec.querySelectorAll(".exl-my-row")].filter((r) => r !== row);
+        let before = null; for (const r of rows) { const b = r.getBoundingClientRect(); if (e.clientY < b.top + b.height / 2) { before = r; break; } }
+        const cur = row.nextElementSibling; if (before !== cur && (before || cur)) { const last = rows[rows.length - 1]; sec.insertBefore(row, before || (last ? last.nextSibling : null)); }
+      };
+      const up = () => {
+        gp.removeEventListener("pointermove", mv); gp.removeEventListener("pointerup", up); gp.removeEventListener("pointercancel", up);
+        row.classList.remove("drag");
+        const order = [...sec.querySelectorAll(".exl-my-row")].map((r) => +r.dataset.row), dd = exlMyGet(), old = dd.days[di].ex;
+        if (order.some((o, k) => o !== k)) { dd.days[di].ex = order.map((o) => old[o]); exlMySave(dd); }
+        exlMyPage();
+      };
+      gp.addEventListener("pointermove", mv); gp.addEventListener("pointerup", up); gp.addEventListener("pointercancel", up);
+    };
   }
   function exlMyPdf() {
     const d = exlMyGet(), o = location.origin;
-    const body = d.days.map((dy) => `<h2>${esc(dy.t)}</h2>` + dy.ex.map((e) => `<div class="r"><img src="${o}/exlib/m/${esc(e.i)}.jpg"><div><b>${esc(exlMyName(e.i))}</b><span>${e.s} × ${e.r}</span></div></div>`).join("")).join("");
+    const body = d.days.map((dy) => `<h2>${esc(dy.t)}</h2>` + dy.ex.map((e) => `<div class="r"><img src="${o}/exlib/m/${esc(e.i)}.jpg"><div><b>${esc(exlMyName(e.i))}</b><span>${e.s} × ${e.r}</span>${exlMyRest(e) ? `<em>${esc(exlMyRest(e))}</em>` : ""}</div></div>`).join("")).join("");
     // iframe مخفي بدل نافذة جديدة: ما بيضيف خانة بسجل المتصفح فزر الرجوع ما بيعلق
     document.querySelectorAll("iframe[data-my-pf]").forEach((f) => f.remove());
     const f = document.createElement("iframe"); f.setAttribute("data-my-pf", ""); f.style.cssText = "position:fixed;width:0;height:0;border:0;right:0;bottom:0;opacity:0;pointer-events:none"; document.body.appendChild(f);
     const w = f.contentWindow; w.document.open();
-    w.document.write(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>برنامجي</title><style>body{font-family:system-ui,sans-serif;margin:16px}h2{margin:18px 0 8px;border-bottom:2px solid #a8843f;padding-bottom:4px}.r{display:flex;gap:12px;align-items:center;margin:0 0 8px;break-inside:avoid}.r img{width:150px;height:150px;object-fit:contain;background:#fff;border:1px solid #ddd;border-radius:8px}.r div{display:flex;flex-direction:column;gap:4px}.r span{font-size:18px;color:#a8843f;font-weight:700}</style>${body}`);
+    w.document.write(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>برنامجي</title><style>body{font-family:system-ui,sans-serif;margin:16px}h2{margin:18px 0 8px;border-bottom:2px solid #a8843f;padding-bottom:4px}.r{display:flex;gap:12px;align-items:center;margin:0 0 8px;break-inside:avoid}.r img{width:150px;height:150px;object-fit:contain;background:#fff;border:1px solid #ddd;border-radius:8px}.r div{display:flex;flex-direction:column;gap:4px}.r span{font-size:18px;color:#a8843f;font-weight:700}.r em{font-size:14px;color:#555;font-style:normal}</style>${body}`);
     w.document.close();
     const im = [...w.document.images]; let n = im.length, done = false;
     const pr = () => { if (done) return; done = true; try { w.focus(); w.print(); } catch (e) { toast("ما اشتغلت الطباعة، جرّب تصدير صور"); } setTimeout(() => f.remove(), 60000); };
@@ -2350,7 +2375,8 @@
         if (im) { const sc = Math.min(230 / im.width, 230 / im.height), iw = im.width * sc, ih = im.height * sc; x.drawImage(im, 40 + (230 - iw) / 2, y + 15 + (230 - ih) / 2, iw, ih); }
         x.strokeStyle = "#ddd"; x.strokeRect(40, y + 15, 230, 230);
         x.fillStyle = "#111"; x.font = "700 40px system-ui,sans-serif"; x.fillText(exlMyName(e.i), W - 40, y + 110, W - 340);
-        x.fillStyle = "#a8843f"; x.font = "700 44px system-ui,sans-serif"; x.fillText(e.s + " × " + e.r, W - 40, y + 180);
+        x.fillStyle = "#a8843f"; x.font = "700 44px system-ui,sans-serif"; x.fillText(e.s + " × " + e.r, W - 40, y + 170);
+        const rt = exlMyRest(e); if (rt) { x.fillStyle = "#555"; x.font = "500 30px system-ui,sans-serif"; x.fillText(rt, W - 40, y + 220, W - 340); }
       });
       await new Promise((res) => cv.toBlob((b) => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "برنامجي-" + (k + 1) + ".png"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); res(); }, "image/png"));
     }
