@@ -1995,7 +1995,7 @@
   }
   // زر الرجوع: ارجع لنفس مكان السكرول بعد ما ينرسم المحتوى (بعضو بيجي async)، وبنفس عدد التمارين يلي كانت مفتوحة
   const exlRY = () => { try { const k = (history.state || {}).koK; return k != null && scrollMem[k] > 0 ? scrollMem[k] : 0; } catch (e) { return 0; } };
-  const exlRest = (y) => { if (!y) return; const de = document.documentElement.style; de.setProperty("scroll-behavior", "auto", "important"); window.scrollTo(0, y); requestAnimationFrame(() => { window.scrollTo(0, y); de.removeProperty("scroll-behavior"); }); };
+  const exlRest = (y) => { if (y) scrollRestore(y, (history.state || {}).koK); };
   async function exlibPage() {
     const ry = exlRY();
     document.title = "مكتبة التمارين | " + (C.name || "");
@@ -3230,7 +3230,24 @@ ${trustH()}
   const toTop = () => { const de = document.documentElement, st = de.style; st.setProperty("scroll-behavior", "auto", "important"); void getComputedStyle(de).scrollBehavior; window.scrollTo(0, 0); requestAnimationFrame(() => st.removeProperty("scroll-behavior")); };
   // going back to a page you already saw (e.g. the product list) puts you exactly where you were
   let navK = Date.now() % 1e9, curK = null; const scrollMem = {};
-  addEventListener("scroll", () => { if (curK != null) scrollMem[curK] = window.scrollY; }, { passive: true });
+  // الرجوع بيرجّع نفس مكان السكرول بالضبط: لما الصفحة لسا قصيرة (بتنرسم أو بتتحمّل) المتصفح بيقصّ المكان، فما منسجّل المكان الجديد
+  // وقت الاسترجاع (وإلا بيكتب فوق المكان الأصلي ويضيع)، ومنعيد المحاولة لحد ما الصفحة تطول أو يلمس المستخدم الشاشة
+  const rst = { on: false, t: [], off: null };
+  // ما منسجّل إلا إذا خانة السجل الحالية هي نفسها خانة الصفحة المرسومة (بين الكبسة ورسم الصفحة الجديدة بيصير scroll لـ0 وكان يمسح المكان)
+  addEventListener("scroll", () => { if (curK != null && !rst.on && history.state && history.state.koK === curK) scrollMem[curK] = window.scrollY; }, { passive: true });
+  function scrollRestore(y, k) {
+    rst.t.forEach(clearTimeout); rst.t = []; if (rst.off) rst.off();
+    if (!(y > 0)) { rst.on = false; return; }
+    rst.on = true; const de = document.documentElement.style;
+    const done = (keep) => { rst.t.forEach(clearTimeout); rst.t = []; rst.on = false; if (rst.off) { rst.off(); rst.off = null; } if (keep && k != null) scrollMem[k] = y; de.removeProperty("scroll-behavior"); };
+    const stop = () => done(false);
+    ["touchstart", "wheel", "mousedown", "keydown"].forEach((ev) => addEventListener(ev, stop, { passive: true, once: true, capture: true }));
+    rst.off = () => ["touchstart", "wheel", "mousedown", "keydown"].forEach((ev) => removeEventListener(ev, stop, true));
+    const go = () => { de.setProperty("scroll-behavior", "auto", "important"); if (Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); };
+    go(); requestAnimationFrame(go);
+    [60, 150, 300, 600, 1000, 1600].forEach((ms) => rst.t.push(setTimeout(go, ms)));
+    rst.t.push(setTimeout(() => done(true), 2200));
+  }
   // one from each section in turn (the order inside each section is kept)
   // أصوات ناعمة (صاحب المتجر، 16 تشرين التاني 2026): تحذير لما ينكتب حرف إنكليزي بالاسم، ونغمة نجاح لما يخلص التسجيل/الدخول
   let koAC = null, warnAt = 0;
@@ -3258,6 +3275,7 @@ ${trustH()}
     return out;
   }
   function route(e, keepScroll) {
+    if (!keepScroll) scrollRestore(0); // صفحة جديدة: وقّف أي استرجاع سكرول قديم
     let hs = history.state; const revisit = !keepScroll && hs && hs.koK != null && scrollMem[hs.koK] != null;
     if (!hs || hs.koK == null) { hs = { ...(hs || {}), koK: ++navK }; try { history.replaceState(hs, ""); } catch {} }
     curK = null; // don't record while the page is swapped
@@ -3313,7 +3331,7 @@ ${trustH()}
     finishRoute(hs, keepScroll, keepY, revisit);
   }
   function finishRoute(hs, keepScroll, keepY, revisit) {
-    if (revisit) { const y = scrollMem[hs.koK], de = document.documentElement.style; de.setProperty("scroll-behavior", "auto", "important"); window.scrollTo(0, y); requestAnimationFrame(() => { window.scrollTo(0, y); de.removeProperty("scroll-behavior"); }); }
+    if (revisit) scrollRestore(scrollMem[hs.koK], hs.koK);
     else if (!keepScroll && window.scrollY) toTop();
     if (keepY) {
       const de = document.documentElement.style; de.setProperty("scroll-behavior", "auto", "important");
