@@ -807,17 +807,18 @@
   }
   function exlTStat() { const el = $("[data-exl-tstat]"); if (!el) return; const d = EXL.filter((x) => x.a).length; el.textContent = `مترجم ${nf(d)} من ${nf(EXL.length)} تمرين` + (d < EXL.length ? ` — ناقص ${nf(EXL.length - d)}` : " ✓"); }
   let exlTRun = false;
-  async function exlTranslateAll() {
-    const go = $("[data-exl-tgo]"), stop = $("[data-exl-tstop]"), el = $("[data-exl-tstat]");
-    exlTRun = true; go.disabled = true; stop.hidden = false;
+  async function exlTranslateAll(redo) {
+    const go = $("[data-exl-tgo]"), rd = $("[data-exl-tredo]"), stop = $("[data-exl-tstop]"), el = $("[data-exl-tstat]");
+    if (redo && !confirm("بدك تعيد ترجمة كل أسماء التمارين؟ بتنحفظ نسخة احتياطية من الترجمة الحالية، والأسماء يلي كتبتها بإيدك من هلق وطالع ما بتتغيّر.")) return;
+    exlTRun = true; go.disabled = true; if (rd) rd.disabled = true; stop.hidden = false;
     try {
       while (exlTRun) {
-        const j = await api("/api/exlib/translate", { method: "POST", body: "{}" });
+        const j = await api("/api/exlib/translate", { method: "POST", body: JSON.stringify(redo ? { redo: 1 } : {}) });
         el.textContent = `عم يترجم… ${nf(j.done)} من ${nf(j.total)}` + (j.failed ? ` (تخطّى ${j.failed} بهالدفعة)` : "");
         if (!j.left) break;
       }
     } catch (e) { toast(e.message); }
-    exlTRun = false; go.disabled = false; stop.hidden = true;
+    exlTRun = false; go.disabled = false; if (rd) rd.disabled = false; stop.hidden = true;
     loadExlib();
   }
   { const v = $('[data-view="exlib"]');
@@ -825,11 +826,16 @@
       v.addEventListener("change", (e) => { const row = e.target.closest("[data-exid]"); if (row && e.target.dataset.exf) exlSave(row, false); });
       v.addEventListener("input", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); else if (e.target.matches("[data-pbc],[data-pbg]")) pbSave(); });
       v.addEventListener("change", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); else if (e.target.matches("[data-pbc],[data-pbg]")) pbSave(); });
-      $("[data-exl-tgo]").addEventListener("click", exlTranslateAll);
-      { let pRun = false; const pg = $("[data-ptr-go]"), ps = $("[data-ptr-stop]"), pt = $("[data-ptr-st]");
-        pg.addEventListener("click", async () => { pRun = true; pg.disabled = true; ps.hidden = false;
-          try { for (const d of [0, 1]) { while (pRun) { const j = await api("/api/exlib/progtr", { method: "POST", body: JSON.stringify({ d }) }); pt.textContent = `عم يترجم ${d ? "الوصف" : "العناوين"}… ${nf(j.done)} · باقي ${nf(j.left)}`; if (!j.left) break; } } if (pRun) pt.textContent = "تمت ترجمة العناوين والوصف ✓"; } catch (e) { pt.textContent = "وقفت الترجمة: " + e.message; toast(e.message); }
-          pRun = false; pg.disabled = false; ps.hidden = true; });
+      $("[data-exl-tgo]").addEventListener("click", () => exlTranslateAll(false));
+      $("[data-exl-tredo]").addEventListener("click", () => exlTranslateAll(true));
+      { let pRun = false; const pg = $("[data-ptr-go]"), pr = $("[data-ptr-redo]"), ps = $("[data-ptr-stop]"), pt = $("[data-ptr-st]");
+        const runP = async (redo) => {
+          if (redo && !confirm("بدك تعيد ترجمة كل عناوين ووصف البرامج؟ بتنحفظ نسخة احتياطية من الترجمة الحالية قبل ما نبدأ.")) return;
+          pRun = true; pg.disabled = true; pr.disabled = true; ps.hidden = false;
+          try { for (const d of [0, 1]) { while (pRun) { const j = await api("/api/exlib/progtr", { method: "POST", body: JSON.stringify({ d, redo: redo ? 1 : 0 }) }); pt.textContent = `عم يترجم ${d ? "الوصف" : "العناوين"}… ${nf(j.done)} · باقي ${nf(j.left)}`; if (!j.left) break; } } if (pRun) pt.textContent = "تمت ترجمة العناوين والوصف ✓"; } catch (e) { pt.textContent = "وقفت الترجمة: " + e.message; toast(e.message); }
+          pRun = false; pg.disabled = false; pr.disabled = false; ps.hidden = true; };
+        pg.addEventListener("click", () => runP(false));
+        pr.addEventListener("click", () => runP(true));
         ps.addEventListener("click", () => { pRun = false; }); }
       $("[data-exl-tstop]").addEventListener("click", () => { exlTRun = false; });
       v.addEventListener("click", (e) => { const rs = e.target.closest("[data-exreset]"); if (rs) exlSave(rs.closest("[data-exid]"), true); });
