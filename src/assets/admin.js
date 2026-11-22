@@ -881,6 +881,16 @@
       $("[data-exl-tredo]").addEventListener("click", () => startExlTranslation("exercises", true));
       $("[data-ptr-go]").addEventListener("click", () => startExlTranslation("programs", false));
       $("[data-ptr-redo]").addEventListener("click", () => startExlTranslation("programs", true));
+      $("#arImportFile").addEventListener("change", async (e) => {
+        const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+        const el = $("[data-exl-tstat]"); if (el) el.textContent = "عم نستورد الترجمة…";
+        try {
+          const body = await f.text(); JSON.parse(body);
+          const j = await api("/api/exlib/arimport", { method: "POST", body });
+          toast(`✓ انحفظت: ${nf(j.ex)} تمرين${j.pt ? `، ${nf(j.pt)} عنوان برنامج` : ""}${j.pd ? `، ${nf(j.pd)} وصف` : ""}`);
+          await loadExlib(); await progStat(); exlTStat();
+        } catch (err) { if (el) el.textContent = "ما انستورد الملف: " + err.message; toast(err.message); }
+      });
       $("[data-exl-tstop]").addEventListener("click", stopExlTranslation);
       $("[data-ptr-stop]").addEventListener("click", stopExlTranslation);
       v.addEventListener("click", (e) => { const rs = e.target.closest("[data-exreset]"); if (rs) exlSave(rs.closest("[data-exid]"), true); });

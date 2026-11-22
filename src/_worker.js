@@ -4745,6 +4745,31 @@ Silently proofread every title for accuracy, natural wording, and consistency. R
   if (ch) await env.STORE.put(KF, JSON.stringify(fail));
   return json({ ok: true, total: D.P.length, done: doneN(), left: left().length, got: nGot, failed: batch.length - nGot }, 200, { "cache-control": "no-store" });
 }
+// استيراد ترجمة جاهزة (22/11/2026): ملف JSON فيه {ar:{رقم التمرين: اسم}} و/أو {pt:{رقم البرنامج: عنوان}, pd:{رقم البرنامج: وصف}}.
+// الترجمة المستوردة بتتعلّم 8 (أعلى من EXL_TRV)، فإعادة الصياغة بالذكاء ما بتكتب فوقها؛ والأسماء اليدوية (9) ما بتتغيّر.
+async function exlibArImport(request, env) {
+  let b; try { b = await request.json(); } catch { return json({ error: "الملف مو JSON صحيح" }, 400); }
+  const clean = (v, n) => String(v == null ? "" : v).replace(/[<>]/g, "").replace(/\s+$/g, "").trim().slice(0, n);
+  const hasAr = (v) => (v.match(/[؀-ۿ]/g) || []).length >= 2;
+  const out = { ok: true, ex: 0, pt: 0, pd: 0, skipped: 0 };
+  if (b && b.ar && typeof b.ar === "object") {
+    const { L } = await exlibAll(env); const ids = new Set(L.map((x) => x.i));
+    let ar = {}, arv = {}; try { ar = (await env.STORE.get("exlib:ar", "json")) || {}; } catch {} try { arv = (await env.STORE.get("exlib:arv", "json")) || {}; } catch {}
+    if ((await env.STORE.get("exlib:ar_bak_import")) == null) await env.STORE.put("exlib:ar_bak_import", JSON.stringify(ar));
+    for (const [id, v] of Object.entries(b.ar)) { const t = clean(v, 90); if (!ids.has(id) || !hasAr(t) || arv[id] === 9) { out.skipped++; continue; } ar[id] = t; arv[id] = 8; out.ex++; }
+    await env.STORE.put("exlib:ar", JSON.stringify(ar)); await env.STORE.put("exlib:arv", JSON.stringify(arv));
+  }
+  for (const [fld, KA, KV, n] of [["pt", "exlib:progar", "exlib:progarv", 120], ["pd", "exlib:progdar", "exlib:progdarv", 12000]]) {
+    if (!b || !b[fld] || typeof b[fld] !== "object") continue;
+    let D = null; try { D = await env.STORE.get("exlib:prog", "json"); } catch {}
+    const N = D && Array.isArray(D.P) ? D.P.length : 0;
+    let ar = {}, arv = {}; try { ar = (await env.STORE.get(KA, "json")) || {}; } catch {} try { arv = (await env.STORE.get(KV, "json")) || {}; } catch {}
+    if ((await env.STORE.get(KA + "_bak_import")) == null) await env.STORE.put(KA + "_bak_import", JSON.stringify(ar));
+    for (const [k, v] of Object.entries(b[fld])) { const i = +k, t = clean(v, n); if (!(i >= 0 && i < N) || !hasAr(t)) { out.skipped++; continue; } ar[i] = t; arv[i] = 8; out[fld]++; }
+    await env.STORE.put(KA, JSON.stringify(ar)); await env.STORE.put(KV, JSON.stringify(arv));
+  }
+  return json(out, 200, { "cache-control": "no-store" });
+}
 const EXL_TRANSLATE_JOB = "exlib:translation:job";
 const exlJobPublic = (job) => {
   if (!job) return null;
@@ -4918,6 +4943,7 @@ async function exlibApi(request, env, path, m) {
     await env.STORE.put("exlib:cfg", JSON.stringify(c));
     return json({ ok: true, cfg: c }, 200, nos);
   }
+  if (path === "/api/exlib/arimport" && m === "POST") return exlibArImport(request, env);
   if (path === "/api/exlib/translate" && m === "POST") return exlibTranslate(request, env);
   if (path === "/api/exlib/progtr" && m === "POST") { let b = {}; try { b = await request.json(); } catch {} return exlibProgTr(env, !!(b && b.d), !!(b && b.redo)); }
   if (path === "/api/exlib/edit" && m === "POST") {
