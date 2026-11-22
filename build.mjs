@@ -31,9 +31,10 @@ const walk = (d) => { for (const n of fs.readdirSync(d)) { const p = path.join(d
 walk(tmp);
 let w = fs.readFileSync(path.join(tmp, "_worker.js"), "utf8");
 const emb = "const __EMB = " + JSON.stringify(files) + ";\n" + fs.readFileSync(path.join(root, "embed-runtime.js"), "utf8");
-const a = "    const env = Object.assign({}, rawEnv);\n";
-if (!w.includes(a)) throw new Error("worker entry not found");
-w = w.replace(a, a + "    env.ASSETS = __embAssets(rawEnv.ASSETS);\n");
+const envMatch = w.match(/const env\s*=\s*Object\.assign\(\{\s*\},\s*rawEnv\)\s*;/);
+if (!envMatch) throw new Error("worker entry not found");
+const envEnd = w.indexOf(envMatch[0]) + envMatch[0].length;
+w = w.slice(0, envEnd) + "\n    env.ASSETS = __embAssets(rawEnv.ASSETS);" + w.slice(envEnd);
 // stamp the build time so /api/diag can say which copy is actually live
 if (!w.includes("__BUILD_AT__")) throw new Error("build stamp placeholder not found");
 w = w.replace("__BUILD_AT__", new Date().toISOString().slice(0, 16).replace("T", " ") + "Z");

@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=399" title="اعمل برنامجك" loading="eager"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=400" title="اعمل برنامجك" loading="eager"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     window.onmessage = (e) => { if (e.origin === location.origin && e.data && e.data.koPbH && fr && fr.isConnected) fr.style.height = Math.max(500, +e.data.koPbH) + "px"; };
   }
@@ -2433,18 +2433,34 @@
     };
   }
   function exlMyPdf() {
-    const d = exlMyGet(), o = location.origin;
-    const body = (d.rs ? `<p class="g">⏱ راحة بين المجموعات: ${d.rs} ث</p>` : "") + d.days.map((dy) => `<h2>${esc(dy.t)}</h2>` + dy.ex.map((e) => `<div class="r"><img src="${o}/exlib/m/${esc(e.i)}.jpg"><div><b>${esc(exlMyName(e.i))}</b><span>${e.s} × ${e.r}</span>${exlMyRest(e) ? `<em>${esc(exlMyRest(e))}</em>` : ""}</div></div>`).join("")).join("");
-    // iframe مخفي بدل نافذة جديدة: ما بيضيف خانة بسجل المتصفح فزر الرجوع ما بيعلق
-    document.querySelectorAll("iframe[data-my-pf]").forEach((f) => f.remove());
-    const f = document.createElement("iframe"); f.setAttribute("data-my-pf", ""); f.style.cssText = "position:fixed;width:0;height:0;border:0;right:0;bottom:0;opacity:0;pointer-events:none"; document.body.appendChild(f);
-    const w = f.contentWindow; w.document.open();
-    w.document.write(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>برنامجي</title><style>body{font-family:system-ui,sans-serif;margin:16px}h2{margin:18px 0 8px;border-bottom:2px solid #a8843f;padding-bottom:4px}.r{display:flex;gap:12px;align-items:center;margin:0 0 8px;break-inside:avoid}.r img{width:150px;height:150px;object-fit:contain;background:#fff;border:1px solid #ddd;border-radius:8px}.r div{display:flex;flex-direction:column;gap:4px}.r span{font-size:18px;color:#a8843f;font-weight:700}.g{font-size:16px;font-weight:700;margin:0 0 6px}.r em{font-size:14px;color:#555;font-style:normal}</style>${body}`);
-    w.document.close();
-    const im = [...w.document.images]; let n = im.length, done = false;
-    const pr = () => { if (done) return; done = true; try { w.focus(); w.print(); } catch (e) { toast("ما اشتغلت الطباعة، جرّب تصدير صور"); } setTimeout(() => f.remove(), 60000); };
-    const go = () => { if (--n <= 0) setTimeout(pr, 200); };
-    if (!n) return pr(); im.forEach((i) => { if (i.complete) go(); else { i.onload = go; i.onerror = go; } }); setTimeout(pr, 8000);
+    const d = exlMyGet();
+    if (!d.days.length) { toast("أضف تمرين قبل تصدير PDF"); return; }
+    document.querySelectorAll(".exl-my-print").forEach((p) => p.remove());
+    const body = (d.rs ? `<p class="exl-print-rest">⏱ راحة بين المجموعات: ${d.rs} ث</p>` : "") + d.days.map((dy) => `<section class="exl-print-day"><h2>${esc(dy.t)}</h2>` + dy.ex.map((e) => `<div class="exl-print-row"><img src="/exlib/m/${esc(e.i)}.jpg" alt=""><div><b>${esc(exlMyName(e.i))}</b><span>${e.s} × ${e.r}</span>${exlMyRest(e) ? `<em>${esc(exlMyRest(e))}</em>` : ""}</div></div>`).join("") + "</section>").join("");
+    const p = document.createElement("div");
+    p.className = "exl-my-print";
+    p.innerHTML = `<h1>برنامجي — ${(C.name || "KO SPORT")}</h1>${body}`;
+    document.body.appendChild(p);
+    document.body.classList.add("exl-printing");
+    let done = false;
+    const clean = () => { document.body.classList.remove("exl-printing"); p.remove(); };
+    const pr = () => {
+      if (done) return; done = true;
+      try {
+        if (typeof window.print !== "function") throw new Error("print unavailable");
+        window.print();
+      } catch (e) {
+        clean();
+        toast("متصفحك ما بيدعم الطباعة المدمجة، جرّب تصدير صور");
+      }
+    };
+    window.addEventListener("afterprint", clean, { once: true });
+    const im = [...p.querySelectorAll("img")];
+    if (!im.length) { setTimeout(pr, 50); return; }
+    let left = im.length;
+    const go = () => { if (--left <= 0) setTimeout(pr, 150); };
+    im.forEach((i) => { if (i.complete) go(); else { i.onload = go; i.onerror = go; } });
+    setTimeout(pr, 8000);
   }
   async function exlMyPng() {
     const d = exlMyGet(); toast("عم جهّز الصور…");

@@ -2279,3 +2279,19 @@ html.sheet-lock,html.sheet-lock body{overscroll-behavior:none}.sheet-wrap,.sheet
 .exl-pic video,.exl-vw video,.exl-lb video,.exl-my-pic video,.xmw video{background:#fff}
 video::-webkit-media-controls,video::-webkit-media-controls-start-playback-button,video::-webkit-media-controls-overlay-play-button,video::-webkit-media-controls-panel,video::-webkit-media-controls-enclosure{display:none!important;-webkit-appearance:none;opacity:0!important}
 video{pointer-events:none}
+
+.exl-my-print{display:none}
+@media print{
+  html,body{height:auto!important;overflow:visible!important;background:#fff!important}
+  body.exl-printing>*:not(.exl-my-print){display:none!important}
+  body.exl-printing .exl-my-print{display:block!important;color:#111;font-family:system-ui,sans-serif;margin:10mm}
+  .exl-my-print h1{font-size:24px;margin:0 0 12px;text-align:center}
+  .exl-my-print h2{font-size:18px;margin:16px 0 7px;border-bottom:2px solid #a8843f;padding-bottom:4px}
+  .exl-my-print .exl-print-day{break-inside:auto}
+  .exl-my-print .exl-print-row{display:flex;gap:10px;align-items:center;margin:0 0 7px;break-inside:avoid}
+  .exl-my-print .exl-print-row img{width:150px;height:150px;object-fit:contain;background:#fff;border:1px solid #ddd;border-radius:8px}
+  .exl-my-print .exl-print-row div{display:flex;flex-direction:column;gap:5px}
+  .exl-my-print .exl-print-row span{font-size:17px;color:#a8843f;font-weight:700}
+  .exl-my-print .exl-print-row em{font-size:13px;color:#555;font-style:normal}
+  .exl-my-print .exl-print-rest{font-size:15px;font-weight:700}
+}
