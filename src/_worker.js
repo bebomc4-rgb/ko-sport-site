@@ -4531,17 +4531,24 @@ const AI_TR_MODELS = ["@cf/google/gemma-4-26b-a4b-it", "@cf/zai-org/glm-4.7-flas
 // إذا ما في مفتاح أو Gemini فشل، بترجع لـ Workers AI متل قبل. الأسماء والعناوين بـ 3.5 Flash، والأوصاف الطويلة بـ 2.5 Flash أول (أرخص بـ 4 مرات).
 const GEM_TR_SHORT = ["gemini-3.5-flash", "gemini-2.5-flash"];
 const GEM_TR_LONG = ["gemini-2.5-flash", "gemini-3.5-flash"];
-async function exlGemini(env, models, system, user, maxTokens) {
+// كل دفعة لازم تخلص قبل حد Cloudflare (100 ثانية وإلا خطأ 524): مهلة لكل طلب، وما منجرّب نموذج تاني إذا الوقت قرب يخلص
+const EXL_TR_BUDGET = 70000;
+const exlLeft = (t0) => EXL_TR_BUDGET - (Date.now() - t0);
+const exlRace = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("طوّل كتير")), Math.max(1000, ms)))]);
+async function exlGemini(env, models, system, user, maxTokens, t0) {
   const key = String(env.GEMINI_API_KEY || "").trim();
   if (!key) return { err: "no-key" };
+  t0 = t0 || Date.now();
   let err = "";
   for (const model of models) {
+    if (exlLeft(t0) < 15000) { err = err || "ما ضل وقت"; break; }
     const think = /^gemini-2\./.test(model) ? { thinkingBudget: 0 } : { thinkingLevel: "low" };
     for (const withThink of [true, false]) {
       try {
         const gc = { temperature: 0.3, maxOutputTokens: maxTokens, responseMimeType: "application/json" };
         if (withThink) gc.thinkingConfig = think;
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+          signal: AbortSignal.timeout(Math.min(50000, Math.max(5000, exlLeft(t0) - 5000))),
           method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": key },
           body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: user }] }], generationConfig: gc }),
         });
@@ -4583,7 +4590,8 @@ async function exlibTranslate(request, env) {
   const doneN = (a, v) => (redo ? merged.filter((x) => (v[x.i] || 0) >= EXL_TRV).length : merged.filter((x) => a[x.i]).length);
   const todo = todoOf();
   if (!todo.length) return json({ ok: true, total: merged.length, done: doneN(ar, arv), left: 0, got: 0 }, 200, { "cache-control": "no-store" });
-  const batch = todo.slice(0, 40);
+  const t0 = Date.now();
+  const batch = todo.slice(0, 20);
   // أسماء كتبها صاحب المتجر بإيدو (arv=9) بتنعطى للذكاء كأمثلة على الأسلوب يلي بيحبو
   const own = merged.filter((x) => arv[x.i] === 9 && ar[x.i]).slice(0, 25).map((x) => `${x.n} -> ${ar[x.i]}`).join("\n");
   const system = `You are a native Syrian Arabic strength coach and a professional editor of exercise names. Write names that a Syrian trainee immediately understands and would actually see in a well-run gym app. This is expert localization, not word-for-word translation.
@@ -4625,22 +4633,22 @@ GLOSSARY: ${EXL_GLOSS}
 Before responding, silently proofread every name for correct movement, natural Syrian phrasing, completeness, and consistency. Fix awkward or literal translations. Return ONLY one JSON object mapping each line number to its final Arabic name, e.g. {"1":"...","2":"..."}. No markdown or extra text.`;
   let last = "", got = {}, gemErr = "";
   const exUser = (pending) => pending.map((x, i) => `${i + 1}. ${String(x.n).slice(0, 120)}${x.m || x.e ? ` [${[x.m, x.e].filter(Boolean).join(" | ")}]` : ""}`).join("\n");
-  { const g = await exlGemini(env, GEM_TR_SHORT, system, exUser(batch), 6000);
+  { const g = await exlGemini(env, GEM_TR_SHORT, system, exUser(batch), 4000, t0);
     if (g.text) { const j = exlAiMap(g.text); Object.keys(j).forEach((k) => { const x = batch[+k - 1], v = typeof j[k] === "string" ? exlArClean(j[k]) : ""; if (x && arOk(v)) got[x.i] = v; }); last = "رد غير مفهوم"; }
     else if (g.err !== "no-key") gemErr = "Gemini: " + g.err + " — "; }
   for (const model of AI_TR_MODELS) {
     const pending = batch.filter((x) => !got[x.i]);
-    if (!pending.length) break;
+    if (!pending.length || !env.AI || exlLeft(t0) < 12000) break;
     try {
       const user = exUser(pending);
-      const out = await env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 4000, temperature: 0.2 });
+      const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 4000, temperature: 0.2 }), exlLeft(t0) - 3000);
       const j = exlAiMap(exlAiText(out));
       Object.keys(j).forEach((k) => { const x = pending[+k - 1], v = typeof j[k] === "string" ? exlArClean(j[k]) : ""; if (x && arOk(v)) got[x.i] = v; });
       last = "رد غير مفهوم";
     } catch (e) { last = String(e && e.message || e); }
   }
   const nGot = Object.keys(got).length;
-  if (!nGot && last) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + gemErr + last }, 502);
+  if (!nGot && (last || gemErr)) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + gemErr + last }, 502);
   // أعد قراءة الخرائط قبل الكتابة (تعديل يدوي ممكن يكون صار بنص الطلب)؛ اسم عدّلو صاحب المتجر بإيدو (arv=9) ما بينكتب فوقو، وبدون إعادة ترجمة ما منكتب فوق اسم موجود
   let ar2 = {}, arv2 = {}; try { ar2 = (await env.STORE.get("exlib:ar", "json")) || {}; } catch { ar2 = {}; } try { arv2 = (await env.STORE.get("exlib:arv", "json")) || {}; } catch { arv2 = {}; }
   Object.keys(got).forEach((i) => { if (arv2[i] === 9) return; if (redo || !ar2[i]) { ar2[i] = got[i]; arv2[i] = EXL_TRV; } });
@@ -4669,7 +4677,8 @@ async function exlibProgTr(env, desc, redo) {
   if (!todo.length) return json({ ok: true, total: D.P.length, done: doneN(), left: 0, got: 0 }, 200, { "cache-control": "no-store" });
   // الجداد أول، والبرامج يلي فشلت قبل بتنعاد بدفعات صغيرة: عنوان غريب واحد كان يخرّب ردّ الدفعة كلها
   const fresh = todo.filter((i) => !(fail[i] || 0));
-  const batch = fresh.length ? fresh.slice(0, desc ? 3 : 40) : todo.slice(0, desc ? 1 : 5);
+  const t0 = Date.now();
+  const batch = fresh.length ? fresh.slice(0, desc ? 2 : 25) : todo.slice(0, desc ? 1 : 5);
   const GL = "Push Pull Legs = تقسيمة دفع وسحب وأرجل | Upper Lower = علوي وسفلي | Full Body = كامل الجسم | Split = تقسيمة تدريب | Beginner = مبتدئ | Intermediate = متوسط | Advanced = متقدم | Hypertrophy = تضخيم العضلات | Mass / Bulking = زيادة الكتلة العضلية | Cutting / Fat Loss = تنشيف وخسارة دهون | Strength = قوة | Powerlifting = رفع أثقال للقوة | Bodybuilding = كمال أجسام | Calisthenics = كالستنكس (تمارين وزن الجسم) | Home Workout = تمارين بالبيت | Dumbbell = دمبل | Barbell = بار | Kettlebell = كيتل بيل | Reps = تكرارات | Sets = مجموعات | Rest = راحة | Warm-up = تسخين | Cool-down = تهدئة وإطالة | Deload = أسبوع تخفيف أحمال | Progressive Overload = زيادة الوزن أو التكرارات تدريجياً | Superset = سوبر سيت (تمرينين ورا بعض بلا راحة) | Drop set = دروب سيت (تخفيف الوزن ومتابعة التمرين) | Failure = الفشل العضلي (لما ما عاد تقدر تكمل تكرار صح) | Week = أسبوع | Day = يوم | Plan = برنامج | Routine = جدول تمارين | Core = عضلات الجذع | Repetition = تكرار | Range of Motion = مدى الحركة | Form = طريقة الأداء";
   const system = desc ? `You are a native Syrian Arabic fitness coach and a professional editor, not a literal translator. Translate workout-program descriptions into clear, polished Arabic that sounds like a helpful coach speaking to a trainee in Syria.
 
@@ -4712,15 +4721,15 @@ Silently proofread every title for accuracy, natural wording, and consistency. R
   // Gemini بيقرا الوصف كامل (لحد 8000 حرف)؛ Workers AI الاحتياط بياخد أول 3000 متل قبل
   const prUser = (pending, cap) => pending.map((i, k) => `${k + 1}. ${String(D.P[i][FLD] || "").slice(0, desc ? cap : 120)}`).join("\n");
   const prTake = (j, pending) => Object.keys(j).forEach((k) => { const i = pending[+k - 1], v = typeof j[k] === "string" ? j[k].trim() : ""; if (i != null && v && (v.match(/[؀-ۿ]/g) || []).length >= 2 && v.length <= (desc ? 12000 : 120)) got[i] = desc ? v : exlArClean(v); });
-  { const g = await exlGemini(env, desc ? GEM_TR_LONG : GEM_TR_SHORT, system, prUser(batch, 8000), desc ? 16000 : 5000);
+  { const g = await exlGemini(env, desc ? GEM_TR_LONG : GEM_TR_SHORT, system, prUser(batch, 8000), desc ? 12000 : 4000, t0);
     if (g.text) { replied = true; prTake(exlAiMap(g.text), batch); last = "رد غير مفهوم"; }
     else if (g.err !== "no-key") gemErr = "Gemini: " + g.err + " — "; }
   for (const model of AI_TR_MODELS) {
     const pending = batch.filter((i) => !got[i]);
-    if (!pending.length) break;
+    if (!pending.length || !env.AI || exlLeft(t0) < 12000) break;
     try {
       const user = prUser(pending, 3000);
-      const out = await env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: desc ? 8000 : 3500, temperature: 0.2 });
+      const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: desc ? 8000 : 3500, temperature: 0.2 }), exlLeft(t0) - 3000);
       replied = true;
       prTake(exlAiMap(exlAiText(out)), pending);
       last = "رد غير مفهوم";
@@ -4831,9 +4840,11 @@ async function exlTranslationRun(env) {
       }
       job.failed = data.failed || 0;
     }
-    job.error = "";
+    job.error = ""; job.errN = 0;
   } catch (e) {
-    job.status = "failed";
+    // خطأ مؤقت (مهلة/حصة): بنكمّل، وبعد 5 أخطاء ورا بعض بنوقف
+    job.errN = (job.errN || 0) + 1;
+    if (job.errN >= 5) job.status = "failed";
     job.error = String(e && e.message || e).slice(0, 300);
   }
   job.updatedAt = Date.now();
