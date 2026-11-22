@@ -4466,8 +4466,12 @@ async function exlibOwner(request, env) {
 async function exlibMedia(request, env, name) {
   if (!EXLIB_NAME.test(name)) return new Response("not found", { status: 404 });
   if (!(await exlibOwner(request, env))) return new Response("forbidden", { status: 403, headers: { "cache-control": "no-store" } });
+  // كاش حافة سيرفر (بعد التحقق من المالك): طلبات Range المتكررة للفيديو ما بتقرا KV كل مرة، فبيصير التشغيل أسلس
+  let cch = null, ck = null; try { cch = caches.default; ck = new Request(new URL("/__exlc/" + name, request.url).toString()); } catch (e) { cch = null; }
+  if (cch) { try { const hit = await cch.match(new Request(ck.url, { headers: request.headers })); if (hit) { const h2 = new Headers(hit.headers); h2.set("cache-control", "private, max-age=2592000"); return new Response(hit.body, { status: hit.status, headers: h2 }); } } catch (e) {} }
   const buf = await env.STORE.get("exlib:f:" + name, "arrayBuffer");
   if (!buf) return new Response("not found", { status: 404, headers: { "cache-control": "no-store" } });
+  if (cch) { try { await cch.put(ck, new Response(buf.slice(0), { headers: { "content-type": name.endsWith(".mp4") ? "video/mp4" : name.endsWith(".webp") ? "image/webp" : "image/jpeg", "cache-control": "public, max-age=604800", "content-length": String(buf.byteLength) } })); } catch (e) {} }
   const type = name.endsWith(".mp4") ? "video/mp4" : name.endsWith(".webp") ? "image/webp" : "image/jpeg", len = buf.byteLength;
   const h = { "content-type": type, "cache-control": "private, max-age=2592000", "accept-ranges": "bytes", "x-robots-tag": "noindex" };
   // آيفون بيطلب الفيديو بقطع (Range)

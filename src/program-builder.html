@@ -327,7 +327,8 @@ function gen(I,seed){
     await lib();if(!LIB.length)return;
     if(MIO)MIO.disconnect();
     // الفيديو بيتحمّل ويشتغل بس وهو ظاهر عالشاشة (26 فيديو مرة وحدة كانو يعلّقو اللمس)
-    MIO=new IntersectionObserver(es=>es.forEach(e=>{const v=e.target;if(e.isIntersecting){if(!v.src)v.src=v.dataset.src;v.defaultPlaybackRate=v.playbackRate=+CFG.speed||1.5;v.play().catch(()=>{})}else if(v.src)v.pause()}),{rootMargin:"200px"});
+    const run=[];const stop=v=>{try{v.pause()}catch(e){}const k=run.indexOf(v);if(k>=0)run.splice(k,1)};
+    MIO=new IntersectionObserver(es=>es.forEach(e=>{const v=e.target;if(e.isIntersecting){if(!v.src)v.src=v.dataset.src;v.defaultPlaybackRate=v.playbackRate=+CFG.speed||1.5;const k=run.indexOf(v);if(k>=0)run.splice(k,1);run.push(v);while(run.length>3)stop(run[0]);v.play().catch(()=>{})}else stop(v)}),{rootMargin:"150px",threshold:.2});
     document.querySelectorAll(".ex[data-q]").forEach(el=>{
       const q=el.dataset.q;if(!q)return;const x=find(q);if(!x)return;
       const m=x.v?`<video class="xm" data-src="/exlib/m/${x.i}.mp4" muted loop playsinline preload="none"></video>`:`<img class="xm" src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async">`;

@@ -2214,18 +2214,27 @@
     if (exl[slot || "io"]) exl[slot || "io"].disconnect();
     const vs = root.querySelectorAll("video[data-src]"); if (!vs.length) return;
     const rate = (v) => { v.defaultPlaybackRate = v.playbackRate = sp; };
-    const io = exl[slot || "io"] = new IntersectionObserver((es) => es.forEach((en) => {
+    // سلاسة: الفيديو بيتحمّل مسبقاً قبل ما يوصل بـ400px، بس ما بيشتغل إلا وهو ظاهر فعلياً، وبحد أقصى 5 فيديوهات شغّالة مع بعض (الأقدم بيوقف)
+    const ioP = exl[(slot || "io") + "p"]; if (ioP) ioP.disconnect();
+    const io = exl[slot || "io"] = new IntersectionObserver((es) => es.forEach((en) => { const v = en.target; if (en.isIntersecting && !v.getAttribute("src")) v.src = v.dataset.src; }), { rootMargin: "400px" });
+    const run = exl.run = exl.run || [];
+    const stopV = (v) => { try { v.pause(); } catch (e) {} const k = run.indexOf(v); if (k >= 0) run.splice(k, 1); };
+    exl[(slot || "io") + "p"] = new IntersectionObserver((es) => es.forEach((en) => {
       const v = en.target;
-      if (en.isIntersecting) { if (!v.getAttribute("src")) v.src = v.dataset.src; rate(v); const p = v.play(); if (p && p.catch) p.catch(() => {}); }
-      else if (v.getAttribute("src")) v.pause();
-    }), { rootMargin: "500px" });
-    vs.forEach((v) => { v.addEventListener("loadedmetadata", () => rate(v)); v.addEventListener("play", () => rate(v)); io.observe(v); });
+      if (en.isIntersecting) {
+        if (!v.getAttribute("src")) v.src = v.dataset.src; rate(v);
+        const k = run.indexOf(v); if (k >= 0) run.splice(k, 1); run.push(v);
+        while (run.length > 5) stopV(run[0]);
+        const p = v.play(); if (p && p.catch) p.catch(() => {});
+      } else stopV(v);
+    }), { rootMargin: "0px", threshold: 0.2 });
+    vs.forEach((v) => { v.addEventListener("loadedmetadata", () => rate(v)); v.addEventListener("play", () => rate(v)); io.observe(v); exl[(slot || "io") + "p"].observe(v); });
   }
   // الفيديو بيضل مخفي (أبيض) لحد ما يبلّش يشتغل فعلياً، فما بتبين أي لقطة مغبّشة ولا علامة تشغيل قبلو
   document.addEventListener("playing", (ev) => { const v = ev.target; if (v && v.tagName === "VIDEO") v.classList.add("on"); }, true);
   function exlMedia(x, cls, auto) {
     return x.v && auto
-      ? `<video class="${cls}" data-src="/exlib/m/${x.i}.mp4" muted loop playsinline disablepictureinpicture preload="auto"></video>`
+      ? `<video class="${cls}" data-src="/exlib/m/${x.i}.mp4" muted loop playsinline disablepictureinpicture preload="metadata"></video>`
       : `<img class="${cls}" src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async">`;
   }
   const exlPerN = () => exlN((exl.cfg || {}).per, 12, 60, 24);
