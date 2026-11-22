@@ -2238,12 +2238,45 @@
     if (!dy) { dy = { t: day, ex: [] }; d.days.push(dy); d.days.sort((a, b) => (EXMY_WD.indexOf(a.t) + 1 || 99) - (EXMY_WD.indexOf(b.t) + 1 || 99)); }
     dy.ex.push({ i: id, s: 3, r: 10 }); exlMySave(d); try { localStorage.setItem("ko_exmy_last", day); } catch (e) {}
   }
+  // اختيار تمرين لليوم: عضلة ← أداة ← التمارين (متل المكتبة)، أو بحث. القائمة لحالها بحاوية سكرول خاصة وبتنفتح دفعات
   function exlMySearch(day) {
-    const mk = (q) => { const t = exlArq(q); return (t ? exl.L.filter((x) => x.s.includes(t)) : exl.L.slice(0, 30)).slice(0, 40).map((x) => `<button type="button" class="exl-my-row exl-my-pick" data-pick="${esc(x.i)}"><img src="/exlib/m/${esc(x.i)}.jpg" alt="" loading="lazy"><b>${esc(x.a || x.n)}</b><span>➕</span></button>`).join("") || '<p class="exl-count">ما في نتيجة</p>'; };
-    openSheet("أضف تمرين ليوم " + day, `<div class="exl"><input type="search" class="exl-q" data-my-q placeholder="دوّر على تمرين بالعربي أو الإنكليزي" aria-label="بحث"><div data-my-res>${mk("")}</div></div>`, (root) => {
-      const r = root || document, qi = r.querySelector("[data-my-q]"), rs = r.querySelector("[data-my-res]"); let t;
-      qi.oninput = () => { clearTimeout(t); t = setTimeout(() => { rs.innerHTML = mk(qi.value.trim()); }, 200); };
-      rs.onclick = (ev) => { const b = ev.target.closest("[data-pick]"); if (!b) return; exlMyAdd(b.dataset.pick, day); toast("انضاف ✓"); closeSheet(); exlMyPage(); };
+    const st = { m: "", e: "", q: "", n: 30 }, c = exl.cfg || {};
+    const tile = (a, ic, label, n) => `<button type="button" class="exl-tile" ${a}><span class="exl-ti">${ic}</span><b>${esc(label)}</b>${n != null ? `<small>${n} تمرين</small>` : ""}</button>`;
+    openSheet("أضف تمرين ليوم " + day, '<div class="exl"><input type="search" class="exl-q" data-pk-q placeholder="دوّر على تمرين بالعربي أو الإنكليزي" aria-label="بحث"><div class="exl-nav" data-pk-nav></div><div class="exl-pk" data-pk></div></div>', (root) => {
+      const r = root || document, box = r.querySelector("[data-pk]"), nav = r.querySelector("[data-pk-nav]"), qi = r.querySelector("[data-pk-q]");
+      const skip = () => (Array.isArray(c.skipE) ? c.skipE : ["Stretching"]).indexOf(st.m) >= 0;
+      const list = () => { const q = exlArq(st.q).split(/\s+/).filter(Boolean); const a = exl.L.filter((x) => (!st.m || x.m === st.m) && (!st.e || st.e === "*" || x.e === st.e) && q.every((w) => x.s.includes(w))); return a.filter((x) => x.v).concat(a.filter((x) => !x.v)); };
+      const row = (x) => `<button type="button" class="exl-my-row exl-my-pick" data-pick="${esc(x.i)}"><img src="/exlib/m/${esc(x.i)}.jpg" alt="" loading="lazy" width="84" height="84"><b>${esc(x.a || x.n)}</b><span>➕</span></button>`;
+      const draw = () => {
+        const step = st.q ? 3 : !st.m ? 1 : !st.e ? 2 : 3, tr = [];
+        if (st.m && !st.q) { tr.push('<a href="#" data-pk-go="">العضلات</a>'); tr.push(step === 2 ? `<b>${esc(EXL_M[st.m] || st.m)}</b>` : `<a href="#" data-pk-go="${esc(st.m)}">${esc(EXL_M[st.m] || st.m)}</a>`); if (step === 3 && !skip()) tr.push(`<b>${st.e === "*" ? "كل الأدوات" : esc(EXL_E[st.e] || st.e)}</b>`); }
+        nav.innerHTML = tr.join('<span class="exl-sep">‹</span>');
+        if (step === 1) {
+          const cm = {}; exl.L.forEach((x) => { cm[x.m] = (cm[x.m] || 0) + 1; });
+          const ks = EXL_MORD.filter((k) => cm[k]).concat(Object.keys(cm).filter((k) => EXL_MORD.indexOf(k) < 0));
+          box.innerHTML = `<div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => tile(`data-pk-m="${esc(k)}"`, exlI("m", k), EXL_M[k] || k, cm[k])).join("")}</div>`;
+        } else if (step === 2) {
+          const sub = exl.L.filter((x) => x.m === st.m), ce = {}; sub.forEach((x) => { ce[x.e] = (ce[x.e] || 0) + 1; });
+          const ks = Object.keys(ce).sort((a, b) => ce[b] - ce[a]);
+          box.innerHTML = `<div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${tile('data-pk-e="*"', exlI("m", st.m), "كل الأدوات", sub.length)}${ks.map((k) => tile(`data-pk-e="${esc(k)}"`, exlI("e", k), EXL_E[k] || k, ce[k])).join("")}</div>`;
+        } else {
+          const L = list(); box.innerHTML = `<div class="exl-count">${L.length} تمرين</div><div class="exl-pk-l">${L.slice(0, st.n).map(row).join("") || '<p class="exl-count">ما في نتيجة</p>'}</div>${L.length > st.n ? '<div class="exl-sent" data-pk-s>…</div>' : ""}`;
+          const se = box.querySelector("[data-pk-s]");
+          if (se && "IntersectionObserver" in window) { const io = new IntersectionObserver((es) => { if (!es.some((e) => e.isIntersecting)) return; io.disconnect(); const from = st.n; st.n += 30; box.querySelector(".exl-pk-l").insertAdjacentHTML("beforeend", L.slice(from, st.n).map(row).join("")); if (st.n >= L.length) se.remove(); else io.observe(se); }, { root: box, rootMargin: "300px" }); io.observe(se); }
+        }
+        box.scrollTop = 0;
+      };
+      r.addEventListener("click", (ev) => {
+        const t = ev.target.closest("[data-pk-m],[data-pk-e],[data-pk-go],[data-pick]"); if (!t) return;
+        if (t.dataset.pick) { exlMyAdd(t.dataset.pick, day); toast("انضاف ✓"); closeSheet(); exlMyPage(); return; }
+        ev.preventDefault(); st.n = 30;
+        if (t.dataset.pkM) { st.m = t.dataset.pkM; st.e = skip() ? "*" : ""; }
+        else if (t.dataset.pkE) st.e = t.dataset.pkE;
+        else { st.m = t.dataset.pkGo; st.e = ""; if (!st.m) st.e = ""; }
+        draw();
+      });
+      let tm; qi.oninput = () => { clearTimeout(tm); tm = setTimeout(() => { st.q = qi.value.trim(); st.n = 30; draw(); }, 200); };
+      draw();
     });
   }
   const exlMyName = (id) => { const x = (exl.L || []).find((y) => y.i === id); return x ? (x.a || x.n) : ""; };

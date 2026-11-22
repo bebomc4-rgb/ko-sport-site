@@ -2255,3 +2255,4 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-my-bar{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
 .exl-pic video,video.exl-vid,.exl-lb video{opacity:0;transition:opacity .15s}.exl-pic video.on,video.exl-vid.on,.exl-lb video.on{opacity:1}
 .exl-my-t{flex:1;font-size:18px;color:#a8843f}.exl-my-hd{align-items:center}.exl-my-pick{width:100%;text-align:start;cursor:pointer}
+.exl-pk{max-height:62vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;margin-top:8px}.exl-pk .exl-my-row{height:100px;box-sizing:border-box;margin-bottom:8px}.exl-pk .exl-tile{font:inherit;cursor:pointer}.exl-pk .exl-my-pick{width:100%}
