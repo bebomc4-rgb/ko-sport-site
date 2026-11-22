@@ -4615,6 +4615,10 @@ async function exlibApi(request, env, path, m) {
     const t = await env.STORE.get("exlib:prog");
     return new Response(t || "null", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=120", "x-robots-tag": "noindex" } });
   }
+  if (path === "/api/exlib/progar" && m === "GET") {
+    if (!(await exlibOwner(request, env)) && !isAdmin(request, env, "owner")) return json({ error: "forbidden" }, 403, nos);
+    return new Response((await env.STORE.get(new URL(request.url).searchParams.get("d") ? "exlib:progdar" : "exlib:progar")) || "{}", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+  }
   // إعدادات المظهر (ثيم، حجم، عرض، سرعة الفيديو): لحساب صاحب المتجر
   if (path === "/api/exlib/cfg" && m === "GET") {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
@@ -4635,10 +4639,6 @@ async function exlibApi(request, env, path, m) {
   }
   if (path === "/api/exlib/translate" && m === "POST") return exlibTranslate(request, env);
   if (path === "/api/exlib/progtr" && m === "POST") { let b = {}; try { b = await request.json(); } catch {} return exlibProgTr(env, !!(b && b.d)); }
-  if (path === "/api/exlib/progar" && m === "GET") {
-    if (!(await exlibOwner(request, env)) && !isAdmin(request, env, "owner")) return json({ error: "forbidden" }, 403, nos);
-    return new Response((await env.STORE.get(new URL(request.url).searchParams.get("d") ? "exlib:progdar" : "exlib:progar")) || "{}", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
-  }
   if (path === "/api/exlib/edit" && m === "POST") {
     let b; try { b = await request.json(); } catch { return json({ error: "الطلب غلط" }, 400); }
     const id = String((b && b.i) || "");
