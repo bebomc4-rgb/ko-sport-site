@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed" title="اعمل برنامجك" loading="eager"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=398" title="اعمل برنامجك" loading="eager"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     window.onmessage = (e) => { if (e.origin === location.origin && e.data && e.data.koPbH && fr && fr.isConnected) fr.style.height = Math.max(500, +e.data.koPbH) + "px"; };
   }
@@ -2264,7 +2264,7 @@
   document.addEventListener("playing", (ev) => { const v = ev.target; if (v && v.tagName === "VIDEO") v.classList.add("on"); }, true);
   function exlMedia(x, cls, auto) {
     return x.v && auto
-      ? `<video class="${cls}" data-src="/exlib/m/${x.i}.mp4" muted loop playsinline disablepictureinpicture preload="metadata"></video>`
+      ? `<video class="${cls}" data-src="/exlib/m/${x.i}.mp4" poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" muted loop playsinline disablepictureinpicture preload="metadata"></video>`
       : `<img class="${cls}" src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async">`;
   }
   const exlPerN = () => exlN((exl.cfg || {}).per, 12, 60, 24);
@@ -2302,7 +2302,7 @@
   function exlZoom(x) {
     const sp = Math.min(3, Math.max(0.5, +(exl.cfg && exl.cfg.speed) || 1.5));
     const w = document.createElement("div"); w.className = "exl-lb";
-    w.innerHTML = '<button type="button" aria-label="إغلاق">✕</button>' + (x.v ? `<video src="/exlib/m/${x.i}.mp4" autoplay muted loop playsinline></video>` : `<img src="/exlib/m/${x.i}.jpg" alt="">`);
+    w.innerHTML = '<button type="button" aria-label="إغلاق">✕</button>' + (x.v ? `<video src="/exlib/m/${x.i}.mp4" poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" autoplay muted loop playsinline></video>` : `<img src="/exlib/m/${x.i}.jpg" alt="">`);
     const v = w.querySelector("video"); if (v) { const r = () => { v.defaultPlaybackRate = v.playbackRate = sp; }; v.addEventListener("loadedmetadata", r); v.addEventListener("play", r); }
     const shut = () => { w.remove(); ovShut("zoom"); };
     w.onclick = shut;
