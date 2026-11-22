@@ -1985,6 +1985,14 @@
     document.documentElement.style.setProperty("--exl-ar", r.toFixed(4));
   }
   // المكتبة بـ 3 خطوات: العضلات ← الأدوات ← التمارين. الشكل والأعداد من لوحة التحكم (exlib:cfg)
+  // قسم «الفخاد» بيتوزّع على عضلاتو من اسم التمرين (طلب صاحب المتجر 22/11/2026): سمانة، ورك ومؤخرة، فخد خلفي، وغير هيك فخد أمامي
+  function exlThigh(n) {
+    const t = String(n || "").toLowerCase();
+    if (/\bcalf|\bcalves|heel raise|toe raise|tibialis/.test(t)) return "Calves";
+    if (/hamstring|leg curl|romanian|stiff.?leg|good.?morning|nordic|glute.?ham|deadlift|\bcurl\b/.test(t)) return "Hamstrings";
+    if (/glute|hip thrust|\bbridge|kickback|kick back|donkey|abduct|adduct|hydrant|clam|hip extension|\bhip\b|pull.?through/.test(t)) return "Hips";
+    return "Quadriceps";
+  }
   async function exlibPage() {
     document.title = "مكتبة التمارين | " + (C.name || "");
     if (!exl.L) {
@@ -1996,7 +2004,7 @@
         exl.cfg = rc.ok ? await rc.json() : {};
         const hid = Array.isArray(exl.cfg.hideM) ? exl.cfg.hideM : ["Other"]; // عضلات مخبّية من المكتبة (من لوحة التحكم)
         exl.L = exl.L.filter((x) => hid.indexOf(x.m) < 0);
-        exl.L.forEach((x) => { x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
+        exl.L.forEach((x) => { x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; else if (x.m === "Thighs") x.m = exlThigh(x.n); }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
         await exlRatio();
         exl.L.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
       } catch (e) { if (curRoute().indexOf("/exlib") === 0) app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح المكتبة</b>جرّب كمان مرة<a href="#/account">رجوع لحسابي</a></div>'; return; }
