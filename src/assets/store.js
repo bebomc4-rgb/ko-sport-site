@@ -1996,6 +1996,7 @@
         exl.cfg = rc.ok ? await rc.json() : {};
         const hid = Array.isArray(exl.cfg.hideM) ? exl.cfg.hideM : ["Other"]; // عضلات مخبّية من المكتبة (من لوحة التحكم)
         exl.L = exl.L.filter((x) => hid.indexOf(x.m) < 0);
+        exl.L.forEach((x) => { x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
         await exlRatio();
         exl.L.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
       } catch (e) { if (curRoute().indexOf("/exlib") === 0) app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح المكتبة</b>جرّب كمان مرة<a href="#/account">رجوع لحسابي</a></div>'; return; }
@@ -2038,7 +2039,7 @@
       if (!exl.prog) return null;
       try { const ra = await fetch("/api/exlib/progar", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progAr = ra.ok ? await ra.json() : {}; const rd = await fetch("/api/exlib/progar?d=1", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progDar = rd.ok ? await rd.json() : {}; } catch (e) { exl.progAr = exl.progAr || {}; exl.progDar = exl.progDar || {}; }
       const full = {}, byName = {}; // m|e|اسم ← تمرين، واسم لحالو (للاحتياط)
-      exl.L.forEach((x) => { const n = exlNm(x.n); full[x.m + "|" + x.e + "|" + n] = full[x.m + "|" + x.e + "|" + n] || x; (byName[n] = byName[n] || []).push(x); });
+      exl.L.forEach((x) => { const n = exlNm(x.n); full[(x.m0 || x.m) + "|" + x.e + "|" + n] = full[(x.m0 || x.m) + "|" + x.e + "|" + n] || x; (byName[n] = byName[n] || []).push(x); });
       exl.pmap = exl.prog.EX.map((e) => {
         const n = exlNm(e[2]), n2 = exlNm(e[3]), hit = full[e[0] + "|" + e[1] + "|" + n] || full[e[0] + "|" + e[1] + "|" + n2];
         if (hit) return hit;
