@@ -4532,7 +4532,7 @@ const AI_TR_MODELS = ["@cf/google/gemma-4-26b-a4b-it", "@cf/zai-org/glm-4.7-flas
 const GEM_TR_SHORT = ["gemini-3.5-flash", "gemini-2.5-flash"];
 const GEM_TR_LONG = ["gemini-2.5-flash", "gemini-3.5-flash"];
 // كل دفعة لازم تخلص قبل حد Cloudflare (100 ثانية وإلا خطأ 524): مهلة لكل طلب، وما منجرّب نموذج تاني إذا الوقت قرب يخلص
-const EXL_TR_BUDGET = 70000;
+const EXL_TR_BUDGET = 25000; // waitUntil بيعطي حوالي 30 ثانية بعد الرد
 const exlLeft = (t0) => EXL_TR_BUDGET - (Date.now() - t0);
 const exlRace = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("طوّل كتير")), Math.max(1000, ms)))]);
 async function exlGemini(env, models, system, user, maxTokens, t0) {
@@ -4541,14 +4541,14 @@ async function exlGemini(env, models, system, user, maxTokens, t0) {
   t0 = t0 || Date.now();
   let err = "";
   for (const model of models) {
-    if (exlLeft(t0) < 15000) { err = err || "ما ضل وقت"; break; }
+    if (exlLeft(t0) < 8000) { err = err || "ما ضل وقت"; break; }
     const think = /^gemini-2\./.test(model) ? { thinkingBudget: 0 } : { thinkingLevel: "low" };
     for (const withThink of [true, false]) {
       try {
         const gc = { temperature: 0.3, maxOutputTokens: maxTokens, responseMimeType: "application/json" };
         if (withThink) gc.thinkingConfig = think;
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-          signal: AbortSignal.timeout(Math.min(50000, Math.max(5000, exlLeft(t0) - 5000))),
+          signal: AbortSignal.timeout(Math.max(4000, exlLeft(t0) - 2000)),
           method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": key },
           body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: user }] }], generationConfig: gc }),
         });
@@ -4591,7 +4591,7 @@ async function exlibTranslate(request, env) {
   const todo = todoOf();
   if (!todo.length) return json({ ok: true, total: merged.length, done: doneN(ar, arv), left: 0, got: 0 }, 200, { "cache-control": "no-store" });
   const t0 = Date.now();
-  const batch = todo.slice(0, 20);
+  const batch = todo.slice(0, 12);
   // أسماء كتبها صاحب المتجر بإيدو (arv=9) بتنعطى للذكاء كأمثلة على الأسلوب يلي بيحبو
   const own = merged.filter((x) => arv[x.i] === 9 && ar[x.i]).slice(0, 25).map((x) => `${x.n} -> ${ar[x.i]}`).join("\n");
   const system = `You are a native Syrian Arabic strength coach and a professional editor of exercise names. Write names that a Syrian trainee immediately understands and would actually see in a well-run gym app. This is expert localization, not word-for-word translation.
@@ -4638,7 +4638,7 @@ Before responding, silently proofread every name for correct movement, natural S
     else if (g.err !== "no-key") gemErr = "Gemini: " + g.err + " — "; }
   for (const model of AI_TR_MODELS) {
     const pending = batch.filter((x) => !got[x.i]);
-    if (!pending.length || !env.AI || exlLeft(t0) < 12000) break;
+    if (!pending.length || !env.AI || exlLeft(t0) < 8000) break;
     try {
       const user = exUser(pending);
       const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 4000, temperature: 0.2 }), exlLeft(t0) - 3000);
@@ -4678,7 +4678,7 @@ async function exlibProgTr(env, desc, redo) {
   // الجداد أول، والبرامج يلي فشلت قبل بتنعاد بدفعات صغيرة: عنوان غريب واحد كان يخرّب ردّ الدفعة كلها
   const fresh = todo.filter((i) => !(fail[i] || 0));
   const t0 = Date.now();
-  const batch = fresh.length ? fresh.slice(0, desc ? 2 : 25) : todo.slice(0, desc ? 1 : 5);
+  const batch = fresh.length ? fresh.slice(0, desc ? 1 : 15) : todo.slice(0, desc ? 1 : 5);
   const GL = "Push Pull Legs = تقسيمة دفع وسحب وأرجل | Upper Lower = علوي وسفلي | Full Body = كامل الجسم | Split = تقسيمة تدريب | Beginner = مبتدئ | Intermediate = متوسط | Advanced = متقدم | Hypertrophy = تضخيم العضلات | Mass / Bulking = زيادة الكتلة العضلية | Cutting / Fat Loss = تنشيف وخسارة دهون | Strength = قوة | Powerlifting = رفع أثقال للقوة | Bodybuilding = كمال أجسام | Calisthenics = كالستنكس (تمارين وزن الجسم) | Home Workout = تمارين بالبيت | Dumbbell = دمبل | Barbell = بار | Kettlebell = كيتل بيل | Reps = تكرارات | Sets = مجموعات | Rest = راحة | Warm-up = تسخين | Cool-down = تهدئة وإطالة | Deload = أسبوع تخفيف أحمال | Progressive Overload = زيادة الوزن أو التكرارات تدريجياً | Superset = سوبر سيت (تمرينين ورا بعض بلا راحة) | Drop set = دروب سيت (تخفيف الوزن ومتابعة التمرين) | Failure = الفشل العضلي (لما ما عاد تقدر تكمل تكرار صح) | Week = أسبوع | Day = يوم | Plan = برنامج | Routine = جدول تمارين | Core = عضلات الجذع | Repetition = تكرار | Range of Motion = مدى الحركة | Form = طريقة الأداء";
   const system = desc ? `You are a native Syrian Arabic fitness coach and a professional editor, not a literal translator. Translate workout-program descriptions into clear, polished Arabic that sounds like a helpful coach speaking to a trainee in Syria.
 
@@ -4726,7 +4726,7 @@ Silently proofread every title for accuracy, natural wording, and consistency. R
     else if (g.err !== "no-key") gemErr = "Gemini: " + g.err + " — "; }
   for (const model of AI_TR_MODELS) {
     const pending = batch.filter((i) => !got[i]);
-    if (!pending.length || !env.AI || exlLeft(t0) < 12000) break;
+    if (!pending.length || !env.AI || exlLeft(t0) < 8000) break;
     try {
       const user = prUser(pending, 3000);
       const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: desc ? 8000 : 3500, temperature: 0.2 }), exlLeft(t0) - 3000);
@@ -4809,6 +4809,22 @@ async function exlTranslationTick(request, env) {
   if (!secret || request.headers.get("authorization") !== "Bearer " + secret) return json({ error: "forbidden" }, 403, { "cache-control": "no-store" });
   return exlTranslationRun(env);
 }
+// اللوحة بتطلب دفعة: الرد بيرجع فوراً والدفعة بتشتغل بالسيرفر (waitUntil)، فالنت الضعيف بالموبايل ما بيقطعها.
+// قفل بـ KV حتى ما تشتغل دفعتين سوا.
+async function exlTranslationStep(env) {
+  const ctx = globalThis.__koCtx;
+  const nos = { "cache-control": "no-store" };
+  let job = null; try { job = await env.STORE.get(EXL_TRANSLATE_JOB, "json"); } catch {}
+  if (!job || job.status !== "running") return json({ job: exlJobPublic(job), busy: false }, 200, nos);
+  const lk = +(await env.STORE.get("exlib:translation:lock")) || 0;
+  if (Date.now() - lk < 40000) return json({ job: exlJobPublic(job), busy: true }, 200, nos);
+  await env.STORE.put("exlib:translation:lock", String(Date.now()), { expirationTtl: 60 });
+  const run = exlTranslationRun(env).catch(() => {}).finally(() => env.STORE.delete("exlib:translation:lock").catch(() => {}));
+  if (ctx && ctx.waitUntil) { try { ctx.waitUntil(run); return json({ job: exlJobPublic(job), busy: true }, 202, nos); } catch (e) {} }
+  await run;
+  let j2 = null; try { j2 = await env.STORE.get(EXL_TRANSLATE_JOB, "json"); } catch {}
+  return json({ job: exlJobPublic(j2), busy: false }, 200, nos);
+}
 async function exlTranslationRun(env) {
   let job = null; try { job = await env.STORE.get(EXL_TRANSLATE_JOB, "json"); } catch {}
   if (!job || job.status !== "running") return json({ active: false, status: job ? job.status : "idle" }, 200, { "cache-control": "no-store" });
@@ -4883,7 +4899,7 @@ async function exlibApi(request, env, path, m) {
   if (path === "/api/exlib/translation/start" && m === "POST") return exlTranslationStart(request, env);
   if (path === "/api/exlib/translation/status" && m === "GET") return exlTranslationStatus(request, env);
   if (path === "/api/exlib/translation/stop" && m === "POST") return exlTranslationStop(request, env);
-  if (path === "/api/exlib/translation/step" && m === "POST") return exlTranslationRun(env);
+  if (path === "/api/exlib/translation/step" && m === "POST") return exlTranslationStep(env);
   // لوحة التحكم ← التمارين: كل اللائحة مع المخفية والمعدّلة
   if (path === "/api/exlib/adm" && m === "GET") {
     const { merged } = await exlibAll(env);

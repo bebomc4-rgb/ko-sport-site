@@ -815,7 +815,8 @@
       if (Date.now() - exlTrSeen.at < 45000 && Date.now() - (job.updatedAt || 0) < 45000) return job;
       exlTrSelf = true; // الـ Cron واقف: من هلق اللوحة بتكمّل لحالها
     }
-    try { const r = await api("/api/exlib/translation/step", { method: "POST" }); return r.job || job; } catch (e) { toast("دفعة الترجمة فشلت: " + e.message); return job; }
+    // الطلب سريع: السيرفر بيشغّل الدفعة لحالو، وإذا النت قطع منجرّب بالدورة الجاية بلا ما نوقف
+    try { const r = await api("/api/exlib/translation/step", { method: "POST" }); return r.job || job; } catch (e) { return job; }
   }
   function renderExlTranslation(job) {
     const active = !!job && job.status === "running";
@@ -847,9 +848,10 @@
       if (exlTranslationLastStatus === "running" && status && status !== "running") { await loadExlib(); await progStat(); renderExlTranslation(job); }
       exlTranslationLastStatus = status;
       clearTimeout(exlTranslationPoll);
-      if (status === "running") exlTranslationPoll = setTimeout(refreshExlTranslation, exlTrCron && !exlTrSelf ? 3000 : 300);
+      if (status === "running") exlTranslationPoll = setTimeout(refreshExlTranslation, exlTrCron && !exlTrSelf ? 3000 : 2000);
     } catch (e) {
-      const el = $("[data-exl-tstat]"); if (el) el.textContent = "ما قدرت أقرا تقدّم الترجمة: " + e.message;
+      const el = $("[data-exl-tstat]"); if (el) el.textContent = "النت ضعيف، عم جرّب كمان مرة…";
+      clearTimeout(exlTranslationPoll); exlTranslationPoll = setTimeout(refreshExlTranslation, 5000);
     } finally { exlTranslationPollBusy = false; }
   }
   async function startExlTranslation(kind, redo) {
