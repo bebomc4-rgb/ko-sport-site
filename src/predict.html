@@ -157,6 +157,8 @@ body.lock{overflow:hidden}
 .lv{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid var(--lc);color:var(--lc);margin-inline-start:4px;white-space:nowrap}
 .lv-l{display:flex;justify-content:space-between;gap:4px;margin-top:10px}.lv-l span{flex:1;text-align:center;font-size:1.2rem;opacity:.35;filter:grayscale(1)}.lv-l span.on{opacity:1;filter:none}.lv-l small{display:block;font-size:.62rem;color:var(--lc);font-weight:700}
 .emb .top{display:none}.emb body{background:transparent}.emb .wrap{padding-top:6px}
+.btn.more{display:block;width:100%;margin:12px 0 6px}
+.ov[data-vh] .sheet{max-height:calc(var(--ovh) * .9)}
 </style>
 </head>
 <body>
@@ -175,12 +177,28 @@ body.lock{overflow:hidden}
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const ls = { get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} } };
   let D = null, sport = "", busy = false;
+  // رسم هادي: ما منمسح الصفحة إذا ما تغيّر شي، ولا وقت لمس/كتابة (كان يضيّع اللمسة ويسكّر الكيبورد ويرجّع سكرول الأزرار لأولها)
+  let lastDraw = "", pend = false, touching = false, tt = 0, LIM = 24, LIMD = 10;
+  const release = () => { touching = false; if (pend && D) draw(); };
+  addEventListener("touchstart", () => { touching = true; clearTimeout(tt); tt = setTimeout(release, 3000); }, { passive: true });
+  addEventListener("touchend", () => { clearTimeout(tt); tt = setTimeout(release, 450); }, { passive: true });
+  addEventListener("touchcancel", () => { clearTimeout(tt); tt = setTimeout(release, 450); }, { passive: true });
+  addEventListener("focusout", () => { setTimeout(() => { if (pend && D && !touching) draw(); }, 120); });
+  // عدد البطاقات الظاهرة: الباقي بزر «اعرض المزيد». رسم كل المباريات دفعة وحدة (مئات الصور بإطار طويل بيحمّلها كلها فوراً) هو سبب البطء
+  const cut = (arr, n) => { if (arr.length <= n) return arr; const out = arr.slice(0, n), ev = new Set(out.filter((m) => m.eid && m.seg).map((m) => m.eid)); arr.slice(n).forEach((m) => { if (m.eid && m.seg && ev.has(m.eid)) out.push(m); }); return out; };
   // صاحب المتجر (17 تشرين التاني 2026): الصفحة للزباين بس. أدوات التحكم بتشتغل بس جوّا لوحة التحكم (admin.html → تبويب التوقعات، ?manage)
   const EMBED = window.top !== window;
   const MANAGE = EMBED && /[?&]manage\b/.test(location.search) && (() => { try { return /\/admin/.test(top.location.pathname); } catch { return false; } })();
   if (EMBED) { document.documentElement.classList.add("emb"); const bs = document.createElement("base"); bs.target = "_top"; document.head.appendChild(bs);
-    const post = () => { try { parent.postMessage({ koPredH: Math.ceil(document.documentElement.scrollHeight) }, location.origin); } catch {} };
-    try { new ResizeObserver(post).observe(document.documentElement); } catch {} addEventListener("load", post); setInterval(post, 1500); }
+    // الطول بيتقاس من .wrap (مو documentElement): documentElement.scrollHeight عمرو ما بينقص عن طول الإطار نفسو، فالإطار كان يضل طويل وفاضي بعد ما تختار رياضة قائمتها أقصر
+    let lastH = 0; const post = () => { try { const h = Math.ceil(document.querySelector(".wrap").getBoundingClientRect().height); if (h !== lastH) { lastH = h; parent.postMessage({ koPredH: h }, location.origin); } } catch {} };
+    try { new ResizeObserver(post).observe(document.querySelector(".wrap")); } catch {} addEventListener("load", post); setInterval(post, 1500); }
+  // الإطار طويل بطول كل المباريات، فالنافذة (position:fixed) كانت تنفتح بآخر الإطار بعيد عن شاشة الزبون. الصفحة الأم بتقلّنا وين الشاشة وبتقفل السكرول وقت فتح النافذة
+  let VIEW_RES = null;
+  addEventListener("message", (e) => { if (e.source === parent && e.data && e.data.koPredV && VIEW_RES) { const r = VIEW_RES; VIEW_RES = null; r(e.data.koPredV); } });
+  // بلوحة التحكم (?manage) الأم ما بتردّ على هالسؤال، فما منستنى
+  const askView = () => !EMBED || MANAGE ? Promise.resolve(null) : new Promise((res) => { VIEW_RES = res; try { parent.postMessage({ koPredView: 1 }, location.origin); } catch { VIEW_RES = null; return res(null); } setTimeout(() => { if (VIEW_RES === res) { VIEW_RES = null; res(null); } }, 300); });
+  const lockParent = (on) => { if (EMBED) try { parent.postMessage({ koPredLock: on ? 1 : 0 }, location.origin); } catch {} };
   const toast = (t) => { const e = $("#toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove("on"), 2600); };
   const api = async (p, body) => {
     const h = { "content-type": "application/json" }, pw = MANAGE ? ls.get("ko_admin") : ""; if (pw) h.authorization = "Bearer " + pw;
@@ -192,15 +210,16 @@ body.lock{overflow:hidden}
     return d ? `بعد ${d} يوم و${h} ساعة` : h ? `بعد ${h} ساعة و${m} دقيقة` : `بعد ${m} دقيقة`; };
 
   function gate(status, msg) {
+    lastDraw = "";
     if (status === 403 || status === 401) { app.innerHTML = MANAGE ? `<div class="msg"><b>ادخل على لوحة التحكم من جديد</b></div>` : `<div class="msg"><b>التوقعات مسكّرة هلق</b><p class="sub" style="color:var(--mut)">رجعلنا بعد شوي 🙏</p></div>`; return; }
     app.innerHTML = `<div class="msg">${esc(msg)}<br><br><button class="btn" onclick="location.reload()">جرّب كمان مرة</button></div>`;
   }
 
   // سرعة: آخر نسخة من التوقعات محفوظة بالجهاز بتنعرض فوراً، وبيتحدّث من النت بالخلفية
   const PC = "ko_pred_c", who = () => { try { const a = JSON.parse(localStorage.getItem("ko_acct") || "null"); return (a && a.account && a.account.phone) || ""; } catch { return ""; } };
-  async function load() {
+  async function load(force) {
     if (!MANAGE && !D) { try { const c = JSON.parse(localStorage.getItem(PC) || "null"); if (c && c.k && c.k === who() && c.D) { D = c.D; draw(); } } catch {} }
-    try { const nd = await api("/api/pred"); if (!MANAGE) { try { localStorage.setItem(PC, JSON.stringify({ k: who(), D: nd })); } catch {} } D = nd; draw(); }
+    try { const nd = await api("/api/pred"); if (!MANAGE) { try { localStorage.setItem(PC, JSON.stringify({ k: who(), D: nd })); } catch {} } D = nd; draw(!!force); }
     catch (e) {
       if (e.status === 403 || e.status === 401 || e.status === 429) { const had = MANAGE && !!ls.get("ko_admin"); gate(403); if (had) toast(e.status === 429 ? e.message : "كلمة السر غلط"); }
       else gate(0, e.message);
@@ -363,7 +382,7 @@ body.lock{overflow:hidden}
       ${cps.map((x) => `<div class="pz-c">كود خصم ${x.pct}%: <b dir="ltr">${esc(x.c)}</b><small>اكتبو بخانة كود الخصم وقت الطلب · لطلب واحد · صالح لـ ${new Date(x.exp).toLocaleDateString("ar-SY", { timeZone: "Asia/Damascus", day: "numeric", month: "long" })}</small></div>`).join("")}
       <p class="sub">المباراة المهمة: الفايز صح = 100 نقطة والنتيجة بالزبط = 100 كمان. المباراة العادية: 30 و30. الخصم ما بينجمع مع خصم تاني.</p></div>`;
   }
-  function draw() {
+  function draw(force) {
     if (sport && !D.matches.some((m) => m.sport === sport)) sport = "";
     const orgs = sport ? [...new Set(D.matches.filter((m) => m.sport === sport).map((m) => m.org || ""))].filter(Boolean) : [];
     if (org && !orgs.includes(org)) org = "";
@@ -382,15 +401,24 @@ body.lock{overflow:hidden}
     if (run.length) h += `<h2>🔴 عم تنلعب هلق</h2>` + list(run);
     h += `<h2>المباريات الجاية</h2>`;
     if (dks.length > 1) h += `<div class="chips days"><button class="${day ? "" : "on"}" data-day="">كل الأيام</button>${dks.map((k) => `<button class="${day === k ? "on" : ""}" data-day="${k}">${esc(dayName(k))}</button>`).join("")}</div>`;
-    h += shown.length ? list(shown) : `<div class="empty">ما في مباريات جاية هلق${D.owner ? " · ضيف وحدة من فوق" : ""}</div>`;
-    if (done.length) h += `<h2>خلصت</h2>` + list(done.slice(0, 40));
+    const sh = cut(shown, LIM);
+    h += shown.length ? list(sh) : `<div class="empty">ما في مباريات جاية هلق${D.owner ? " · ضيف وحدة من فوق" : ""}</div>`;
+    if (sh.length < shown.length) h += `<button class="btn more" data-more="up">اعرض المزيد (${shown.length - sh.length})</button>`;
+    if (done.length) { const d40 = done.slice(0, 40), dn = cut(d40, LIMD); h += `<h2>خلصت</h2>` + list(dn); if (dn.length < d40.length) h += `<button class="btn more" data-more="done">اعرض المزيد (${d40.length - dn.length})</button>`; }
     h += `<h2>🏆 الترتيب</h2><div class="board">${D.board.length ? D.board.map((r, i) => `<div class="${r.me ? "me1" : ""}"><span><span class="rk">${i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>${esc(r.n.split(" ").slice(0, 2).join(" "))} ${badge(r.p)}</span><span><b style="color:var(--gold)">${r.p}</b> نقطة</span></div>`).join("") : `<div class="empty" style="display:block">لسا ما في نتايج</div>`}</div>`;
     if (D.sync) h += `<p class="sync">المواعيد والنتايج بتتحدّث لحالها · آخر تحديث ${hm(D.sync)}</p>`;
+    const ae = document.activeElement;
+    if (!force && (touching || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && app.contains(ae)) || document.querySelector("details.adm[open]"))) { pend = true; return; }
+    pend = false;
+    if (h === lastDraw && app.firstElementChild) return; // ما تغيّر شي
+    lastDraw = h;
+    const cs = {}; app.querySelectorAll(".chips").forEach((c) => { const k = c.firstElementChild && Object.keys(c.firstElementChild.dataset)[0]; if (k) cs[k] = c.scrollLeft; });
     app.innerHTML = h;
+    app.querySelectorAll(".chips").forEach((c) => { const k = c.firstElementChild && Object.keys(c.firstElementChild.dataset)[0]; if (k && cs[k]) c.scrollLeft = cs[k]; }); // سكرول الأزرار الأفقية بيضل مكانو
     app.querySelectorAll("[data-rd]").forEach((bt) => { bt.onclick = async () => {
       if (!confirm(`بدك تبدّل ${bt.dataset.rd} نقطة بكود خصم ${bt.dataset.pc}%؟`)) return;
       bt.disabled = true;
-      try { const j = await api("/api/pred/redeem", { pts: +bt.dataset.rd }); D.me = j.me; toast("مبروك 🎉 كود الخصم: " + j.code); draw(); } catch (er) { toast(er.message || "ما زبط"); bt.disabled = false; }
+      try { const j = await api("/api/pred/redeem", { pts: +bt.dataset.rd }); D.me = j.me; toast("مبروك 🎉 كود الخصم: " + j.code); draw(true); } catch (er) { toast(er.message || "ما زبط"); bt.disabled = false; }
     }; });
   }
 
@@ -421,9 +449,10 @@ body.lock{overflow:hidden}
     const b = e.target.closest("button"); if (!b || busy) return;
     try {
       busy = true;
-      if (b.dataset.sp !== undefined) { sport = b.dataset.sp; day = ""; org = ""; saveF(); draw(); return; }
-      if (b.dataset.org !== undefined) { org = b.dataset.org; day = ""; saveF(); draw(); return; }
-      if (b.dataset.day !== undefined) { day = b.dataset.day; saveF(); draw(); return; }
+      if (b.dataset.more) { if (b.dataset.more === "up") LIM += 24; else LIMD += 10; draw(true); return; }
+      if (b.dataset.sp !== undefined) { sport = b.dataset.sp; day = ""; org = ""; LIM = 24; LIMD = 10; saveF(); draw(true); return; }
+      if (b.dataset.org !== undefined) { org = b.dataset.org; day = ""; LIM = 24; LIMD = 10; saveF(); draw(true); return; }
+      if (b.dataset.day !== undefined) { day = b.dataset.day; LIM = 24; saveF(); draw(true); return; }
       if (b.dataset.info) { busy = false; openInfo(b.dataset.info); return; }
       if (b.dataset.pic) { // صاحب المتجر بيرفع صورة مقاتل بإيدو، وبتنحفظ لهالاسم بكل النزالات
         busy = false; const mt = D.matches.find((x) => x.id === b.dataset.pic); if (!mt) return; const name = mt[b.dataset.s];
@@ -431,37 +460,37 @@ body.lock{overflow:hidden}
         inp.onchange = async () => { const f = inp.files && inp.files[0]; if (!f) return;
           try { toast("عم نرفع الصورة…"); const pw = ls.get("ko_admin"), r = await fetch("/api/images", { method: "POST", headers: { "content-type": f.type || "image/jpeg", ...(pw ? { authorization: "Bearer " + pw } : {}) }, body: f });
             const j = await r.json().catch(() => ({})); if (!r.ok || !j.url) throw new Error(j.error || "ما زبط الرفع");
-            await api("/api/pred/admin", { action: "pic", name, url: j.url }); toast("انحفظت صورة " + name); await load(); } catch (er) { toast(er.message); } };
+            await api("/api/pred/admin", { action: "pic", name, url: j.url }); toast("انحفظت صورة " + name); await load(true); } catch (er) { toast(er.message); } };
         inp.click(); return;
       }
-      if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "100"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(); }
-      if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(); }
-      if (b.id === "og_go") { const hide = [...document.querySelectorAll("[data-og]")].filter((x) => !x.checked).map((x) => x.dataset.og); await api("/api/pred/admin", { action: "orgs", hide }); toast("انحفظت ✓"); return await load(); }
-      if (b.id === "lg_go") { toast("عم حدّث…"); const ks = [...document.querySelectorAll("[data-lg]")].filter((x) => x.checked).map((x) => x.dataset.lg); const r = await api("/api/pred/admin", { action: "leagues", leagues: ks }); toast(`انحفظت ✓ (${r.total} مباراة)`); return await load(); }
-      if (b.dataset.k) { const id = b.dataset.id, m = D.matches.find((x) => x.id === id), d = DR[id] || (m.mine ? { ...m.mine } : {}); d.k = b.dataset.k; if (d.k === "d") delete d.m; DR[id] = d; draw(); return; }
-      if (b.dataset.m) { const id = b.dataset.id, d = DR[id] || {}; d.m = b.dataset.m; DR[id] = d; draw(); return; }
+      if (b.dataset.pts) { const v = prompt("قديش نقطة للتوقّع الصح بهالمباراة؟", "100"); if (!v) return; await api("/api/pred/admin", { action: "pts", id: b.dataset.pts, pts: +v }); toast("انحفظت النقاط ✓"); return await load(true); }
+      if (b.id === "sy_go") { toast("عم حدّث…"); const r = await api("/api/pred/admin", { action: "sync" }); toast(`تحدّث ✓ (${r.total} مباراة)`); return await load(true); }
+      if (b.id === "og_go") { const hide = [...document.querySelectorAll("[data-og]")].filter((x) => !x.checked).map((x) => x.dataset.og); await api("/api/pred/admin", { action: "orgs", hide }); toast("انحفظت ✓"); return await load(true); }
+      if (b.id === "lg_go") { toast("عم حدّث…"); const ks = [...document.querySelectorAll("[data-lg]")].filter((x) => x.checked).map((x) => x.dataset.lg); const r = await api("/api/pred/admin", { action: "leagues", leagues: ks }); toast(`انحفظت ✓ (${r.total} مباراة)`); return await load(true); }
+      if (b.dataset.k) { const id = b.dataset.id, m = D.matches.find((x) => x.id === id), d = DR[id] || (m.mine ? { ...m.mine } : {}); d.k = b.dataset.k; if (d.k === "d") delete d.m; DR[id] = d; draw(true); return; }
+      if (b.dataset.m) { const id = b.dataset.id, d = DR[id] || {}; d.m = b.dataset.m; DR[id] = d; draw(true); return; }
       if (b.dataset.save) {
         const id = b.dataset.save, m = D.matches.find((x) => x.id === id), d = DR[id] || (m.mine ? { ...m.mine } : {}); let body = { id };
         if (scoreSport(m)) { const sa = document.querySelector(`[data-sa="${id}"]`).value, sb = document.querySelector(`[data-sb="${id}"]`).value; if (sa === "" || sb === "") { toast("اكتب النتيجة للفريقين"); return; } body.sa = +sa; body.sb = +sb; }
         else { if (!d.k) { toast("اختار مين بيربح"); return; } if (fight(m) && d.k !== "d" && !d.m) { toast("اختار كيف بيربح"); return; } body.k = d.k; body.m = d.m; }
-        await api("/api/pred/pick", body); delete DR[id]; toast("انحفظ توقّعك ✓"); return await load(); }
+        await api("/api/pred/pick", body); delete DR[id]; toast("انحفظ توقّعك ✓"); return await load(true); }
       if (b.dataset.setsc) { const v = prompt("النتيجة: الفريق الأول - الفريق التاني (مثلاً 2-1)"); if (!v) return; const mm = v.match(/(\d+)\D+(\d+)/); if (!mm) { toast("اكتبها متل 2-1"); return; } const ra = +mm[1], rb = +mm[2];
-        await api("/api/pred/admin", { action: "result", id: b.dataset.setsc, res: ra > rb ? "a" : ra < rb ? "b" : "d", ra, rb }); toast("انحطّت النتيجة وتوزّعت النقاط ✓"); return await load(); }
+        await api("/api/pred/admin", { action: "result", id: b.dataset.setsc, res: ra > rb ? "a" : ra < rb ? "b" : "d", ra, rb }); toast("انحطّت النتيجة وتوزّعت النقاط ✓"); return await load(true); }
       if (b.dataset.res !== undefined) { const m = D.matches.find((x) => x.id === b.dataset.id); let meth = "";
         if ((b.dataset.res === "a" || b.dataset.res === "b") && fight(m)) { const opts = METH_OK(m); const v = prompt("كيف ربح؟ اكتب الرقم:\n" + opts.map((x, i) => `${i + 1} = ${METH[x]}`).join("\n")); if (v === null) return; meth = opts[+v - 1] || ""; }
-        await api("/api/pred/admin", { action: "result", id: b.dataset.id, res: b.dataset.res, meth }); toast(b.dataset.res === "x" ? "انعلّمت مأجّلة" : b.dataset.res ? "انحطّت النتيجة وتوزّعت النقاط ✓" : "انشالت النتيجة"); return await load(); }
-      if (b.dataset.del) { if (!confirm("أكيد بدك تحذف هالمباراة مع توقّعاتها؟")) return; await api("/api/pred/admin", { action: "del", id: b.dataset.del }); toast("انحذفت"); return await load(); }
+        await api("/api/pred/admin", { action: "result", id: b.dataset.id, res: b.dataset.res, meth }); toast(b.dataset.res === "x" ? "انعلّمت مأجّلة" : b.dataset.res ? "انحطّت النتيجة وتوزّعت النقاط ✓" : "انشالت النتيجة"); return await load(true); }
+      if (b.dataset.del) { if (!confirm("أكيد بدك تحذف هالمباراة مع توقّعاتها؟")) return; await api("/api/pred/admin", { action: "del", id: b.dataset.del }); toast("انحذفت"); return await load(true); }
       if (b.id === "a_go") {
         const at = new Date($("#a_at").value).getTime();
         await api("/api/pred/admin", { action: "add", sport: $("#a_sp").value, league: $("#a_lg").value, a: $("#a_a").value, b: $("#a_b").value, at, pts: +$("#a_pts").value, draw: $("#a_d").checked });
-        toast("انضافت المباراة ✓"); return await load();
+        toast("انضافت المباراة ✓"); return await load(true);
       }
     } catch (err) { toast(err.message); } finally { busy = false; }
   });
   // نافذة الإحصائيات: فخمة، ووراها بلور خفيف. بتسكّر بـ ✕ أو بالكبس برّاها أو بزر الرجوع أو Esc
   let OV = null;
   function closeInfo(fromPop) {
-    if (!OV) return; const o = OV; OV = null; o.classList.remove("on"); document.body.classList.remove("lock");
+    if (!OV) return; const o = OV; OV = null; o.classList.remove("on"); document.body.classList.remove("lock"); if (o.dataset.vh) lockParent(false);
     setTimeout(() => o.remove(), 260); if (!fromPop && history.state && history.state.koInfo) history.back();
   }
   async function openInfo(id) {
@@ -472,6 +501,8 @@ body.lock{overflow:hidden}
     const paint = () => { o.innerHTML = `<div class="sheet"><button class="sh-x" aria-label="سكّر">✕</button>
       <div class="sh-hd"><img class="sh-logo" src="/brand/logo.webp?v=3" alt="KO SPORT" width="54" height="54"><div class="t">📊 الإحصائيات · ${esc(m.league || D.sports[m.sport] || "")}</div><div class="vs2">${side(m, "a")}<div class="mid"><span>${hm(m.at)}</span><span>ضد</span></div>${side(m, "b")}</div></div>
       <div class="sh-bd">${infoHtml(m)}</div></div>`; };
+    const vw = await askView(); if (OV) return; // لو انكبس زر تاني أو سكّر بالانتظار، ما منفتح نافذتين
+    if (vw && vw.h > 0) { o.dataset.vh = vw.h; o.style.cssText = `position:absolute;bottom:auto;top:${Math.max(0, Math.round(vw.t))}px;height:${Math.round(vw.h)}px`; o.style.setProperty("--ovh", Math.round(vw.h) + "px"); lockParent(true); }
     paint(); document.body.appendChild(o); document.body.classList.add("lock"); OV = o;
     requestAnimationFrame(() => o.classList.add("on"));
     try { history.pushState({ koInfo: 1 }, ""); } catch {}

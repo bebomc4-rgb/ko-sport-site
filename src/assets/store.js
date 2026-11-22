@@ -1949,7 +1949,13 @@
   function predictPage() {
     app.innerHTML = `<iframe class="pred-fr" src="/predict?embed" title="توقّعات KO" loading="eager"></iframe>`;
     const fr = app.querySelector(".pred-fr");
-    window.onmessage = (e) => { if (e.origin === location.origin && e.data && e.data.koPredH && fr && fr.isConnected) fr.style.height = Math.max(400, +e.data.koPredH) + "px"; };
+    window.onmessage = (e) => {
+      const d = e.data; if (e.origin !== location.origin || !d || !fr || !fr.isConnected) return;
+      if (d.koPredH) fr.style.height = Math.max(400, +d.koPredH) + "px";
+      // الإطار بطول كل المباريات: نافذة الإحصائيات لازم تنوضع بمكان شاشة الزبون الحالي، والسكرول ينقفل وهي مفتوحة (route() بيفكّو لما تتغيّر الصفحة)
+      else if (d.koPredView) { try { const r = fr.getBoundingClientRect(); fr.contentWindow.postMessage({ koPredV: { t: Math.max(0, Math.round(-r.top)), h: window.innerHeight } }, location.origin); } catch (x) {} }
+      else if (d.koPredLock != null) document.documentElement.classList.toggle("sheet-lock", !!d.koPredLock);
+    };
   }
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
@@ -2486,11 +2492,12 @@
   async function socGet(u) { const r = await fetch(u, { headers: socAuth(), cache: "no-store" }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "صار خطأ"); return j; }
   // سرعة: آخر نسخة بتنعرض فوراً من الجهاز وبيتحدّث من النت بالخلفية (ما بيرسم تاني إذا ما تغيّر شي)
   async function socSWR(u, draw, fail) {
-    const A = acct(), k = "ko_swr:" + u + ":" + String((A && A.account && A.account.phone) || ""); let c = null, shown = "";
+    const A = acct(), k = "ko_swr:" + u + ":" + String((A && A.account && A.account.phone) || ""), r0 = curRoute(); let c = null, shown = "";
     try { c = JSON.parse(localStorage.getItem(k) || "null"); } catch (e) {}
     if (c) { shown = JSON.stringify(c); draw(c); }
-    try { const d = await socGet(u); try { localStorage.setItem(k, JSON.stringify(d)); } catch (e) {} if (JSON.stringify(d) !== shown) draw(d); }
-    catch (e) { if (!c) fail(e); }
+    // لو الزبون طلع من الصفحة قبل ما يوصل الرد (أو فشل)، ما منكتب فوق الصفحة الجديدة
+    try { const d = await socGet(u); try { localStorage.setItem(k, JSON.stringify(d)); } catch (e) {} if (curRoute() !== r0) return; if (JSON.stringify(d) !== shown) { const y = c ? window.scrollY : 0; draw(d); if (y > 0) window.scrollTo(0, y); } }
+    catch (e) { if (!c && curRoute() === r0) fail(e); }
   }
   async function socPost(u, body) { const r = await fetch(u, { method: "POST", headers: { "content-type": "application/json", ...socAuth() }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "صار خطأ"); return j; }
   // صورة البروفايل: منصغّرها بالموبايل لـ 320×320 (قص مربع من النص) قبل الرفع
@@ -2540,7 +2547,9 @@
   }
   async function userPage(uid) {
     app.innerHTML = `<div class="so-page"><div class="loading">لحظة…</div></div>`;
-    let d; try { d = await socGet("/api/social/u/" + encodeURIComponent(uid)); } catch (e) { app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; return; }
+    const r0 = curRoute(); // لو الزبون طلع من الصفحة قبل ما يوصل الرد، ما منكتب فوق الصفحة الجديدة
+    let d; try { d = await socGet("/api/social/u/" + encodeURIComponent(uid)); } catch (e) { if (curRoute() === r0) app.innerHTML = `<div class="so-page"><p class="msg">${esc(e.message)}</p></div>`; return; }
+    if (curRoute() !== r0) return;
     document.title = (d.n || "") + " | " + (C.name || "");
     app.innerHTML = `<div class="so-page">${socCard(d, false)}<a class="btn btn-dark so-back" href="#/rank">‹ التصنيف العالمي</a></div>`;
     app.onclick = null;
@@ -3420,9 +3429,9 @@ ${trustH()}
     else if (a === "predict") predictPage();
     else if (a === "build") buildPage();
     else if (a === "exlib") exlibPage();
-    if (a !== "exlib") exlWarm();
     else if (a === "o" && b) orderPage(b);
     else home();
+    if (a !== "exlib") exlWarm(); // خارج سلسلة else-if (v394 حشرها بنصها فصار home() يمسح المكتبة وصفحة الطلب ما تنفتح)
     finishRoute(hs, keepScroll, keepY, revisit);
   }
   function finishRoute(hs, keepScroll, keepY, revisit) {
