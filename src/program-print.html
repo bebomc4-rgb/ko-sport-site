@@ -40,7 +40,9 @@ body{margin:0;background:#f5f3ef;color:#121212;font:16px/1.6 system-ui,-apple-sy
 (() => {
   const box = document.getElementById("program");
   let data;
-  try { data = JSON.parse(localStorage.getItem("ko_pb_print") || "null"); } catch (e) {}
+  try { if (location.hash.length > 1) data = JSON.parse(decodeURIComponent(location.hash.slice(1))); } catch (e) {}
+  if (!data) try { data = JSON.parse(localStorage.getItem("ko_pb_print") || "null"); } catch (e) {}
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
   if (!data || typeof data.html !== "string" || !data.html) {
     box.innerHTML = '<div class="msg"><b>ما لقينا برنامج جاهز للطباعة.</b><br>ارجع للمتجر واعمل برنامجك من جديد.</div>';
   } else {

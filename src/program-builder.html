@@ -350,10 +350,11 @@ function gen(I,seed){
     if(!R){toast("اعمل برنامجك أول شي");return}
     const copy=document.querySelector(".wrap").cloneNode(true);
     copy.querySelectorAll(".noprint,video,button").forEach(x=>x.remove());
-    try{localStorage.setItem("ko_pb_print",JSON.stringify({html:copy.innerHTML}))}
-    catch(e){toast("ما قدرنا نجهّز صفحة الطباعة، جرّب مرة تانية");return}
-    try{window.top.location.assign("/program-print.html?v=402")}
-    catch(e){location.assign("/program-print.html?v=402")}
+    const data=JSON.stringify({html:copy.innerHTML});
+    try{localStorage.setItem("ko_pb_print",data)}catch(e){}
+    const url="/program-print.html?v=403#"+encodeURIComponent(data);
+    try{window.top.location.assign(url)}
+    catch(e){location.assign(url)}
   }
   app.addEventListener("input",e=>{const t=e.target;if(t.id==="i_age")S.age=t.value;if(t.id==="i_h")S.h=t.value;if(t.id==="i_w")S.w=t.value;save()});
   app.addEventListener("click",async e=>{
