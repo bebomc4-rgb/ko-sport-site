@@ -346,6 +346,15 @@ function gen(I,seed){
     const N=r.nu;L.push(`التغذية: ${N.k} سعرة · ${N.p}غ بروتين · ${N.c}غ كربوهيدرات · ${N.f}غ دهون · مي ${N.water} ل`,"",...r.notes.map(t=>"- "+t));
     return L.join("\n");
   }
+  function printProgram(){
+    if(!R){toast("اعمل برنامجك أول شي");return}
+    const copy=document.querySelector(".wrap").cloneNode(true);
+    copy.querySelectorAll(".noprint,video,button").forEach(x=>x.remove());
+    try{localStorage.setItem("ko_pb_print",JSON.stringify({html:copy.innerHTML}))}
+    catch(e){toast("ما قدرنا نجهّز صفحة الطباعة، جرّب مرة تانية");return}
+    try{window.top.location.assign("/program-print.html?v=402")}
+    catch(e){location.assign("/program-print.html?v=402")}
+  }
   app.addEventListener("input",e=>{const t=e.target;if(t.id==="i_age")S.age=t.value;if(t.id==="i_h")S.h=t.value;if(t.id==="i_w")S.w=t.value;save()});
   app.addEventListener("click",async e=>{
     const b=e.target.closest("button");if(!b)return;
@@ -356,7 +365,7 @@ function gen(I,seed){
     if(b.id==="go"){const m=chk();if(m){form(m);window.scrollTo({top:0});return}seed=0;I={...S,age:+S.age,h:+S.h,w:+S.w};R=gen(I,seed);show();return}
     if(b.id==="re"){seed++;R=gen(I,seed);show();toast("هي نسخة تانية بتمارين مختلفة");return}
     if(b.id==="ed"){form();return}
-    if(b.id==="pr"){window.print();return}
+    if(b.id==="pr"){printProgram();return}
     if(b.id==="cp"){const t=asText();try{await navigator.clipboard.writeText(t);toast("اننسخ البرنامج ✓")}catch{const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("اننسخ البرنامج ✓")}catch{toast("ما زبط النسخ")}a.remove()}}
   });
   form();loadCfg();
