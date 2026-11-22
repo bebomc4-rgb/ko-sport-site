@@ -77,6 +77,9 @@ ul.nt li{margin:4px 0}
 .emb .top{display:none}.emb body{background:transparent}.emb .wrap{padding-top:6px}
 @media (max-width:420px){.nu{grid-template-columns:repeat(2,1fr)}}
 @media print{.top,.noprint,#toast{display:none!important}html,body{background:#fff;color:#000}.card,.sum{box-shadow:none;break-inside:avoid;border-color:#bbb}.wrap{max-width:none;padding:0}}
+/* خط أكبر وأوضح (طلب صاحب المتجر 22/11/2026) */
+html,body{font-size:18px}
+.ptitle small{font-size:1rem}.card h3{font-size:1.2rem}.chips button{font-size:1.02rem;min-height:46px;padding:10px 16px}.g3 label{font-size:.95rem}.g3 input{font-size:1.1rem}.hint{font-size:.95rem}.bar .btn{font-size:1.02rem}.tag{font-size:.92rem}.dy .hd b{font-size:1.2rem}.dy .hd span{font-size:.95rem}.dy .wu{font-size:1rem}.ex .n{font-size:1.15rem}.ex .n em{font-size:.9rem}.ex .p{font-size:1.08rem}.ex .t{font-size:.95rem}.fin{font-size:1.02rem}.cd{font-size:.95rem}ul.nt{font-size:1.02rem}.nu small{font-size:.9rem}.shop a{font-size:1rem}.err{font-size:1.02rem}
 </style>
 </head>
 <body>
@@ -243,6 +246,8 @@ function gen(I,seed){
   let S={g:"m",age:"",h:"",w:"",lv:1,sp:"gen",goal:"gen",eq:["db"],days:4,min:60},seed=0,R=null,I=null;
   try{const o=JSON.parse(localStorage.getItem(KEY)||"{}");Object.assign(S,o)}catch{}
   if(window.top!==window)document.documentElement.classList.add("emb");
+  // جوّا المتجر (iframe): بيبعت طولو للصفحة الأم لتكبّر الإطار على قدّو
+  if(window.top!==window){const sendH=()=>{try{parent.postMessage({koPbH:document.documentElement.scrollHeight},location.origin)}catch(e){}};try{new ResizeObserver(sendH).observe(document.body)}catch(e){}addEventListener("load",sendH);}
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}};
   const toast=t=>{const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2400)};
   const ch=(k,opts,multi)=>`<div class="chips ${multi?"eq":""}">${opts.map(([v,l])=>`<button type="button" data-k="${k}" data-v="${v}" class="${(multi?S[k].includes(v):S[k]===v)?"on":""}">${esc(l)}</button>`).join("")}</div>`;

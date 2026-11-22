@@ -1951,6 +1951,13 @@
     const fr = app.querySelector(".pred-fr");
     window.onmessage = (e) => { if (e.origin === location.origin && e.data && e.data.koPredH && fr && fr.isConnected) fr.style.height = Math.max(400, +e.data.koPredH) + "px"; };
   }
+  // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
+  function buildPage() {
+    document.title = "اعمل برنامجك | " + (C.name || "");
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed" title="اعمل برنامجك" loading="eager"></iframe>`;
+    const fr = app.querySelector(".pb-fr");
+    window.onmessage = (e) => { if (e.origin === location.origin && e.data && e.data.koPbH && fr && fr.isConnected) fr.style.height = Math.max(500, +e.data.koPbH) + "px"; };
+  }
   // صاحب المتجر (17/11/2026): التوقعات والبروفايل والتصنيف بس لحسابو (0938986875)، مخفية عن كل الزباين.
   // (20/11/2026) انحذفت برامج التدريب والتمرين التفاعلي ومكتبة التمارين بطلبو.
   function koOwn() { const a = acct(); const p = String((a && a.account && a.account.phone) || "").replace(/\D/g, ""); return p.slice(-9) === "938986875"; }
@@ -2185,7 +2192,7 @@
     if (step === 1) {
       const cm = {}; exl.L.forEach((x) => { cm[x.m] = (cm[x.m] || 0) + 1; });
       const ks = EXL_MORD.filter((k) => cm[k]).concat(Object.keys(cm).filter((k) => EXL_MORD.indexOf(k) < 0));
-      body.innerHTML = `<a class="exl-prog-bn" href="#/exlib/my"><span>🗂</span><b>برنامجي</b><small>اعمل برنامجك من التمارين وصدّرو صور أو PDF${exlMyCount() ? " (" + exlMyCount() + " تمرين)" : ""}</small></a><a class="exl-prog-bn" href="#/exlib/programs"><span>📋</span><b>برامج التمرين</b><small>برامج جاهزة بأيامها وتمارينها، والتمارين مربوطة بالفيديوهات</small></a><h2 class="exl-h">اختار العضلة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(exlH(k), exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
+      body.innerHTML = `<a class="exl-prog-bn" href="#/build"><span>🏋️</span><b>اعمل برنامجك</b><small>جاوب عالأسئلة وبيطلعلك برنامج تمرين وتغذية على قدّك بصور وفيديوهات التمارين</small></a><a class="exl-prog-bn" href="#/exlib/programs"><span>📋</span><b>برامج التمرين</b><small>برامج جاهزة بأيامها وتمارينها، والتمارين مربوطة بالفيديوهات</small></a><h2 class="exl-h">اختار العضلة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(exlH(k), exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
     } else if (step === 2) {
       const sub = exl.L.filter((x) => x.m === exl.m), ce = {}; sub.forEach((x) => { ce[x.e] = (ce[x.e] || 0) + 1; });
       const ks = Object.keys(ce).sort((a, b) => ce[b] - ce[a]);
@@ -2585,7 +2592,7 @@
         <span class="qd-note"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 10.5v6M12 7.4v.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>لازم يكون التلغرام على نفس الرقم المسجّل على الوصل</span>
         <span class="qd-cta"><span>افتح البوت</span><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </a>
-${koOwn() ? `<a class="acc-card acc-pred acc-me2" href="#/me"><span class="apr-l"><b>👤 بروفايلي ونقاطي</b><small>صورتك، مستواك، نقاطك وترتيبك بالعالم</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/rank"><span class="apr-l"><b>🏆 التصنيف العالمي</b><small>أقوى الزباين بالتوقعات والتعليقات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/exlib"><span class="apr-l"><b>📚 مكتبة التمارين</b><small>تمارينك بالعربي بفيديو متحرك حسب العضلة والأداة</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="/program-builder.html"><span class="apr-l"><b>🧩 اعمل برنامجك</b><small>برنامج تمرين وتغذية على قدّك حسب هدفك وأدواتك</small></span><span class="apr-go">افتح ›</span></a>` : ""}
+${koOwn() ? `<a class="acc-card acc-pred acc-me2" href="#/me"><span class="apr-l"><b>👤 بروفايلي ونقاطي</b><small>صورتك، مستواك، نقاطك وترتيبك بالعالم</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/rank"><span class="apr-l"><b>🏆 التصنيف العالمي</b><small>أقوى الزباين بالتوقعات والتعليقات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/predict"><span class="apr-l"><b>🔮 توقّعات المباريات</b><small>توقّع نتائج الكورة والسلة والملاكمة واجمع نقاط وخصومات</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/exlib"><span class="apr-l"><b>📚 مكتبة التمارين</b><small>تمارينك بالعربي بفيديو متحرك حسب العضلة والأداة</small></span><span class="apr-go">افتح ›</span></a><a class="acc-card acc-pred" href="#/build"><span class="apr-l"><b>🧩 اعمل برنامجك</b><small>برنامج تمرين وتغذية على قدّك حسب هدفك وأدواتك</small></span><span class="apr-go">افتح ›</span></a>` : ""}
       <section class="acc-card"><h2>طلباتي</h2><div data-myorders>${(myOrdOwner(), myOrdersHtml(myOrdCache))}</div></section>
       <section class="acc-card acc-links"><a href="#/cart">🛒 السلة</a><a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">💬 تواصل معنا على واتساب</a></section>`;
     app.onclick = (e) => {
@@ -3365,6 +3372,7 @@ ${trustH()}
     else if (a === "rank") rankPage(b);
     else if (a === "u" && b) userPage(decodeURIComponent(b));
     else if (a === "predict") predictPage();
+    else if (a === "build") buildPage();
     else if (a === "exlib") exlibPage();
     else if (a === "o" && b) orderPage(b);
     else home();
