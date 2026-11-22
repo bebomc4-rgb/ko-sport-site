@@ -16,10 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Changa:wght@700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/store.css?v=391">
-<link rel="stylesheet" href="/assets/admin.css?v=391">
-<link rel="stylesheet" href="/assets/promo.css?v=391">
-<link rel="stylesheet" href="/assets/pwabar.css?v=391">
+<link rel="stylesheet" href="/assets/store.css?v=392">
+<link rel="stylesheet" href="/assets/admin.css?v=392">
+<link rel="stylesheet" href="/assets/promo.css?v=392">
+<link rel="stylesheet" href="/assets/pwabar.css?v=392">
 </head>
 <body class="admin wuilt">
 <aside class="w-side" data-side>
@@ -711,6 +711,19 @@
       <div class="ab-acts"><label class="sub-off"><input type="checkbox" data-exc="showCount"> عدد التمارين تحت كل عضلة وأداة</label><label class="sub-off"><input type="checkbox" data-exc="autoplay"> الفيديو يشتغل لحالو (متل صورة متحركة تعيد)</label><label class="sub-off"><input type="checkbox" data-exc="showEn"> اسم التمرين بالإنكليزي تحت العربي (بخط صغير)</label></div>
     </div>
     <div class="w-card exl-cfg">
+      <h2>اعمل برنامجك</h2>
+      <p class="hint">التحكم بصفحة مولّد البرنامج (بتظهر من مكتبة التمارين). الحفظ تلقائي.</p>
+      <div class="sub-grid">
+        <label>عنوان الصفحة<input type="text" data-pbc="title" maxlength="60" placeholder="اعمل برنامجك"></label>
+        <label>السطر تحت العنوان<input type="text" data-pbc="sub" maxlength="140" placeholder="جاوب عالأسئلة وبيطلعلك برنامج…"></label>
+        <label>سرعة فيديو التمارين<select data-pbc="speed"><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+      </div>
+      <label class="sub-off"><input type="checkbox" data-pbc="on"> الصفحة شغّالة (إذا طفّيتها بتبين «مقفلة حالياً»)</label>
+      <label class="sub-off"><input type="checkbox" data-pbc="media"> أظهر صور وفيديوهات التمارين (لحسابك بس)</label>
+      <label>ملاحظة بتنضاف لآخر كل برنامج<textarea data-pbc="note" rows="3" maxlength="500" placeholder="مثلاً: لأي استفسار تواصل معنا عالواتساب"></textarea></label>
+      <div class="exl-pick"><b>خبّي هالمجموعات من البرامج المولّدة</b> <small>(التمارين المخبّاة ما بتنختار بأي برنامج)</small><div class="exl-chk" data-pb-hide></div></div>
+    </div>
+    <div class="w-card exl-cfg">
       <h2>الترجمة للعربي</h2>
       <p class="hint" data-exl-tstat>…</p>
       <div class="ab-acts"><button type="button" class="btn btn-dark sm" data-exl-tgo>ترجم الناقص بالذكاء الاصطناعي</button><button type="button" class="btn btn-ghost sm" data-exl-tstop hidden>وقّف</button></div>
@@ -1007,12 +1020,12 @@
 <datalist id="cat-list"></datalist>
 
 <div class="toast" data-toast role="status" aria-live="polite"></div>
-<script src="/assets/media.js?v=391"></script>
-<script src="/assets/pwa.js?v=391"></script>
-<script src="/assets/promo.js?v=391"></script>
-<script src="/assets/imgstudio.js?v=391"></script>
-<script src="/assets/themes.js?v=391"></script>
-<script src="/assets/packs.js?v=391"></script>
-<script src="/assets/admin.js?v=391"></script>
+<script src="/assets/media.js?v=392"></script>
+<script src="/assets/pwa.js?v=392"></script>
+<script src="/assets/promo.js?v=392"></script>
+<script src="/assets/imgstudio.js?v=392"></script>
+<script src="/assets/themes.js?v=392"></script>
+<script src="/assets/packs.js?v=392"></script>
+<script src="/assets/admin.js?v=392"></script>
 </body>
 </html>

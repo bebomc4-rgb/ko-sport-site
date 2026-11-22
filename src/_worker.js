@@ -4624,6 +4624,8 @@ async function exlibApi(request, env, path, m) {
     return new Response((await env.STORE.get(new URL(request.url).searchParams.get("d") ? "exlib:progdar" : "exlib:progar")) || "{}", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   }
   // إعدادات المظهر (ثيم، حجم، عرض، سرعة الفيديو): لحساب صاحب المتجر
+  // إعدادات «اعمل برنامجك»: القراية للكل (صفحة المولّد بتحتاجها)، والتعديل لوحة التحكم بس (تحت البوابة)
+  if (path === "/api/exlib/pb" && m === "GET") return new Response((await env.STORE.get("exlib:pb")) || "{}", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   if (path === "/api/exlib/cfg" && m === "GET") {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
     return json(await exlibCfg(env), 200, nos);
@@ -4634,6 +4636,13 @@ async function exlibApi(request, env, path, m) {
   if (path === "/api/exlib/adm" && m === "GET") {
     const { merged } = await exlibAll(env);
     return json({ list: merged, cfg: await exlibCfg(env) }, 200, nos);
+  }
+  if (path === "/api/exlib/pb" && m === "POST") {
+    let b; try { b = await request.json(); } catch { return json({ error: "الطلب غلط" }, 400); }
+    const G = ["sq", "hi", "lu", "hp", "vp", "hr", "vr", "gl", "ca", "bi", "tr", "sd", "rd", "co", "pl"], t = (v, n) => String(v == null ? "" : v).replace(/[<>]/g, "").trim().slice(0, n);
+    const c = { on: b.on !== false, media: b.media !== false, speed: Math.min(3, Math.max(0.5, +b.speed || 1.5)), title: t(b.title, 60), sub: t(b.sub, 140), note: t(b.note, 500), hideG: (Array.isArray(b.hideG) ? b.hideG : []).filter((x) => G.includes(x)) };
+    await env.STORE.put("exlib:pb", JSON.stringify(c));
+    return json({ ok: true, cfg: c }, 200, nos);
   }
   if (path === "/api/exlib/cfg" && m === "POST") {
     let b; try { b = await request.json(); } catch { return json({ error: "الطلب غلط" }, 400); }

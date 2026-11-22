@@ -727,7 +727,7 @@
   async function loadExlib() {
     const box = $("[data-exl-list]"); if (!box) return;
     box.innerHTML = '<div class="w-card dc-empty"><b>جاري التحميل…</b></div>';
-    try { const j = await api("/api/exlib/adm"); EXL = j.list || []; exlCfgFill(j.cfg); } catch (e) { box.innerHTML = ""; toast(e.message); return; }
+    try { const j = await api("/api/exlib/adm"); EXL = j.list || []; exlCfgFill(j.cfg); try { pbFill(await api("/api/exlib/pb")); } catch (e) {} } catch (e) { box.innerHTML = ""; toast(e.message); return; }
     exlFillFilters(); exlShown = 40; renderExlib(); exlTStat();
   }
   function exlFillFilters() {
@@ -773,6 +773,19 @@
       if (reset) renderExlib(); else { row.classList.toggle("exl-hid", !!j.item.h); if (j.item.x && !row.querySelector("[data-exreset]")) row.querySelector(".ab-acts").insertAdjacentHTML("beforeend", '<button type="button" class="btn btn-ghost sm" data-exreset>رجّع الأصلي</button>'); }
     } catch (e) { toast(e.message); }
   }
+  // اعمل برنامجك (22/11/2026): إعدادات مولّد البرنامج، بتنقرا من /api/exlib/pb وبتنحفظ تلقائي
+  const PBG = { sq: "سكوات وأرجل", hi: "ديدلفت وخلفية الفخد", lu: "لانجز", hp: "ضغط وصدر", vp: "أكتاف (ضغط)", hr: "تجديف وظهر", vr: "عقلة وسحب علوي", gl: "مؤخرة", ca: "سمانة", bi: "باي", tr: "تراي", sd: "كتف جانبي", rd: "كتف خلفي", co: "بطن وجذع", pl: "قفز وبليومتركس" };
+  function pbFill(c) {
+    c = c || {};
+    document.querySelectorAll("[data-pbc]").forEach((el) => { const k = el.dataset.pbc, v = c[k]; if (el.type === "checkbox") el.checked = v !== false; else if (v != null) el.value = String(v); });
+    const box = $("[data-pb-hide]"); if (box) box.innerHTML = Object.keys(PBG).map((g) => `<label class="sub-off"><input type="checkbox" data-pbg value="${g}"${(c.hideG || []).includes(g) ? " checked" : ""}> ${esc(PBG[g])}</label>`).join("");
+  }
+  let pbT = 0;
+  function pbSave() {
+    const o = {}; document.querySelectorAll("[data-pbc]").forEach((el) => { o[el.dataset.pbc] = el.type === "checkbox" ? el.checked : el.dataset.pbc === "speed" ? +el.value : el.value; });
+    o.hideG = [...document.querySelectorAll("[data-pbg]:checked")].map((e) => e.value);
+    clearTimeout(pbT); pbT = setTimeout(async () => { try { await api("/api/exlib/pb", { method: "POST", body: JSON.stringify(o) }); toast("✓ انحفظ"); } catch (e) { toast(e.message); } }, 500);
+  }
   // مظهر المكتبة + الترجمة (21/11/2026)
   let EXC = {};
   function exlCfgFill(c) {
@@ -810,8 +823,8 @@
   { const v = $('[data-view="exlib"]');
     if (v) {
       v.addEventListener("change", (e) => { const row = e.target.closest("[data-exid]"); if (row && e.target.dataset.exf) exlSave(row, false); });
-      v.addEventListener("input", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); });
-      v.addEventListener("change", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); });
+      v.addEventListener("input", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); else if (e.target.matches("[data-pbc],[data-pbg]")) pbSave(); });
+      v.addEventListener("change", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); else if (e.target.matches("[data-pbc],[data-pbg]")) pbSave(); });
       $("[data-exl-tgo]").addEventListener("click", exlTranslateAll);
       { let pRun = false; const pg = $("[data-ptr-go]"), ps = $("[data-ptr-stop]"), pt = $("[data-ptr-st]");
         pg.addEventListener("click", async () => { pRun = true; pg.disabled = true; ps.hidden = false;

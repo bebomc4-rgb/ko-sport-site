@@ -116,7 +116,7 @@ const RAW=[
 ["رفع الركب العالي","pl","",0,"p"],["قفز حبل","pl","jr",0,"p"],["قفز من الثبات","pl","",1,"p"],["قفز عريض للأمام","pl","",1,"p"],["قفز جانبي متبادل","pl","",1,"p"],["قفز على مصطبة ثابتة","pl","bn",1,"p"]
 ];
 const EXEN=["bodyweight squat|air squat|squat", "sumo squat|wide stance squat|squat", "goblet squat|dumbbell squat", "kettlebell goblet squat|kettlebell squat", "leg press|sled leg press", "pause squat|squat", "barbell squat|barbell full squat", "front squat", "pistol squat|assisted squat", "good morning|hip hinge", "dumbbell romanian deadlift|dumbbell stiff leg deadlift", "band romanian deadlift|romanian deadlift", "kettlebell swing", "leg curl|lying leg curl|seated leg curl", "superman|back extension|hyperextension", "barbell romanian deadlift|romanian deadlift", "single leg deadlift|romanian deadlift", "dumbbell single leg deadlift|single leg deadlift", "barbell deadlift|deadlift", "lunge|walking lunge|alternate lunge", "dumbbell lunge", "step up|bench step up|box step up", "side lunge|lateral lunge", "bulgarian split squat|split squat", "dumbbell bulgarian split squat|dumbbell split squat", "kettlebell lunge|kettlebell front rack lunge", "push up|push-up", "knee push up|incline push up", "dumbbell floor press|floor press", "dumbbell bench press", "machine chest press|chest press", "band chest press|resistance band chest press|push up", "feet elevated push up|decline push up", "dumbbell incline bench press|incline dumbbell press", "barbell bench press", "archer push up|archer push-up", "chest dip|dip", "dumbbell fly|dumbbell flye", "cable fly|cable cross over|cable crossover", "pike push up|incline push up", "dumbbell shoulder press|dumbbell seated shoulder press", "machine shoulder press|lever shoulder press", "band shoulder press|resistance band shoulder press", "pike push up|handstand push up", "barbell shoulder press|barbell military press|overhead press", "kettlebell shoulder press|kettlebell press", "wall handstand|handstand", "inverted row|bodyweight row", "dumbbell one arm row|one arm row|dumbbell row", "band row|resistance band row", "cable seated row|seated row", "inverted row|bodyweight row", "kettlebell row|kettlebell bent over row", "barbell bent over row|barbell row", "prone y raise|prone t raise|reverse fly", "assisted pull up|band pull up|pull up", "lat pulldown|cable pulldown", "band lat pulldown|resistance band pulldown|lat pulldown", "dead hang|hanging", "chin up|chin-up", "pull up|pull-up", "glute bridge|hip bridge|bridge", "band kickback|glute kickback", "cable kickback|cable glute kickback", "single leg glute bridge|single leg bridge", "dumbbell hip thrust|hip thrust", "barbell hip thrust|hip thrust", "standing calf raise|calf raise", "dumbbell calf raise|dumbbell standing calf raise", "machine calf raise|lever calf raise|seated calf raise", "single leg calf raise|calf raise", "dumbbell biceps curl|dumbbell curl", "barbell curl", "band biceps curl|resistance band curl|biceps curl", "cable curl|cable biceps curl", "dumbbell hammer curl|hammer curl", "diamond push up|close grip push up", "bench dip|triceps dip|dip", "dumbbell triceps extension|dumbbell overhead triceps extension|overhead triceps extension", "cable triceps pushdown|triceps pushdown|pushdown", "band triceps pushdown|triceps pushdown", "lying triceps extension|skull crusher|barbell lying triceps extension", "dumbbell lateral raise|lateral raise", "band lateral raise|resistance band lateral raise|lateral raise", "cable lateral raise", "face pull|band face pull", "dumbbell rear delt fly|dumbbell reverse fly|rear delt", "cable rear delt fly|reverse fly|rear delt", "prone t raise|reverse fly|rear delt", "plank", "side plank", "dead bug", "lying leg raise|leg raise", "russian twist", "hollow hold|hollow body", "pallof press|band pallof", "cable woodchop|woodchop|wood chopper", "cable crunch", "farmer walk|farmers walk|farmer's walk", "hanging leg raise|hanging knee raise", "high knees|high knee", "jump rope|jumping rope|rope jump", "squat jump|jump squat", "broad jump|standing long jump", "skater jump|lateral jump|side jump", "box jump"];
-const EX=RAW.map(([n,p,r,l,k,u],i)=>({n,p,r,l,k,u:!!u,q:EXEN[i]||""}));
+let EX=RAW.map(([n,p,r,l,k,u],i)=>({n,p,r,l,k,u:!!u,q:EXEN[i]||""}));
 const TIP={sq:"ظهرك مستقيم وركبك باتجاه أصابع رجليك",hi:"حرّك الورك لورا وظهرك ثابت، والوزن قريب من جسمك",lu:"خطوة طويلة وجذعك منتصب",hp:"كتافك لورا وصدرك لقدّام، ونزّل بتحكّم",vp:"شد بطنك وما تقوّس ظهرك",hr:"اسحب بمرفقك لورا وشد لوحي الكتف",vr:"ابدأ من كتافك مو من دراعاتك",gl:"اعصر المؤخرة فوق وثبّت لحظة",ca:"طلوع كامل ونزول بطيء",bi:"مرفقك ثابت جنب جسمك",tr:"مرفقك ثابت والحركة من الساعد",sd:"ارفع لمستوى الكتف وبلا تأرجح",rd:"اسحب لورا وانت عاصر لوحي الكتف",co:"شد بطنك وتنفّس بانتظام",pl:"انزل بنعومة وبركب مثنية"};
 const SP={
 gen:{n:"لياقة عامة"},
@@ -243,11 +243,21 @@ function gen(I,seed){
   const $=s=>document.querySelector(s),app=$("#app");
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const KEY="ko_pb";
+  let CFG={},EX0=null;
+  // إعدادات لوحة التحكم (/api/exlib/pb): مقفلة، عنوان، تمارين مخبّاة، ملاحظة، إلخ
+  async function loadCfg(){
+    try{const r=await fetch("/api/exlib/pb",{cache:"no-store"});if(r.ok)CFG=await r.json()||{};}catch(e){}
+    if(!EX0)EX0=EX.slice();EX=EX0.filter(e=>!(CFG.hideG||[]).includes(e.p));
+    const h=document.querySelector(".ptitle h1"),sm=document.querySelector(".ptitle small");
+    if(h&&CFG.title)h.textContent=CFG.title;if(sm&&CFG.sub)sm.textContent=CFG.sub;
+    if(CFG.on===false){const a=document.getElementById("app");a.innerHTML='<div class="card"><h3>الصفحة مقفلة حالياً</h3><p class="hint">رجّع جرّب بعدين.</p></div>';return false}
+    return true;
+  }
   let S={g:"m",age:"",h:"",w:"",lv:1,sp:"gen",goal:"gen",eq:["db"],days:4,min:60},seed=0,R=null,I=null;
   try{const o=JSON.parse(localStorage.getItem(KEY)||"{}");Object.assign(S,o)}catch{}
   if(window.top!==window)document.documentElement.classList.add("emb");
   // جوّا المتجر (iframe): بيبعت طولو للصفحة الأم لتكبّر الإطار على قدّو
-  if(window.top!==window){const sendH=()=>{try{parent.postMessage({koPbH:document.documentElement.scrollHeight},location.origin)}catch(e){}};try{new ResizeObserver(sendH).observe(document.body)}catch(e){}addEventListener("load",sendH);}
+  if(window.top!==window){const sendH=()=>{try{parent.postMessage({koPbH:Math.ceil(document.body.getBoundingClientRect().height)+8},location.origin)}catch(e){}};try{new ResizeObserver(sendH).observe(document.body)}catch(e){}addEventListener("load",sendH);}
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}};
   const toast=t=>{const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2400)};
   const ch=(k,opts,multi)=>`<div class="chips ${multi?"eq":""}">${opts.map(([v,l])=>`<button type="button" data-k="${k}" data-v="${v}" class="${(multi?S[k].includes(v):S[k]===v)?"on":""}">${esc(l)}</button>`).join("")}</div>`;
@@ -287,7 +297,7 @@ function gen(I,seed){
       <div class="cd">🧘 تبريد: مشي خفيف وإطالة للعضلات يلي اشتغلت (20-30 ثانية لكل عضلة)</div></div>`).join("")}
     <div class="card"><h3>🍽 تغذيتك (تقدير تقريبي)</h3><div class="nu"><div><b>${num(N.k)}</b><small>سعرة باليوم</small></div><div><b>${num(N.p)}</b><small>غ بروتين</small></div><div><b>${num(N.c)}</b><small>غ كربوهيدرات</small></div><div><b>${num(N.f)}</b><small>غ دهون</small></div></div>
       <p class="hint">مؤشر كتلة الجسم عندك ${num(r.bmi)} (${esc(r.bmiC)}). المي: حوالي ${num(N.water)} ليتر باليوم. الأرقام تقديرية (±10%): تابع وزنك كل أسبوعين وعدّل حسب النتيجة.</p></div>
-    <div class="card"><h3>📌 ملاحظات</h3><ul class="nt">${r.notes.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
+    <div class="card"><h3>📌 ملاحظات</h3><ul class="nt">${r.notes.concat(CFG.note?[CFG.note]:[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
     ${r.shop.length?`<div class="card noprint"><h3>🛒 جهّز أدواتك من المتجر</h3><div class="shop">${r.shop.map(w=>`<a href="/#/search/${encodeURIComponent(w)}" target="_top">${esc(w)}</a>`).join("")}</div></div>`:""}
     <p class="hint">هالبرنامج إرشادي عام، مو بديل عن مدرّب أو دكتور. إذا عندك إصابة أو مرض، استشر دكتورك قبل ما تبدأ، ووقّف فوراً إذا حسّيت بألم حاد.</p>`;
     window.scrollTo({top:0});
@@ -311,13 +321,18 @@ function gen(I,seed){
     }
     return null;
   }
+  let MIO=null;
   async function media(){
+    if(CFG.media===false)return;
     await lib();if(!LIB.length)return;
+    if(MIO)MIO.disconnect();
+    // الفيديو بيتحمّل ويشتغل بس وهو ظاهر عالشاشة (26 فيديو مرة وحدة كانو يعلّقو اللمس)
+    MIO=new IntersectionObserver(es=>es.forEach(e=>{const v=e.target;if(e.isIntersecting){if(!v.src)v.src=v.dataset.src;v.defaultPlaybackRate=v.playbackRate=+CFG.speed||1.5;v.play().catch(()=>{})}else if(v.src)v.pause()}),{rootMargin:"200px"});
     document.querySelectorAll(".ex[data-q]").forEach(el=>{
       const q=el.dataset.q;if(!q)return;const x=find(q);if(!x)return;
-      const m=x.v?`<video class="xm" src="/exlib/m/${x.i}.mp4" muted loop playsinline autoplay></video>`:`<img class="xm" src="/exlib/m/${x.i}.jpg" alt="" loading="lazy">`;
+      const m=x.v?`<video class="xm" data-src="/exlib/m/${x.i}.mp4" muted loop playsinline preload="none"></video>`:`<img class="xm" src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async">`;
       el.insertAdjacentHTML("afterbegin",`<div class="xmw noprint">${m}</div>`);
-      const v=el.querySelector("video");if(v){v.defaultPlaybackRate=v.playbackRate=1.5;v.play().catch(()=>{});}
+      const v=el.querySelector("video");if(v)MIO.observe(v);
     });
   }
   function asText(){
@@ -339,7 +354,7 @@ function gen(I,seed){
     if(b.id==="pr"){window.print();return}
     if(b.id==="cp"){const t=asText();try{await navigator.clipboard.writeText(t);toast("اننسخ البرنامج ✓")}catch{const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("اننسخ البرنامج ✓")}catch{toast("ما زبط النسخ")}a.remove()}}
   });
-  form();
+  form();loadCfg();
 })();
 </script>
 </body>

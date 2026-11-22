@@ -1,6 +1,6 @@
 /* KO SPORT service worker — fast repeat visits + offline fallback.
    Products/prices are always fetched fresh from the network first. */
-const V = "ko-v391";
+const V = "ko-v392";
 const SHELL = "ko-shell-" + V, ASSET = "ko-assets-" + V, IMG = "ko-img-" + V, DATA = "ko-data-" + V;
 const KEEP = [SHELL, ASSET, IMG, DATA];
 
