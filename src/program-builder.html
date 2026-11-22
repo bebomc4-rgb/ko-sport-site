@@ -361,7 +361,7 @@ function gen(I,seed){
     copy.querySelectorAll(".noprint,video,button").forEach(x=>x.remove());
     const data=JSON.stringify({html:copy.innerHTML});
     try{localStorage.setItem("ko_pb_print",data)}catch(e){}
-    const url="/program-print.html?v=404#"+encodeURIComponent(data);
+    const url="/program-print.html?v=405#"+encodeURIComponent(data);
     try{window.top.location.assign(url)}
     catch(e){location.assign(url)}
   }

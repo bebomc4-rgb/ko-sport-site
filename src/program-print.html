@@ -25,6 +25,7 @@ body{margin:0;background:#f5f3ef;color:#121212;font:16px/1.6 system-ui,-apple-sy
 .nu{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}.nu div{background:#f7f5f0;border-radius:10px;padding:8px 4px}.nu b{display:block;color:#8c6b31}.nu small{font-size:13px}
 .shop{display:flex;flex-wrap:wrap;gap:8px}.shop a{color:#8c6b31}.nt{padding-inline-start:20px}
 .msg{text-align:center;padding:35px 10px}
+.print-note{text-align:center;color:#5f5c56;font-size:14px;margin:10px auto 0}
 @media print{
   body{background:#fff}
   .tools{display:none!important}
@@ -35,7 +36,8 @@ body{margin:0;background:#f5f3ef;color:#121212;font:16px/1.6 system-ui,-apple-sy
 </style>
 </head>
 <body>
-<nav class="tools"><button id="print" type="button">🖨 طباعة / حفظ PDF</button><a href="/ar/">رجوع للمتجر</a></nav>
+<nav class="tools"><button id="print" type="button">🖨 طباعة / حفظ PDF</button><a href="/ar/#/build">رجوع لـ«اعمل برنامجك»</a></nav>
+<p class="print-note">المعاينة ضمن التطبيق؛ اكبس زر الطباعة لفتح نافذة الطباعة النظامية.</p>
 <main class="wrap" id="program"><p class="msg">جاري تجهيز البرنامج…</p></main>
 <script>
 (() => {
@@ -53,7 +55,7 @@ body{margin:0;background:#f5f3ef;color:#121212;font:16px/1.6 system-ui,-apple-sy
         if (typeof window.print !== "function") throw new Error("print unavailable");
         window.print();
       } catch (e) {
-        alert("الطباعة مو مدعومة بهالمتصفح. افتح الصفحة بكروم واختار طباعة أو حفظ PDF من القائمة.");
+        alert("الطباعة مو مدعومة بالتطبيق. افتح قائمة الطباعة بالجهاز أو ارجع للبرنامج.");
       }
     });
   }
