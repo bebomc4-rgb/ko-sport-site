@@ -3243,7 +3243,7 @@ ${trustH()}
     if (keepY) app.style.minHeight = app.offsetHeight + "px";
     // jump to the top BEFORE the new page is drawn (instantly, even if smooth scrolling is on), so it opens in place
     if (!keepScroll && !revisit) toTop();
-    document.body.classList.remove("has-sticky"); closeSheet();
+    document.body.classList.remove("has-sticky"); if (!keepScroll) closeSheet(); // تحديث خلفي (أسعار/بيانات) ما بيسكّر النافذة المفتوحة
     if (route.n++ && !keepScroll) { app.classList.remove("pg"); void app.offsetWidth; app.classList.add("pg"); }
     document.body.dataset.page = a || "home";
     const navKey = !a ? "home" : ["all", "c", "g", "search", "browse"].includes(a) ? "all" : ["cart", "checkout"].includes(a) ? "cart" : a === "account" ? "account" : a === "games" ? "games" : "";
