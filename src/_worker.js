@@ -4690,6 +4690,107 @@ Silently proofread every title for accuracy, natural wording, and consistency. R
   if (ch) await env.STORE.put(KF, JSON.stringify(fail));
   return json({ ok: true, total: D.P.length, done: doneN(), left: left().length, got: nGot, failed: batch.length - nGot }, 200, { "cache-control": "no-store" });
 }
+const EXL_TRANSLATE_JOB = "exlib:translation:job";
+const exlJobPublic = (job) => {
+  if (!job) return null;
+  const { id, kind, phase, status, done, total, failed, updatedAt, error } = job;
+  return { id, kind, phase, status, done, total, failed: failed || 0, updatedAt, error: error || "" };
+};
+async function exlTranslationStart(request, env) {
+  if (!env.TRANSLATION_CRON_SECRET) return json({ error: "خدمة الترجمة بالخلفية مو مهيّأة" }, 503, { "cache-control": "no-store" });
+  if (!env.AI) return json({ error: "الذكاء الاصطناعي مو مربوط" }, 503, { "cache-control": "no-store" });
+  let b = {}; try { b = await request.json(); } catch {}
+  const kind = b.kind === "programs" ? "programs" : b.kind === "exercises" ? "exercises" : "";
+  if (!kind) return json({ error: "نوع الترجمة مو معروف" }, 400);
+  let current = null; try { current = await env.STORE.get(EXL_TRANSLATE_JOB, "json"); } catch {}
+  if (current && current.status === "running") return json({ ok: true, job: exlJobPublic(current) }, 200, { "cache-control": "no-store" });
+  const redo = !!b.redo, job = { id: crypto.randomUUID(), kind, redo, status: "running", phase: "exercises", done: 0, total: 0, failed: 0, updatedAt: Date.now() };
+  if (kind === "exercises") {
+    const { merged, ar } = await exlibAll(env);
+    let arv = {}; try { arv = (await env.STORE.get("exlib:arv", "json")) || {}; } catch {}
+    job.total = merged.length;
+    job.done = merged.filter((x) => redo ? (arv[x.i] || 0) >= EXL_TRV : !!ar[x.i]).length;
+    job.phase = "exercises";
+    await env.STORE.put("exlib:arfail", "{}");
+    if (job.done >= job.total) job.status = "completed";
+  } else {
+    let D = null; try { D = await env.STORE.get("exlib:prog", "json"); } catch {}
+    if (!D || !Array.isArray(D.P)) return json({ error: "ارفع ملف البرامج أول شي" }, 400);
+    let titles = {}, titleV = {}, descriptions = {}, descriptionV = {};
+    try { titles = (await env.STORE.get("exlib:progar", "json")) || {}; } catch {}
+    try { titleV = (await env.STORE.get("exlib:progarv", "json")) || {}; } catch {}
+    try { descriptions = (await env.STORE.get("exlib:progdar", "json")) || {}; } catch {}
+    try { descriptionV = (await env.STORE.get("exlib:progdarv", "json")) || {}; } catch {}
+    const descN = D.P.filter((x) => x.d).length;
+    const titleDone = D.P.filter((x, i) => redo ? (titleV[i] || 0) >= EXL_TRV : !!titles[i]).length;
+    const descDone = D.P.filter((x, i) => x.d && (redo ? (descriptionV[i] || 0) >= EXL_TRV : !!descriptions[i])).length;
+    job.total = D.P.length + descN;
+    job.done = titleDone + descDone;
+    job.phase = titleDone < D.P.length ? "titles" : "descriptions";
+    job.titleTotal = D.P.length;
+    job.descTotal = descN;
+    job.titleDone = titleDone;
+    job.descDone = descDone;
+    await env.STORE.put("exlib:progfail", "{}");
+    await env.STORE.put("exlib:progdfail", "{}");
+    if (job.done >= job.total) job.status = "completed";
+  }
+  await env.STORE.put(EXL_TRANSLATE_JOB, JSON.stringify(job));
+  return json({ ok: true, job: exlJobPublic(job) }, 202, { "cache-control": "no-store" });
+}
+async function exlTranslationStatus(request, env) {
+  if (!isAdmin(request, env, "owner")) return denied();
+  let job = null; try { job = await env.STORE.get(EXL_TRANSLATE_JOB, "json"); } catch {}
+  return json({ job: exlJobPublic(job) }, 200, { "cache-control": "no-store" });
+}
+async function exlTranslationStop(request, env) {
+  if (!isAdmin(request, env, "owner")) return denied();
+  let job = null; try { job = await env.STORE.get(EXL_TRANSLATE_JOB, "json"); } catch {}
+  if (job && job.status === "running") { job.status = "stopped"; job.updatedAt = Date.now(); await env.STORE.put(EXL_TRANSLATE_JOB, JSON.stringify(job)); }
+  return json({ ok: true, job: exlJobPublic(job) }, 200, { "cache-control": "no-store" });
+}
+async function exlTranslationTick(request, env) {
+  const secret = env.TRANSLATION_CRON_SECRET || "";
+  if (!secret || request.headers.get("authorization") !== "Bearer " + secret) return json({ error: "forbidden" }, 403, { "cache-control": "no-store" });
+  let job = null; try { job = await env.STORE.get(EXL_TRANSLATE_JOB, "json"); } catch {}
+  if (!job || job.status !== "running") return json({ active: false, status: job ? job.status : "idle" }, 200, { "cache-control": "no-store" });
+  try {
+    let result;
+    if (job.kind === "exercises") {
+      result = await exlibTranslate(new Request("https://internal/api/exlib/translate", { method: "POST", body: JSON.stringify({ redo: job.redo ? 1 : 0 }) }), env);
+      const data = await result.json();
+      if (!result.ok || data.error) throw new Error(data.error || "فشلت دفعة ترجمة التمارين");
+      job.done = data.done;
+      job.total = data.total;
+      job.failed = data.failed || 0;
+      if (!data.left) job.status = "completed";
+    } else {
+      const desc = job.phase === "descriptions";
+      result = await exlibProgTr(env, desc, job.redo);
+      if (!result || result.status >= 400) {
+        const data = result ? await result.json() : {};
+        throw new Error(data.error || "فشلت دفعة ترجمة البرامج");
+      }
+      const data = await result.json();
+      if (desc) job.descDone = data.done;
+      else job.titleDone = data.done;
+      job.done = (job.titleDone || 0) + (job.descDone || 0);
+      job.total = (job.titleTotal || 0) + (job.descTotal || 0);
+      if (!data.left) {
+        if (!desc && job.descTotal) job.phase = "descriptions";
+        else job.status = "completed";
+      }
+      job.failed = data.failed || 0;
+    }
+    job.error = "";
+  } catch (e) {
+    job.status = "failed";
+    job.error = String(e && e.message || e).slice(0, 300);
+  }
+  job.updatedAt = Date.now();
+  await env.STORE.put(EXL_TRANSLATE_JOB, JSON.stringify(job));
+  return json({ active: job.status === "running", status: job.status, job: exlJobPublic(job) }, 200, { "cache-control": "no-store" });
+}
 async function exlibApi(request, env, path, m) {
   const nos = { "cache-control": "no-store" };
   // لائحة التمارين: لصاحب المتجر بس (من حسابو بالمتجر)، بدون المخفية
@@ -4716,8 +4817,12 @@ async function exlibApi(request, env, path, m) {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
     return json(await exlibCfg(env), 200, nos);
   }
+  if (path === "/api/exlib/translation/tick" && m === "POST") return exlTranslationTick(request, env);
   // الرفع والتعديل: بكلمة سر لوحة التحكم (المالك بس)
   if (!isAdmin(request, env, "owner")) return denied();
+  if (path === "/api/exlib/translation/start" && m === "POST") return exlTranslationStart(request, env);
+  if (path === "/api/exlib/translation/status" && m === "GET") return exlTranslationStatus(request, env);
+  if (path === "/api/exlib/translation/stop" && m === "POST") return exlTranslationStop(request, env);
   // لوحة التحكم ← التمارين: كل اللائحة مع المخفية والمعدّلة
   if (path === "/api/exlib/adm" && m === "GET") {
     const { merged } = await exlibAll(env);

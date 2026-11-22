@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=406" title="اعمل برنامجك" loading="eager"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=407" title="اعمل برنامجك" loading="eager"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     window.onmessage = (e) => { if (e.origin === location.origin && e.data && e.data.koPbH && fr && fr.isConnected) fr.style.height = Math.max(500, +e.data.koPbH) + "px"; };
   }
@@ -2436,7 +2436,7 @@
     const d = exlMyGet();
     if (!d.days.length) { toast("أضف تمرين قبل تصدير PDF"); return; }
     toast("عم يجهّز صفحة PDF…");
-    const url = "/exlib-print.html?v=406";
+    const url = "/exlib-print.html?v=407";
     let w = null;
     try { w = window.open(url, "_blank"); } catch (e) {}
     if (!w) {

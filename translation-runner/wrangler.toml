@@ -1,0 +1,10 @@
+name = "ko-sport-translation-runner"
+main = "worker.js"
+compatibility_date = "2026-11-22"
+workers_dev = false
+
+[vars]
+SITE_ORIGIN = "https://ko-sport.online"
+
+[triggers]
+crons = ["* * * * *"]

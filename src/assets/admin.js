@@ -96,7 +96,7 @@
     if (tab === "dash") renderDash();
     if (tab === "carts") loadCarts();
     if (tab === "subs") loadSubs();
-    if (tab === "exlib") { loadExlib(); progStat(); }
+    if (tab === "exlib") { loadExlib(); progStat(); refreshExlTranslation(); }
     if (tab === "pred") { const fr = $("[data-pred-fr]"); if (fr && !fr.src) { fr.src = "/predict?manage"; addEventListener("message", (e) => { if (e.origin === location.origin && e.data && e.data.koPredH) fr.style.height = Math.max(500, +e.data.koPredH) + "px"; }); } }
     if (tab === "discounts") loadUsed();
     if (tab === "customers") loadCustomers();
@@ -806,38 +806,68 @@
     clearTimeout(excT); excT = setTimeout(async () => { try { const j = await api("/api/exlib/cfg", { method: "POST", body: JSON.stringify(o) }); EXC = j.cfg; toast("✓ انحفظ"); } catch (e) { toast(e.message); } }, 500);
   }
   function exlTStat() { const el = $("[data-exl-tstat]"); if (!el) return; const d = EXL.filter((x) => x.a).length; el.textContent = `مترجم ${nf(d)} من ${nf(EXL.length)} تمرين` + (d < EXL.length ? ` — ناقص ${nf(EXL.length - d)}` : " ✓"); }
-  let exlTRun = false;
-  async function exlTranslateAll(redo) {
-    const go = $("[data-exl-tgo]"), rd = $("[data-exl-tredo]"), stop = $("[data-exl-tstop]"), el = $("[data-exl-tstat]");
-    if (redo && !confirm("بدك تعيد ترجمة كل أسماء التمارين؟ بتنحفظ نسخة احتياطية من الترجمة الحالية، والأسماء يلي كتبتها بإيدك من هلق وطالع ما بتتغيّر.")) return;
-    exlTRun = true; go.disabled = true; if (rd) rd.disabled = true; stop.hidden = false;
+  let exlTranslationPoll = 0, exlTranslationPollBusy = false, exlTranslationLastStatus = "";
+  function renderExlTranslation(job) {
+    const active = !!job && job.status === "running";
+    ["[data-exl-tgo]", "[data-exl-tredo]", "[data-ptr-go]", "[data-ptr-redo]"].forEach((sel) => { const el = $(sel); if (el) el.disabled = active; });
+    ["[data-exl-tstop]", "[data-ptr-stop]"].forEach((sel) => { const el = $(sel); if (el) el.hidden = !active; });
+    const exercise = $("[data-exl-tstat]"), programs = $("[data-ptr-st]");
+    if (!job) { exlTStat(); if (programs) programs.textContent = ""; return; }
+    const pct = job.total ? Math.min(100, Math.floor(100 * job.done / job.total)) : 100;
+    const progress = `${nf(job.done)} من ${nf(job.total)} (${pct}٪)`;
+    const state = job.status === "running" ? "عم يترجم بالخلفية" : job.status === "completed" ? "خلصت الترجمة" : job.status === "stopped" ? "وقفت الترجمة" : "الترجمة توقفت بسبب خطأ";
+    if (job.kind === "exercises") {
+      if (exercise) exercise.textContent = `${state}: ${progress}${active ? " — بتكمل لو سكّرت اللوحة" : job.failed ? ` — تعذّر بهالدفعة ${nf(job.failed)}` : " ✓"}${job.error ? " — " + job.error : ""}`;
+      if (programs) programs.textContent = "";
+    } else {
+      const phase = job.phase === "descriptions" ? "الأوصاف" : "العناوين";
+      if (programs) programs.textContent = `${state} ${phase}: ${progress}${active ? " — بتكمل لو سكّرت اللوحة" : job.failed ? ` — تعذّر بهالدفعة ${nf(job.failed)}` : " ✓"}${job.error ? " — " + job.error : ""}`;
+      if (exercise) exercise.textContent = `مترجم ${nf(EXL.filter((x) => x.a).length)} من ${nf(EXL.length)} تمرين`;
+    }
+  }
+  async function refreshExlTranslation() {
+    if (exlTranslationPollBusy) return;
+    exlTranslationPollBusy = true;
     try {
-      while (exlTRun) {
-        const j = await api("/api/exlib/translate", { method: "POST", body: JSON.stringify(redo ? { redo: 1 } : {}) });
-        el.textContent = `عم يترجم… ${nf(j.done)} من ${nf(j.total)}` + (j.failed ? ` (تخطّى ${j.failed} بهالدفعة)` : "");
-        if (!j.left) break;
-      }
-    } catch (e) { toast(e.message); }
-    exlTRun = false; go.disabled = false; if (rd) rd.disabled = false; stop.hidden = true;
-    loadExlib();
+      const { job } = await api("/api/exlib/translation/status");
+      renderExlTranslation(job);
+      const status = job && job.status || "";
+      if (exlTranslationLastStatus === "running" && status && status !== "running") { await loadExlib(); await progStat(); renderExlTranslation(job); }
+      exlTranslationLastStatus = status;
+      clearTimeout(exlTranslationPoll);
+      if (status === "running") exlTranslationPoll = setTimeout(refreshExlTranslation, 3000);
+    } catch (e) {
+      const el = $("[data-exl-tstat]"); if (el) el.textContent = "ما قدرت أقرا تقدّم الترجمة: " + e.message;
+    } finally { exlTranslationPollBusy = false; }
+  }
+  async function startExlTranslation(kind, redo) {
+    if (redo && !confirm(kind === "exercises" ? "بدك تعيد صياغة كل أسماء التمارين؟ بتنحفظ نسخة احتياطية، وأسماءك اليدوية ما بتتغيّر." : "بدك تعيد صياغة عناوين ووصف البرامج؟ بتنحفظ نسخة احتياطية من الترجمات الحالية.")) return;
+    const el = kind === "exercises" ? $("[data-exl-tstat]") : $("[data-ptr-st]");
+    if (el) el.textContent = "عم نجهّز الترجمة بالخلفية…";
+    try {
+      const { job } = await api("/api/exlib/translation/start", { method: "POST", body: JSON.stringify({ kind, redo: redo ? 1 : 0 }) });
+      renderExlTranslation(job);
+      exlTranslationLastStatus = job && job.status || "";
+      clearTimeout(exlTranslationPoll);
+      if (exlTranslationLastStatus === "running") exlTranslationPoll = setTimeout(refreshExlTranslation, 1000);
+      else if (exlTranslationLastStatus === "completed") { await loadExlib(); await progStat(); renderExlTranslation(job); }
+    } catch (e) { if (el) el.textContent = "ما بلّشت الترجمة: " + e.message; toast(e.message); }
+  }
+  async function stopExlTranslation() {
+    try { const { job } = await api("/api/exlib/translation/stop", { method: "POST" }); clearTimeout(exlTranslationPoll); renderExlTranslation(job); exlTranslationLastStatus = job && job.status || ""; }
+    catch (e) { toast(e.message); }
   }
   { const v = $('[data-view="exlib"]');
     if (v) {
       v.addEventListener("change", (e) => { const row = e.target.closest("[data-exid]"); if (row && e.target.dataset.exf) exlSave(row, false); });
       v.addEventListener("input", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); else if (e.target.matches("[data-pbc],[data-pbg]")) pbSave(); });
       v.addEventListener("change", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); else if (e.target.matches("[data-pbc],[data-pbg]")) pbSave(); });
-      $("[data-exl-tgo]").addEventListener("click", () => exlTranslateAll(false));
-      $("[data-exl-tredo]").addEventListener("click", () => exlTranslateAll(true));
-      { let pRun = false; const pg = $("[data-ptr-go]"), pr = $("[data-ptr-redo]"), ps = $("[data-ptr-stop]"), pt = $("[data-ptr-st]");
-        const runP = async (redo) => {
-          if (redo && !confirm("بدك تعيد ترجمة كل عناوين ووصف البرامج؟ بتنحفظ نسخة احتياطية من الترجمة الحالية قبل ما نبدأ.")) return;
-          pRun = true; pg.disabled = true; pr.disabled = true; ps.hidden = false;
-          try { for (const d of [0, 1]) { while (pRun) { const j = await api("/api/exlib/progtr", { method: "POST", body: JSON.stringify({ d, redo: redo ? 1 : 0 }) }); pt.textContent = `عم يترجم ${d ? "الوصف" : "العناوين"}… ${nf(j.done)} · باقي ${nf(j.left)}`; if (!j.left) break; } } if (pRun) pt.textContent = "تمت ترجمة العناوين والوصف ✓"; } catch (e) { pt.textContent = "وقفت الترجمة: " + e.message; toast(e.message); }
-          pRun = false; pg.disabled = false; pr.disabled = false; ps.hidden = true; };
-        pg.addEventListener("click", () => runP(false));
-        pr.addEventListener("click", () => runP(true));
-        ps.addEventListener("click", () => { pRun = false; }); }
-      $("[data-exl-tstop]").addEventListener("click", () => { exlTRun = false; });
+      $("[data-exl-tgo]").addEventListener("click", () => startExlTranslation("exercises", false));
+      $("[data-exl-tredo]").addEventListener("click", () => startExlTranslation("exercises", true));
+      $("[data-ptr-go]").addEventListener("click", () => startExlTranslation("programs", false));
+      $("[data-ptr-redo]").addEventListener("click", () => startExlTranslation("programs", true));
+      $("[data-exl-tstop]").addEventListener("click", stopExlTranslation);
+      $("[data-ptr-stop]").addEventListener("click", stopExlTranslation);
       v.addEventListener("click", (e) => { const rs = e.target.closest("[data-exreset]"); if (rs) exlSave(rs.closest("[data-exid]"), true); });
       v.addEventListener("error", (e) => { if (e.target.tagName === "IMG") e.target.style.visibility = "hidden"; }, true);
       let qT = 0; v.addEventListener("input", (e) => { if (e.target.matches("[data-exl-q]")) { clearTimeout(qT); qT = setTimeout(() => { exlShown = 40; renderExlib(); }, 250); } });
