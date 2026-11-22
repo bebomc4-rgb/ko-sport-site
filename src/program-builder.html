@@ -55,6 +55,7 @@ html[data-theme=dark] .err{background:#2a1517}
 .ex{padding:9px 0;border-bottom:1px solid var(--line)}
 .ex:last-of-type{border-bottom:0}
 .ex .n{font-weight:700}
+.xmw{background:#fff;border-radius:10px;overflow:hidden;margin:0 0 8px;max-width:340px}.xm{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain}
 .ex .n em{font-style:normal;color:var(--gold2);font-size:.75rem;font-weight:600;margin-inline-start:6px}
 .ex .p{display:flex;gap:12px;flex-wrap:wrap;margin-top:2px;font-size:.92rem}
 .ex .p b{color:var(--gold2)}
@@ -111,7 +112,8 @@ const RAW=[
 ["بلانك","co","",0,"h"],["بلانك جانبي","co","",0,"h",1],["ديد باغ","co","",0,"i"],["رفع الأرجل وانت مستلقي","co","",0,"i"],["دوران روسي","co","",0,"i"],["هولو هولد","co","",1,"h"],["بالوف برس بحبل المقاومة","co","bd",0,"i",1],["حطب بالكابل","co","mc",0,"i",1],["كرنش بالكابل","co","mc",0,"i"],["مشي المزارع بالدمبلات","co","db",0,"h"],["رفع الأرجل معلّق عالعقلة","co","pu",1,"i"],
 ["رفع الركب العالي","pl","",0,"p"],["قفز حبل","pl","jr",0,"p"],["قفز من الثبات","pl","",1,"p"],["قفز عريض للأمام","pl","",1,"p"],["قفز جانبي متبادل","pl","",1,"p"],["قفز على مصطبة ثابتة","pl","bn",1,"p"]
 ];
-const EX=RAW.map(([n,p,r,l,k,u])=>({n,p,r,l,k,u:!!u}));
+const EXEN=["bodyweight squat|air squat|squat", "sumo squat|wide stance squat|squat", "goblet squat|dumbbell squat", "kettlebell goblet squat|kettlebell squat", "leg press|sled leg press", "pause squat|squat", "barbell squat|barbell full squat", "front squat", "pistol squat|assisted squat", "good morning|hip hinge", "dumbbell romanian deadlift|dumbbell stiff leg deadlift", "band romanian deadlift|romanian deadlift", "kettlebell swing", "leg curl|lying leg curl|seated leg curl", "superman|back extension|hyperextension", "barbell romanian deadlift|romanian deadlift", "single leg deadlift|romanian deadlift", "dumbbell single leg deadlift|single leg deadlift", "barbell deadlift|deadlift", "lunge|walking lunge|alternate lunge", "dumbbell lunge", "step up|bench step up|box step up", "side lunge|lateral lunge", "bulgarian split squat|split squat", "dumbbell bulgarian split squat|dumbbell split squat", "kettlebell lunge|kettlebell front rack lunge", "push up|push-up", "knee push up|incline push up", "dumbbell floor press|floor press", "dumbbell bench press", "machine chest press|chest press", "band chest press|resistance band chest press|push up", "feet elevated push up|decline push up", "dumbbell incline bench press|incline dumbbell press", "barbell bench press", "archer push up|archer push-up", "chest dip|dip", "dumbbell fly|dumbbell flye", "cable fly|cable cross over|cable crossover", "pike push up|incline push up", "dumbbell shoulder press|dumbbell seated shoulder press", "machine shoulder press|lever shoulder press", "band shoulder press|resistance band shoulder press", "pike push up|handstand push up", "barbell shoulder press|barbell military press|overhead press", "kettlebell shoulder press|kettlebell press", "wall handstand|handstand", "inverted row|bodyweight row", "dumbbell one arm row|one arm row|dumbbell row", "band row|resistance band row", "cable seated row|seated row", "inverted row|bodyweight row", "kettlebell row|kettlebell bent over row", "barbell bent over row|barbell row", "prone y raise|prone t raise|reverse fly", "assisted pull up|band pull up|pull up", "lat pulldown|cable pulldown", "band lat pulldown|resistance band pulldown|lat pulldown", "dead hang|hanging", "chin up|chin-up", "pull up|pull-up", "glute bridge|hip bridge|bridge", "band kickback|glute kickback", "cable kickback|cable glute kickback", "single leg glute bridge|single leg bridge", "dumbbell hip thrust|hip thrust", "barbell hip thrust|hip thrust", "standing calf raise|calf raise", "dumbbell calf raise|dumbbell standing calf raise", "machine calf raise|lever calf raise|seated calf raise", "single leg calf raise|calf raise", "dumbbell biceps curl|dumbbell curl", "barbell curl", "band biceps curl|resistance band curl|biceps curl", "cable curl|cable biceps curl", "dumbbell hammer curl|hammer curl", "diamond push up|close grip push up", "bench dip|triceps dip|dip", "dumbbell triceps extension|dumbbell overhead triceps extension|overhead triceps extension", "cable triceps pushdown|triceps pushdown|pushdown", "band triceps pushdown|triceps pushdown", "lying triceps extension|skull crusher|barbell lying triceps extension", "dumbbell lateral raise|lateral raise", "band lateral raise|resistance band lateral raise|lateral raise", "cable lateral raise", "face pull|band face pull", "dumbbell rear delt fly|dumbbell reverse fly|rear delt", "cable rear delt fly|reverse fly|rear delt", "prone t raise|reverse fly|rear delt", "plank", "side plank", "dead bug", "lying leg raise|leg raise", "russian twist", "hollow hold|hollow body", "pallof press|band pallof", "cable woodchop|woodchop|wood chopper", "cable crunch", "farmer walk|farmers walk|farmer's walk", "hanging leg raise|hanging knee raise", "high knees|high knee", "jump rope|jumping rope|rope jump", "squat jump|jump squat", "broad jump|standing long jump", "skater jump|lateral jump|side jump", "box jump"];
+const EX=RAW.map(([n,p,r,l,k,u],i)=>({n,p,r,l,k,u:!!u,q:EXEN[i]||""}));
 const TIP={sq:"ظهرك مستقيم وركبك باتجاه أصابع رجليك",hi:"حرّك الورك لورا وظهرك ثابت، والوزن قريب من جسمك",lu:"خطوة طويلة وجذعك منتصب",hp:"كتافك لورا وصدرك لقدّام، ونزّل بتحكّم",vp:"شد بطنك وما تقوّس ظهرك",hr:"اسحب بمرفقك لورا وشد لوحي الكتف",vr:"ابدأ من كتافك مو من دراعاتك",gl:"اعصر المؤخرة فوق وثبّت لحظة",ca:"طلوع كامل ونزول بطيء",bi:"مرفقك ثابت جنب جسمك",tr:"مرفقك ثابت والحركة من الساعد",sd:"ارفع لمستوى الكتف وبلا تأرجح",rd:"اسحب لورا وانت عاصر لوحي الكتف",co:"شد بطنك وتنفّس بانتظام",pl:"انزل بنعومة وبركب مثنية"};
 const SP={
 gen:{n:"لياقة عامة"},
@@ -210,7 +212,7 @@ function gen(I,seed){
       if(n<3){const allow=Math.max(4,(budget-spent)/(3-n));while(t>allow&&r.s>2){r.s--;t=est(e,r)}while(t>allow&&r.rest>60){r.rest-=15;t=est(e,r)}}
       else if(spent+t>budget)continue;
       dayUsed.add(e.n);used[e.n]=(used[e.n]||0)+1;spent+=t;n++;
-      rows.push({n:e.n,u:e.u,k:e.k,s:r.s,r:r.r,rest:r.rest,h:!!r.h,tip:TIP[e.p]||""});
+      rows.push({n:e.n,q:e.q,u:e.u,k:e.k,s:r.s,r:r.r,rest:r.rest,h:!!r.h,tip:TIP[e.p]||""});
     }
     days.push({t:tp.t,wd:WD[I.days][di],ty:tp.ty,warm:WARM[tp.ty],rows,fin,total:Math.round(warm+(short?3:4)+spent+(fin?fin.m:0))});
   });
@@ -275,7 +277,7 @@ function gen(I,seed){
     <div class="bar noprint"><button class="btn" id="re">🔀 نسخة تانية</button><button class="btn ghost" id="pr">🖨 طباعة / PDF</button><button class="btn ghost" id="cp">📋 انسخ كنص</button><button class="btn ghost" id="ed">✏️ عدّل إجاباتي</button></div>
     ${r.days.map((d,i)=>`<div class="card dy"><div class="hd"><b>اليوم ${num(i+1)} · ${esc(d.wd)} · ${esc(d.t)}</b><span>حوالي ${num(d.total)} د</span></div>
       <div class="wu">🔥 تسخين: ${esc(d.warm)}</div>
-      ${d.rows.map(x=>`<div class="ex"><div class="n">${esc(x.n)}${x.u?`<em>لكل جهة</em>`:""}</div><div class="p"><b>${num(x.s)} × ${num(x.r)}${x.h?"":" تكرار"}</b><span>راحة ${rest(x.rest)}</span></div>${x.tip?`<div class="t">${esc(x.tip)}</div>`:""}</div>`).join("")}
+      ${d.rows.map(x=>`<div class="ex" data-q="${esc(x.q||"")}"><div class="n">${esc(x.n)}${x.u?`<em>لكل جهة</em>`:""}</div><div class="p"><b>${num(x.s)} × ${num(x.r)}${x.h?"":" تكرار"}</b><span>راحة ${rest(x.rest)}</span></div>${x.tip?`<div class="t">${esc(x.tip)}</div>`:""}</div>`).join("")}
       ${d.fin?`<div class="fin"><b>${esc(d.fin.t)} (${num(d.fin.m)} د):</b> ${esc(d.fin.x)}</div>`:""}
       <div class="cd">🧘 تبريد: مشي خفيف وإطالة للعضلات يلي اشتغلت (20-30 ثانية لكل عضلة)</div></div>`).join("")}
     <div class="card"><h3>🍽 تغذيتك (تقدير تقريبي)</h3><div class="nu"><div><b>${num(N.k)}</b><small>سعرة باليوم</small></div><div><b>${num(N.p)}</b><small>غ بروتين</small></div><div><b>${num(N.c)}</b><small>غ كربوهيدرات</small></div><div><b>${num(N.f)}</b><small>غ دهون</small></div></div>
@@ -284,6 +286,34 @@ function gen(I,seed){
     ${r.shop.length?`<div class="card noprint"><h3>🛒 جهّز أدواتك من المتجر</h3><div class="shop">${r.shop.map(w=>`<a href="/#/search/${encodeURIComponent(w)}" target="_top">${esc(w)}</a>`).join("")}</div></div>`:""}
     <p class="hint">هالبرنامج إرشادي عام، مو بديل عن مدرّب أو دكتور. إذا عندك إصابة أو مرض، استشر دكتورك قبل ما تبدأ، ووقّف فوراً إذا حسّيت بألم حاد.</p>`;
     window.scrollTo({top:0});
+    media();
+  }
+  // صور وفيديوهات التمارين من مكتبة صاحب المتجر: بتظهر لحسابو بس (حقوق الملفات)، وغيرو ما بيشوف شي ولا بيتغيّر عندو شي
+  let LIB=null;
+  async function lib(){
+    if(LIB!==null)return LIB;LIB=[];
+    try{const a=JSON.parse(localStorage.getItem("ko_acct")||"null");if(!(a&&a.token))return LIB;
+      const r=await fetch("/api/exlib/list",{headers:{authorization:"Bearer "+a.token},credentials:"same-origin"});
+      if(r.ok)LIB=(await r.json()).filter(x=>x.m!=="Other").map(x=>({i:x.i,v:x.v,n:String(x.n||"").toLowerCase()}));}catch(e){}
+    return LIB;
+  }
+  function find(q){
+    for(const alt of q.split("|")){
+      const t=alt.trim().toLowerCase().split(/\s+/).filter(Boolean);if(!t.length)continue;
+      let best=null,bs=1e9;
+      for(const x of LIB){if(!t.every(w=>x.n.includes(w)))continue;const sc=x.n.length-(x.v?40:0);if(sc<bs){bs=sc;best=x}}
+      if(best)return best;
+    }
+    return null;
+  }
+  async function media(){
+    await lib();if(!LIB.length)return;
+    document.querySelectorAll(".ex[data-q]").forEach(el=>{
+      const q=el.dataset.q;if(!q)return;const x=find(q);if(!x)return;
+      const m=x.v?`<video class="xm" src="/exlib/m/${x.i}.mp4" muted loop playsinline autoplay></video>`:`<img class="xm" src="/exlib/m/${x.i}.jpg" alt="" loading="lazy">`;
+      el.insertAdjacentHTML("afterbegin",`<div class="xmw noprint">${m}</div>`);
+      const v=el.querySelector("video");if(v){v.defaultPlaybackRate=v.playbackRate=1.5;v.play().catch(()=>{});}
+    });
   }
   function asText(){
     const r=R,L=[`برنامجي من KO SPORT — ${r.sp} · ${GOALN[r.G]} · ${r.lv}`,""];
