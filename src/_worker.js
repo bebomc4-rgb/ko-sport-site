@@ -4523,10 +4523,40 @@ async function exlibCfg(env) { let c = null; try { c = await env.STORE.get("exli
 // ترجمة أسماء التمارين للعربي: دفعات من 30 اسم بالذكاء الاصطناعي (Workers AI)، النتيجة بتنحفظ بـ exlib:ar، والفاشل 3 مرات بيتخطّاه (بيعبّيه صاحب المتجر يدوي)
 const EXL_GLOSS = `Curl=كيرل (ثني) | Press=برس (ضغط) | Bench Press=بنش برس | Row=رو (سحب أفقي) | Pulldown=سحب علوي | Pull-up=عقلة | Chin-up=عقلة بقبضة عكسية | Push-up=ضغط | Squat=سكوات | Lunge=لانج (طعن) | Deadlift=ديدلفت | Fly/Flye=فلاي (فتح) | Raise=رفع | Lateral Raise=رفع جانبي | Front Raise=رفع أمامي | Extension=مد (إكستنشن) | Kickback=كيك باك | Crunch=كرنش | Sit-up=جلوس من الاستلقاء | Plank=بلانك | Shrug=شراغ (رفع الأكتاف) | Dip=متوازي (ديبس) | Twist=التفاف | Stretch=إطالة | Walk=مشي | Jump=قفز | Hop=نطّ | Swing=أرجحة | Clean=كلين | Snatch=سنتش | Jerk=جيرك | Thruster=ثراستر | Burpee=بيربي | Mountain Climber=متسلق الجبل | Hip Thrust=هيب ثراست | Glute Bridge=جسر المؤخرة | Leg Press=ضغط الأرجل | Leg Curl=ثني الفخذ الخلفي | Leg Extension=مد الأرجل | Calf Raise=رفع السمانة | Pullover=بول أوفر | Skull Crusher=سكال كراشر | Preacher=بريتشر | Incline=مائل للأعلى | Decline=مائل للأسفل | Seated=جلوس | Standing=وقوف | Lying=استلقاء | Bent Over=انحناء | One Arm=بذراع واحدة | Single Leg=برجل واحدة | Reverse=عكسي | Wide Grip=قبضة واسعة | Close Grip=قبضة ضيقة | Alternate=بالتناوب | Overhead=فوق الراس | Sumo=سومو | Romanian=روماني | Bulgarian Split Squat=سكوات بلغاري | Good Morning=غود مورنينغ | Face Pull=فيس بول | Arnold Press=أرنولد برس | Lat=الظهر العريض | Hammer=هامر | Neck=الرقبة | Wrist=الرسغ | Forearm=الساعد | Biceps=بايسبس | Triceps=ترايسبس | Quadriceps=الفخذ الأمامي | Hamstrings=الفخذ الخلفي | Glutes=المؤخرة | Calves=السمانة | Lats=الظهر | Traps=الترابيس | Delts/Shoulders=الأكتاف | Abs=البطن | Obliques=الخواصر | Chest=الصدر | Lower Back=أسفل الظهر | Adductors=الفخذ الداخلي | Abductors=الفخذ الخارجي | Crossover=كروس أوفر | Pushdown=ضغط للأسفل | Hanging=تعليق | Russian Twist=التفاف روسي | Step-up=صعود عالدرجة | Farmer's Walk=مشي المزارع | Superman=سوبرمان | Bird Dog=بيرد دوغ | Dead Bug=ديد باغ | Wall Sit=جلوس عالحيط | Jumping Jack=جامبينغ جاك | Box Jump=قفز عالصندوق | Battle Rope=حبال القتال | Medicine Ball=كرة طبية | Stability Ball=كرة التوازن | Resistance Band=حبل مقاومة | Smith Machine=جهاز سميث | EZ Bar=بار EZ | Trap Bar=بار سداسي | Landmine=لاندماين | Sled=زلاجة دفع | Ab Wheel=عجلة البطن | Roller=رولر | Machine/Lever=آلة | Cable=كابل | Band=حبل مقاومة | Dumbbell=دمبل | Barbell=بار | Kettlebell=كيتل بيل | Body weight=وزن الجسم`;
 const arOk = (s) => typeof s === "string" && (s.match(/[؀-ۿ]/g) || []).length >= 2 && s.length <= 90 && (s.match(/[A-Za-z]/g) || []).length <= Math.max(6, s.length / 3);
-// جودة الترجمة: 3 = تحرير سوري متخصص (22/11/2026)، 9 = تعديل يدوي من صاحب المتجر.
-const EXL_TRV = 3;
+// جودة الترجمة: 3 = تحرير سوري متخصص، 4 = Gemini (22/11/2026)، 9 = تعديل يدوي من صاحب المتجر.
+const EXL_TRV = 4;
 // نماذج الترجمة بالترتيب: Gemma 4 وGLM-4.7-Flash أقوى بالعربي من Llama 3.3 (يلي كان الأول)، وLlama احتياط
 const AI_TR_MODELS = ["@cf/google/gemma-4-26b-a4b-it", "@cf/zai-org/glm-4.7-flash", "@cf/meta/llama-3.3-70b-instruct-fp8-fast"];
+// (22/11/2026) الترجمة صارت بـ Gemini أول شي (أقوى بكتير بالعربي من نماذج Workers AI)، بنفس مفتاح GEMINI_API_KEY تبع تعديل الصور.
+// إذا ما في مفتاح أو Gemini فشل، بترجع لـ Workers AI متل قبل. الأسماء والعناوين بـ 3.5 Flash، والأوصاف الطويلة بـ 2.5 Flash أول (أرخص بـ 4 مرات).
+const GEM_TR_SHORT = ["gemini-3.5-flash", "gemini-2.5-flash"];
+const GEM_TR_LONG = ["gemini-2.5-flash", "gemini-3.5-flash"];
+async function exlGemini(env, models, system, user, maxTokens) {
+  const key = String(env.GEMINI_API_KEY || "").trim();
+  if (!key) return { err: "no-key" };
+  let err = "";
+  for (const model of models) {
+    const think = /^gemini-2\./.test(model) ? { thinkingBudget: 0 } : { thinkingLevel: "low" };
+    for (const withThink of [true, false]) {
+      try {
+        const gc = { temperature: 0.3, maxOutputTokens: maxTokens, responseMimeType: "application/json" };
+        if (withThink) gc.thinkingConfig = think;
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+          method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": key },
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: user }] }], generationConfig: gc }),
+        });
+        const t = await r.text();
+        if (!r.ok) { err = model + ": " + r.status + " " + t.slice(0, 160); if (r.status === 400 && withThink && /think/i.test(t)) continue; break; }
+        let j = null; try { j = JSON.parse(t); } catch {}
+        const parts = (j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+        const txt = parts.filter((x) => !x.thought && typeof x.text === "string").map((x) => x.text).join("");
+        if (txt) return { text: txt, model };
+        err = model + ": رد فاضي"; break;
+      } catch (e) { err = model + ": " + String(e && e.message || e); break; }
+    }
+  }
+  return { err };
+}
 const exlAiText = (out) => {
   let t = typeof out === "string" ? out : out.response ?? out.result?.response ?? (out.choices && out.choices[0]?.message?.content) ?? "";
   if (typeof t !== "string") t = JSON.stringify(t);
@@ -4553,7 +4583,9 @@ async function exlibTranslate(request, env) {
   const doneN = (a, v) => (redo ? merged.filter((x) => (v[x.i] || 0) >= EXL_TRV).length : merged.filter((x) => a[x.i]).length);
   const todo = todoOf();
   if (!todo.length) return json({ ok: true, total: merged.length, done: doneN(ar, arv), left: 0, got: 0 }, 200, { "cache-control": "no-store" });
-  const batch = todo.slice(0, 25);
+  const batch = todo.slice(0, 40);
+  // أسماء كتبها صاحب المتجر بإيدو (arv=9) بتنعطى للذكاء كأمثلة على الأسلوب يلي بيحبو
+  const own = merged.filter((x) => arv[x.i] === 9 && ar[x.i]).slice(0, 25).map((x) => `${x.n} -> ${ar[x.i]}`).join("\n");
   const system = `You are a native Syrian Arabic strength coach and a professional editor of exercise names. Write names that a Syrian trainee immediately understands and would actually see in a well-run gym app. This is expert localization, not word-for-word translation.
 
 For each source, silently identify the movement, target muscle, equipment, body position, grip, and variation before writing. Preserve every meaningful detail; never invent equipment or drop one-sided/alternating, incline, grip, or position information. Use the hint in square brackets only to disambiguate; never include it in the answer.
@@ -4582,16 +4614,25 @@ Hanging Leg Raise -> رفع الأرجل بالتعليق
 Face Pull with Rope -> فيس بول بالحبل على الكابل
 Push-up -> ضغط
 Plank -> بلانك
+${own ? "\nTHE STORE OWNER'S OWN NAMES (follow this style exactly):\n" + own + "\n" : ""}
+COMMON MISTAKES TO AVOID
+- Literal word-by-word output such as "دمبل جالس كيرل" or "صحافة مقعد" (Bench Press is بنش برس, never صحافة).
+- Mixing English words into the Arabic (except EZ, TRX, V). Ignore labels such as (VERSION 2), (male), (female) and numbering in the source.
+- Translating names of the same movement differently in the same batch.
 
 GLOSSARY: ${EXL_GLOSS}
 
 Before responding, silently proofread every name for correct movement, natural Syrian phrasing, completeness, and consistency. Fix awkward or literal translations. Return ONLY one JSON object mapping each line number to its final Arabic name, e.g. {"1":"...","2":"..."}. No markdown or extra text.`;
-  let last = "", got = {};
+  let last = "", got = {}, gemErr = "";
+  const exUser = (pending) => pending.map((x, i) => `${i + 1}. ${String(x.n).slice(0, 120)}${x.m || x.e ? ` [${[x.m, x.e].filter(Boolean).join(" | ")}]` : ""}`).join("\n");
+  { const g = await exlGemini(env, GEM_TR_SHORT, system, exUser(batch), 6000);
+    if (g.text) { const j = exlAiMap(g.text); Object.keys(j).forEach((k) => { const x = batch[+k - 1], v = typeof j[k] === "string" ? exlArClean(j[k]) : ""; if (x && arOk(v)) got[x.i] = v; }); last = "رد غير مفهوم"; }
+    else if (g.err !== "no-key") gemErr = "Gemini: " + g.err + " — "; }
   for (const model of AI_TR_MODELS) {
     const pending = batch.filter((x) => !got[x.i]);
     if (!pending.length) break;
     try {
-      const user = pending.map((x, i) => `${i + 1}. ${String(x.n).slice(0, 120)}${x.m || x.e ? ` [${[x.m, x.e].filter(Boolean).join(" | ")}]` : ""}`).join("\n");
+      const user = exUser(pending);
       const out = await env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 4000, temperature: 0.2 });
       const j = exlAiMap(exlAiText(out));
       Object.keys(j).forEach((k) => { const x = pending[+k - 1], v = typeof j[k] === "string" ? exlArClean(j[k]) : ""; if (x && arOk(v)) got[x.i] = v; });
@@ -4599,7 +4640,7 @@ Before responding, silently proofread every name for correct movement, natural S
     } catch (e) { last = String(e && e.message || e); }
   }
   const nGot = Object.keys(got).length;
-  if (!nGot && last) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + last }, 502);
+  if (!nGot && last) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + gemErr + last }, 502);
   // أعد قراءة الخرائط قبل الكتابة (تعديل يدوي ممكن يكون صار بنص الطلب)؛ اسم عدّلو صاحب المتجر بإيدو (arv=9) ما بينكتب فوقو، وبدون إعادة ترجمة ما منكتب فوق اسم موجود
   let ar2 = {}, arv2 = {}; try { ar2 = (await env.STORE.get("exlib:ar", "json")) || {}; } catch { ar2 = {}; } try { arv2 = (await env.STORE.get("exlib:arv", "json")) || {}; } catch { arv2 = {}; }
   Object.keys(got).forEach((i) => { if (arv2[i] === 9) return; if (redo || !ar2[i]) { ar2[i] = got[i]; arv2[i] = EXL_TRV; } });
@@ -4628,7 +4669,7 @@ async function exlibProgTr(env, desc, redo) {
   if (!todo.length) return json({ ok: true, total: D.P.length, done: doneN(), left: 0, got: 0 }, 200, { "cache-control": "no-store" });
   // الجداد أول، والبرامج يلي فشلت قبل بتنعاد بدفعات صغيرة: عنوان غريب واحد كان يخرّب ردّ الدفعة كلها
   const fresh = todo.filter((i) => !(fail[i] || 0));
-  const batch = fresh.length ? fresh.slice(0, desc ? 2 : 25) : todo.slice(0, desc ? 1 : 5);
+  const batch = fresh.length ? fresh.slice(0, desc ? 3 : 40) : todo.slice(0, desc ? 1 : 5);
   const GL = "Push Pull Legs = تقسيمة دفع وسحب وأرجل | Upper Lower = علوي وسفلي | Full Body = كامل الجسم | Split = تقسيمة تدريب | Beginner = مبتدئ | Intermediate = متوسط | Advanced = متقدم | Hypertrophy = تضخيم العضلات | Mass / Bulking = زيادة الكتلة العضلية | Cutting / Fat Loss = تنشيف وخسارة دهون | Strength = قوة | Powerlifting = رفع أثقال للقوة | Bodybuilding = كمال أجسام | Calisthenics = كالستنكس (تمارين وزن الجسم) | Home Workout = تمارين بالبيت | Dumbbell = دمبل | Barbell = بار | Kettlebell = كيتل بيل | Reps = تكرارات | Sets = مجموعات | Rest = راحة | Warm-up = تسخين | Cool-down = تهدئة وإطالة | Deload = أسبوع تخفيف أحمال | Progressive Overload = زيادة الوزن أو التكرارات تدريجياً | Superset = سوبر سيت (تمرينين ورا بعض بلا راحة) | Drop set = دروب سيت (تخفيف الوزن ومتابعة التمرين) | Failure = الفشل العضلي (لما ما عاد تقدر تكمل تكرار صح) | Week = أسبوع | Day = يوم | Plan = برنامج | Routine = جدول تمارين | Core = عضلات الجذع | Repetition = تكرار | Range of Motion = مدى الحركة | Form = طريقة الأداء";
   const system = desc ? `You are a native Syrian Arabic fitness coach and a professional editor, not a literal translator. Translate workout-program descriptions into clear, polished Arabic that sounds like a helpful coach speaking to a trainee in Syria.
 
@@ -4667,22 +4708,27 @@ Upper Lower 4 Day Split -> تقسيمة علوي وسفلي — 4 أيام
 GLOSSARY: ${GL}
 
 Silently proofread every title for accuracy, natural wording, and consistency. Return ONLY one JSON object mapping each line number to its final Arabic title, e.g. {"1":"..."}. No markdown or extra text.`;
-  let last = "", got = {}, replied = false;
+  let last = "", got = {}, replied = false, gemErr = "";
+  // Gemini بيقرا الوصف كامل (لحد 8000 حرف)؛ Workers AI الاحتياط بياخد أول 3000 متل قبل
+  const prUser = (pending, cap) => pending.map((i, k) => `${k + 1}. ${String(D.P[i][FLD] || "").slice(0, desc ? cap : 120)}`).join("\n");
+  const prTake = (j, pending) => Object.keys(j).forEach((k) => { const i = pending[+k - 1], v = typeof j[k] === "string" ? j[k].trim() : ""; if (i != null && v && (v.match(/[؀-ۿ]/g) || []).length >= 2 && v.length <= (desc ? 12000 : 120)) got[i] = desc ? v : exlArClean(v); });
+  { const g = await exlGemini(env, desc ? GEM_TR_LONG : GEM_TR_SHORT, system, prUser(batch, 8000), desc ? 16000 : 5000);
+    if (g.text) { replied = true; prTake(exlAiMap(g.text), batch); last = "رد غير مفهوم"; }
+    else if (g.err !== "no-key") gemErr = "Gemini: " + g.err + " — "; }
   for (const model of AI_TR_MODELS) {
     const pending = batch.filter((i) => !got[i]);
     if (!pending.length) break;
     try {
-      const user = pending.map((i, k) => `${k + 1}. ${String(D.P[i][FLD] || "").slice(0, desc ? 3000 : 120)}`).join("\n");
+      const user = prUser(pending, 3000);
       const out = await env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: desc ? 8000 : 3500, temperature: 0.2 });
       replied = true;
-      const j = exlAiMap(exlAiText(out));
-      Object.keys(j).forEach((k) => { const i = pending[+k - 1], v = typeof j[k] === "string" ? j[k].trim() : ""; if (i != null && v && (v.match(/[؀-ۿ]/g) || []).length >= 2 && v.length <= (desc ? 4000 : 120)) got[i] = desc ? v : exlArClean(v); });
+      prTake(exlAiMap(exlAiText(out)), pending);
       last = "رد غير مفهوم";
     } catch (e) { last = String(e && e.message || e); }
   }
   const nGot = Object.keys(got).length;
   // خطأ بس إذا الذكاء ما ردّ أبداً (شبكة/حصة). إذا ردّ ورفضنا الرد، بنعدّ فشل للدفعة وبنكمّل، وبعد 3 مرات البرنامج بيطلع من الدور (كان يعلق على نفس الدفعة للأبد)
-  if (!nGot && !replied) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + (last || "ما في رد") }, 502);
+  if (!nGot && !replied) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + gemErr + (last || "ما في رد") }, 502);
   Object.keys(got).forEach((i) => { ar[i] = got[i]; arv[i] = EXL_TRV; });
   await env.STORE.put(KA, JSON.stringify(ar));
   await env.STORE.put(KV, JSON.stringify(arv));
@@ -4697,8 +4743,8 @@ const exlJobPublic = (job) => {
   return { id, kind, phase, status, done, total, failed: failed || 0, updatedAt, error: error || "" };
 };
 async function exlTranslationStart(request, env) {
-  if (!env.TRANSLATION_CRON_SECRET) return json({ error: "خدمة الترجمة بالخلفية مو مهيّأة" }, 503, { "cache-control": "no-store" });
-  if (!env.AI) return json({ error: "الذكاء الاصطناعي مو مربوط" }, 503, { "cache-control": "no-store" });
+  // بلا TRANSLATION_CRON_SECRET (عامل الـ Cron مو مركّب) اللوحة نفسها بتشغّل الدفعات وهي مفتوحة (/api/exlib/translation/step)
+  if (!env.AI && !String(env.GEMINI_API_KEY || "").trim()) return json({ error: "الذكاء الاصطناعي مو مربوط" }, 503, { "cache-control": "no-store" });
   let b = {}; try { b = await request.json(); } catch {}
   const kind = b.kind === "programs" ? "programs" : b.kind === "exercises" ? "exercises" : "";
   if (!kind) return json({ error: "نوع الترجمة مو معروف" }, 400);
@@ -4736,12 +4782,12 @@ async function exlTranslationStart(request, env) {
     if (job.done >= job.total) job.status = "completed";
   }
   await env.STORE.put(EXL_TRANSLATE_JOB, JSON.stringify(job));
-  return json({ ok: true, job: exlJobPublic(job) }, 202, { "cache-control": "no-store" });
+  return json({ ok: true, job: exlJobPublic(job), cron: !!env.TRANSLATION_CRON_SECRET }, 202, { "cache-control": "no-store" });
 }
 async function exlTranslationStatus(request, env) {
   if (!isAdmin(request, env, "owner")) return denied();
   let job = null; try { job = await env.STORE.get(EXL_TRANSLATE_JOB, "json"); } catch {}
-  return json({ job: exlJobPublic(job) }, 200, { "cache-control": "no-store" });
+  return json({ job: exlJobPublic(job), cron: !!env.TRANSLATION_CRON_SECRET }, 200, { "cache-control": "no-store" });
 }
 async function exlTranslationStop(request, env) {
   if (!isAdmin(request, env, "owner")) return denied();
@@ -4752,6 +4798,9 @@ async function exlTranslationStop(request, env) {
 async function exlTranslationTick(request, env) {
   const secret = env.TRANSLATION_CRON_SECRET || "";
   if (!secret || request.headers.get("authorization") !== "Bearer " + secret) return json({ error: "forbidden" }, 403, { "cache-control": "no-store" });
+  return exlTranslationRun(env);
+}
+async function exlTranslationRun(env) {
   let job = null; try { job = await env.STORE.get(EXL_TRANSLATE_JOB, "json"); } catch {}
   if (!job || job.status !== "running") return json({ active: false, status: job ? job.status : "idle" }, 200, { "cache-control": "no-store" });
   try {
@@ -4823,6 +4872,7 @@ async function exlibApi(request, env, path, m) {
   if (path === "/api/exlib/translation/start" && m === "POST") return exlTranslationStart(request, env);
   if (path === "/api/exlib/translation/status" && m === "GET") return exlTranslationStatus(request, env);
   if (path === "/api/exlib/translation/stop" && m === "POST") return exlTranslationStop(request, env);
+  if (path === "/api/exlib/translation/step" && m === "POST") return exlTranslationRun(env);
   // لوحة التحكم ← التمارين: كل اللائحة مع المخفية والمعدّلة
   if (path === "/api/exlib/adm" && m === "GET") {
     const { merged } = await exlibAll(env);

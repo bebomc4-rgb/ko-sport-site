@@ -806,7 +806,13 @@
     clearTimeout(excT); excT = setTimeout(async () => { try { const j = await api("/api/exlib/cfg", { method: "POST", body: JSON.stringify(o) }); EXC = j.cfg; toast("✓ انحفظ"); } catch (e) { toast(e.message); } }, 500);
   }
   function exlTStat() { const el = $("[data-exl-tstat]"); if (!el) return; const d = EXL.filter((x) => x.a).length; el.textContent = `مترجم ${nf(d)} من ${nf(EXL.length)} تمرين` + (d < EXL.length ? ` — ناقص ${nf(EXL.length - d)}` : " ✓"); }
-  let exlTranslationPoll = 0, exlTranslationPollBusy = false, exlTranslationLastStatus = "";
+  let exlTranslationPoll = 0, exlTranslationPollBusy = false, exlTranslationLastStatus = "", exlTrCron = false;
+  // إذا عامل الـ Cron مو شغّال (ما في سر، أو الشغل ما تحرّك من 75 ثانية) اللوحة بتشغّل الدفعة بنفسها وهي مفتوحة
+  async function exlTrStep(job) {
+    if (!job || job.status !== "running") return job;
+    if (exlTrCron && Date.now() - (job.updatedAt || 0) < 75000) return job;
+    try { const r = await api("/api/exlib/translation/step", { method: "POST" }); return r.job || job; } catch (e) { return job; }
+  }
   function renderExlTranslation(job) {
     const active = !!job && job.status === "running";
     ["[data-exl-tgo]", "[data-exl-tredo]", "[data-ptr-go]", "[data-ptr-redo]"].forEach((sel) => { const el = $(sel); if (el) el.disabled = active; });
@@ -817,11 +823,11 @@
     const progress = `${nf(job.done)} من ${nf(job.total)} (${pct}٪)`;
     const state = job.status === "running" ? "عم يترجم بالخلفية" : job.status === "completed" ? "خلصت الترجمة" : job.status === "stopped" ? "وقفت الترجمة" : "الترجمة توقفت بسبب خطأ";
     if (job.kind === "exercises") {
-      if (exercise) exercise.textContent = `${state}: ${progress}${active ? " — بتكمل لو سكّرت اللوحة" : job.failed ? ` — تعذّر بهالدفعة ${nf(job.failed)}` : " ✓"}${job.error ? " — " + job.error : ""}`;
+      if (exercise) exercise.textContent = `${state}: ${progress}${active ? (exlTrCron ? " — بتكمل لو سكّرت اللوحة" : " — خلّي اللوحة مفتوحة لحد ما تخلص") : job.failed ? ` — تعذّر بهالدفعة ${nf(job.failed)}` : " ✓"}${job.error ? " — " + job.error : ""}`;
       if (programs) programs.textContent = "";
     } else {
       const phase = job.phase === "descriptions" ? "الأوصاف" : "العناوين";
-      if (programs) programs.textContent = `${state} ${phase}: ${progress}${active ? " — بتكمل لو سكّرت اللوحة" : job.failed ? ` — تعذّر بهالدفعة ${nf(job.failed)}` : " ✓"}${job.error ? " — " + job.error : ""}`;
+      if (programs) programs.textContent = `${state} ${phase}: ${progress}${active ? (exlTrCron ? " — بتكمل لو سكّرت اللوحة" : " — خلّي اللوحة مفتوحة لحد ما تخلص") : job.failed ? ` — تعذّر بهالدفعة ${nf(job.failed)}` : " ✓"}${job.error ? " — " + job.error : ""}`;
       if (exercise) exercise.textContent = `مترجم ${nf(EXL.filter((x) => x.a).length)} من ${nf(EXL.length)} تمرين`;
     }
   }
@@ -829,13 +835,15 @@
     if (exlTranslationPollBusy) return;
     exlTranslationPollBusy = true;
     try {
-      const { job } = await api("/api/exlib/translation/status");
+      const st = await api("/api/exlib/translation/status");
+      exlTrCron = !!st.cron;
+      const job = await exlTrStep(st.job);
       renderExlTranslation(job);
       const status = job && job.status || "";
       if (exlTranslationLastStatus === "running" && status && status !== "running") { await loadExlib(); await progStat(); renderExlTranslation(job); }
       exlTranslationLastStatus = status;
       clearTimeout(exlTranslationPoll);
-      if (status === "running") exlTranslationPoll = setTimeout(refreshExlTranslation, 3000);
+      if (status === "running") exlTranslationPoll = setTimeout(refreshExlTranslation, exlTrCron ? 3000 : 300);
     } catch (e) {
       const el = $("[data-exl-tstat]"); if (el) el.textContent = "ما قدرت أقرا تقدّم الترجمة: " + e.message;
     } finally { exlTranslationPollBusy = false; }
@@ -845,7 +853,8 @@
     const el = kind === "exercises" ? $("[data-exl-tstat]") : $("[data-ptr-st]");
     if (el) el.textContent = "عم نجهّز الترجمة بالخلفية…";
     try {
-      const { job } = await api("/api/exlib/translation/start", { method: "POST", body: JSON.stringify({ kind, redo: redo ? 1 : 0 }) });
+      const r = await api("/api/exlib/translation/start", { method: "POST", body: JSON.stringify({ kind, redo: redo ? 1 : 0 }) });
+      const job = r.job; exlTrCron = !!r.cron;
       renderExlTranslation(job);
       exlTranslationLastStatus = job && job.status || "";
       clearTimeout(exlTranslationPoll);
