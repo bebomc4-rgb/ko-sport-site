@@ -2295,20 +2295,21 @@
       draw();
     });
   }
-  const exlMyRest = (e) => [e.rs ? "راحة بين المجموعات " + e.rs + " ث" : "", e.rx ? "راحة بعد التمرين " + e.rx + " ث" : ""].filter(Boolean).join(" · ");
+  const exlMyRest = (e) => (e.rx ? "راحة بعد التمرين " + e.rx + " ث" : "");
   const exlMyName = (id) => { const x = (exl.L || []).find((y) => y.i === id); return x ? (x.a || x.n) : ""; };
   function exlMyPage() {
     document.title = "برنامجي | " + (C.name || "");
     const d = exlMyGet();
-    const days = d.days.map((dy, k) => `<section class="exl-my-day" data-day="${k}"><div class="exl-my-hd"><b class="exl-my-t">${esc(dy.t)}</b><button type="button" class="btn btn-dark sm" data-my-addex="${esc(dy.t)}">➕ أضف تمرين</button><button type="button" data-my-del-day="${k}" aria-label="حذف اليوم">🗑</button></div>${dy.ex.length ? dy.ex.map((e, j) => `<div class="exl-my-row" data-row="${j}"><button type="button" class="exl-my-grip" data-my-drag aria-label="اسحب لترتيب التمرين" title="اسحب للترتيب">⠿</button><img src="/exlib/m/${esc(e.i)}.jpg" alt="" loading="lazy"><div class="exl-my-bd"><b>${esc(exlMyName(e.i))}</b><div class="exl-my-f"><label><small>مجموعات</small><input type="number" inputmode="numeric" min="1" max="20" value="${e.s}" data-my-s="${k}.${j}"></label><label><small>تكرار</small><input type="number" inputmode="numeric" min="1" max="100" value="${e.r}" data-my-r="${k}.${j}"></label><label><small>راحة بين المجموعات (ث)</small><input type="number" inputmode="numeric" min="0" max="600" placeholder="اختياري" value="${e.rs || ""}" data-my-rs="${k}.${j}"></label><label><small>راحة بعد التمرين (ث)</small><input type="number" inputmode="numeric" min="0" max="900" placeholder="اختياري" value="${e.rx || ""}" data-my-rx="${k}.${j}"></label></div></div><button type="button" class="exl-my-rm" data-my-rm="${k}.${j}" aria-label="حذف">✕</button></div>`).join("") : '<p class="exl-count">اليوم فاضي، اكبس «أضف تمرين».</p>'}</section>`).join("");
-    app.innerHTML = `<div class="exl exl-t-${esc((exl.cfg || {}).theme || "site")}"><div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><a href="#/exlib/my">برنامجي</a></div><h1 class="page-title">🗂 برنامجي</h1>${d.days.length ? days : '<div class="empty"><b>برنامجك فاضي</b>اختار يوم من تحت وضيف تمارينو، أو افتح أي تمرين بالمكتبة واكبس «أضف لبرنامجي»</div>'}<div class="exl-my-bar">${EXMY_WD.filter((w) => !d.days.some((y) => y.t === w)).map((w) => `<button type="button" class="chip exl-chip" data-my-newday="${w}">+ ${w}</button>`).join("")}</div><div class="exl-my-bar">${d.days.length ? '<button type="button" class="btn btn-dark" data-my-png>🖼 تصدير صور</button><button type="button" class="btn btn-dark" data-my-pdf>📄 PDF</button>' : ""}</div></div>`;
+    const days = d.days.map((dy, k) => `<section class="exl-my-day" data-day="${k}"><div class="exl-my-hd"><b class="exl-my-t">${esc(dy.t)}</b><button type="button" class="btn btn-dark sm" data-my-addex="${esc(dy.t)}">➕ أضف تمرين</button><button type="button" data-my-del-day="${k}" aria-label="حذف اليوم">🗑</button></div>${dy.ex.length ? dy.ex.map((e, j) => `<div class="exl-my-row" data-row="${j}"><button type="button" class="exl-my-grip" data-my-drag aria-label="اسحب لترتيب التمرين" title="اسحب للترتيب">⠿</button><img src="/exlib/m/${esc(e.i)}.jpg" alt="" loading="lazy"><div class="exl-my-bd"><b>${esc(exlMyName(e.i))}</b><div class="exl-my-f"><label><small>مجموعات</small><input type="number" inputmode="numeric" min="1" max="20" value="${e.s}" data-my-s="${k}.${j}"></label><label><small>تكرار</small><input type="number" inputmode="numeric" min="1" max="100" value="${e.r}" data-my-r="${k}.${j}"></label></div></div><button type="button" class="exl-my-rm" data-my-rm="${k}.${j}" aria-label="حذف">✕</button></div>${j < dy.ex.length - 1 ? `<label class="exl-my-gap"><span>⏱ راحة بعد هالتمرين (ث)</span><input type="number" inputmode="numeric" min="0" max="900" placeholder="اختياري" value="${e.rx || ""}" data-my-rx="${k}.${j}"></label>` : ""}`).join("") : '<p class="exl-count">اليوم فاضي، اكبس «أضف تمرين».</p>'}</section>`).join("");
+    app.innerHTML = `<div class="exl exl-t-${esc((exl.cfg || {}).theme || "site")}"><div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><a href="#/exlib/my">برنامجي</a></div><h1 class="page-title">🗂 برنامجي</h1>${d.days.length ? `<label class="exl-my-grs"><span>⏱ راحة بين المجموعات (ث)</span><input type="number" inputmode="numeric" min="0" max="600" placeholder="اختياري" value="${d.rs || ""}" data-my-grs></label>` : ""}${d.days.length ? days : '<div class="empty"><b>برنامجك فاضي</b>اختار يوم من تحت وضيف تمارينو، أو افتح أي تمرين بالمكتبة واكبس «أضف لبرنامجي»</div>'}<div class="exl-my-bar">${EXMY_WD.filter((w) => !d.days.some((y) => y.t === w)).map((w) => `<button type="button" class="chip exl-chip" data-my-newday="${w}">+ ${w}</button>`).join("")}</div><div class="exl-my-bar">${d.days.length ? '<button type="button" class="btn btn-dark" data-my-png>🖼 تصدير صور</button><button type="button" class="btn btn-dark" data-my-pdf>📄 PDF</button>' : ""}</div></div>`;
     app.onchange = (ev) => {
       const t = ev.target, dd = exlMyGet();
       if (t.classList.contains("exl-my-t")) { dd.days[+t.closest("[data-day]").dataset.day].t = t.value.trim() || "يوم"; }
-      else if (t.dataset.myS || t.dataset.myR || t.dataset.myRs || t.dataset.myRx) {
-        const f = t.dataset.myS ? "s" : t.dataset.myR ? "r" : t.dataset.myRs ? "rs" : "rx", k = t.dataset.myS || t.dataset.myR || t.dataset.myRs || t.dataset.myRx, [a, b] = k.split(".").map(Number), e = dd.days[a].ex[b];
-        const mx = { s: 20, r: 100, rs: 600, rx: 900 }[f], v = parseInt(t.value);
-        if (f === "rs" || f === "rx") { if (v > 0) e[f] = Math.min(mx, v); else delete e[f]; t.value = e[f] || ""; }
+      else if (t.hasAttribute("data-my-grs")) { const v = parseInt(t.value); if (v > 0) dd.rs = Math.min(600, v); else delete dd.rs; t.value = dd.rs || ""; }
+      else if (t.dataset.myS || t.dataset.myR || t.dataset.myRx) {
+        const f = t.dataset.myS ? "s" : t.dataset.myR ? "r" : "rx", k = t.dataset.myS || t.dataset.myR || t.dataset.myRx, [a, b] = k.split(".").map(Number), e = dd.days[a].ex[b];
+        const mx = { s: 20, r: 100, rx: 900 }[f], v = parseInt(t.value);
+        if (f === "rx") { if (v > 0) e.rx = Math.min(mx, v); else delete e.rx; t.value = e.rx || ""; }
         else { e[f] = Math.max(1, Math.min(mx, v || 1)); t.value = e[f]; }
       }
       else return;
@@ -2330,16 +2331,16 @@
       const gp = ev.target.closest("[data-my-drag]"); if (!gp) return;
       const row = gp.closest(".exl-my-row"), sec = row.closest("[data-day]"), di = +sec.dataset.day; ev.preventDefault();
       try { gp.setPointerCapture(ev.pointerId); } catch (e) {}
-      row.classList.add("drag");
+      row.classList.add("drag"); sec.classList.add("dragging");
       const mv = (e) => {
         if (e.clientY < 70) window.scrollBy(0, -14); else if (e.clientY > innerHeight - 70) window.scrollBy(0, 14);
         const rows = [...sec.querySelectorAll(".exl-my-row")].filter((r) => r !== row);
         let before = null; for (const r of rows) { const b = r.getBoundingClientRect(); if (e.clientY < b.top + b.height / 2) { before = r; break; } }
-        const cur = row.nextElementSibling; if (before !== cur && (before || cur)) { const last = rows[rows.length - 1]; sec.insertBefore(row, before || (last ? last.nextSibling : null)); }
+        let cur = row.nextElementSibling; while (cur && !cur.classList.contains("exl-my-row")) cur = cur.nextElementSibling; if (before !== cur && (before || cur)) { const last = rows[rows.length - 1]; sec.insertBefore(row, before || (last ? last.nextSibling : null)); }
       };
       const up = () => {
         gp.removeEventListener("pointermove", mv); gp.removeEventListener("pointerup", up); gp.removeEventListener("pointercancel", up);
-        row.classList.remove("drag");
+        row.classList.remove("drag"); sec.classList.remove("dragging");
         const order = [...sec.querySelectorAll(".exl-my-row")].map((r) => +r.dataset.row), dd = exlMyGet(), old = dd.days[di].ex;
         if (order.some((o, k) => o !== k)) { dd.days[di].ex = order.map((o) => old[o]); exlMySave(dd); }
         exlMyPage();
@@ -2349,12 +2350,12 @@
   }
   function exlMyPdf() {
     const d = exlMyGet(), o = location.origin;
-    const body = d.days.map((dy) => `<h2>${esc(dy.t)}</h2>` + dy.ex.map((e) => `<div class="r"><img src="${o}/exlib/m/${esc(e.i)}.jpg"><div><b>${esc(exlMyName(e.i))}</b><span>${e.s} × ${e.r}</span>${exlMyRest(e) ? `<em>${esc(exlMyRest(e))}</em>` : ""}</div></div>`).join("")).join("");
+    const body = (d.rs ? `<p class="g">⏱ راحة بين المجموعات: ${d.rs} ث</p>` : "") + d.days.map((dy) => `<h2>${esc(dy.t)}</h2>` + dy.ex.map((e) => `<div class="r"><img src="${o}/exlib/m/${esc(e.i)}.jpg"><div><b>${esc(exlMyName(e.i))}</b><span>${e.s} × ${e.r}</span>${exlMyRest(e) ? `<em>${esc(exlMyRest(e))}</em>` : ""}</div></div>`).join("")).join("");
     // iframe مخفي بدل نافذة جديدة: ما بيضيف خانة بسجل المتصفح فزر الرجوع ما بيعلق
     document.querySelectorAll("iframe[data-my-pf]").forEach((f) => f.remove());
     const f = document.createElement("iframe"); f.setAttribute("data-my-pf", ""); f.style.cssText = "position:fixed;width:0;height:0;border:0;right:0;bottom:0;opacity:0;pointer-events:none"; document.body.appendChild(f);
     const w = f.contentWindow; w.document.open();
-    w.document.write(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>برنامجي</title><style>body{font-family:system-ui,sans-serif;margin:16px}h2{margin:18px 0 8px;border-bottom:2px solid #a8843f;padding-bottom:4px}.r{display:flex;gap:12px;align-items:center;margin:0 0 8px;break-inside:avoid}.r img{width:150px;height:150px;object-fit:contain;background:#fff;border:1px solid #ddd;border-radius:8px}.r div{display:flex;flex-direction:column;gap:4px}.r span{font-size:18px;color:#a8843f;font-weight:700}.r em{font-size:14px;color:#555;font-style:normal}</style>${body}`);
+    w.document.write(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>برنامجي</title><style>body{font-family:system-ui,sans-serif;margin:16px}h2{margin:18px 0 8px;border-bottom:2px solid #a8843f;padding-bottom:4px}.r{display:flex;gap:12px;align-items:center;margin:0 0 8px;break-inside:avoid}.r img{width:150px;height:150px;object-fit:contain;background:#fff;border:1px solid #ddd;border-radius:8px}.r div{display:flex;flex-direction:column;gap:4px}.r span{font-size:18px;color:#a8843f;font-weight:700}.g{font-size:16px;font-weight:700;margin:0 0 6px}.r em{font-size:14px;color:#555;font-style:normal}</style>${body}`);
     w.document.close();
     const im = [...w.document.images]; let n = im.length, done = false;
     const pr = () => { if (done) return; done = true; try { w.focus(); w.print(); } catch (e) { toast("ما اشتغلت الطباعة، جرّب تصدير صور"); } setTimeout(() => f.remove(), 60000); };
@@ -2369,7 +2370,8 @@
       const imgs = await Promise.all(dy.ex.map((e) => load(e.i))), W = 1080, RH = 260, H = 130 + RH * dy.ex.length;
       const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const x = cv.getContext("2d");
       x.fillStyle = "#fff"; x.fillRect(0, 0, W, H); x.direction = "rtl"; x.textAlign = "right";
-      x.fillStyle = "#a8843f"; x.font = "700 52px system-ui,sans-serif"; x.fillText(dy.t, W - 40, 80); x.fillRect(40, 100, W - 80, 4);
+      x.fillStyle = "#a8843f"; x.font = "700 52px system-ui,sans-serif"; x.fillText(dy.t, W - 40, 80);
+      if (d.rs) { x.textAlign = "left"; x.font = "500 28px system-ui,sans-serif"; x.fillStyle = "#555"; x.fillText("راحة بين المجموعات: " + d.rs + " ث", 40, 80); x.textAlign = "right"; x.fillStyle = "#a8843f"; } x.fillRect(40, 100, W - 80, 4);
       dy.ex.forEach((e, j) => {
         const y = 130 + j * RH, im = imgs[j];
         if (im) { const sc = Math.min(230 / im.width, 230 / im.height), iw = im.width * sc, ih = im.height * sc; x.drawImage(im, 40 + (230 - iw) / 2, y + 15 + (230 - ih) / 2, iw, ih); }

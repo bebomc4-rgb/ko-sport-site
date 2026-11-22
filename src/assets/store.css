@@ -2262,3 +2262,8 @@ html.sheet-lock,html.sheet-lock body{overscroll-behavior:none}.sheet-wrap,.sheet
 .exl-my-row.drag{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.25);position:relative;z-index:2}
 .exl-my-bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.exl-my-f{display:grid;grid-template-columns:1fr 1fr;gap:6px}.exl-my-f label{display:flex;flex-direction:column;gap:2px}.exl-my-f small{font-size:11px;opacity:.75;line-height:1.2}.exl-my-f input{width:100%;box-sizing:border-box;padding:6px 4px;text-align:center;border-radius:8px;border:1px solid var(--line,#ddd)}
 .exl-my-rm{flex:none;border:0;background:none;font-size:18px;color:#c0392b;padding:8px}.exl-pk .exl-my-row{height:100px}.exl-my-day .exl-my-row{height:auto}
+.exl-my-grs,.exl-my-gap{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:700;color:#a8843f}
+.exl-my-grs{padding:10px 12px;margin:0 0 14px;background:var(--xc-bg,#fff);border:1px solid var(--xc-line,#ddd);border-radius:12px}
+.exl-my-gap{padding:2px 12px 10px;margin:-2px 0 6px;border-inline-start:3px solid #a8843f;font-size:12px}
+.exl-my-grs input,.exl-my-gap input{width:90px;box-sizing:border-box;padding:6px 4px;text-align:center;border-radius:8px;border:1px solid var(--line,#ddd)}
+.exl-my-day.dragging .exl-my-gap{display:none}
