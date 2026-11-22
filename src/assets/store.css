@@ -2246,6 +2246,7 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-pg-set{color:#a8843f!important;font-weight:700}
 .exl-pg-row[disabled]{opacity:.7}
 .exl-pgl{flex:none;font-size:13px;font-weight:700;color:#a8843f;margin-inline-end:4px}
+.exl-spn{margin-inline-start:6px;font-size:11px;font-weight:700;opacity:.65}
 .exl-sent{height:44px;text-align:center;color:var(--muted);font-size:22px;letter-spacing:4px;line-height:44px}
 
 .exl-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}.exl-add select{padding:9px;border-radius:10px;border:1px solid var(--line,#ddd)}.exl-add-lk{font-size:13px;color:#a8843f;font-weight:700}

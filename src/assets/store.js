@@ -2044,6 +2044,28 @@
   // ---------- برامج التمرين (صاحب المتجر 21/11/2026): #/exlib/programs ← #/exlib/programs/<رقم> ----------
   // البيانات ({EX:[[عضلة،أداة،ملف،اسم]], P:[برامج]}) بـ KV exlib:prog، وأغلفة pcNNN.webp بمخزن ملفات المكتبة؛ لحساب المالك بس. تمارين البرنامج بتنربط بتمارين المكتبة (عضلة+أداة+اسم) وبتعرض فيديوهاتها.
   const EXL_LV = { 1: "مبتدئ", 2: "متوسط", 3: "متقدم" };
+  // أقسام الرياضات بصفحة البرامج (صاحب المتجر 22/11/2026): بتنحسب من عنوان البرنامج ووصفو (إنكليزي وعربي)، والبرنامج ممكن يدخل بأكتر من قسم، والقسم الفاضي ما بيبين.
+  // للتعديل: `re` كلمات البحث (النص مطبّع بـ exlArq: أحرف صغيرة وبلا همزات)، `no` كلمات بتستثني، و`t:1` = من العنوان بس (للكلمات العامة).
+  const EXL_SPORTS = [
+    { k: "fb", l: "كرة القدم", re: /soccer|football|futbol|كره القدم|كره قدم/, no: /american football|nfl|gridiron/ },
+    { k: "bk", l: "كرة السلة", re: /basketball|hoops|\bnba\b|dunk|كره السله/ },
+    { k: "cal", l: "كالستنكس", re: /calisthenic|street ?workout|bodyweight|body weight|handstand|planche|muscle[- ]?up|كالي?س[تث]نكس|وزن الجسم/ },
+    { k: "bb", l: "كمال أجسام", re: /bodybuilding|hypertrophy|muscle (building|mass)|mass gain|bulking|\bppl\b|push[ \/-]?pull[ \/-]?legs|bro split|كمال اجسام|تضخيم|ضخامه/ },
+    { k: "st", l: "قوة ورفع أثقال", t: 1, re: /powerlifting|strength|stronglifts|5x5|5\/3\/1|wendler|starting strength|رفع اثقال|قوه|باورليفتنغ/ },
+    { k: "bx", l: "ملاكمة", re: /boxing|boxer|ملاكمه/ },
+    { k: "cb", l: "قتال ومصارعة", re: /\bmma\b|martial art|muay thai|kickbox|wrestling|\bbjj\b|jiu[- ]?jitsu|judo|karate|taekwondo|combat|قتال|مصارعه|كيك بوكسينغ|جوجيتسو|كاراتيه|تايكوندو/ },
+    { k: "rn", l: "جري", re: /running|runner|marathon|\b5k\b|\b10k\b|sprint|جري|ماراثون|ركض/ },
+    { k: "fl", l: "تنشيف وتخسيس", t: 1, re: /fat loss|weight loss|fat burn|shred|cutting|تخسيس|حرق الدهون|تنشيف|نزول الوزن|تنحيف/ },
+    { k: "at", l: "أداء رياضي", t: 1, re: /athlet|sport[- ]?specific|vertical jump|agility|plyometric|رياضيين|لاعبين|قفز/ },
+    { k: "vb", l: "كرة طائرة", re: /volleyball|كره (ال)?(طائره|طايره)/ },
+    { k: "tn", l: "تنس", re: /tennis|(^|\s)تنس(\s|$)/ },
+    { k: "sw", l: "سباحة", re: /swimming|swimmer|سباحه/ },
+    { k: "cy", l: "دراجات", re: /cycling|cyclist|دراجه|دراجات/ },
+  ];
+  function exlSportsOf(p, i) {
+    const tt = exlArq(p.t + " " + ((exl.progAr && exl.progAr[i]) || "")), full = tt + " " + exlArq(String(p.d || "").slice(0, 400));
+    return EXL_SPORTS.filter((s) => s.re.test(s.t ? tt : full) && !(s.no && s.no.test(full))).map((s) => s.k);
+  }
   const exlNm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   async function exlProgLoad() {
     if (!exl.prog) {
@@ -2074,7 +2096,7 @@
     if (curRoute().indexOf("/exlib/programs") !== 0) return;
     if (!D) { app.innerHTML = '<div class="empty"><b>ما في برامج لسا</b>ارفع ملف البرامج من لوحة التحكم ← التمارين<a href="#/exlib">رجوع للمكتبة</a></div>'; return; }
     document.title = "برامج التمرين | " + (C.name || "");
-    exl.pf = exl.pf || { q: "", lv: 0, dy: 0, sort: "dl", n: exlPerN() };
+    exl.pf = exl.pf || { q: "", lv: 0, dy: 0, sort: "dl", n: exlPerN() }; if (exl.pf.sp == null) exl.pf.sp = "";
     const n = idx === "" ? -1 : +idx, p = n >= 0 ? D.P[n] : null;
     const wrap = (inner) => `<div class="exl exl-t-${esc(c.theme || "site")} exl-sh-${esc(c.shape || "round")}"><div class="crumbs"><a href="#/account">حسابي</a></div>${inner}</div>`;
     if (p) {
@@ -2095,42 +2117,55 @@
       exlVids(app, "io3"); exlRest(ry);
       return;
     }
-    const f = exl.pf, q = exlArq(f.q);
-    const L0 = D.P, L = D.P.map((x, i) => [x, i]).filter(([x]) => (!f.lv || x.lv === f.lv) && (!f.dy || (f.dy === 7 ? x.dy >= 7 : x.dy === f.dy)) && (!q || exlArq(x.t + " " + ((exl.progAr && exl.progAr[L0.indexOf(x)]) || "")).includes(q)));
-    L.sort((a, b) => (b[0].c ? 1 : 0) - (a[0].c ? 1 : 0) || (f.sort === "r" ? (b[0].r || 0) - (a[0].r || 0) : f.sort === "dl" ? (b[0].dl || 0) - (a[0].dl || 0) : a[1] - b[1]));
+    const f = exl.pf, L0 = D.P;
+    // تصنيف البرامج حسب الرياضة مرة وحدة (بعد ما توصل الترجمة العربية)
+    if (!exl.psp || exl.psp.length !== L0.length) exl.psp = L0.map((x, i) => exlSportsOf(x, i));
+    const spc = {}; exl.psp.forEach((a) => a.forEach((k) => { spc[k] = (spc[k] || 0) + 1; }));
+    const sps = EXL_SPORTS.filter((s) => spc[s.k]);
+    if (f.sp && !spc[f.sp]) f.sp = "";
     const pgCard = ([x, i]) => `<a class="exl-pg-card" href="#/exlib/programs/${i}"><span class="exl-pg-cv">${exlCover(x)}</span><b dir="auto">${esc(exlPT(i, x))}</b><small>${esc(exlMeta(x))}</small></a>`;
-    const chip = (k, v, label, cur) => `<button type="button" class="chip exl-chip${cur === v ? " on" : ""}" data-pf="${k}" data-v="${v}">${label}</button>`;
+    const chip = (k, v, label, cur) => `<button type="button" class="chip exl-chip${String(cur) === String(v) ? " on" : ""}" data-pf="${k}" data-v="${v}">${label}</button>`;
+    // الصفحة بتنرسم مرة وحدة، والبحث والفلاتر بيحدّثو القائمة بس (إعادة رسم المربع كانت تسكّر الكيبورد مع كل حرف)
     app.innerHTML = wrap(`<div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><b>البرامج</b></div>
       <h1 class="page-title">📋 برامج التمرين</h1>
-      <input type="search" class="exl-q" data-pq placeholder="دوّر على برنامج… PPL, split, full body" value="${esc(f.q)}" aria-label="بحث">
+      <input type="search" class="exl-q" data-pq placeholder="دوّر على برنامج… PPL, split, full body" value="${esc(f.q)}" aria-label="بحث" enterkeyhint="search" autocomplete="off">
+      ${sps.length ? `<div class="exl-pg-fl exl-sp"><span class="exl-pgl">الرياضة</span>${chip("sp", "", "الكل", f.sp)}${sps.map((s) => chip("sp", s.k, `${s.l}<span class="exl-spn">${spc[s.k]}</span>`, f.sp)).join("")}</div>` : ""}
       <div class="exl-pg-fl"><span class="exl-pgl">المستوى</span>${chip("lv", 0, "الكل", f.lv)}${[1, 2, 3].map((v) => chip("lv", v, EXL_LV[v], f.lv)).join("")}</div>
       <div class="exl-pg-fl"><span class="exl-pgl">الأيام</span>${chip("dy", 0, "الكل", f.dy)}${[2, 3, 4, 5, 6, 7].map((v) => chip("dy", v, v === 7 ? "7+" : v, f.dy)).join("")}</div>
       <div class="exl-pg-fl"><span class="exl-pgl">رتّب</span>${chip("sort", "dl", "الأكتر تحميلاً", f.sort)}${chip("sort", "r", "الأعلى تقييماً", f.sort)}${chip("sort", "o", "الترتيب الأصلي", f.sort)}</div>
-      <div class="exl-count">${L.length} برنامج</div>
-      <div class="exl-pg-grid">${L.slice(0, f.n).map(pgCard).join("") || '<div class="empty"><b>ما في برامج هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>'}</div>
-      <div class="exl-more">${L.length > f.n ? '<div class="exl-sent" data-psent>…</div>' : ""}</div>`);
+      <div class="exl-count" data-pcnt></div>
+      <div class="exl-pg-grid"></div>
+      <div class="exl-more" data-pmore></div>`);
     // شكل البطاقات من لوحة التحكم + النزول لتحت بيفتح باقي البرامج لحالو
-    const pg = app.querySelector(".exl-pg-grid"), ps = app.querySelector("[data-psent]");
+    const pg = app.querySelector(".exl-pg-grid"), cnt = app.querySelector("[data-pcnt]"), more = app.querySelector("[data-pmore]"), qi = app.querySelector("[data-pq]");
     exlLook(pg, c); const pc = exlN(c.pCols, 0, 6, 0); if (pc) pg.style.gridTemplateColumns = `repeat(${pc},minmax(0,1fr))`;
-    if (exl.pio) { exl.pio.disconnect(); exl.pio = null; }
-    if (ps) {
-      if (!("IntersectionObserver" in window)) { pg.insertAdjacentHTML("beforeend", L.slice(f.n).map(pgCard).join("")); ps.remove(); }
-      else {
-        exl.pio = new IntersectionObserver((es) => {
-          if (!es.some((e) => e.isIntersecting)) return;
-          const from = f.n; f.n += exlPerN();
-          pg.insertAdjacentHTML("beforeend", L.slice(from, f.n).map(pgCard).join(""));
-          if (f.n >= L.length) { ps.remove(); exl.pio.disconnect(); } else { exl.pio.unobserve(ps); exl.pio.observe(ps); }
-        }, { rootMargin: "700px" });
-        exl.pio.observe(ps);
-      }
-    }
-    const qi = app.querySelector("[data-pq]"); let qt;
-    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { f.q = qi.value.trim(); f.n = exlPerN(); exlProgPage(""); }, 250); };
+    const paint = () => {
+      const q = exlArq(f.q);
+      const L = L0.map((x, i) => [x, i]).filter(([x, i]) => (!f.sp || exl.psp[i].indexOf(f.sp) >= 0) && (!f.lv || x.lv === f.lv) && (!f.dy || (f.dy === 7 ? x.dy >= 7 : x.dy === f.dy)) && (!q || exlArq(x.t + " " + ((exl.progAr && exl.progAr[i]) || "")).includes(q)));
+      L.sort((a, b) => (b[0].c ? 1 : 0) - (a[0].c ? 1 : 0) || (f.sort === "r" ? (b[0].r || 0) - (a[0].r || 0) : f.sort === "dl" ? (b[0].dl || 0) - (a[0].dl || 0) : a[1] - b[1]));
+      cnt.textContent = L.length + " برنامج";
+      if (exl.pio) { exl.pio.disconnect(); exl.pio = null; }
+      pg.innerHTML = L.slice(0, f.n).map(pgCard).join("") || '<div class="empty"><b>ما في برامج هيك</b>جرّب كلمة تانية أو شيل الفلتر</div>';
+      more.innerHTML = L.length > f.n ? '<div class="exl-sent" data-psent>…</div>' : "";
+      const ps = more.querySelector("[data-psent]"); if (!ps) return;
+      if (!("IntersectionObserver" in window)) { pg.insertAdjacentHTML("beforeend", L.slice(f.n).map(pgCard).join("")); ps.remove(); return; }
+      exl.pio = new IntersectionObserver((es) => {
+        if (!es.some((e) => e.isIntersecting)) return;
+        const from = f.n; f.n += exlPerN();
+        pg.insertAdjacentHTML("beforeend", L.slice(from, f.n).map(pgCard).join(""));
+        if (f.n >= L.length) { ps.remove(); exl.pio.disconnect(); } else { exl.pio.unobserve(ps); exl.pio.observe(ps); }
+      }, { rootMargin: "700px" });
+      exl.pio.observe(ps);
+    };
+    paint();
+    let qt;
+    qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { f.q = qi.value.trim(); f.n = exlPerN(); paint(); }, 250); };
     app.onchange = null;
     app.onclick = (ev) => {
-      const b = ev.target.closest("[data-pf]");
-      if (b) { f[b.dataset.pf] = b.dataset.pf === "sort" ? b.dataset.v : +b.dataset.v; f.n = exlPerN(); return exlProgPage(""); }
+      const b = ev.target.closest("[data-pf]"); if (!b) return;
+      const k = b.dataset.pf; f[k] = k === "sort" || k === "sp" ? b.dataset.v : +b.dataset.v; f.n = exlPerN();
+      app.querySelectorAll(`[data-pf="${k}"]`).forEach((x) => x.classList.toggle("on", x.dataset.v === String(f[k])));
+      paint();
     };
     exlRest(ry);
   }
@@ -3275,6 +3310,8 @@ ${trustH()}
     return out;
   }
   function route(e, keepScroll) {
+    // تحديث خلفي (أسعار/بيانات) وقت ما الزبون عم يكتب بأي مربع بحث: ما منعيد رسم الصفحة (كان يمسح المربع ويسكّر الكيبورد)
+    if (keepScroll === true && route.n) { const ae = document.activeElement; if (ae && ae.tagName === "INPUT" && ae.type === "search" && app.contains(ae)) return; }
     if (!keepScroll) scrollRestore(0); // صفحة جديدة: وقّف أي استرجاع سكرول قديم
     let hs = history.state; const revisit = !keepScroll && hs && hs.koK != null && scrollMem[hs.koK] != null;
     if (!hs || hs.koK == null) { hs = { ...(hs || {}), koK: ++navK }; try { history.replaceState(hs, ""); } catch {} }
