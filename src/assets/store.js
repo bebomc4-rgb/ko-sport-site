@@ -2036,6 +2036,7 @@
       const r = await fetch("/api/exlib/prog", { headers: socAuth(), credentials: "same-origin" });
       exl.prog = r.ok ? await r.json() : null;
       if (!exl.prog) return null;
+      try { const ra = await fetch("/api/exlib/progar", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progAr = ra.ok ? await ra.json() : {}; } catch (e) { exl.progAr = {}; }
       const full = {}, byName = {}; // m|e|اسم ← تمرين، واسم لحالو (للاحتياط)
       exl.L.forEach((x) => { const n = exlNm(x.n); full[x.m + "|" + x.e + "|" + n] = full[x.m + "|" + x.e + "|" + n] || x; (byName[n] = byName[n] || []).push(x); });
       exl.pmap = exl.prog.EX.map((e) => {
@@ -2048,6 +2049,7 @@
     return exl.prog;
   }
   const exlCover = (p) => (p.c ? `<img src="/exlib/m/pc${String(p.c).padStart(3, "0")}.webp" alt="" loading="lazy" decoding="async" width="480" height="480">` : `<span class="exl-pgph"><b>${p.dy || ""}</b><small>${p.dy ? "أيام" : "برنامج"}</small></span>`);
+  const exlPT = (i, p) => (exl.progAr && exl.progAr[i]) || p.t;
   const exlMeta = (p) => [p.dy ? p.dy + " أيام بالأسبوع" : "", p.wk ? p.wk + " أسابيع" : "", EXL_LV[p.lv] || ""].filter(Boolean).join(" · ");
   async function exlProgPage(idx) {
     const c = exl.cfg || {};
@@ -2070,7 +2072,7 @@
         return `<button type="button" class="exl-card exl-pg-row"${it ? ` data-exl-id="${it.i}"` : " disabled"}>${pic}<span class="exl-tx"><b dir="auto">${esc(nm)}</b>${en && c.showEn !== false ? `<small class="exl-en" dir="ltr">${esc(en)}</small>` : ""}<small class="exl-pg-set">${esc(det)}</small></span></button>`;
       }).join("")}</div>`).join("");
       app.innerHTML = wrap(`<div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><a href="#/exlib/programs">البرامج</a></div>
-        <h1 class="page-title exl-pg-t" dir="ltr">${esc(p.t)}</h1>
+        <h1 class="page-title exl-pg-t" dir="auto">${esc(exlPT(n, p))}</h1>${exl.progAr && exl.progAr[n] ? `<p class="exl-en" dir="ltr">${esc(p.t)}</p>` : ""}
         <div class="exl-pg-hd"><span class="exl-pg-cv">${exlCover(p)}</span><div><p class="exl-pg-m">${esc(exlMeta(p))}</p>${p.r ? `<p class="exl-pg-m">⭐ ${esc(p.r)}</p>` : ""}${hit < tot ? `<p class="exl-pg-m">${hit} من ${tot} تمرين مربوطة بفيديو من المكتبة</p>` : ""}</div></div>
         ${p.d ? `<details class="exl-pg-d"><summary>وصف البرنامج</summary><p dir="ltr">${esc(p.d)}</p></details>` : ""}${ws}`);
       app.onchange = null;
@@ -2079,9 +2081,9 @@
       return;
     }
     const f = exl.pf, q = exlArq(f.q);
-    const L = D.P.map((x, i) => [x, i]).filter(([x]) => (!f.lv || x.lv === f.lv) && (!f.dy || (f.dy === 7 ? x.dy >= 7 : x.dy === f.dy)) && (!q || exlArq(x.t).includes(q)));
-    L.sort((a, b) => f.sort === "r" ? (b[0].r || 0) - (a[0].r || 0) : f.sort === "dl" ? (b[0].dl || 0) - (a[0].dl || 0) : a[1] - b[1]);
-    const pgCard = ([x, i]) => `<a class="exl-pg-card" href="#/exlib/programs/${i}"><span class="exl-pg-cv">${exlCover(x)}</span><b dir="ltr">${esc(x.t)}</b><small>${esc(exlMeta(x))}</small></a>`;
+    const L0 = D.P, L = D.P.map((x, i) => [x, i]).filter(([x]) => (!f.lv || x.lv === f.lv) && (!f.dy || (f.dy === 7 ? x.dy >= 7 : x.dy === f.dy)) && (!q || exlArq(x.t + " " + ((exl.progAr && exl.progAr[L0.indexOf(x)]) || "")).includes(q)));
+    L.sort((a, b) => (b[0].c ? 1 : 0) - (a[0].c ? 1 : 0) || (f.sort === "r" ? (b[0].r || 0) - (a[0].r || 0) : f.sort === "dl" ? (b[0].dl || 0) - (a[0].dl || 0) : a[1] - b[1]));
+    const pgCard = ([x, i]) => `<a class="exl-pg-card" href="#/exlib/programs/${i}"><span class="exl-pg-cv">${exlCover(x)}</span><b dir="auto">${esc(exlPT(i, x))}</b><small>${esc(exlMeta(x))}</small></a>`;
     const chip = (k, v, label, cur) => `<button type="button" class="chip exl-chip${cur === v ? " on" : ""}" data-pf="${k}" data-v="${v}">${label}</button>`;
     app.innerHTML = wrap(`<div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><b>البرامج</b></div>
       <h1 class="page-title">📋 برامج التمرين</h1>
@@ -2219,7 +2221,7 @@
       r.querySelector("[data-exl-zoom]").onclick = () => exlZoom(x);
       const bx = r.querySelector(".exl"); if (bx) {
         const dd = exlMyGet(), cnt = exlMyCount();
-        bx.insertAdjacentHTML("beforeend", `<div class="exl-add"><select data-my-day aria-label="اليوم">${dd.days.map((d, k) => `<option value="${k}"${k === dd.days.length - 1 ? " selected" : ""}>${esc(d.t)}</option>`).join("")}<option value="new"${dd.days.length ? "" : " selected"}>+ يوم جديد</option></select><button type="button" class="btn btn-dark" data-my-add>➕ أضف لبرنامجي</button><a class="exl-add-lk" href="#/exlib/my">${cnt ? "افتح برنامجي (" + cnt + ")" : "افتح برنامجي"}</a></div>`);
+        bx.insertAdjacentHTML("beforeend", `<div class="exl-add"><select data-my-day aria-label="اليوم">${EXMY_WD.map((d, k) => `<option value="${d}"${d === exlMyLast() ? " selected" : ""}>${d}</option>`).join("")}</select><button type="button" class="btn btn-dark" data-my-add>➕ أضف لبرنامجي</button><a class="exl-add-lk" href="#/exlib/my">${cnt ? "افتح برنامجي (" + cnt + ")" : "افتح برنامجي"}</a></div>`);
         bx.querySelector("[data-my-add]").onclick = () => { exlMyAdd(x.i, bx.querySelector("[data-my-day]").value); toast("انضاف لبرنامجك ✓"); };
       }
     });
@@ -2229,17 +2231,27 @@
   function exlMyGet() { try { const d = JSON.parse(localStorage.getItem(EXMY) || "null"); if (d && Array.isArray(d.days)) return d; } catch (e) {} return { days: [] }; }
   function exlMySave(d) { try { localStorage.setItem(EXMY, JSON.stringify(d)); } catch (e) {} }
   function exlMyCount() { return exlMyGet().days.reduce((a, d) => a + d.ex.length, 0); }
-  function exlMyAdd(id, di) {
-    const d = exlMyGet();
-    if (di === "new" || !d.days[+di]) { d.days.push({ t: "اليوم " + (d.days.length + 1), ex: [] }); di = d.days.length - 1; }
-    d.days[+di].ex.push({ i: id, s: 3, r: 10 }); exlMySave(d);
+  const EXMY_WD = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+  const exlMyLast = () => { try { return localStorage.getItem("ko_exmy_last") || EXMY_WD[0]; } catch (e) { return EXMY_WD[0]; } };
+  function exlMyAdd(id, day) {
+    const d = exlMyGet(); let dy = d.days.find((y) => y.t === day);
+    if (!dy) { dy = { t: day, ex: [] }; d.days.push(dy); d.days.sort((a, b) => (EXMY_WD.indexOf(a.t) + 1 || 99) - (EXMY_WD.indexOf(b.t) + 1 || 99)); }
+    dy.ex.push({ i: id, s: 3, r: 10 }); exlMySave(d); try { localStorage.setItem("ko_exmy_last", day); } catch (e) {}
+  }
+  function exlMySearch(day) {
+    const mk = (q) => { const t = exlArq(q); return (t ? exl.L.filter((x) => x.s.includes(t)) : exl.L.slice(0, 30)).slice(0, 40).map((x) => `<button type="button" class="exl-my-row exl-my-pick" data-pick="${esc(x.i)}"><img src="/exlib/m/${esc(x.i)}.jpg" alt="" loading="lazy"><b>${esc(x.a || x.n)}</b><span>➕</span></button>`).join("") || '<p class="exl-count">ما في نتيجة</p>'; };
+    openSheet("أضف تمرين ليوم " + day, `<div class="exl"><input type="search" class="exl-q" data-my-q placeholder="دوّر على تمرين بالعربي أو الإنكليزي" aria-label="بحث"><div data-my-res>${mk("")}</div></div>`, (root) => {
+      const r = root || document, qi = r.querySelector("[data-my-q]"), rs = r.querySelector("[data-my-res]"); let t;
+      qi.oninput = () => { clearTimeout(t); t = setTimeout(() => { rs.innerHTML = mk(qi.value.trim()); }, 200); };
+      rs.onclick = (ev) => { const b = ev.target.closest("[data-pick]"); if (!b) return; exlMyAdd(b.dataset.pick, day); toast("انضاف ✓"); closeSheet(); exlMyPage(); };
+    });
   }
   const exlMyName = (id) => { const x = (exl.L || []).find((y) => y.i === id); return x ? (x.a || x.n) : ""; };
   function exlMyPage() {
     document.title = "برنامجي | " + (C.name || "");
     const d = exlMyGet();
-    const days = d.days.map((dy, k) => `<section class="exl-my-day" data-day="${k}"><div class="exl-my-hd"><input class="exl-my-t" value="${esc(dy.t)}" aria-label="اسم اليوم"><button type="button" data-my-del-day="${k}" aria-label="حذف اليوم">🗑</button></div>${dy.ex.length ? dy.ex.map((e, j) => `<div class="exl-my-row"><img src="/exlib/m/${esc(e.i)}.jpg" alt="" loading="lazy"><b>${esc(exlMyName(e.i))}</b><span class="exl-my-sr"><input type="number" min="1" max="20" value="${e.s}" data-my-s="${k}.${j}" aria-label="مجموعات"> × <input type="number" min="1" max="100" value="${e.r}" data-my-r="${k}.${j}" aria-label="تكرار"></span><span class="exl-my-ac"><button type="button" data-my-up="${k}.${j}" aria-label="فوق">▲</button><button type="button" data-my-dn="${k}.${j}" aria-label="تحت">▼</button><button type="button" data-my-rm="${k}.${j}" aria-label="حذف">✕</button></span></div>`).join("") : '<p class="exl-count">اليوم فاضي، ضيف تمارين من المكتبة.</p>'}</section>`).join("");
-    app.innerHTML = `<div class="exl exl-t-${esc((exl.cfg || {}).theme || "site")}"><div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><a href="#/exlib/my">برنامجي</a></div><h1 class="page-title">🗂 برنامجي</h1>${d.days.length ? days : '<div class="empty"><b>برنامجك فاضي</b>افتح أي تمرين بالمكتبة واكبس «أضف لبرنامجي»<a href="#/exlib">للمكتبة</a></div>'}<div class="exl-my-bar"><button type="button" class="btn" data-my-newday>+ يوم جديد</button>${d.days.length ? '<button type="button" class="btn btn-dark" data-my-png>🖼 تصدير صور</button><button type="button" class="btn btn-dark" data-my-pdf>📄 PDF</button>' : ""}</div></div>`;
+    const days = d.days.map((dy, k) => `<section class="exl-my-day" data-day="${k}"><div class="exl-my-hd"><b class="exl-my-t">${esc(dy.t)}</b><button type="button" class="btn btn-dark sm" data-my-addex="${esc(dy.t)}">➕ أضف تمرين</button><button type="button" data-my-del-day="${k}" aria-label="حذف اليوم">🗑</button></div>${dy.ex.length ? dy.ex.map((e, j) => `<div class="exl-my-row"><img src="/exlib/m/${esc(e.i)}.jpg" alt="" loading="lazy"><b>${esc(exlMyName(e.i))}</b><span class="exl-my-sr"><input type="number" min="1" max="20" value="${e.s}" data-my-s="${k}.${j}" aria-label="مجموعات"> × <input type="number" min="1" max="100" value="${e.r}" data-my-r="${k}.${j}" aria-label="تكرار"></span><span class="exl-my-ac"><button type="button" data-my-up="${k}.${j}" aria-label="فوق">▲</button><button type="button" data-my-dn="${k}.${j}" aria-label="تحت">▼</button><button type="button" data-my-rm="${k}.${j}" aria-label="حذف">✕</button></span></div>`).join("") : '<p class="exl-count">اليوم فاضي، اكبس «أضف تمرين».</p>'}</section>`).join("");
+    app.innerHTML = `<div class="exl exl-t-${esc((exl.cfg || {}).theme || "site")}"><div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><a href="#/exlib/my">برنامجي</a></div><h1 class="page-title">🗂 برنامجي</h1>${d.days.length ? days : '<div class="empty"><b>برنامجك فاضي</b>اختار يوم من تحت وضيف تمارينو، أو افتح أي تمرين بالمكتبة واكبس «أضف لبرنامجي»</div>'}<div class="exl-my-bar">${EXMY_WD.filter((w) => !d.days.some((y) => y.t === w)).map((w) => `<button type="button" class="chip exl-chip" data-my-newday="${w}">+ ${w}</button>`).join("")}</div><div class="exl-my-bar">${d.days.length ? '<button type="button" class="btn btn-dark" data-my-png>🖼 تصدير صور</button><button type="button" class="btn btn-dark" data-my-pdf>📄 PDF</button>' : ""}</div></div>`;
     app.onchange = (ev) => {
       const t = ev.target, dd = exlMyGet();
       if (t.classList.contains("exl-my-t")) { dd.days[+t.closest("[data-day]").dataset.day].t = t.value.trim() || "يوم"; }
@@ -2249,7 +2261,8 @@
     };
     app.onclick = (ev) => {
       const t = ev.target.closest("button"); if (!t) return; const dd = exlMyGet(), g = (a) => (t.dataset[a] || "").split(".").map(Number);
-      if (t.hasAttribute("data-my-newday")) { dd.days.push({ t: "اليوم " + (dd.days.length + 1), ex: [] }); }
+      if (t.dataset.myNewday) { dd.days.push({ t: t.dataset.myNewday, ex: [] }); dd.days.sort((a, b) => (EXMY_WD.indexOf(a.t) + 1 || 99) - (EXMY_WD.indexOf(b.t) + 1 || 99)); }
+      else if (t.dataset.myAddex) return exlMySearch(t.dataset.myAddex);
       else if (t.dataset.myDelDay != null) { if (!confirm("حذف اليوم؟")) return; dd.days.splice(+t.dataset.myDelDay, 1); }
       else if (t.dataset.myRm) { const [a, b] = g("myRm"); dd.days[a].ex.splice(b, 1); }
       else if (t.dataset.myUp) { const [a, b] = g("myUp"); if (b > 0) dd.days[a].ex.splice(b - 1, 0, dd.days[a].ex.splice(b, 1)[0]); }
@@ -2261,11 +2274,18 @@
     };
   }
   function exlMyPdf() {
-    const d = exlMyGet(), o = location.origin, w = window.open("", "_blank"); if (!w) { toast("اسمح بالنوافذ المنبثقة وجرّب كمان مرة"); return; }
+    const d = exlMyGet(), o = location.origin;
     const body = d.days.map((dy) => `<h2>${esc(dy.t)}</h2>` + dy.ex.map((e) => `<div class="r"><img src="${o}/exlib/m/${esc(e.i)}.jpg"><div><b>${esc(exlMyName(e.i))}</b><span>${e.s} × ${e.r}</span></div></div>`).join("")).join("");
+    // iframe مخفي بدل نافذة جديدة: ما بيضيف خانة بسجل المتصفح فزر الرجوع ما بيعلق
+    document.querySelectorAll("iframe[data-my-pf]").forEach((f) => f.remove());
+    const f = document.createElement("iframe"); f.setAttribute("data-my-pf", ""); f.style.cssText = "position:fixed;width:0;height:0;border:0;right:0;bottom:0;opacity:0;pointer-events:none"; document.body.appendChild(f);
+    const w = f.contentWindow; w.document.open();
     w.document.write(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>برنامجي</title><style>body{font-family:system-ui,sans-serif;margin:16px}h2{margin:18px 0 8px;border-bottom:2px solid #a8843f;padding-bottom:4px}.r{display:flex;gap:12px;align-items:center;margin:0 0 8px;break-inside:avoid}.r img{width:150px;height:150px;object-fit:contain;background:#fff;border:1px solid #ddd;border-radius:8px}.r div{display:flex;flex-direction:column;gap:4px}.r span{font-size:18px;color:#a8843f;font-weight:700}</style>${body}`);
-    w.document.close(); const im = [...w.document.images]; let n = im.length; const go = () => { if (--n <= 0) setTimeout(() => w.print(), 200); };
-    if (!n) return w.print(); im.forEach((i) => { if (i.complete) go(); else { i.onload = go; i.onerror = go; } });
+    w.document.close();
+    const im = [...w.document.images]; let n = im.length, done = false;
+    const pr = () => { if (done) return; done = true; try { w.focus(); w.print(); } catch (e) { toast("ما اشتغلت الطباعة، جرّب تصدير صور"); } setTimeout(() => f.remove(), 60000); };
+    const go = () => { if (--n <= 0) setTimeout(pr, 200); };
+    if (!n) return pr(); im.forEach((i) => { if (i.complete) go(); else { i.onload = go; i.onerror = go; } }); setTimeout(pr, 8000);
   }
   async function exlMyPng() {
     const d = exlMyGet(); toast("عم جهّز الصور…");

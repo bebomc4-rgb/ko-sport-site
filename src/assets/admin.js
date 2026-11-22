@@ -813,6 +813,11 @@
       v.addEventListener("input", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); });
       v.addEventListener("change", (e) => { if (e.target.matches("[data-exc],[data-exp]")) exlCfgSave(); });
       $("[data-exl-tgo]").addEventListener("click", exlTranslateAll);
+      { let pRun = false; const pg = $("[data-ptr-go]"), ps = $("[data-ptr-stop]"), pt = $("[data-ptr-st]");
+        pg.addEventListener("click", async () => { pRun = true; pg.disabled = true; ps.hidden = false;
+          try { while (pRun) { const j = await api("/api/exlib/progtr", { method: "POST", body: "{}" }); pt.textContent = `عم يترجم… ${nf(j.done)} من ${nf(j.total)}`; if (!j.left) { pt.textContent = `تمت الترجمة ✓ (${nf(j.done)} من ${nf(j.total)})`; break; } } } catch (e) { toast(e.message); }
+          pRun = false; pg.disabled = false; ps.hidden = true; });
+        ps.addEventListener("click", () => { pRun = false; }); }
       $("[data-exl-tstop]").addEventListener("click", () => { exlTRun = false; });
       v.addEventListener("click", (e) => { const rs = e.target.closest("[data-exreset]"); if (rs) exlSave(rs.closest("[data-exid]"), true); });
       v.addEventListener("error", (e) => { if (e.target.tagName === "IMG") e.target.style.visibility = "hidden"; }, true);
