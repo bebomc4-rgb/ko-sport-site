@@ -6,4 +6,4 @@ jobs:
   clean:
     runs-on: ubuntu-latest
     steps:
-      - run: git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" --delete tmp-dump || true
+      - run: git init -q x && cd x && git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" --delete tmp-dump
