@@ -4528,7 +4528,7 @@ const EXL_EFIX = {}; for (const [e, ids] of Object.entries(EXL_EFIX_G)) for (con
 // أدوات صارت قسم واحد (حتى لو تعديل قديم من اللوحة فيه الاسم القديم)
 const EXL_EMERGE = { Band: "Resistance Band", Roll: "Massage", Rollball: "Massage", "Vibrate Plate": "Massage" };
 // تصحيح أسماء التمارين بالعربي وقت العرض (صاحب المتجر 23/11/2026):
-// صدر: Incline = «علوي» و Decline = «سفلي» (مو «مائل»)، «وقوف» ← «واقفاً»، «جلوس» ← «جالساً» (إلا إذا أول كلمة، متل «جلوس كامل»)، «كابل» ← «كيبل»، «بانحناء» ← «منحني»
+// صدر: Incline = «علوي» و Decline = «سفلي» (مو «مائل»)، «وقوف» ← «واقفاً»، «جلوس» ← «جالساً» و«استلقاء» ← «مستلقي» (إلا إذا أول كلمة، متل «جلوس كامل»، و«من الاستلقاء» بتضل)، «كابل» ← «كيبل»، «بانحناء» ← «منحني»
 function exlArFix(a, x) {
   let s = String(a || "");
   if (!s) return s;
@@ -4537,7 +4537,7 @@ function exlArFix(a, x) {
     const up = /incline/i.test(en);
     s = s.replace(/(على بنش )?مائل(ة)? لتحت/g, "سفلي").replace(/(على بنش )?مائل(ة)?/g, up ? "علوي" : "سفلي");
   }
-  return s.replace(/(\s)وقوف(?=\s|$)/g, "$1واقفاً").replace(/(\s)جلوس(?=\s|$)/g, "$1جالساً").replace(/كابل/g, "كيبل").replace(/بانحناء/g, "منحني");
+  return s.replace(/(\s)وقوف(?=\s|$)/g, "$1واقفاً").replace(/(\s)جلوس(?=\s|$)/g, "$1جالساً").replace(/(\s)استلقاء(?=\s|$)/g, "$1مستلقي").replace(/كابل/g, "كيبل").replace(/بانحناء/g, "منحني");
 }
 async function exlibAll(env) {
   let L = []; try { L = JSON.parse((await env.STORE.get("exlib:index")) || "[]"); } catch { L = []; }
