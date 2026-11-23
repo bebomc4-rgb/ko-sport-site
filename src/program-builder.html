@@ -161,6 +161,7 @@ ol.exl .xm{width:100%;height:100%;max-height:none;object-fit:contain}
 .pdfbar{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;background:var(--bg);padding:8px 0 10px}
 .pdfbar .btn{flex:1;min-width:110px;text-align:center;padding:11px 10px;font-size:.95rem}
 .pdfpg{display:block;width:100%;height:auto;margin:0 0 12px;border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);background:#fff}
+.pdfmsg{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--goldbg);border:1px solid var(--gold);font-weight:700;text-align:center}
 </style>
 </head>
 <body>
@@ -379,7 +380,7 @@ function gen(I,seed){
   const RKEY="ko_pb_res";
   const saveR=()=>{try{localStorage.setItem(RKEY,JSON.stringify({R,I,seed}))}catch(e){}};
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}};
-  const toast=t=>{const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2400)};
+  const toast=t=>{if(window.top!==window){try{parent.postMessage({koPbToast:String(t)},location.origin);return}catch(e){}}const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2400)};
   const ch=(k,opts,multi)=>`<div class="chips ${multi?"eq":""}">${opts.map(([v,l])=>`<button type="button" data-k="${k}" data-v="${v}" class="${(multi?S[k].includes(v):S[k]===v)?"on":""}">${esc(l)}</button>`).join("")}</div>`;
   // الخطوات: كل سؤال بصفحة لحالو، مع شريط تقدّم و«رجوع / التالي»
   const SPIC={gen:"💪",cal:"🤸",bod:"🏆",pwr:"🏋️",fb:"⚽",bk:"🏀",vb:"🏐",box:"🥊",mma:"🤼",run:"🏃",tn:"🎾"};
@@ -572,7 +573,7 @@ function gen(I,seed){
     }
     const out=[];
     for(let k=0;k<pages.length;k++){const c=pages[k],g=c.getContext("2d");g.direction="rtl";foot(g,k+1,pages.length);
-      const b=await new Promise(res=>c.toBlob(res,"image/jpeg",.88));out.push({jpg:new Uint8Array(await b.arrayBuffer()),w:PW,h:PH,b})}
+      const b=await new Promise(res=>c.toBlob(res,"image/jpeg",.8));out.push({jpg:new Uint8Array(await b.arrayBuffer()),w:PW,h:PH,b})}
     return{pdf:pdfBytes(out),pics:out.map(o=>URL.createObjectURL(o.b))};
   }
   // PDF جوّا التطبيق: بتطلع صفحات الملف قدّامك فوراً (متل عارض PDF)، وزر «حمّل الملف» بينزّلو من رابط عادي
@@ -587,22 +588,33 @@ function gen(I,seed){
     // جوّا تطبيق الأندرويد (appcreator24) أي تنزيل بيطلع برا التطبيق، فهونيك الملف بيضل معروض هون، وبينبعت عالواتساب برابط
     const APP=/; wv\)|appcreator/i.test(navigator.userAgent||"");
     box().innerHTML=`<div class="pdfbar"><button type="button" class="btn ghost" id="pdfb">→ رجوع</button><button type="button" class="btn" id="pdfw">📲 ابعتلي الملف عالواتساب</button>${APP?"":'<a class="btn ghost" id="pdfd" href="#" download="KO-SPORT-program.pdf">⬇️ حمّل</a>'+(navigator.canShare?'<button type="button" class="btn ghost" id="pdfs">📤 شارك</button>':"")}</div>
+      <div class="pdfmsg" id="pdfmsg" hidden></div>
       <p class="hint" style="text-align:center;margin:0 0 10px">${made.pics.length} صفحات${APP?" · اكبس «ابعتلي الملف عالواتساب» وبيوصلك ملف PDF من KO SPORT":" · هيك رح يطلع الملف"}</p>
       ${made.pics.map((u,i)=>`<img class="pdfpg" src="${u}" alt="صفحة ${i+1}">`).join("")}`;
     const d=app.querySelector("#pdfd");if(d)d.href=URL.createObjectURL(PDF.blob);
-    try{const r=await fetch("/api/exlib/pdf",{method:"POST",headers:{"content-type":"application/pdf"},body:PDF.blob});if(r.ok){const j=await r.json();PDF.url=new URL(j.url,location.href).href;if(d&&!APP){d.href=PDF.url;d.removeAttribute("download")}}}catch(e){}
+    await upPdf();if(PDF.url&&d&&!APP){d.href=PDF.url;d.removeAttribute("download")}
   }
+  // رفع الملف للسيرفر (مرة وحدة، وإذا فشل بينعاد وقت الكبس)
+  async function upPdf(){
+    if(!PDF||PDF.url)return;if(PDF.up)return PDF.up;
+    PDF.up=(async()=>{for(let k=0;k<2&&!PDF.url;k++){try{const r=await fetch("/api/exlib/pdf",{method:"POST",headers:{"content-type":"application/pdf"},body:PDF.blob});const j=await r.json().catch(()=>({}));if(r.ok&&j.url)PDF.url=new URL(j.url,location.href).href;else PDF.err=j.error||("خطأ "+r.status)}catch(e){PDF.err="النت ضعيف"}}PDF.up=null})();
+    return PDF.up;
+  }
+  const pmsg=t=>{const m=app.querySelector("#pdfmsg");if(m){m.textContent=t;m.hidden=!t}};
   // المجيب بيبعت الملف كـ PDF على واتساب رقم حساب الزبون
   async function sendWa(btn){
-    if(!PDF||!PDF.url){toast("لحظة، عم يجهّز الملف…");return}
-    const id=(PDF.url.match(/pdf\/([a-f0-9]{24})\//)||[])[1];if(!id)return;
+    if(!PDF)return;
+    const t0=btn.textContent;btn.disabled=true;btn.textContent="⏳ عم يجهّز…";pmsg("");
+    if(!PDF.url)await upPdf();
+    if(!PDF.url){btn.textContent=t0;btn.disabled=false;pmsg("❌ ما قدرنا نجهّز الملف ("+(PDF.err||"")+")، جرّب كمان مرة");return}
+    const id=(PDF.url.match(/pdf\/([a-f0-9]{24})\//)||[])[1];
     let tok="";try{tok=(JSON.parse(localStorage.getItem("ko_acct")||"null")||{}).token||""}catch(e){}
-    const t0=btn.textContent;btn.disabled=true;btn.textContent="⏳ عم يبعت…";
+    btn.textContent="⏳ عم يبعت…";
     try{const r=await fetch("/api/exlib/pdf/wa",{method:"POST",credentials:"same-origin",headers:Object.assign({"content-type":"application/json"},tok?{authorization:"Bearer "+tok}:{}),body:JSON.stringify({id})});
       const j=await r.json().catch(()=>({}));
-      if(r.ok&&j.ok){btn.textContent="✅ انبعت";toast("✅ انبعت الملف على واتساب رقمك "+(j.phone||""));setTimeout(()=>{btn.textContent=t0;btn.disabled=false},4000);return}
-      toast(j.error||"ما زبط، جرّب كمان مرة");
-    }catch(e){toast("النت ضعيف، جرّب كمان مرة")}
+      if(r.ok&&j.ok){btn.textContent="✅ انبعت";pmsg("✅ انبعت الملف على واتساب رقمك "+(j.phone||"")+". شوف الواتساب 👌");setTimeout(()=>{btn.textContent=t0;btn.disabled=false},4000);return}
+      pmsg("❌ "+(j.error||"ما زبط، جرّب كمان مرة"));
+    }catch(e){pmsg("❌ النت ضعيف، جرّب كمان مرة")}
     btn.textContent=t0;btn.disabled=false;
   }
   async function sharePdf(){
