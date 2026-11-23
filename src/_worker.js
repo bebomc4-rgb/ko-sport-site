@@ -4943,20 +4943,20 @@ async function exlTranslationRun(env) {
 async function exlibApi(request, env, path, m) {
   const nos = { "cache-control": "no-store" };
   // ملف PDF «اعمل برنامجك» (23/11/2026): تطبيق الأندرويد (WebView) ما بينزّل ملفات blob، فالصفحة بترفع الملف هون
-  // وبياخد رابط عادي بينزل منو (بيتمسح لحالو بعد ساعة). بس ملفات PDF، وحد أعلى 8MB.
+  // وبياخد رابط عادي بينزل منو، وبينبعت عالواتساب (بيتمسح لحالو بعد 30 يوم). بس ملفات PDF، وحد أعلى 8MB.
   if (path === "/api/exlib/pdf" && m === "POST") {
     const len = +(request.headers.get("content-length") || 0); if (len > 8e6) return json({ error: "الملف كبير" }, 413, nos);
     const b = new Uint8Array(await request.arrayBuffer());
     if (b.length < 100 || b.length > 8e6 || String.fromCharCode(...b.slice(0, 5)) !== "%PDF-") return json({ error: "مو ملف PDF" }, 400, nos);
     const k = [...crypto.getRandomValues(new Uint8Array(12))].map((x) => x.toString(16).padStart(2, "0")).join("");
-    await env.STORE.put("pbpdf:" + k, b, { expirationTtl: 3600 });
+    await env.STORE.put("pbpdf:" + k, b, { expirationTtl: 30 * 86400 });
     return json({ url: "/api/exlib/pdf/" + k + "/KO-SPORT-program.pdf" }, 200, nos);
   }
   { const mm = path.match(/^\/api\/exlib\/pdf\/([a-f0-9]{24})(?:\/[^/]*)?$/);
     if (mm && m === "GET") {
       const b = await env.STORE.get("pbpdf:" + mm[1], "arrayBuffer");
       if (!b) return new Response("الملف انتهى، اعمل PDF من جديد", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", ...nos } });
-      return new Response(b, { headers: { "content-type": "application/pdf", "content-disposition": 'attachment; filename="KO-SPORT-program.pdf"', "cache-control": "private, max-age=3600", "x-robots-tag": "noindex" } });
+      return new Response(b, { headers: { "content-type": "application/pdf", "content-disposition": 'attachment; filename="KO-SPORT-program.pdf"', "cache-control": "private, max-age=86400", "x-robots-tag": "noindex" } });
     } }
   // لائحة التمارين: لصاحب المتجر بس (من حسابو بالمتجر)، بدون المخفية
   if (path === "/api/exlib/list" && m === "GET") {

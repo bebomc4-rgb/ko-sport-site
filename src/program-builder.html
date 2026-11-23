@@ -584,11 +584,13 @@ function gen(I,seed){
     let made;try{made=await makePdf()}catch(e){toast("ما زبط تجهيز الملف، جرّب كمان مرة");show();return}
     PDF={blob:made.pdf,url:""};
     const box=()=>app.querySelector(".pdfv");if(!box())return;
-    box().innerHTML=`<div class="pdfbar"><button type="button" class="btn ghost" id="pdfb">→ رجوع</button><a class="btn" id="pdfd" href="#" download="KO-SPORT-program.pdf">⬇️ حمّل الملف</a>${navigator.canShare?'<button type="button" class="btn ghost" id="pdfs">📤 شارك</button>':""}</div>
-      <p class="hint" style="text-align:center;margin:0 0 10px">${made.pics.length} صفحات · هيك رح يطلع الملف</p>
+    // جوّا تطبيق الأندرويد (appcreator24) أي تنزيل بيطلع برا التطبيق، فهونيك الملف بيضل معروض هون، وبينبعت عالواتساب برابط
+    const APP=/; wv\)|appcreator/i.test(navigator.userAgent||"");
+    box().innerHTML=`<div class="pdfbar"><button type="button" class="btn ghost" id="pdfb">→ رجوع</button>${APP?'<button type="button" class="btn" id="pdfw">📤 ابعتو واتساب</button>':'<a class="btn" id="pdfd" href="#" download="KO-SPORT-program.pdf">⬇️ حمّل الملف</a>'+(navigator.canShare?'<button type="button" class="btn ghost" id="pdfs">📤 شارك</button>':"")}</div>
+      <p class="hint" style="text-align:center;margin:0 0 10px">${made.pics.length} صفحات${APP?" · هاد ملفك جوّا التطبيق، ولتحفظو ابعتو لحالك عالواتساب":" · هيك رح يطلع الملف"}</p>
       ${made.pics.map((u,i)=>`<img class="pdfpg" src="${u}" alt="صفحة ${i+1}">`).join("")}`;
-    const d=app.querySelector("#pdfd");d.href=URL.createObjectURL(PDF.blob);
-    try{const r=await fetch("/api/exlib/pdf",{method:"POST",headers:{"content-type":"application/pdf"},body:PDF.blob});if(r.ok){const j=await r.json();PDF.url=new URL(j.url,location.href).href;d.href=PDF.url;d.removeAttribute("download")}}catch(e){}
+    const d=app.querySelector("#pdfd");if(d)d.href=URL.createObjectURL(PDF.blob);
+    try{const r=await fetch("/api/exlib/pdf",{method:"POST",headers:{"content-type":"application/pdf"},body:PDF.blob});if(r.ok){const j=await r.json();PDF.url=new URL(j.url,location.href).href;if(d&&!APP){d.href=PDF.url;d.removeAttribute("download")}}}catch(e){}
   }
   async function sharePdf(){
     try{const f=new File([PDF.blob],"KO-SPORT-program.pdf",{type:"application/pdf"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"برنامجي من KO SPORT"});return}}catch(e){if(e&&e.name==="AbortError")return}
@@ -602,6 +604,7 @@ function gen(I,seed){
     const b=e.target.closest("button");if(!b)return;
     if(b.id==="pdfb"){show();return}
     if(b.id==="pdfs"){sharePdf();return}
+    if(b.id==="pdfw"){if(!PDF||!PDF.url){toast("لحظة، عم يجهّز الرابط…");return}const t="برنامجي التدريبي من KO SPORT (ملف PDF):\n"+PDF.url;try{window.top.location.href="https://wa.me/?text="+encodeURIComponent(t)}catch(e){location.href="https://wa.me/?text="+encodeURIComponent(t)}return}
     if(b.dataset.day!=null){DAY=+b.dataset.day;app.querySelectorAll(".dtab").forEach(t=>t.classList.toggle("on",t===b));app.querySelectorAll("[data-dy]").forEach(x=>x.hidden=+x.dataset.dy!==DAY);return}
     if(b.dataset.k){const k=b.dataset.k,v=b.dataset.v;
       if(k==="eq"){const i=S.eq.indexOf(v);i<0?S.eq.push(v):S.eq.splice(i,1);b.classList.toggle("on");const q=$("#eqs");if(q)q.textContent=eqLine()}
