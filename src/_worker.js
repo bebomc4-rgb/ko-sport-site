@@ -4999,22 +4999,6 @@ async function exlibApi(request, env, path, m) {
     const t = await env.STORE.get("exlib:prog");
     return new Response(t || "null", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=120", "x-robots-tag": "noindex" } });
   }
-  // مؤقت (23/11/2026): سحب صور التمارين مشفّرة (RSA-OAEP + AES-GCM، ما بتنقرا بلا المفتاح الخاص) لفحص صور النساء، بينشال بعدها
-  if (path === "/api/exlib/jpgdump" && m === "GET") {
-    let L = []; try { L = JSON.parse((await env.STORE.get("exlib:index")) || "[]"); } catch {}
-    const part = Math.max(0, +new URL(request.url).searchParams.get("p") || 0), N = 400, ids = L.slice(part * N, part * N + N).map((x) => x.i);
-    const bufs = await Promise.all(ids.map((id) => env.STORE.get("exlib:f:" + id + ".jpg", "arrayBuffer").catch(() => null)));
-    const enc = new TextEncoder(), parts = []; let tot = 0;
-    ids.forEach((id, k) => { const b = bufs[k] ? new Uint8Array(bufs[k]) : new Uint8Array(0), h = enc.encode(id.padEnd(16, " ")), l = new Uint8Array(4); new DataView(l.buffer).setUint32(0, b.length); parts.push(h, l, b); tot += 20 + b.length; });
-    const raw = new Uint8Array(tot); let off = 0; for (const x of parts) { raw.set(x, off); off += x.length; }
-    const der = Uint8Array.from(atob("MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1bnKf1idqUF3GujvKvQjzNk5osSpU+A7U3jbwkX9+nFwn1ogUxE4L3pNIUJpc7cIaGAmF4PAo7PiXKrVjz6Ywua+lYG9iofGNNC1t6nejD/3011VHYSA3q8i14LGeDO+1wfRqUuhtudPeAl/hCqWHLVWhxyRWeahXYZGXlP908z6MHwuI6fS1RpxHuOPHFg4C22cx3wesFj9Au5MGRJmzfLc6AYtpQBfWi7+Lq/r72JFHAztUg+4Bzz3RuKRX1xFIc8QsIMjM3enPHF2PnDe3D3fR8O+HRtHgfV1YmC8buoIcZ8ZesFBgV6T2eSj1qXBmh1wM/huLc+jUIROUZRjvwIDAQAB"), (c) => c.charCodeAt(0));
-    const pk = await crypto.subtle.importKey("spki", der, { name: "RSA-OAEP", hash: "SHA-256" }, false, ["encrypt"]);
-    const ak = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]), iv = crypto.getRandomValues(new Uint8Array(12));
-    const ek = new Uint8Array(await crypto.subtle.encrypt({ name: "RSA-OAEP" }, pk, new Uint8Array(await crypto.subtle.exportKey("raw", ak))));
-    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, ak, raw));
-    const out = new Uint8Array(4 + ek.length + 12 + ct.length); new DataView(out.buffer).setUint32(0, ek.length); out.set(ek, 4); out.set(iv, 4 + ek.length); out.set(ct, 16 + ek.length);
-    return new Response(out, { headers: { "content-type": "application/octet-stream", "cache-control": "no-store", "x-total": String(L.length) } });
-  }
   if (path === "/api/exlib/progar" && m === "GET") {
     if (!(await exlibOwner(request, env)) && !isAdmin(request, env, "owner")) return json({ error: "forbidden" }, 403, nos);
     return new Response((await env.STORE.get(new URL(request.url).searchParams.get("d") ? "exlib:progdar" : "exlib:progar")) || "{}", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
