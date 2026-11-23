@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=442" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=443" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +1981,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=442"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=443"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2115,14 +2115,14 @@
     if (curRoute().indexOf("/exlib/women") !== 0) return;
     if (!D || !D.W) { app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح القائمة</b>جرّب كمان مرة<a href="#/exlib">رجوع للمكتبة</a></div>'; return; }
     const all = {}, LL = exl.L || []; (exl.LA || LL).forEach((x) => { all[x.i] = x; });
-    const W = D.W, S = D.S || {};
+    const W = D.W, S = D.S || {}, AU = D.A || {}; // AU: التبديل التلقائي (نفس الحركة بالظبط)
     // «نفس الاسم»: البديل اسمو نفس اسم تمرين المرا بالظبط (بلا فرق الأحرف الكبيرة، والرقم أو «VERSION 2» بالآخر) ← بيطلعو أول شي، وفي زر يبدّلهن كلهن
     const key = (n) => String(n || "").toLowerCase().replace(/\(\s*version\s*\d+\s*\)/g, "").replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+\d+$/, "");
     const same = {}; Object.keys(W).forEach((i) => { if (!all[i]) return; const k = key(all[i].n), m = (W[i] || []).find((a) => all[a] && key(all[a].n) === k); if (m) same[i] = m; });
     const ids = Object.keys(W).filter((i) => all[i]).sort((a, b) => (same[b] ? 1 : 0) - (same[a] ? 1 : 0));
     // البحث عن بديل: بكل التمارين (حتى يلي بالقائمة أو بعضلة مخبّاية)، إلا المخفية من لوحة التحكم
     const pool = Object.values(all).map((y) => ({ y, s: y.s || exlArq(y.n + " " + (y.a || "")) }));
-    const st = { f: "todo", n: 24, q: {}, ed: {}, mg: {}, mq: {} };
+    const st = { f: Object.keys(AU).length ? "auto" : "todo", n: 24, q: {}, ed: {}, mg: {}, mq: {} };
     const nm = (x) => (x ? x.a || x.n : "");
     // متحرّكة: الفيديو إذا موجود (بيشتغل لما يبين، لحد 5 مع بعض)، وإلا الصورة
     const img = (id, cls) => (all[id] ? exlMedia(all[id], cls, true) : `<img class="${cls}" src="/exlib/m/${esc(id)}.jpg" alt="" loading="lazy" decoding="async">`);
@@ -2152,7 +2152,7 @@
       return `<div class="exw-card${cur ? " done" : ""}" data-wid="${esc(wid)}">
         <div class="exw-w">${img(wid, "")}<b dir="auto">${esc(nm(x))}</b>${x.a ? `<small dir="ltr">${esc(x.n)}</small>` : ""}<span class="exw-tag">👩 الصورة الحالية</span><button type="button" class="exw-lnk" data-wedit="${esc(wid)}" data-id="${esc(wid)}">✏️ عدّل الاسم</button><button type="button" class="exw-lnk" data-wdel="${esc(wid)}" data-id="${esc(wid)}">🗑 احذف هالتمرين</button></div>
         <div class="exw-r">
-          <div class="exw-h">${cur === "-" ? "🚫 مخفي عن الرجال" : cur ? "✓ اخترت بديل" : alts.length ? "اختار البديل (صورة رجل):" : "ما في بديل مقترح، دوّر على واحد أو خبّيه"}</div>
+          <div class="exw-h">${cur === "-" ? "🚫 مخفي عن الرجال" : cur && AU[wid] === cur ? "🤖 تبدّل تلقائي (نفس الحركة بالظبط): صح أو غلط؟ «↩ تراجع» إذا غلط" : cur ? "✓ اخترت بديل" : alts.length ? "اختار البديل (صورة رجل):" : "ما في بديل مقترح، دوّر على واحد أو خبّيه"}</div>
           <div class="exw-alts">${alts.map((a) => altBtn(wid, a, a === cur)).join("")}${res.map((a) => altBtn(wid, a, false)).join("")}</div>
           ${st.ed[wid] ? editBox(wid) : ""}${st.mg[wid] ? mergeBox(wid) : ""}
           <div class="exw-acts"><input type="search" class="exw-q" data-wq="${esc(wid)}" value="${esc(q)}" placeholder="دوّر على بديل تاني…" aria-label="بحث عن بديل">
@@ -2160,7 +2160,7 @@
             ${cur ? `<button type="button" class="btn btn-ghost sm" data-wundo="${esc(wid)}">↩ تراجع</button>` : ""}</div>
         </div></div>`;
     };
-    const list = () => ids.filter((i) => (st.f === "todo" ? !S[i] : st.f === "done" ? !!S[i] : st.f === "same" ? same[i] && !S[i] : true));
+    const list = () => ids.filter((i) => (st.f === "todo" ? !S[i] : st.f === "done" ? !!S[i] : st.f === "same" ? same[i] && !S[i] : st.f === "auto" ? AU[i] && S[i] === AU[i] : true));
     const paint = () => {
       const L = list(), done = ids.filter((i) => S[i]).length;
       app.querySelector("[data-wcnt]").textContent = `اخترت لـ ${done} من ${ids.length} تمرين`;
@@ -2173,7 +2173,7 @@
     app.innerHTML = `<div class="exl exw"><div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><b>صور النساء</b></div>
       <h1 class="page-title">👩 تمارين صورتها لمرا</h1>
       <p class="exw-note">كبسة على البديل بتختارو. التبديل بيصير <b>لحسابات الرجال بس</b> (بالمكتبة والبرامج)، وحساب الأنثى بيضل يشوف التمرين الأصلي.</p>
-      <div class="exl-pg-fl"><button type="button" class="chip exl-chip" data-wf="todo">لسا ما اخترت</button><button type="button" class="chip exl-chip" data-wf="done">اخترت</button><button type="button" class="chip exl-chip" data-wf="same">نفس الاسم</button><button type="button" class="chip exl-chip" data-wf="all">الكل</button></div>
+      <div class="exl-pg-fl"><button type="button" class="chip exl-chip" data-wf="auto">🤖 بدّلها Claude</button><button type="button" class="chip exl-chip" data-wf="todo">لسا ما اخترت</button><button type="button" class="chip exl-chip" data-wf="done">اخترت</button><button type="button" class="chip exl-chip" data-wf="same">نفس الاسم</button><button type="button" class="chip exl-chip" data-wf="all">الكل</button></div>
       <p class="exw-note">«نفس الاسم» = في نفس التمرين بالظبط بصورة رجل، وطالعين أول شي. البدّل بياخد اسم البديل وصورتو والفيديو تبعو.</p>
       <button type="button" class="btn btn-dark exw-bulk" data-wsame hidden></button>
       <div class="exl-count" data-wcnt></div><div data-wlist></div>
