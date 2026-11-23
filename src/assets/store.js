@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=416" title="اعمل برنامجك" loading="eager"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=417" title="اعمل برنامجك" loading="eager"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     window.onmessage = (e) => { if (e.origin === location.origin && e.data && e.data.koPbH && fr && fr.isConnected) fr.style.height = Math.max(500, +e.data.koPbH) + "px"; };
   }
@@ -1970,12 +1970,12 @@
   // ---------- مكتبة التمارين الخاصة (صاحب المتجر 21/11/2026) ----------
   // تمارين صاحب المتجر (شاريها): الملفات بالـ KV (/exlib/m/<id>.mp4|jpg)، مو بالريبو، والسيرفر ما بيعطيها إلا لحسابو.
   const EXL_M = { Back: "الظهر", "Back:Lats": "الظهر العريض (المجنص)", "Back:Mid": "وسط وأعلى الظهر", "Back:Traps": "الترابيس", "Back:Lower": "أسفل الظهر", "Back:Rot": "مدوّرات الكتف (ورا الكتف)", "Back:Str": "إطالة ومساج الظهر", Biceps: "الباي (البايسبس)", Calves: "السمانة", Cardio: "كارديو", Chest: "الصدر", Forearms: "الساعد", "Full Body": "الجسم كامل", Hamstrings: "الفخذ الخلفي", Hips: "الورك والمؤخرة", Neck: "الرقبة", Other: "منوعات", Plyometrics: "قفز وانفجار", Quadriceps: "الفخذ الأمامي", Shoulders: "الأكتاف", Stretching: "إطالة", Thighs: "الفخاد", Triceps: "التراي (الترايسبس)", "Upper Arms": "الذراع", Waist: "البطن والخصر", Weightlifting: "رفع أثقال", Yoga: "يوغا" };
-  const EXL_E = { Assisted: "بمساعدة", Band: "مطاط", Barbell: "بار", "Battling Rope": "حبل المعركة", "Body weight": "وزن الجسم", "Bosu ball": "كرة بوسو", Cable: "كابل", Dumbbell: "دمبل", "EZ Barbell": "بار EZ", Hammer: "مطرقة", Kettlebell: "كيتل بيل", "Leverage machine": "آلة", "Medicine Ball": "كرة طبية", "Olympic barbell": "بار أولمبي", "Power Sled": "زلّاجة دفع", "Resistance Band": "مطاط مقاومة", Roll: "رول", Rollball: "كرة مساج", Rope: "حبل", "Sled machine": "آلة زلّاجة", "Smith machine": "سميث", "Stability ball": "كرة اللياقة", Stick: "عصا", Suspension: "حبال تعليق", "Trap bar": "تراب بار", "Vibrate Plate": "منصة اهتزاز", Weighted: "بأوزان", "Wheel roller": "عجلة البطن" };
+  const EXL_E = { Assisted: "بمساعدة", Band: "مطاط", Barbell: "بار", "Battling Rope": "حبل المعركة", "Body weight": "وزن الجسم", "Bosu ball": "كرة بوسو", Cable: "كابل", "Cardio machine": "أجهزة كارديو", Dumbbell: "دمبل", "EZ Barbell": "بار EZ", Hammer: "مطرقة", Kettlebell: "كيتل بيل", "Leverage machine": "آلة", "Medicine Ball": "كرة طبية", "Olympic barbell": "بار أولمبي", "Power Sled": "زلّاجة دفع", "Resistance Band": "مطاط مقاومة", Roll: "رول", Rollball: "كرة مساج", Rope: "حبل", "Sled machine": "آلة زلّاجة", "Smith machine": "سميث", "Stability ball": "كرة اللياقة", Stick: "عصا", Suspension: "حبال تعليق", "Trap bar": "تراب بار", "Vibrate Plate": "منصة اهتزاز", Weighted: "بأوزان", "Wheel roller": "عجلة البطن" };
   const exl = { L: null, cfg: null, m: "", e: "", q: "", n: 24, io: null, io2: null };
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=365"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=417"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2128,11 +2128,13 @@
       if (!exl.prog) return null;
       try { const ra = await fetch("/api/exlib/progar", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progAr = ra.ok ? await ra.json() : {}; const rd = await fetch("/api/exlib/progar?d=1", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progDar = rd.ok ? await rd.json() : {}; } catch (e) { exl.progAr = exl.progAr || {}; exl.progDar = exl.progDar || {}; }
       const full = {}, byName = {}; // m|e|اسم ← تمرين، واسم لحالو (للاحتياط)
-      exl.L.forEach((x) => { const n = exlNm(x.n); full[(x.m0 || x.m) + "|" + x.e + "|" + n] = full[(x.m0 || x.m) + "|" + x.e + "|" + n] || x; (byName[n] = byName[n] || []).push(x); });
+      // om/oe: العضلة/الأداة الأصلية (من السيرفر، للتمارين يلي تصحّح تصنيفها) — البرامج مربوطة بالتصنيف الأصلي
+      const oM = (x) => x.om || x.m0 || x.m, oE = (x) => x.oe || x.e;
+      exl.L.forEach((x) => { const n = exlNm(x.n), k = oM(x) + "|" + oE(x) + "|" + n; full[k] = full[k] || x; (byName[n] = byName[n] || []).push(x); });
       exl.pmap = exl.prog.EX.map((e) => {
         const n = exlNm(e[2]), n2 = exlNm(e[3]), hit = full[e[0] + "|" + e[1] + "|" + n] || full[e[0] + "|" + e[1] + "|" + n2];
         if (hit) return hit;
-        const c = (byName[n] || byName[n2] || []).filter((x) => (x.m0 || x.m) === e[0]);
+        const c = (byName[n] || byName[n2] || []).filter((x) => oM(x) === e[0]);
         return c.length === 1 ? c[0] : (byName[n] || []).length === 1 ? byName[n][0] : null;
       });
     }

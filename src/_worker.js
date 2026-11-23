@@ -4506,11 +4506,32 @@ const EXL_MFIX_G = {
   "Yoga": "2a93151113 61f6ad9e09 aacdfd8f8d ec393de0a4",
 };
 const EXL_MFIX = {}; for (const [m, ids] of Object.entries(EXL_MFIX_G)) for (const i of ids.split(" ")) EXL_MFIX[i] = m;
+// تصحيح أداة التمارين (صاحب المتجر 23/11/2026: «شفت تمرين صدر على كرسي بقسم كرة اللياقة»).
+// انراجعت صور كل التمارين يلي أداتها مشكوك فيها، وهي يلي انتقلت (الأداة الصح ← أرقام التمارين). تعديل صاحب المتجر من اللوحة بيربح عليها.
+// متل: باليرينا وبالون وقفز بلا كرة كانو بـ«كرة اللياقة» ← وزن الجسم، دمبل على الكرة ← دمبل، تمارين ضغط اليدين كانت بـ«بار EZ» ← وزن الجسم،
+// لاندماين ← بار، «بار بالمطاط» ← مطاط مقاومة، حبل المعركة ← قسمو، PVC ← عصا، والسير والبسكليت والإليبتيكال والتجديف ← «أجهزة كارديو» (قسم جديد).
+const EXL_EFIX_G = {
+  "Barbell": "10e8483514 26e1b7dc76 3614092e76 374f24cdf9 59a3297960 75eceade88 7fbf4a06d7 98992ea56b a40bd19a06 bc2e68930e c10408a114 d398b2dcd8 dd163ee137 ed266799cc ed987815b9 ef901f76dc f06ff1bffa f118ca777e fd1dc65652",
+  "Battling Rope": "7913113085 add0ad009e e0acbe453d f9046d7336 fe91efdf1f",
+  "Body weight": "04659b0e61 1ca3a60e62 22de005a15 2500592296 4f3253bebc 530e4faba0 53763c6ccc 7547bacba0 78d6ad1a2e 85fd91a2ef 95ad98e363 a1efb8a3d2 b3fc53412f b61488547b bd2536d8a7 c0028bd35b e43a3c522e f9a936cdd4 fa424b444c",
+  "Bosu ball": "5dc4b7e9eb",
+  "Cable": "e74897d3f4",
+  "Cardio machine": "016068c6e4 1419f4b5ac 14ae1cfa02 188f9fa9fe 2df8ebd9ff 371470e712 48757697fb 5565493570 58950599a0 5eaa52b761 5ecbfb349f 6ac592a236 6f6e4c6e6c 797dcbbfd4 7f289f5dfa 8baa463140 9004e90e70 9375e48ee8 95f39501df a0e488f277 b7e6928e7f bce08dd147 e1a7bd6497 e36645ce49 e8deee94d2 f13c88fee4 f2d4186cd9 f3361cc973 f6a48777fb",
+  "Dumbbell": "1628d3e3da 31557cedc6 a2b4912008 d873c17a5f",
+  "Resistance Band": "132b05f2c3 297bd622bc 316f2ea619 354dc0eb14 40aefd3f59 4aa76ae3f7 7a37196c07 97dccf3da6 b0f22188bb b27c1b88d6 b30a2588a0 ba683ca147 c2e2df0180 c3566edce7 c62007ed53 d51ec64e9c e56c008c5a eea2c899a5",
+  "Stability ball": "224be9866b",
+  "Stick": "2e0ece3661 41504eed09 67b318f631 ca4ed251bc f76f604490",
+  "Trap bar": "1a90a7b0e0",
+  "Wheel roller": "3ac5af2550 6806e6cf2f c109250735",
+};
+const EXL_EFIX = {}; for (const [e, ids] of Object.entries(EXL_EFIX_G)) for (const i of ids.split(" ")) EXL_EFIX[i] = e;
 async function exlibAll(env) {
   let L = []; try { L = JSON.parse((await env.STORE.get("exlib:index")) || "[]"); } catch { L = []; }
-  L = L.map((x) => (EXL_MFIX[x.i] && EXL_MFIX[x.i] !== x.m ? { ...x, m: EXL_MFIX[x.i] } : x));
+  // om/oe = العضلة/الأداة الأصلية بالمكتبة (بس للتمارين يلي تصحّحت)، عشان روابط «برامج التمرين» تضل تلاقي تمارينها
+  L = L.map((x) => (EXL_MFIX[x.i] && EXL_MFIX[x.i] !== x.m ? { ...x, m: EXL_MFIX[x.i], om: x.m } : x));
   // «مطاط» و«مطاط مقاومة» نفس الأداة: صارو قسم واحد «مطاط مقاومة» (صاحب المتجر 23/11/2026)
-  L = L.map((x) => (x.e === "Band" ? { ...x, e: "Resistance Band" } : x));
+  L = L.map((x) => (x.e === "Band" ? { ...x, e: "Resistance Band", oe: x.e } : x));
+  L = L.map((x) => (EXL_EFIX[x.i] && EXL_EFIX[x.i] !== x.e ? { ...x, e: EXL_EFIX[x.i], oe: x.oe || x.e } : x));
   let ed = {}; try { ed = (await env.STORE.get("exlib:edits", "json")) || {}; } catch { ed = {}; }
   let ar = {}; try { ar = (await env.STORE.get("exlib:ar", "json")) || {}; } catch { ar = {}; }
   return { L, ed, ar, merged: L.map((x) => { const o = ed[x.i] ? { ...x, ...ed[x.i], x: 1 } : x; return ar[x.i] ? { ...o, a: ar[x.i] } : o; }) };

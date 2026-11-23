@@ -57,6 +57,7 @@
     Kettlebell: '<path d="M8.5 9.5V8a3.5 3.5 0 0 1 7 0v1.5"/><circle cx="12" cy="15" r="5.5"/>',
     Cable: '<circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V15M9 15h6l-1 5h-4z"/>',
     "Leverage machine": '<path d="M4 20h16M7 20V6h6M7 12h10l3 4M17 12v8"/>',
+    "Cardio machine": '<path d="M3 18h14l3-3M5 18v3M15 18v3M17 15V6h3"/><circle cx="10" cy="4.3" r="1.6"/><path d="M10 6.4 9.3 11l2.2 3-.5 3.8M9.3 11l-1.8 2.6L6 16.8M9.8 8l2.7 1.6M9.8 8 7.4 9.6"/>',
     "Sled machine": '<path d="M3 17h18M4 17c0 2 1 3 3 3M6 17l2-7h8l2 7M10 10V6M14 10V6"/>',
     "Power Sled": '<path d="M3 18h18M4 18c0 2 1 3 3 3M7 18l1.5-6h7L17 18M9 12V7M15 12V7M7 7h10"/>',
     Band: '<ellipse cx="12" cy="12" rx="8" ry="4.5"/><circle cx="4" cy="12" r="1.6"/><circle cx="20" cy="12" r="1.6"/>',
