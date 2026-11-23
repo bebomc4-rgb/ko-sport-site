@@ -147,8 +147,10 @@ ol.exl{list-style:none;margin:0;padding:0 12px}
 ol.exl .ex{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 ol.exl .ex:last-child{border-bottom:0}
 .ex .no{flex:0 0 28px;height:28px;border-radius:50%;background:var(--btn);color:var(--btnfg);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:800}
-ol.exl .xmw{flex:0 0 76px;width:76px;height:76px;margin:0;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:zoom-in;display:flex;align-items:center;justify-content:center}
-ol.exl .xm{width:100%;height:100%;max-height:none;object-fit:contain}
+/* الصورة/الفيديو كبير وواضح فوق التمرين (صاحب المتجر: «التمارين صغيرة ومو واضحة») */
+ol.exl .ex{flex-wrap:wrap}
+ol.exl .xmw{order:-1;flex:0 0 100%;width:100%;max-width:100%;margin:0 0 2px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:zoom-in;display:flex;align-items:center;justify-content:center;overflow:hidden}
+ol.exl .xm{width:100%;height:auto;max-height:230px;object-fit:contain;display:block}
 .ex .xb{flex:1;min-width:0}
 .ex .n{font-size:.98rem;line-height:1.35}
 .ex .p{gap:6px;margin-top:5px;font-size:.82rem}
@@ -649,18 +651,21 @@ function gen(I,seed){
       head(false);
       y+=box(g,y,"🔥 تسخين",d.warm,GBG,GOLD)+26;
       for(let j=0;j<d.rows.length;j++){
-        const x=d.rows[j],m=find(x.q||"",x.eq),RH=222;
+        const x=d.rows[j],m=find(x.q||"",x.eq),im=m?await loadImg("/exlib/m/"+encodeURIComponent(m.i)+".jpg"):null;
+        // طول الصف حسب النص (الاسم والنصيحة)
+        const tw0=PW-M-90-M-20-(im?430:0);font(g,32,800);const nL=wrapLines(g,x.n+(x.u?" (لكل جهة)":""),tw0).length;font(g,22,400);const tL=x.tip?wrapLines(g,x.tip,tw0).length:0;font(g,22,700);const rL=wrapLines(g,"راحة بين المجموعات: دقيقتين ونص · قبل التمرين الجاي: دقيقتين ونص",tw0).length;
+        const RH=Math.max(im?220:0,18+nL*42+6+56+rL*30+6+tL*30+24)+16;
         if(y+RH>PH-120){pages.push(P.c);P=newPage();g=P.g;head(true)}
         rr(g,M,y,PW-2*M,RH-16,18,"#fff",LINE);
         // الرقم
         g.fillStyle=INK;g.beginPath();g.arc(PW-M-42,y+40,26,0,7);g.fill();font(g,26,800);g.fillStyle="#fff";g.textAlign="center";g.fillText(String(j+1),PW-M-42,y+27);g.textAlign="right";
-        let tr=PW-M-90;
-        if(m){const im=await loadImg("/exlib/m/"+encodeURIComponent(m.i)+".jpg");if(im){const s=160,k=Math.min(s/im.width,s/im.height),w=im.width*k,h=im.height*k;rr(g,tr-s,y+12,s,s,14,"#fff",LINE);g.drawImage(im,tr-s+(s-w)/2,y+12+(s-h)/2,w,h);tr-=s+24}}
-        const tw=tr-M-20;let ty=y+18;
+        let tr=PW-M-90,imW=0;
+        if(im){{const bw=400,bh=176,k=Math.min(bw/im.width,bh/im.height),w=im.width*k,h=im.height*k;rr(g,M+14,y+12,bw,bh,14,"#fff",LINE);g.drawImage(im,M+14+(bw-w)/2,y+12+(bh-h)/2,w,h);imW=bw+30}}
+        const tw=tr-M-20-imW;let ty=y+18;
         ty+=text(g,x.n+(x.u?" (لكل جهة)":""),tr,ty,tw,32,800,INK,42)+6;
         const pill=(t,xr,bg,col)=>{font(g,26,800);const w=g.measureText(t).width+36;rr(g,xr-w,ty,w,46,23,bg);g.fillStyle=col;g.textAlign="right";g.fillText(t,xr-18,ty+8);return w};
         let px=tr;px-=pill(setTxt(x),px,INK,"#fff")+10;pill("راحة "+tsec(x.rest),px,GBG,GOLD2);
-        ty+=56;text(g,"راحة بين "+gapN(x)+": "+tsec(x.rest)+(x.nx&&j<d.rows.length-1?" · قبل التمرين الجاي: "+tsec(x.nx):""),tr,ty,tw,22,700,GOLD2,30);ty+=32;
+        ty+=56;ty+=text(g,"راحة بين "+gapN(x)+": "+tsec(x.rest)+(x.nx&&j<d.rows.length-1?" · قبل التمرين الجاي: "+tsec(x.nx):""),tr,ty,tw,22,700,GOLD2,30)+4;
         if(x.tip)text(g,x.tip,tr,ty,tw,22,400,MUT,30);
         y+=RH;
       }
