@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=434" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=435" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +1981,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=434"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=435"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2181,7 +2181,7 @@
     if (ids) return `<span class="exl-pgmix${ids.length > 1 ? "" : " one"}">${ids.map((id) => `<img src="/exlib/m/${esc(id)}.jpg" alt="" loading="lazy" decoding="async">`).join("")}${p.dy ? `<i>${p.dy} أيام</i>` : ""}</span>`;
     return `<span class="exl-pgph"><b>${p.dy || ""}</b><small>${p.dy ? "أيام" : "برنامج"}</small></span>`;
   };
-  // التكرار والمجموعات: «12/12/12» ← «12×3 · 12 تكرار × 3 مجموعات»؛ إذا مختلفين: «3 مجموعات: 12، 10، 8 تكرار»؛ الوقت (1:00) ← دقيقة
+  // التكرار والمجموعات: «12/12/12» ← «12 تكرار × 3 مجموعات»؛ إذا مختلفين: «3 مجموعات: 12، 10، 8 تكرار»؛ الوقت (1:00) ← دقيقة
   const exlSecAr = (t) => { t = Math.round(t); if (t < 60) return t + " ثانية"; const m = Math.floor(t / 60), r = t % 60, mm = m === 1 ? "دقيقة" : m === 2 ? "دقيقتين" : m <= 10 ? m + " دقايق" : m + " دقيقة"; return r ? mm + " و" + r + " ثانية" : mm; };
   const exlSetN = (n) => (n === 1 ? "مجموعة وحدة" : n === 2 ? "مجموعتين" : n <= 10 ? n + " مجموعات" : n + " مجموعة");
   function exlSetTxt(sn, reps, rest) {
@@ -2193,7 +2193,7 @@
     if (!P.length) main = exlSetN(sn);
     else if (P.every((v) => v === P[0])) {
       const n = sn;
-      main = n === 1 ? esc(val(P[0])) : isT ? esc(val(P[0]) + " × " + exlSetN(n)) : `<b dir="ltr">${esc(P[0] + "×" + n)}</b> · ${esc(P[0] + " تكرار × " + exlSetN(n))}`;
+      main = n === 1 ? esc(val(P[0])) : isT ? esc(val(P[0]) + " × " + exlSetN(n)) : esc(P[0] + " تكرار × " + exlSetN(n));
     } else main = esc(exlSetN(P.length) + ": " + (isT ? P.map((v) => exlSecAr(sec(v))).join("، ") : P.join("، ") + " تكرار"));
     const rs = +rest > 0 ? " · راحة " + esc(exlSecAr(+rest)) : "";
     return main + rs;
