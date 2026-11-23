@@ -1,8 +1,0 @@
-name: kvdump
-on: workflow_dispatch
-permissions: { contents: write }
-jobs:
-  clean:
-    runs-on: ubuntu-latest
-    steps:
-      - run: git init -q x && cd x && git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" --delete tmp-dump
