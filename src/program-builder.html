@@ -157,6 +157,10 @@ ol.exl .xm{width:100%;height:100%;max-height:none;object-fit:contain}
 .ex .t{font-size:.76rem;margin-top:4px}
 .zoom{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px}
 .zoom img,.zoom video{max-width:100%;max-height:85vh;background:#fff;border-radius:14px}
+.pdfv{max-width:620px;margin:0 auto}
+.pdfbar{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;background:var(--bg);padding:8px 0 10px}
+.pdfbar .btn{flex:1;min-width:110px;text-align:center;padding:11px 10px;font-size:.95rem}
+.pdfpg{display:block;width:100%;height:auto;margin:0 0 12px;border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);background:#fff}
 </style>
 </head>
 <body>
@@ -568,23 +572,36 @@ function gen(I,seed){
     }
     const out=[];
     for(let k=0;k<pages.length;k++){const c=pages[k],g=c.getContext("2d");g.direction="rtl";foot(g,k+1,pages.length);
-      const b=await new Promise(res=>c.toBlob(res,"image/jpeg",.88));out.push({jpg:new Uint8Array(await b.arrayBuffer()),w:PW,h:PH})}
-    return pdfBytes(out);
+      const b=await new Promise(res=>c.toBlob(res,"image/jpeg",.88));out.push({jpg:new Uint8Array(await b.arrayBuffer()),w:PW,h:PH,b})}
+    return{pdf:pdfBytes(out),pics:out.map(o=>URL.createObjectURL(o.b))};
   }
+  // PDF جوّا التطبيق: بتطلع صفحات الملف قدّامك فوراً (متل عارض PDF)، وزر «حمّل الملف» بينزّلو من رابط عادي
+  // (تطبيق الأندرويد ما بينزّل ملفات blob، فالملف بينرفع للسيرفر ساعة وبينزل من هناك)
+  let PDF=null;
   async function printProgram(){
     if(!R){toast("اعمل برنامجك أول شي");return}
-    toast("عم يجهّز ملف PDF…");
-    let blob;try{blob=await makePdf()}catch(e){toast("ما زبط تجهيز الملف، جرّب كمان مرة");return}
-    const name="KO-SPORT-برنامجي.pdf";
-    try{const f=new File([blob],name,{type:"application/pdf"});
-      if(/Android|iPhone|iPad/i.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"برنامجي من KO SPORT"});return}}catch(e){if(e&&e.name==="AbortError")return}
-    const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);
-    toast("انحفظ ملف PDF ✓");
+    app.innerHTML='<div class="pdfv"><div class="pdfbar"><b>⏳ عم يجهّز ملف PDF…</b></div></div>';toTop();
+    let made;try{made=await makePdf()}catch(e){toast("ما زبط تجهيز الملف، جرّب كمان مرة");show();return}
+    PDF={blob:made.pdf,url:""};
+    const box=()=>app.querySelector(".pdfv");if(!box())return;
+    box().innerHTML=`<div class="pdfbar"><button type="button" class="btn ghost" id="pdfb">→ رجوع</button><a class="btn" id="pdfd" href="#" download="KO-SPORT-program.pdf">⬇️ حمّل الملف</a>${navigator.canShare?'<button type="button" class="btn ghost" id="pdfs">📤 شارك</button>':""}</div>
+      <p class="hint" style="text-align:center;margin:0 0 10px">${made.pics.length} صفحات · هيك رح يطلع الملف</p>
+      ${made.pics.map((u,i)=>`<img class="pdfpg" src="${u}" alt="صفحة ${i+1}">`).join("")}`;
+    const d=app.querySelector("#pdfd");d.href=URL.createObjectURL(PDF.blob);
+    try{const r=await fetch("/api/exlib/pdf",{method:"POST",headers:{"content-type":"application/pdf"},body:PDF.blob});if(r.ok){const j=await r.json();PDF.url=new URL(j.url,location.href).href;d.href=PDF.url;d.removeAttribute("download")}}catch(e){}
+  }
+  async function sharePdf(){
+    try{const f=new File([PDF.blob],"KO-SPORT-program.pdf",{type:"application/pdf"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"برنامجي من KO SPORT"});return}}catch(e){if(e&&e.name==="AbortError")return}
+    if(PDF.url&&navigator.share){try{await navigator.share({title:"برنامجي من KO SPORT",url:PDF.url});return}catch(e){if(e&&e.name==="AbortError")return}}
+    toast("المشاركة مو مدعومة هون، استعمل «حمّل الملف»");
   }
   app.addEventListener("input",e=>{const t=e.target;if(t.id==="i_age")S.age=t.value;if(t.id==="i_h")S.h=t.value;if(t.id==="i_w")S.w=t.value;save()});
   app.addEventListener("click",async e=>{
     const z=e.target.closest("[data-zoom]");if(z){const v=z.querySelector("video"),src=v?(v.dataset.src||v.src):z.querySelector("img").src;const o=document.createElement("div");o.className="zoom";o.innerHTML=v?`<video src="${src}" autoplay muted loop playsinline></video>`:`<img src="${src}" alt="">`;o.onclick=()=>o.remove();document.body.appendChild(o);return}
+    if(e.target.closest("#pdfd"))toast("عم ينزل الملف… شوفو بالتنزيلات");
     const b=e.target.closest("button");if(!b)return;
+    if(b.id==="pdfb"){show();return}
+    if(b.id==="pdfs"){sharePdf();return}
     if(b.dataset.day!=null){DAY=+b.dataset.day;app.querySelectorAll(".dtab").forEach(t=>t.classList.toggle("on",t===b));app.querySelectorAll("[data-dy]").forEach(x=>x.hidden=+x.dataset.dy!==DAY);return}
     if(b.dataset.k){const k=b.dataset.k,v=b.dataset.v;
       if(k==="eq"){const i=S.eq.indexOf(v);i<0?S.eq.push(v):S.eq.splice(i,1);b.classList.toggle("on");const q=$("#eqs");if(q)q.textContent=eqLine()}
