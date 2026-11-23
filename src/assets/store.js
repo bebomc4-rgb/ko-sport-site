@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=431" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=432" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +1981,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=431"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=432"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2106,33 +2106,56 @@
   const EXL_LV = { 1: "مبتدئ", 2: "متوسط", 3: "متقدم" };
   // أقسام الرياضات بصفحة البرامج (صاحب المتجر 22/11/2026): بتنحسب من عنوان البرنامج ووصفو (إنكليزي وعربي)، والبرنامج ممكن يدخل بأكتر من قسم، والقسم الفاضي ما بيبين.
   // للتعديل: `re` كلمات البحث (النص مطبّع بـ exlArq: أحرف صغيرة وبلا همزات)، `no` كلمات بتستثني، و`t:1` = من العنوان بس (للكلمات العامة).
-  const EXL_SPORTS = [
+  // تصنيف البرامج (23/11/2026): كل برنامج بتصنيف واحد، انعمل يدوياً لـ 471 برنامج (EXL_PCAT: حرف لكل برنامج بالترتيب).
+  // إذا تغيّر ملف البرامج (عدد مختلف) منرجع للتصنيف التلقائي بالكلمات، ويلي ما بينعرف بيروح لـ «غير مصنّف».
+  const EXL_CATS = [
+    { k: "bb", l: "كمال أجسام", re: /bodybuilding|hypertrophy|muscle (building|mass)|mass gain|bulking|\bppl\b|push[ \/-]?pull[ \/-]?legs|bro split|arnold|upper[ \/-]?lower|كمال اجسام|تضخيم|ضخامه/ },
+    { k: "pb", l: "باوربلدنغ (قوة وضخامة)", re: /powerbuild|phul/ },
+    { k: "pl", l: "باور ليفتنغ", re: /powerlifting|bench ?press|باورليفتنغ/ },
+    { k: "st", l: "قوة ورفع أثقال", re: /starting strength|stronglift|5x5|barbell|رفع اثقال/ },
+    { k: "cal", l: "كالستنكس ووزن الجسم", re: /calisthenic|calistenic|bodyweight|body weight|handstand|كالي?س[تث]نكس|وزن الجسم/ },
+    { k: "home", l: "تمارين بالبيت", re: /\bhome\b|casa|dumbbells? only|resistance band|kettlebell|\btrx\b|بالبيت|بالمنزل/ },
+    { k: "fl", l: "تنشيف وتخسيس", re: /fat loss|weight loss|fat burn|shred|cutting|\bhiit\b|تخسيس|حرق الدهون|تنشيف|تنحيف/ },
+    { k: "fit", l: "لياقة عامة ومبتدئين", re: /full ?body|beginner|fundamental/ },
+    { k: "core", l: "بطن وكور", re: /\babs\b|core|abdom|بطن/ },
+    { k: "mob", l: "مرونة وإطالة", re: /mobility|stretch|pilates|yoga|مرونه|اطاله/ },
+    { k: "rh", l: "إعادة تأهيل وإصابات", re: /\bpain\b|rehab|injur|herniat|sciatic|تاهيل|اصاب/ },
+    { k: "cf", l: "كروس فت وهايروكس", re: /crossfit|hyrox|\bwod\b/ },
+    { k: "ath", l: "أداء رياضي", re: /athlet|plyometric|military|agility|vertical jump/ },
     { k: "fb", l: "كرة القدم", re: /soccer|football|futbol|كره القدم|كره قدم/, no: /american football|nfl|gridiron/ },
-    { k: "bk", l: "كرة السلة", re: /basketball|hoops|\bnba\b|dunk|كره السله/ },
-    { k: "cal", l: "كالستنكس", re: /calisthenic|street ?workout|bodyweight|body weight|handstand|planche|muscle[- ]?up|كالي?س[تث]نكس|وزن الجسم/ },
-    { k: "bb", l: "كمال أجسام", re: /bodybuilding|hypertrophy|muscle (building|mass)|mass gain|bulking|\bppl\b|push[ \/-]?pull[ \/-]?legs|bro split|كمال اجسام|تضخيم|ضخامه/ },
-    { k: "st", l: "قوة ورفع أثقال", t: 1, re: /powerlifting|strength|stronglifts|5x5|5\/3\/1|wendler|starting strength|رفع اثقال|قوه|باورليفتنغ/ },
-    { k: "bx", l: "ملاكمة", re: /boxing|boxer|ملاكمه/ },
-    { k: "cb", l: "قتال ومصارعة", re: /\bmma\b|martial art|muay thai|kickbox|wrestling|\bbjj\b|jiu[- ]?jitsu|judo|karate|taekwondo|combat|قتال|مصارعه|كيك بوكسينغ|جوجيتسو|كاراتيه|تايكوندو/ },
-    { k: "rn", l: "جري", re: /running|runner|marathon|\b5k\b|\b10k\b|sprint|جري|ماراثون|ركض/ },
-    { k: "fl", l: "تنشيف وتخسيس", t: 1, re: /fat loss|weight loss|fat burn|shred|cutting|تخسيس|حرق الدهون|تنشيف|نزول الوزن|تنحيف/ },
-    { k: "at", l: "أداء رياضي", t: 1, re: /athlet|sport[- ]?specific|vertical jump|agility|plyometric|رياضيين|لاعبين|قفز/ },
+    { k: "bk", l: "كرة السلة", re: /basketball|كره السله/ },
     { k: "vb", l: "كرة طائرة", re: /volleyball|كره (ال)?(طائره|طايره)/ },
-    { k: "tn", l: "تنس", re: /tennis|(^|\s)تنس(\s|$)/ },
-    { k: "sw", l: "سباحة", re: /swimming|swimmer|سباحه/ },
-    { k: "cy", l: "دراجات", re: /cycling|cyclist|دراجه|دراجات/ },
+    { k: "hb", l: "كرة اليد", re: /handball|كره اليد/ },
+    { k: "rg", l: "رغبي", re: /rugby/ },
+    { k: "tn", l: "تنس", re: /tennis/ },
+    { k: "sw", l: "سباحة", re: /swim|سباحه/ },
+    { k: "rn", l: "جري", re: /\brun|marathon|جري|ركض/ },
+    { k: "bx", l: "ملاكمة", re: /boxing|ملاكمه/ },
+    { k: "cb", l: "قتال ومصارعة", re: /\bmma\b|martial|muay thai|kickbox|wrestling|\bbjj\b|jiu[- ]?jitsu|judo|karate|taekwondo|combat/ },
+    { k: "oth", l: "رياضات تانية", re: /climb/ },
+    { k: "wm", l: "برامج للنساء", re: /female|wom[ae]n|girl|ladies|glute|booty|نساء/ },
+    { k: "un", l: "غير مصنّف" },
   ];
-  function exlSportsOf(p, i) {
-    const tt = exlArq(p.t + " " + ((exl.progAr && exl.progAr[i]) || "")), full = tt + " " + exlArq(String(p.d || "").slice(0, 400));
-    return EXL_SPORTS.filter((s) => s.re.test(s.t ? tt : full) && !(s.no && s.no.test(full))).map((s) => s.k);
+  const EXL_PCAT = "hafaadgayhaaahyyaaaaaaaeahyabayfayyefaaiayahfeyfajahnaajfednfyfyggiyaaayahhygibagaaaaaaaafaahyyjfjgkagfyffaageamhuaahaohaefwvykekalafafacaahfacagybbyyyaaogeyagaaihakyayagaaynhfbyeacaayayjjfaaayyaayayanhglhayrflaayyyagoaaghhfteaapyfgyaagyagyeammeohfaaaaaaayynayfzaavffiayylaoayyayfyaeayaayaybaaayaaaaaaeygylgafaaaeadkyfeaaaafpfaakazgmadfyfaaajyhlyaggeayygweaaayaaayysaayyyfayyyayyayjhgybiaaihaaakuaymlfavbagaafeiajavycyhcmayyaaykeeoagaeaffzianzyhaqayaqaaayapyyfxyfduhiagah";
+  function exlCatOf(p, i, N) {
+    if (N === EXL_PCAT.length) { const c = EXL_CATS[EXL_PCAT.charCodeAt(i) - 97]; if (c) return c.k; }
+    const tt = exlArq(p.t + " " + ((exl.progAr && exl.progAr[i]) || ""));
+    const c = EXL_CATS.slice().sort((a, b) => (b.k === "wm") - (a.k === "wm")).find((s) => s.re && s.re.test(tt) && !(s.no && s.no.test(tt)));
+    return c ? c.k : "un";
   }
+  // ممنوع أي كلام فيه كفر بالعناوين والأوصاف (مثلاً «تمارين إلهية» ← «تمارين جبّارة»، «God Split» ← «Beast Split»)
+  const exlNoKufr = (v) => String(v == null ? "" : v)
+    .replace(/(^|[\s([«"'،.:\-])((?:و|ف)?(?:ب|ل|ك)?(?:ال)?)(إلهي[ةه]|الهي[ةه]|إلهة|آلهة|الهة|إلهي|الهي|إله|اله|لاهي|لاهوتي)(?=$|[\s)\]»"'،.:!؟?\-])/g, (m, a, b, w) => a + b + (w === "آلهة" || w === "الهة" ? "أبطال" : /[ةه]$/.test(w) || w === "إلهة" ? "جبّارة" : "جبّار"))
+    .replace(/\b(god|goddess|deity)(ly|like)?\b/gi, (m) => (m[0] === m[0].toUpperCase() ? "Beast" : "beast"))
+    .replace(/\bdivine\b/gi, (m) => (m[0] === "D" ? "Elite" : "elite"));
   const exlNm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   async function exlProgLoad() {
     if (!exl.prog) {
       const r = await fetch("/api/exlib/prog", { headers: socAuth(), credentials: "same-origin" });
       exl.prog = r.ok ? await r.json() : null;
       if (!exl.prog) return null;
-      try { const ra = await fetch("/api/exlib/progar", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progAr = ra.ok ? await ra.json() : {}; const rd = await fetch("/api/exlib/progar?d=1", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progDar = rd.ok ? await rd.json() : {}; } catch (e) { exl.progAr = exl.progAr || {}; exl.progDar = exl.progDar || {}; }
+      exl.prog.P.forEach((x) => { x.t = exlNoKufr(x.t); x.d = exlNoKufr(x.d); }); exl.prog.EX.forEach((e) => { e[2] = exlNoKufr(e[2]); e[3] = exlNoKufr(e[3]); });
+      try { const ra = await fetch("/api/exlib/progar", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progAr = ra.ok ? await ra.json() : {}; const rd = await fetch("/api/exlib/progar?d=1", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); exl.progDar = rd.ok ? await rd.json() : {}; for (const M of [exl.progAr, exl.progDar]) for (const k in M) M[k] = exlNoKufr(M[k]); } catch (e) { exl.progAr = exl.progAr || {}; exl.progDar = exl.progDar || {}; }
       const full = {}, byName = {}; // m|e|اسم ← تمرين، واسم لحالو (للاحتياط)
       // om/oe: العضلة/الأداة الأصلية (من السيرفر، للتمارين يلي تصحّح تصنيفها) — البرامج مربوطة بالتصنيف الأصلي
       const oM = (x) => x.om || x.m0 || x.m, oE = (x) => x.oe || x.e;
@@ -2209,9 +2232,9 @@
     }
     const f = exl.pf, L0 = D.P;
     // تصنيف البرامج حسب الرياضة مرة وحدة (بعد ما توصل الترجمة العربية)
-    if (!exl.psp || exl.psp.length !== L0.length) exl.psp = L0.map((x, i) => exlSportsOf(x, i));
+    if (!exl.psp || exl.psp.length !== L0.length) exl.psp = L0.map((x, i) => [exlCatOf(x, i, L0.length)]);
     const spc = {}; exl.psp.forEach((a) => a.forEach((k) => { spc[k] = (spc[k] || 0) + 1; }));
-    const sps = EXL_SPORTS.filter((s) => spc[s.k]);
+    const sps = EXL_CATS.filter((s) => spc[s.k]);
     if (f.sp && !spc[f.sp]) f.sp = "";
     const pgCard = ([x, i]) => `<a class="exl-pg-card" href="#/exlib/programs/${i}"><span class="exl-pg-cv">${exlCover(x)}</span><b dir="auto">${esc(exlPT(i, x))}</b><small>${esc(exlMeta(x))}</small></a>`;
     const chip = (k, v, label, cur) => `<button type="button" class="chip exl-chip${String(cur) === String(v) ? " on" : ""}" data-pf="${k}" data-v="${v}">${label}</button>`;
@@ -2219,7 +2242,7 @@
     app.innerHTML = wrap(`<div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><b>البرامج</b></div>
       <h1 class="page-title">📋 برامج التمرين</h1>
       <input type="search" class="exl-q" data-pq placeholder="دوّر على برنامج… PPL, split, full body" value="${esc(f.q)}" aria-label="بحث" enterkeyhint="search" autocomplete="off">
-      ${sps.length ? `<div class="exl-pg-fl exl-sp"><span class="exl-pgl">الرياضة</span>${chip("sp", "", "الكل", f.sp)}${sps.map((s) => chip("sp", s.k, `${s.l}<span class="exl-spn">${spc[s.k]}</span>`, f.sp)).join("")}</div>` : ""}
+      ${sps.length ? `<div class="exl-pg-fl exl-sp"><span class="exl-pgl">التصنيف</span>${chip("sp", "", "الكل", f.sp)}${sps.map((s) => chip("sp", s.k, `${s.l}<span class="exl-spn">${spc[s.k]}</span>`, f.sp)).join("")}</div>` : ""}
       <div class="exl-pg-fl"><span class="exl-pgl">المستوى</span>${chip("lv", 0, "الكل", f.lv)}${[1, 2, 3].map((v) => chip("lv", v, EXL_LV[v], f.lv)).join("")}</div>
       <div class="exl-pg-fl"><span class="exl-pgl">الأيام</span>${chip("dy", 0, "الكل", f.dy)}${[2, 3, 4, 5, 6, 7].map((v) => chip("dy", v, v === 7 ? "7+" : v, f.dy)).join("")}</div>
       <div class="exl-pg-fl"><span class="exl-pgl">رتّب</span>${chip("sort", "dl", "الأكتر تحميلاً", f.sort)}${chip("sort", "r", "الأعلى تقييماً", f.sort)}${chip("sort", "o", "الترتيب الأصلي", f.sort)}</div>
