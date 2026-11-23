@@ -4952,6 +4952,22 @@ async function exlibApi(request, env, path, m) {
     await env.STORE.put("pbpdf:" + k, b, { expirationTtl: 30 * 86400 });
     return json({ url: "/api/exlib/pdf/" + k + "/KO-SPORT-program.pdf" }, 200, nos);
   }
+  // «ابعتلي الملف عالواتساب»: المجيب بيبعت الـ PDF كملف لرقم حساب الزبون (رقمو متأكد منو، ما بيقدر يبعت لرقم غيرو). حد أعلى 5 باليوم
+  if (path === "/api/exlib/pdf/wa" && m === "POST") {
+    const a = await acctFromReq(request, env); if (!a) return json({ error: "سجّل دخول بحسابك لنبعتلك الملف عالواتساب", login: true }, 401, nos);
+    const b = await request.json().catch(() => ({})); const id = String(b.id || "");
+    if (!/^[a-f0-9]{24}$/.test(id) || !(await env.STORE.get("pbpdf:" + id, "arrayBuffer").catch(() => null))) return json({ error: "الملف مو موجود، اعمل PDF من جديد" }, 404, nos);
+    const rk = "pbwa:" + a.phone + ":" + new Date().toISOString().slice(0, 10), n = +((await env.STORE.get(rk)) || 0);
+    if (n >= 5) return json({ error: "بعتنالك 5 ملفات اليوم، جرّب بكرا" }, 429, nos);
+    await env.STORE.put(rk, String(n + 1), { expirationTtl: 2 * 86400 });
+    const url = "https://ko-sport.pages.dev/api/exlib/pdf/" + id + "/KO-SPORT-program.pdf", to = String(a.phone).replace(/\D/g, "");
+    const k = await otpKeys(env), ts = Date.now(), nonce = b64u(crypto.getRandomValues(new Uint8Array(12)));
+    const key = await crypto.subtle.importKey("jwk", k.priv, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+    const n2 = to.startsWith("0") ? "963" + to.slice(1) : to;
+    const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`pdf|${n2}|${url}|${ts}|${nonce}`)));
+    let ok = false; try { const r = await botPost("/api/otp/ko-pdf", JSON.stringify({ to: n2, url, ts, nonce, sig }), 20000); ok = !!(r && r.ok && (await r.json().catch(() => ({}))).ok); } catch {}
+    return ok ? json({ ok: true, phone: a.phone }, 200, nos) : json({ error: "ما قدرنا نبعت الملف هلق، جرّب بعد شوي" }, 502, nos);
+  }
   { const mm = path.match(/^\/api\/exlib\/pdf\/([a-f0-9]{24})(?:\/[^/]*)?$/);
     if (mm && m === "GET") {
       const b = await env.STORE.get("pbpdf:" + mm[1], "arrayBuffer");
