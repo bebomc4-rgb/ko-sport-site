@@ -5067,6 +5067,17 @@ async function exlibApi(request, env, path, m) {
     const o = ed[id] ? { ...base, ...ed[id] } : { ...base };
     return json({ ok: true, n: o.n, a: ar[id] ? exlArFix(ar[id], o) : "" }, 200, nos);
   }
+  // حذف تمرين من حساب صاحب المتجر (صفحة صور النساء): بيخبّيه بكل مكان (exlib:edits h=1)، الملفات ما بتنمسح وبيرجع من لوحة التحكم ← «المخفية بس»
+  if (path === "/api/exlib/ohide" && m === "POST") {
+    if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
+    let b = {}; try { b = await request.json(); } catch {}
+    const id = String(b.i || ""); if (!/^[a-f0-9]{10}$/.test(id)) return json({ error: "رقم التمرين غلط" }, 400, nos);
+    const { L, ed } = await exlibAll(env); if (!L.some((x) => x.i === id)) return json({ error: "التمرين مو موجود" }, 404, nos);
+    const e2 = { ...(ed[id] || {}) }; if (b.h === false) delete e2.h; else e2.h = 1;
+    if (Object.keys(e2).length) ed[id] = e2; else delete ed[id];
+    await env.STORE.put("exlib:edits", JSON.stringify(ed));
+    return json({ ok: true }, 200, nos);
+  }
   // دمج تمرينين (صورتين لنفس التمرين، مثلاً فتح وسكّر): {p: الأساسي, s: التاني} ← الأساسي بيطلع صورة متحرّكة (الصورتين بالتناوب)،
   // والتاني بينشال من التصفّح ويتحوّل للأساسي بالبرامج. s فاضي = فك الدمج. KV `exlib:merge` ({أساسي: تاني})
   if (path === "/api/exlib/merge" && m === "POST") {

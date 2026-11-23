@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=441" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=442" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +1981,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=441"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=442"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2122,7 +2122,7 @@
     const ids = Object.keys(W).filter((i) => all[i]).sort((a, b) => (same[b] ? 1 : 0) - (same[a] ? 1 : 0));
     // البحث عن بديل: بكل التمارين (حتى يلي بالقائمة أو بعضلة مخبّاية)، إلا المخفية من لوحة التحكم
     const pool = Object.values(all).map((y) => ({ y, s: y.s || exlArq(y.n + " " + (y.a || "")) }));
-    const st = { f: "todo", n: 24, q: {}, ed: {}, mg: {} };
+    const st = { f: "todo", n: 24, q: {}, ed: {}, mg: {}, mq: {} };
     const nm = (x) => (x ? x.a || x.n : "");
     // متحرّكة: الفيديو إذا موجود (بيشتغل لما يبين، لحد 5 مع بعض)، وإلا الصورة
     const img = (id, cls) => (all[id] ? exlMedia(all[id], cls, true) : `<img class="${cls}" src="/exlib/m/${esc(id)}.jpg" alt="" loading="lazy" decoding="async">`);
@@ -2132,22 +2132,25 @@
     const partners = (a) => { const y = all[a]; if (!y) return []; return (byKey[key(y.n)] || []).filter((z) => z.i !== a && !W[z.i] && !z.v && !z.mg && !z.mgp).map((z) => z.i); };
     const altBtn = (wid, a, on) => { const y = all[a]; if (!y) return ""; const pa = y.mg ? [] : partners(a);
       return `<div class="exw-ab"><button type="button" class="exw-alt${on ? " on" : ""}" data-wpick="${esc(wid)}" data-alt="${esc(a)}">${img(a, "")}<span dir="auto">${esc(nm(y))}</span>${same[wid] === a ? "<i>نفس الاسم</i>" : W[a] ? "<i>👩 كمان بالقائمة</i>" : ""}${y.mg ? "<i>🔗 مدموج</i>" : ""}${on ? "<b>✓ مختار</b>" : ""}</button>
-        <div class="exw-mini"><button type="button" data-wedit="${esc(wid)}" data-id="${esc(a)}">✏️ الاسم</button>${y.mg ? `<button type="button" data-wunmerge="${esc(wid)}" data-id="${esc(a)}">فك الدمج</button>` : !y.v && pa.length ? `<button type="button" data-wmerge="${esc(wid)}" data-id="${esc(a)}">🔗 دمج</button>` : ""}</div></div>`; };
+        <div class="exw-mini"><button type="button" data-wedit="${esc(wid)}" data-id="${esc(a)}">✏️ الاسم</button>${y.mg ? `<button type="button" data-wunmerge="${esc(wid)}" data-id="${esc(a)}">فك الدمج</button>` : !y.v ? `<button type="button" data-wmerge="${esc(wid)}" data-id="${esc(a)}">🔗 دمج${pa.length ? ` (${pa.length})` : ""}</button>` : ""}<button type="button" data-wdel="${esc(wid)}" data-id="${esc(a)}">🗑 احذف</button></div></div>`; };
     const editBox = (wid) => { const id = st.ed[wid], y = all[id]; if (!y) return "";
       return `<div class="exw-ed" data-edbox="${esc(wid)}"><b>✏️ تعديل اسم ${id === wid ? "التمرين الأساسي" : "البديل"}</b>
         <label>بالعربي<input data-ed-a value="${esc(y.a || "")}" maxlength="90" dir="auto"></label><label>بالإنكليزي<input data-ed-n value="${esc(y.n)}" maxlength="120" dir="ltr"></label>
         <div class="exw-acts"><button type="button" class="btn btn-dark sm" data-edsave="${esc(wid)}">حفظ</button><button type="button" class="btn btn-ghost sm" data-edx="${esc(wid)}">إلغاء</button></div></div>`; };
-    const mergeBox = (wid) => { const a = st.mg[wid], pa = partners(a); if (!a) return "";
+    const mergeBox = (wid) => { const a = st.mg[wid]; if (!a) return ""; const mq = st.mq[wid] || "";
+      // أول شي يلي إلهن نفس الاسم بالظبط، وبعدين نتيجة البحث (بكل التمارين يلي ما إلها فيديو)
+      const pa = partners(a).concat(mq.length > 1 ? pool.filter((p) => p.y.i !== a && !p.y.v && !p.y.mg && !p.y.mgp && p.s.includes(exlArq(mq))).slice(0, 12).map((p) => p.y.i) : []).filter((z, k, arr) => arr.indexOf(z) === k);
       return `<div class="exw-ed"><b>🔗 ادمج «${esc(nm(all[a]))}» مع صورتو التانية</b><p class="exw-note">بتنحط الصورتين فوق بعض وبيصيرو صورة متحرّكة، والتمرين التاني بينشال من المكتبة.</p>
         <div class="exw-alts">${pa.map((z) => `<button type="button" class="exw-alt" data-wmg="${esc(wid)}" data-p="${esc(a)}" data-s="${esc(z)}"><span class="exl-anim"><img src="/exlib/m/${esc(a)}.jpg" alt=""><img src="/exlib/m/${esc(z)}.jpg" alt=""></span><span dir="auto">${esc(nm(all[z]))}</span><b>اكبس للدمج</b></button>`).join("")}</div>
-        <div class="exw-acts"><button type="button" class="btn btn-ghost sm" data-mgx="${esc(wid)}">إلغاء</button></div></div>`; };
+        ${pa.length ? "" : '<p class="exw-note">ما في صورة تانية بنفس الاسم، دوّر عليها:</p>'}
+        <div class="exw-acts"><input type="search" class="exw-q" data-mq="${esc(wid)}" value="${esc(mq)}" placeholder="دوّر على الصورة التانية…" aria-label="بحث"><button type="button" class="btn btn-ghost sm" data-mgx="${esc(wid)}">إلغاء</button></div></div>`; };
     const card = (wid) => {
       const x = all[wid], cur = S[wid] || "", alts = (W[wid] || []).filter((a) => all[a]);
       if (same[wid]) { alts.splice(alts.indexOf(same[wid]), 1); alts.unshift(same[wid]); }
       if (cur && cur !== "-" && alts.indexOf(cur) < 0) alts.unshift(cur);
       const q = st.q[wid] || "", res = q.length > 1 ? pool.filter((p) => p.y.i !== wid && p.s.includes(exlArq(q))).slice(0, 12).map((p) => p.y.i).filter((a) => alts.indexOf(a) < 0) : [];
       return `<div class="exw-card${cur ? " done" : ""}" data-wid="${esc(wid)}">
-        <div class="exw-w">${img(wid, "")}<b dir="auto">${esc(nm(x))}</b>${x.a ? `<small dir="ltr">${esc(x.n)}</small>` : ""}<span class="exw-tag">👩 الصورة الحالية</span><button type="button" class="exw-lnk" data-wedit="${esc(wid)}" data-id="${esc(wid)}">✏️ عدّل الاسم</button></div>
+        <div class="exw-w">${img(wid, "")}<b dir="auto">${esc(nm(x))}</b>${x.a ? `<small dir="ltr">${esc(x.n)}</small>` : ""}<span class="exw-tag">👩 الصورة الحالية</span><button type="button" class="exw-lnk" data-wedit="${esc(wid)}" data-id="${esc(wid)}">✏️ عدّل الاسم</button><button type="button" class="exw-lnk" data-wdel="${esc(wid)}" data-id="${esc(wid)}">🗑 احذف هالتمرين</button></div>
         <div class="exw-r">
           <div class="exw-h">${cur === "-" ? "🚫 مخفي عن الرجال" : cur ? "✓ اخترت بديل" : alts.length ? "اختار البديل (صورة رجل):" : "ما في بديل مقترح، دوّر على واحد أو خبّيه"}</div>
           <div class="exw-alts">${alts.map((a) => altBtn(wid, a, a === cur)).join("")}${res.map((a) => altBtn(wid, a, false)).join("")}</div>
@@ -2205,6 +2208,14 @@
         try { const r = await fetch("/api/exlib/merge", { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify({ p: p2, s: s2 }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || "ما انحفظ");
           Object.values(all).forEach((z) => { delete z.mg; delete z.mgp; }); Object.entries(j.M || {}).forEach(([k, v]) => { if (all[k]) all[k].mg = v; if (all[v]) all[v].mgp = k; });
           delete st.mg[wid]; exl.L = null; exl.LA = null; exl.prog = null; try { localStorage.removeItem(EXLC); } catch (e) {} redraw(wid); toast(s2 ? "🔗 اندمجو، صارت متحرّكة" : "انفك الدمج"); } catch (e) { toast(esc(e.message)); if (btn) btn.disabled = false; } };
+      const dl = ev.target.closest("[data-wdel]"); if (dl) { const wid = dl.dataset.wdel, id = dl.dataset.id;
+        if (!dl.dataset.ok) { dl.dataset.ok = "1"; dl.textContent = "اكبس كمان مرة للحذف"; setTimeout(() => { if (dl.isConnected) { delete dl.dataset.ok; dl.textContent = "🗑 احذف"; } }, 4000); return; }
+        dl.disabled = true;
+        (async () => { try { const r = await fetch("/api/exlib/ohide", { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify({ i: id }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || "ما انحذف");
+          delete all[id]; for (let k = pool.length - 1; k >= 0; k--) if (pool[k].y.i === id) pool.splice(k, 1); exl.L = null; exl.LA = null; exl.prog = null; try { localStorage.removeItem(EXLC); } catch (e) {}
+          if (id === wid) { const k = ids.indexOf(wid); if (k >= 0) ids.splice(k, 1); const el = app.querySelector(`[data-wid="${wid}"]`); if (el) el.remove(); }
+          else { if (S[wid] === id) await save(wid, ""); redraw(wid); }
+          toast("🗑 انحذف (بيرجع من لوحة التحكم ← المخفية)"); } catch (e) { toast(esc(e.message)); dl.disabled = false; } })(); return; }
       const mm = ev.target.closest("[data-wmg]"); if (mm) return doMerge(mm.dataset.wmg, mm.dataset.p, mm.dataset.s, mm);
       const um = ev.target.closest("[data-wunmerge]"); if (um) return doMerge(um.dataset.wunmerge, um.dataset.id, "", um);
       const p = ev.target.closest("[data-wpick]"); if (p) return save(p.dataset.wpick, p.dataset.alt, p);
@@ -2212,7 +2223,8 @@
       const u = ev.target.closest("[data-wundo]"); if (u) return save(u.dataset.wundo, "", u);
     };
     let qt = 0;
-    app.oninput = (ev) => { const q = ev.target.closest("[data-wq]"); if (!q) return; st.q[q.dataset.wq] = q.value; clearTimeout(qt); qt = setTimeout(() => { const el = app.querySelector(`[data-wid="${q.dataset.wq}"]`); if (!el) return; const pos = q.selectionStart; el.outerHTML = card(q.dataset.wq); vids(); const nq = app.querySelector(`[data-wq="${q.dataset.wq}"]`); if (nq) { nq.focus(); try { nq.setSelectionRange(pos, pos); } catch (e) {} } }, 300); };
+    app.oninput = (ev) => { const mq = ev.target.closest("[data-mq]"); if (mq) { st.mq[mq.dataset.mq] = mq.value; clearTimeout(qt); qt = setTimeout(() => { const el = app.querySelector(`[data-wid="${mq.dataset.mq}"]`); if (!el) return; el.outerHTML = card(mq.dataset.mq); vids(); const nq = app.querySelector(`[data-mq="${mq.dataset.mq}"]`); if (nq) { nq.focus(); const v = nq.value.length; try { nq.setSelectionRange(v, v); } catch (e) {} } }, 300); return; }
+      const q = ev.target.closest("[data-wq]"); if (!q) return; st.q[q.dataset.wq] = q.value; clearTimeout(qt); qt = setTimeout(() => { const el = app.querySelector(`[data-wid="${q.dataset.wq}"]`); if (!el) return; const pos = q.selectionStart; el.outerHTML = card(q.dataset.wq); vids(); const nq = app.querySelector(`[data-wq="${q.dataset.wq}"]`); if (nq) { nq.focus(); try { nq.setSelectionRange(pos, pos); } catch (e) {} } }, 300); };
     app.onchange = null;
     paint();
   }
