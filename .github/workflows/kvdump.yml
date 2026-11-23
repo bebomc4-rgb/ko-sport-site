@@ -1,13 +1,8 @@
 name: kvdump
-# مؤقت: بيسحب نسخة مشفّرة (ما بتنقرا بلا المفتاح الخاص) لفرع مؤقت
 on: workflow_dispatch
 permissions: { contents: write }
 jobs:
-  dump:
+  clean:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          curl -sS -m 90 -o dump.json "https://ko-sport.pages.dev/api/exlib/kvdump?t=$(date +%s)"; ls -la dump.json
-          git init -q d && mv dump.json d/ && cd d && git checkout -q -b tmp-dump && git add dump.json
-          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -q -m dump
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" tmp-dump
+      - run: git init -q x && cd x && git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" --delete tmp-dump

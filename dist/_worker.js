@@ -43,7 +43,7 @@ function __embAssets(real) {
 //   Optional      TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (instant order alerts)
 
 // Replaced by build.mjs with the moment this copy was built — so we can tell which deploy is live.
-const BUILD_AT = "2026-11-23 06:50Z";
+const BUILD_AT = "2026-11-23 06:54Z";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -5023,18 +5023,6 @@ async function exlibApi(request, env, path, m) {
     if (!(await exlibOwner(request, env)) && !isAdmin(request, env, "owner")) return json({ error: "forbidden" }, 403, nos);
     const t = await env.STORE.get("exlib:prog");
     return new Response(t || "null", { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=120", "x-robots-tag": "noindex" } });
-  }
-  // تصدير مؤقت ومشفّر (نسخة احتياطية لبيانات المكتبة بمستودع خاص، 23/11/2026): الرد مشفّر بمفتاح عام (RSA-OAEP + AES-GCM)، بينشال بعدها
-  if (path === "/api/exlib/kvdump" && m === "GET") {
-    const keys = ["exlib:prog", "exlib:progar", "exlib:progdar", "exlib:progarv", "exlib:progdarv", "exlib:edits", "exlib:ar", "exlib:arv", "exlib:cfg"], o = {};
-    for (const k of keys) o[k] = await env.STORE.get(k);
-    const der = Uint8Array.from(atob("MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1bnKf1idqUF3GujvKvQjzNk5osSpU+A7U3jbwkX9+nFwn1ogUxE4L3pNIUJpc7cIaGAmF4PAo7PiXKrVjz6Ywua+lYG9iofGNNC1t6nejD/3011VHYSA3q8i14LGeDO+1wfRqUuhtudPeAl/hCqWHLVWhxyRWeahXYZGXlP908z6MHwuI6fS1RpxHuOPHFg4C22cx3wesFj9Au5MGRJmzfLc6AYtpQBfWi7+Lq/r72JFHAztUg+4Bzz3RuKRX1xFIc8QsIMjM3enPHF2PnDe3D3fR8O+HRtHgfV1YmC8buoIcZ8ZesFBgV6T2eSj1qXBmh1wM/huLc+jUIROUZRjvwIDAQAB"), (c) => c.charCodeAt(0));
-    const pk = await crypto.subtle.importKey("spki", der, { name: "RSA-OAEP", hash: "SHA-256" }, false, ["encrypt"]);
-    const ak = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]), iv = crypto.getRandomValues(new Uint8Array(12));
-    const ek = new Uint8Array(await crypto.subtle.encrypt({ name: "RSA-OAEP" }, pk, new Uint8Array(await crypto.subtle.exportKey("raw", ak))));
-    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, ak, new TextEncoder().encode(JSON.stringify(o))));
-    const b = (u) => { let s = ""; for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode(...u.subarray(i, i + 8192)); return btoa(s); };
-    return json({ k: b(ek), iv: b(iv), d: b(ct) }, 200, nos);
   }
   if (path === "/api/exlib/progar" && m === "GET") {
     if (!(await exlibOwner(request, env)) && !isAdmin(request, env, "owner")) return json({ error: "forbidden" }, 403, nos);
