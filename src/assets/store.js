@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=440" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=441" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +1981,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=440"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=441"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2036,7 +2036,7 @@
     const c = cfg || {}, hid = Array.isArray(c.hideM) ? c.hideM : ["Other"]; // عضلات مخبّية من المكتبة (من لوحة التحكم)
     // صور النساء (23/11/2026): التمرين يلي عليه sw (بديل مختار لحسابات الرجال) بينشال من التصفّح، وبيضل بـ exl.LA لربط البرامج
     exl.LA = L;
-    const A = L.filter((x) => hid.indexOf(x.m) < 0 && !x.sw);
+    const A = L.filter((x) => hid.indexOf(x.m) < 0 && !x.sw && !x.mgp); // mgp = الصورة التانية لتمرين مدموج
     A.forEach((x) => { x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; else if (x.m === "Thighs") x.m = exlThigh(x.n); else if (x.m === "Back") x.m = exlBack(x.n); }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
     A.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
     exl.cfg = c; exl.L = A;
@@ -2122,22 +2122,36 @@
     const ids = Object.keys(W).filter((i) => all[i]).sort((a, b) => (same[b] ? 1 : 0) - (same[a] ? 1 : 0));
     // البحث عن بديل: بكل التمارين (حتى يلي بالقائمة أو بعضلة مخبّاية)، إلا المخفية من لوحة التحكم
     const pool = Object.values(all).map((y) => ({ y, s: y.s || exlArq(y.n + " " + (y.a || "")) }));
-    const st = { f: "todo", n: 24, q: {} };
+    const st = { f: "todo", n: 24, q: {}, ed: {}, mg: {} };
     const nm = (x) => (x ? x.a || x.n : "");
     // متحرّكة: الفيديو إذا موجود (بيشتغل لما يبين، لحد 5 مع بعض)، وإلا الصورة
     const img = (id, cls) => (all[id] ? exlMedia(all[id], cls, true) : `<img class="${cls}" src="/exlib/m/${esc(id)}.jpg" alt="" loading="lazy" decoding="async">`);
     const vids = () => { try { exlVids(app, "iow"); } catch (e) {} };
-    const altBtn = (wid, a, on) => { const y = all[a]; if (!y) return ""; return `<button type="button" class="exw-alt${on ? " on" : ""}" data-wpick="${esc(wid)}" data-alt="${esc(a)}">${img(a, "")}<span dir="auto">${esc(nm(y))}</span>${same[wid] === a ? "<i>نفس الاسم</i>" : W[a] ? "<i>👩 كمان بالقائمة</i>" : ""}${on ? "<b>✓ مختار</b>" : ""}</button>`; };
+    // دمج: تمارين تانية بنفس الاسم بالظبط (صورة تانية لنفس التمرين، مثلاً فتح وسكّر)، بلا فيديو، ومو بقائمة النساء
+    const byKey = {}; Object.values(all).forEach((z) => { (byKey[key(z.n)] = byKey[key(z.n)] || []).push(z); });
+    const partners = (a) => { const y = all[a]; if (!y) return []; return (byKey[key(y.n)] || []).filter((z) => z.i !== a && !W[z.i] && !z.v && !z.mg && !z.mgp).map((z) => z.i); };
+    const altBtn = (wid, a, on) => { const y = all[a]; if (!y) return ""; const pa = y.mg ? [] : partners(a);
+      return `<div class="exw-ab"><button type="button" class="exw-alt${on ? " on" : ""}" data-wpick="${esc(wid)}" data-alt="${esc(a)}">${img(a, "")}<span dir="auto">${esc(nm(y))}</span>${same[wid] === a ? "<i>نفس الاسم</i>" : W[a] ? "<i>👩 كمان بالقائمة</i>" : ""}${y.mg ? "<i>🔗 مدموج</i>" : ""}${on ? "<b>✓ مختار</b>" : ""}</button>
+        <div class="exw-mini"><button type="button" data-wedit="${esc(wid)}" data-id="${esc(a)}">✏️ الاسم</button>${y.mg ? `<button type="button" data-wunmerge="${esc(wid)}" data-id="${esc(a)}">فك الدمج</button>` : !y.v && pa.length ? `<button type="button" data-wmerge="${esc(wid)}" data-id="${esc(a)}">🔗 دمج</button>` : ""}</div></div>`; };
+    const editBox = (wid) => { const id = st.ed[wid], y = all[id]; if (!y) return "";
+      return `<div class="exw-ed" data-edbox="${esc(wid)}"><b>✏️ تعديل اسم ${id === wid ? "التمرين الأساسي" : "البديل"}</b>
+        <label>بالعربي<input data-ed-a value="${esc(y.a || "")}" maxlength="90" dir="auto"></label><label>بالإنكليزي<input data-ed-n value="${esc(y.n)}" maxlength="120" dir="ltr"></label>
+        <div class="exw-acts"><button type="button" class="btn btn-dark sm" data-edsave="${esc(wid)}">حفظ</button><button type="button" class="btn btn-ghost sm" data-edx="${esc(wid)}">إلغاء</button></div></div>`; };
+    const mergeBox = (wid) => { const a = st.mg[wid], pa = partners(a); if (!a) return "";
+      return `<div class="exw-ed"><b>🔗 ادمج «${esc(nm(all[a]))}» مع صورتو التانية</b><p class="exw-note">بتنحط الصورتين فوق بعض وبيصيرو صورة متحرّكة، والتمرين التاني بينشال من المكتبة.</p>
+        <div class="exw-alts">${pa.map((z) => `<button type="button" class="exw-alt" data-wmg="${esc(wid)}" data-p="${esc(a)}" data-s="${esc(z)}"><span class="exl-anim"><img src="/exlib/m/${esc(a)}.jpg" alt=""><img src="/exlib/m/${esc(z)}.jpg" alt=""></span><span dir="auto">${esc(nm(all[z]))}</span><b>اكبس للدمج</b></button>`).join("")}</div>
+        <div class="exw-acts"><button type="button" class="btn btn-ghost sm" data-mgx="${esc(wid)}">إلغاء</button></div></div>`; };
     const card = (wid) => {
       const x = all[wid], cur = S[wid] || "", alts = (W[wid] || []).filter((a) => all[a]);
       if (same[wid]) { alts.splice(alts.indexOf(same[wid]), 1); alts.unshift(same[wid]); }
       if (cur && cur !== "-" && alts.indexOf(cur) < 0) alts.unshift(cur);
       const q = st.q[wid] || "", res = q.length > 1 ? pool.filter((p) => p.y.i !== wid && p.s.includes(exlArq(q))).slice(0, 12).map((p) => p.y.i).filter((a) => alts.indexOf(a) < 0) : [];
       return `<div class="exw-card${cur ? " done" : ""}" data-wid="${esc(wid)}">
-        <div class="exw-w">${img(wid, "")}<b dir="auto">${esc(nm(x))}</b>${x.a ? `<small dir="ltr">${esc(x.n)}</small>` : ""}<span class="exw-tag">👩 الصورة الحالية</span></div>
+        <div class="exw-w">${img(wid, "")}<b dir="auto">${esc(nm(x))}</b>${x.a ? `<small dir="ltr">${esc(x.n)}</small>` : ""}<span class="exw-tag">👩 الصورة الحالية</span><button type="button" class="exw-lnk" data-wedit="${esc(wid)}" data-id="${esc(wid)}">✏️ عدّل الاسم</button></div>
         <div class="exw-r">
           <div class="exw-h">${cur === "-" ? "🚫 مخفي عن الرجال" : cur ? "✓ اخترت بديل" : alts.length ? "اختار البديل (صورة رجل):" : "ما في بديل مقترح، دوّر على واحد أو خبّيه"}</div>
           <div class="exw-alts">${alts.map((a) => altBtn(wid, a, a === cur)).join("")}${res.map((a) => altBtn(wid, a, false)).join("")}</div>
+          ${st.ed[wid] ? editBox(wid) : ""}${st.mg[wid] ? mergeBox(wid) : ""}
           <div class="exw-acts"><input type="search" class="exw-q" data-wq="${esc(wid)}" value="${esc(q)}" placeholder="دوّر على بديل تاني…" aria-label="بحث عن بديل">
             <button type="button" class="btn btn-ghost sm" data-whide="${esc(wid)}"${cur === "-" ? " disabled" : ""}>🚫 خبّيه عن الرجال</button>
             ${cur ? `<button type="button" class="btn btn-ghost sm" data-wundo="${esc(wid)}">↩ تراجع</button>` : ""}</div>
@@ -2179,6 +2193,20 @@
       const f = ev.target.closest("[data-wf]"); if (f) { st.f = f.dataset.wf; st.n = 24; paint(); return; }
       if (ev.target.closest("[data-wnext]")) { st.n += 24; paint(); return; }
       const sb = ev.target.closest("[data-wsame]"); if (sb) { const many = {}; ids.forEach((i) => { if (same[i] && !S[i]) many[i] = same[i]; }); if (!Object.keys(many).length) return; if (!sb.dataset.ok) { sb.dataset.ok = "1"; sb.textContent = `اكبس كمان مرة لتأكّد تبديل ${Object.keys(many).length} تمرين`; setTimeout(() => { delete sb.dataset.ok; paint(); }, 5000); return; } delete sb.dataset.ok; save("", "", sb, many); return; }
+      const redraw = (wid) => { const el = app.querySelector(`[data-wid="${wid}"]`); if (el) { el.outerHTML = card(wid); vids(); } };
+      const ed = ev.target.closest("[data-wedit]"); if (ed) { st.ed[ed.dataset.wedit] = ed.dataset.id; delete st.mg[ed.dataset.wedit]; return redraw(ed.dataset.wedit); }
+      const ex = ev.target.closest("[data-edx]"); if (ex) { delete st.ed[ex.dataset.edx]; return redraw(ex.dataset.edx); }
+      const es = ev.target.closest("[data-edsave]"); if (es) { const wid = es.dataset.edsave, id = st.ed[wid], box = es.closest("[data-edbox]"); es.disabled = true;
+        (async () => { try { const r = await fetch("/api/exlib/oname", { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify({ i: id, a: box.querySelector("[data-ed-a]").value, n: box.querySelector("[data-ed-n]").value }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || "ما انحفظ");
+          all[id].n = j.n; all[id].a = j.a; pool.forEach((p) => { if (p.y.i === id) p.s = exlArq(j.n + " " + (j.a || "")); }); delete st.ed[wid]; exl.L = null; exl.LA = null; exl.prog = null; try { localStorage.removeItem(EXLC); } catch (e) {} redraw(wid); toast("✓ انحفظ الاسم"); } catch (e) { toast(esc(e.message)); es.disabled = false; } })(); return; }
+      const mg = ev.target.closest("[data-wmerge]"); if (mg) { st.mg[mg.dataset.wmerge] = mg.dataset.id; delete st.ed[mg.dataset.wmerge]; return redraw(mg.dataset.wmerge); }
+      const mx = ev.target.closest("[data-mgx]"); if (mx) { delete st.mg[mx.dataset.mgx]; return redraw(mx.dataset.mgx); }
+      const doMerge = async (wid, p2, s2, btn) => { if (btn) btn.disabled = true;
+        try { const r = await fetch("/api/exlib/merge", { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify({ p: p2, s: s2 }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || "ما انحفظ");
+          Object.values(all).forEach((z) => { delete z.mg; delete z.mgp; }); Object.entries(j.M || {}).forEach(([k, v]) => { if (all[k]) all[k].mg = v; if (all[v]) all[v].mgp = k; });
+          delete st.mg[wid]; exl.L = null; exl.LA = null; exl.prog = null; try { localStorage.removeItem(EXLC); } catch (e) {} redraw(wid); toast(s2 ? "🔗 اندمجو، صارت متحرّكة" : "انفك الدمج"); } catch (e) { toast(esc(e.message)); if (btn) btn.disabled = false; } };
+      const mm = ev.target.closest("[data-wmg]"); if (mm) return doMerge(mm.dataset.wmg, mm.dataset.p, mm.dataset.s, mm);
+      const um = ev.target.closest("[data-wunmerge]"); if (um) return doMerge(um.dataset.wunmerge, um.dataset.id, "", um);
       const p = ev.target.closest("[data-wpick]"); if (p) return save(p.dataset.wpick, p.dataset.alt, p);
       const h = ev.target.closest("[data-whide]"); if (h) return save(h.dataset.whide, "-", h);
       const u = ev.target.closest("[data-wundo]"); if (u) return save(u.dataset.wundo, "", u);
@@ -2248,7 +2276,7 @@
       const oM = (x) => x.om || x.m0 || x.m, oE = (x) => x.oe || x.e;
       (exl.LA || exl.L).forEach((x) => { const n = exlNm(x.n), k = oM(x) + "|" + oE(x) + "|" + n; full[k] = full[k] || x; (byName[n] = byName[n] || []).push(x); });
       const byId = {}; exl.L.forEach((x) => { byId[x.i] = x; });
-      const sw = (x) => (x && x.sw ? byId[x.sw] || null : x); // تمرين بصورة مرا ← البديل يلي اختارو صاحب المتجر (لحسابات الرجال)
+      const sw = (x) => { if (x && x.mgp) x = (exl.LA || []).find((y) => y.i === x.mgp) || x; return x && x.sw ? byId[x.sw] || null : x; }; // تمرين بصورة مرا ← البديل يلي اختارو صاحب المتجر (لحسابات الرجال)
       exl.pmap = exl.prog.EX.map((e) => {
         const n = exlNm(e[2]), n2 = exlNm(e[3]), hit = full[e[0] + "|" + e[1] + "|" + n] || full[e[0] + "|" + e[1] + "|" + n2];
         if (hit) return sw(hit);
@@ -2433,6 +2461,8 @@
   // الفيديو بيضل مخفي (أبيض) لحد ما يبلّش يشتغل فعلياً، فما بتبين أي لقطة مغبّشة ولا علامة تشغيل قبلو
   document.addEventListener("playing", (ev) => { const v = ev.target; if (v && v.tagName === "VIDEO") v.classList.add("on"); }, true);
   function exlMedia(x, cls, auto) {
+    // تمرين مدموج (صورتين لنفس التمرين، صاحب المتجر 23/11/2026): الصورتين فوق بعض بالتناوب ← صورة متحرّكة
+    if (x.mg && !x.v) return `<span class="exl-anim ${cls}"><img src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async"><img src="/exlib/m/${esc(x.mg)}.jpg" alt="" loading="lazy" decoding="async"></span>`;
     return x.v && auto
       ? `<video class="${cls}" data-src="/exlib/m/${x.i}.mp4" poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" muted loop playsinline disablepictureinpicture preload="metadata"></video>`
       : `<img class="${cls}" src="/exlib/m/${x.i}.jpg" alt="" loading="lazy" decoding="async">`;

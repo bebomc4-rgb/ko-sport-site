@@ -2293,3 +2293,12 @@ video{pointer-events:none}
 .exw-alt img,.exw-alt video{width:96px;height:96px;object-fit:contain;border-radius:8px;background:#fff;pointer-events:none}.exw-alt.on{border-color:var(--red)}.exw-alt b{color:var(--red);font-size:12px}.exw-alt i{font-style:normal;font-size:11px;color:var(--muted)}.exw-bulk{margin:0 0 12px}
 .exw-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}.exw-q{flex:1;min-width:150px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:transparent;color:inherit}
 @media (max-width:560px){.exw-card{flex-direction:column}.exw-w{flex-basis:auto;flex-direction:row;align-items:center;flex-wrap:wrap}.exw-w img,.exw-w video{width:110px;height:110px}.exw-alt{width:calc(33% - 6px)}.exw-alt img,.exw-alt video{width:100%;height:auto;aspect-ratio:1}}
+
+/* تمرين مدموج: صورتين بالتناوب (صورة متحرّكة) */
+.exl-anim{position:relative;display:block;width:100%;background:#fff}.exl-anim img{display:block;width:100%;height:auto;object-fit:contain}
+.exl-anim img+img{position:absolute;inset:0;height:100%;animation:exlAnim 1.6s steps(1,end) infinite}
+@keyframes exlAnim{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
+.exl-pic .exl-anim img,.exl-pic .exl-anim{aspect-ratio:var(--exl-ar,1)}
+.exw-ab{display:flex;flex-direction:column;gap:4px}.exw-mini{display:flex;gap:4px;justify-content:center}.exw-mini button,.exw-lnk{border:0;background:none;color:var(--c-link,inherit);font:inherit;font-size:12px;cursor:pointer;padding:2px 4px;text-decoration:underline}
+.exw-ed{margin:10px 0;padding:10px;border:1px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;gap:8px}.exw-ed label{display:flex;flex-direction:column;gap:4px;font-size:13px}.exw-ed input{padding:8px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:transparent;color:inherit}
+.exw-alt .exl-anim{width:96px;height:96px}.exw-alt .exl-anim img{height:96px}

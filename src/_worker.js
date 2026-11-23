@@ -5003,7 +5003,9 @@ async function exlibApi(request, env, path, m) {
     // والصفحات بتشيلو من التصفّح وبتحط البديل مطرحو بالبرامج. الحساب يلي جنسو أنثى (g = "f") بيشوف الأصلي. الحساب بلا جنس = رجل.
     const ac = await acctFromReq(request, env).catch(() => null), fem = !!(ac && ac.g === "f");
     let S = {}; if (!fem) { try { S = (await env.STORE.get("exlib:wsw", "json")) || {}; } catch { S = {}; } }
-    const out = merged.filter((x) => !x.h).map(({ x, h, ...r }) => (S[r.i] ? { ...r, sw: S[r.i] } : r));
+    let MG = {}; try { MG = (await env.STORE.get("exlib:merge", "json")) || {}; } catch {}
+    const MS = {}; for (const [k, v] of Object.entries(MG)) MS[v] = k; // التاني ← الأساسي
+    const out = merged.filter((x) => !x.h).map(({ x, h, ...r }) => { if (MG[r.i]) r = { ...r, mg: MG[r.i] }; if (MS[r.i]) r = { ...r, mgp: MS[r.i] }; return S[r.i] ? { ...r, sw: S[r.i] } : r; });
     return new Response(JSON.stringify(out), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=60" } });
   }
   // برامج التمرين (قسم «البرامج»): بيانات مضغوطة {v,EX,P} بـ KV `exlib:prog`، لحساب المالك بس
@@ -5041,6 +5043,41 @@ async function exlibApi(request, env, path, m) {
     for (const [i, a] of ch) { if (a) S[i] = String(a); else delete S[i]; }
     await env.STORE.put("exlib:wsw", JSON.stringify(S));
     return json({ ok: true, S }, 200, nos);
+  }
+  // تعديل اسم تمرين من حساب صاحب المتجر (صفحة صور النساء، 23/11/2026): {i, a: بالعربي, n: بالإنكليزي}. الاسم العربي بيصير arv=9 (الترجمة ما بتلمسو)
+  if (path === "/api/exlib/oname" && m === "POST") {
+    if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
+    let b = {}; try { b = await request.json(); } catch {}
+    const id = String(b.i || ""); if (!/^[a-f0-9]{10}$/.test(id)) return json({ error: "رقم التمرين غلط" }, 400, nos);
+    const { L, ed, ar } = await exlibAll(env), base = L.find((x) => x.i === id);
+    if (!base) return json({ error: "التمرين مو موجود" }, 404, nos);
+    if (b.a !== undefined) {
+      const a = String(b.a || "").replace(/[<>]/g, "").trim().slice(0, 90);
+      let v = {}; try { v = (await env.STORE.get("exlib:arv", "json")) || {}; } catch {}
+      if (a) { ar[id] = a; v[id] = 9; } else { delete ar[id]; delete v[id]; }
+      await env.STORE.put("exlib:ar", JSON.stringify(ar)); await env.STORE.put("exlib:arv", JSON.stringify(v));
+    }
+    if (b.n !== undefined) {
+      const n = String(b.n || "").replace(/[<>]/g, "").trim().slice(0, 120);
+      if (!n) return json({ error: "الاسم الإنكليزي فاضي" }, 400, nos);
+      const e2 = { ...(ed[id] || {}) }; if (n !== base.n) e2.n = n; else delete e2.n;
+      if (Object.keys(e2).length) ed[id] = e2; else delete ed[id];
+      await env.STORE.put("exlib:edits", JSON.stringify(ed));
+    }
+    const o = ed[id] ? { ...base, ...ed[id] } : { ...base };
+    return json({ ok: true, n: o.n, a: ar[id] ? exlArFix(ar[id], o) : "" }, 200, nos);
+  }
+  // دمج تمرينين (صورتين لنفس التمرين، مثلاً فتح وسكّر): {p: الأساسي, s: التاني} ← الأساسي بيطلع صورة متحرّكة (الصورتين بالتناوب)،
+  // والتاني بينشال من التصفّح ويتحوّل للأساسي بالبرامج. s فاضي = فك الدمج. KV `exlib:merge` ({أساسي: تاني})
+  if (path === "/api/exlib/merge" && m === "POST") {
+    if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
+    let b = {}; try { b = await request.json(); } catch {}
+    const p2 = String(b.p || ""), s2 = String(b.s || ""), ok = (x) => /^[a-f0-9]{10}$/.test(x);
+    if (!ok(p2) || (s2 && (!ok(s2) || s2 === p2))) return json({ error: "الطلب غلط" }, 400, nos);
+    let M = {}; try { M = (await env.STORE.get("exlib:merge", "json")) || {}; } catch {}
+    if (s2) { for (const k of Object.keys(M)) if (k === s2 || M[k] === s2 || M[k] === p2) delete M[k]; M[p2] = s2; } else delete M[p2];
+    await env.STORE.put("exlib:merge", JSON.stringify(M));
+    return json({ ok: true, M }, 200, nos);
   }
   // الرفع والتعديل: بكلمة سر لوحة التحكم (المالك بس)
   if (!isAdmin(request, env, "owner")) return denied();
