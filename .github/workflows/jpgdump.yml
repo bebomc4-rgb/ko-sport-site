@@ -1,0 +1,13 @@
+name: jpgdump
+# مؤقت: بيسحب صور التمارين مشفّرة لفرع مؤقت
+on: workflow_dispatch
+permissions: { contents: write }
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          git init -q d && cd d && git checkout -q -b tmp-jpg
+          for p in $(seq 0 15); do curl -sS -m 120 -o p$p.bin "https://ko-sport.pages.dev/api/exlib/jpgdump?p=$p&t=$(date +%s)"; ls -la p$p.bin; done
+          git add . && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -q -m dump
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" tmp-jpg
