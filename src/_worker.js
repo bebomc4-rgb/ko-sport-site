@@ -5033,11 +5033,12 @@ async function exlibApi(request, env, path, m) {
   if (path === "/api/exlib/wsw" && m === "POST") {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
     let b = {}; try { b = await request.json(); } catch {}
-    const W = exlWomen(), i = String(b.i || ""), a = String(b.a || "");
-    if (!W[i]) return json({ error: "التمرين مو بالقائمة" }, 400, nos);
-    if (a && a !== "-" && !/^[a-f0-9]{6,16}$/.test(a)) return json({ error: "البديل غلط" }, 400, nos);
+    const W = exlWomen(), ok = (a) => !a || a === "-" || /^[a-f0-9]{6,16}$/.test(a);
+    // تمرين واحد {i, a} أو دفعة {many: {رقم: بديل}} (زر «بدّل كل يلي نفس الاسم»)
+    const ch = b.many && typeof b.many === "object" ? Object.entries(b.many).slice(0, 3000) : [[String(b.i || ""), String(b.a || "")]];
+    for (const [i, a] of ch) { if (!W[i]) return json({ error: "التمرين مو بالقائمة" }, 400, nos); if (!ok(String(a || ""))) return json({ error: "البديل غلط" }, 400, nos); }
     let S = {}; try { S = (await env.STORE.get("exlib:wsw", "json")) || {}; } catch {}
-    if (a) S[i] = a; else delete S[i];
+    for (const [i, a] of ch) { if (a) S[i] = String(a); else delete S[i]; }
     await env.STORE.put("exlib:wsw", JSON.stringify(S));
     return json({ ok: true, S }, 200, nos);
   }

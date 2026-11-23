@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=439" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=440" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +1981,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=439"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=440"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2115,15 +2115,24 @@
     if (curRoute().indexOf("/exlib/women") !== 0) return;
     if (!D || !D.W) { app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح القائمة</b>جرّب كمان مرة<a href="#/exlib">رجوع للمكتبة</a></div>'; return; }
     const all = {}, LL = exl.L || []; (exl.LA || LL).forEach((x) => { all[x.i] = x; });
-    const W = D.W, S = D.S || {}, ids = Object.keys(W).filter((i) => all[i]);
+    const W = D.W, S = D.S || {};
+    // «نفس الاسم»: البديل اسمو نفس اسم تمرين المرا بالظبط (بلا فرق الأحرف الكبيرة، والرقم أو «VERSION 2» بالآخر) ← بيطلعو أول شي، وفي زر يبدّلهن كلهن
+    const key = (n) => String(n || "").toLowerCase().replace(/\(\s*version\s*\d+\s*\)/g, "").replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+\d+$/, "");
+    const same = {}; Object.keys(W).forEach((i) => { if (!all[i]) return; const k = key(all[i].n), m = (W[i] || []).find((a) => all[a] && key(all[a].n) === k); if (m) same[i] = m; });
+    const ids = Object.keys(W).filter((i) => all[i]).sort((a, b) => (same[b] ? 1 : 0) - (same[a] ? 1 : 0));
+    // البحث عن بديل: بكل التمارين (حتى يلي بالقائمة أو بعضلة مخبّاية)، إلا المخفية من لوحة التحكم
+    const pool = Object.values(all).map((y) => ({ y, s: y.s || exlArq(y.n + " " + (y.a || "")) }));
     const st = { f: "todo", n: 24, q: {} };
     const nm = (x) => (x ? x.a || x.n : "");
-    const img = (id, cls) => `<img class="${cls}" src="/exlib/m/${esc(id)}.jpg" alt="" loading="lazy" decoding="async">`;
-    const altBtn = (wid, a, on) => { const y = all[a]; if (!y) return ""; return `<button type="button" class="exw-alt${on ? " on" : ""}" data-wpick="${esc(wid)}" data-alt="${esc(a)}">${img(a, "")}<span dir="auto">${esc(nm(y))}</span>${on ? "<b>✓ مختار</b>" : ""}</button>`; };
+    // متحرّكة: الفيديو إذا موجود (بيشتغل لما يبين، لحد 5 مع بعض)، وإلا الصورة
+    const img = (id, cls) => (all[id] ? exlMedia(all[id], cls, true) : `<img class="${cls}" src="/exlib/m/${esc(id)}.jpg" alt="" loading="lazy" decoding="async">`);
+    const vids = () => { try { exlVids(app, "iow"); } catch (e) {} };
+    const altBtn = (wid, a, on) => { const y = all[a]; if (!y) return ""; return `<button type="button" class="exw-alt${on ? " on" : ""}" data-wpick="${esc(wid)}" data-alt="${esc(a)}">${img(a, "")}<span dir="auto">${esc(nm(y))}</span>${same[wid] === a ? "<i>نفس الاسم</i>" : W[a] ? "<i>👩 كمان بالقائمة</i>" : ""}${on ? "<b>✓ مختار</b>" : ""}</button>`; };
     const card = (wid) => {
       const x = all[wid], cur = S[wid] || "", alts = (W[wid] || []).filter((a) => all[a]);
+      if (same[wid]) { alts.splice(alts.indexOf(same[wid]), 1); alts.unshift(same[wid]); }
       if (cur && cur !== "-" && alts.indexOf(cur) < 0) alts.unshift(cur);
-      const q = st.q[wid] || "", res = q.length > 1 ? LL.filter((y) => !W[y.i] && y.s && y.s.includes(exlArq(q))).slice(0, 6).map((y) => y.i).filter((a) => alts.indexOf(a) < 0) : [];
+      const q = st.q[wid] || "", res = q.length > 1 ? pool.filter((p) => p.y.i !== wid && p.s.includes(exlArq(q))).slice(0, 12).map((p) => p.y.i).filter((a) => alts.indexOf(a) < 0) : [];
       return `<div class="exw-card${cur ? " done" : ""}" data-wid="${esc(wid)}">
         <div class="exw-w">${img(wid, "")}<b dir="auto">${esc(nm(x))}</b>${x.a ? `<small dir="ltr">${esc(x.n)}</small>` : ""}<span class="exw-tag">👩 الصورة الحالية</span></div>
         <div class="exw-r">
@@ -2134,29 +2143,34 @@
             ${cur ? `<button type="button" class="btn btn-ghost sm" data-wundo="${esc(wid)}">↩ تراجع</button>` : ""}</div>
         </div></div>`;
     };
-    const list = () => ids.filter((i) => (st.f === "todo" ? !S[i] : st.f === "done" ? !!S[i] : true));
+    const list = () => ids.filter((i) => (st.f === "todo" ? !S[i] : st.f === "done" ? !!S[i] : st.f === "same" ? same[i] && !S[i] : true));
     const paint = () => {
       const L = list(), done = ids.filter((i) => S[i]).length;
       app.querySelector("[data-wcnt]").textContent = `اخترت لـ ${done} من ${ids.length} تمرين`;
+      const sl = ids.filter((i) => same[i] && !S[i]).length, sb = app.querySelector("[data-wsame]"); sb.hidden = !sl; sb.textContent = `⚡ بدّل كل يلي إلها نفس الاسم (${sl})`;
       app.querySelectorAll("[data-wf]").forEach((b) => b.classList.toggle("on", b.dataset.wf === st.f));
       app.querySelector("[data-wlist]").innerHTML = L.slice(0, st.n).map(card).join("") || '<div class="empty"><b>خلصت كلها 👏</b></div>';
       app.querySelector("[data-wmore]").hidden = L.length <= st.n;
+      vids();
     };
     app.innerHTML = `<div class="exl exw"><div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><b>صور النساء</b></div>
       <h1 class="page-title">👩 تمارين صورتها لمرا</h1>
       <p class="exw-note">كبسة على البديل بتختارو. التبديل بيصير <b>لحسابات الرجال بس</b> (بالمكتبة والبرامج)، وحساب الأنثى بيضل يشوف التمرين الأصلي.</p>
-      <div class="exl-pg-fl"><button type="button" class="chip exl-chip" data-wf="todo">لسا ما اخترت</button><button type="button" class="chip exl-chip" data-wf="done">اخترت</button><button type="button" class="chip exl-chip" data-wf="all">الكل</button></div>
+      <div class="exl-pg-fl"><button type="button" class="chip exl-chip" data-wf="todo">لسا ما اخترت</button><button type="button" class="chip exl-chip" data-wf="done">اخترت</button><button type="button" class="chip exl-chip" data-wf="same">نفس الاسم</button><button type="button" class="chip exl-chip" data-wf="all">الكل</button></div>
+      <p class="exw-note">«نفس الاسم» = في نفس التمرين بالظبط بصورة رجل، وطالعين أول شي. البدّل بياخد اسم البديل وصورتو والفيديو تبعو.</p>
+      <button type="button" class="btn btn-dark exw-bulk" data-wsame hidden></button>
       <div class="exl-count" data-wcnt></div><div data-wlist></div>
       <div class="exl-more" data-wmore><button type="button" class="btn btn-dark" data-wnext>اعرض كمان</button></div></div>`;
-    const save = async (wid, a, btn) => {
+    const save = async (wid, a, btn, many) => {
       if (btn) btn.disabled = true;
       try {
-        const r = await fetch("/api/exlib/wsw", { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify({ i: wid, a }) });
+        const r = await fetch("/api/exlib/wsw", { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify(many ? { many } : { i: wid, a }) });
         const j = await r.json(); if (!r.ok) throw new Error(j.error || "ما انحفظ");
         Object.keys(S).forEach((k) => delete S[k]); Object.assign(S, j.S || {});
         exl.prog = null; exl.L = null; exl.LA = null; try { localStorage.removeItem(EXLC); } catch (e) {} // المكتبة والبرامج بيتحدّثو بالفتحة الجاية
+        if (many) { paint(); toast(`✓ تبدّل ${Object.keys(many).length} تمرين`); return; }
         const el = app.querySelector(`[data-wid="${wid}"]`); if (el) el.outerHTML = card(wid);
-        if (st.f !== "all") setTimeout(paint, 900);
+        vids(); if (st.f !== "all") setTimeout(paint, 900);
         app.querySelector("[data-wcnt]").textContent = `اخترت لـ ${ids.filter((i) => S[i]).length} من ${ids.length} تمرين`;
         toast(a === "-" ? "🚫 انخبّى عن الرجال" : a ? "✓ انحفظ البديل" : "↩ رجع متل ما كان");
       } catch (e) { toast(esc(e.message || "ما انحفظ")); if (btn) btn.disabled = false; }
@@ -2164,12 +2178,13 @@
     app.onclick = (ev) => {
       const f = ev.target.closest("[data-wf]"); if (f) { st.f = f.dataset.wf; st.n = 24; paint(); return; }
       if (ev.target.closest("[data-wnext]")) { st.n += 24; paint(); return; }
+      const sb = ev.target.closest("[data-wsame]"); if (sb) { const many = {}; ids.forEach((i) => { if (same[i] && !S[i]) many[i] = same[i]; }); if (!Object.keys(many).length) return; if (!sb.dataset.ok) { sb.dataset.ok = "1"; sb.textContent = `اكبس كمان مرة لتأكّد تبديل ${Object.keys(many).length} تمرين`; setTimeout(() => { delete sb.dataset.ok; paint(); }, 5000); return; } delete sb.dataset.ok; save("", "", sb, many); return; }
       const p = ev.target.closest("[data-wpick]"); if (p) return save(p.dataset.wpick, p.dataset.alt, p);
       const h = ev.target.closest("[data-whide]"); if (h) return save(h.dataset.whide, "-", h);
       const u = ev.target.closest("[data-wundo]"); if (u) return save(u.dataset.wundo, "", u);
     };
     let qt = 0;
-    app.oninput = (ev) => { const q = ev.target.closest("[data-wq]"); if (!q) return; st.q[q.dataset.wq] = q.value; clearTimeout(qt); qt = setTimeout(() => { const el = app.querySelector(`[data-wid="${q.dataset.wq}"]`); if (!el) return; const pos = q.selectionStart; el.outerHTML = card(q.dataset.wq); const nq = app.querySelector(`[data-wq="${q.dataset.wq}"]`); if (nq) { nq.focus(); try { nq.setSelectionRange(pos, pos); } catch (e) {} } }, 300); };
+    app.oninput = (ev) => { const q = ev.target.closest("[data-wq]"); if (!q) return; st.q[q.dataset.wq] = q.value; clearTimeout(qt); qt = setTimeout(() => { const el = app.querySelector(`[data-wid="${q.dataset.wq}"]`); if (!el) return; const pos = q.selectionStart; el.outerHTML = card(q.dataset.wq); vids(); const nq = app.querySelector(`[data-wq="${q.dataset.wq}"]`); if (nq) { nq.focus(); try { nq.setSelectionRange(pos, pos); } catch (e) {} } }, 300); };
     app.onchange = null;
     paint();
   }
