@@ -1,13 +1,9 @@
 name: progdump
-# مؤقت: بيسحب تصدير البرامج المشفّر (ما بينقرا بلا المفتاح الخاص) وبيحطو بفرع مؤقت
+# مؤقت: بيمسح الفرع المؤقت tmp-dump
 on: workflow_dispatch
 permissions: { contents: write }
 jobs:
-  dump:
+  clean:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          curl -sS -m 60 -o dump.json "https://ko-sport.pages.dev/api/exlib/progdump?t=$(date +%s)"; ls -la dump.json
-          git init -q d && mv dump.json d/ && cd d && git checkout -q -b tmp-dump && git add dump.json
-          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -q -m dump
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" tmp-dump
+      - run: git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" --delete tmp-dump || true
