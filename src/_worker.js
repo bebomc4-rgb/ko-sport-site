@@ -4999,7 +4999,11 @@ async function exlibApi(request, env, path, m) {
   if (path === "/api/exlib/list" && m === "GET") {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
     const { merged } = await exlibAll(env);
-    const out = merged.filter((x) => !x.h).map(({ x, h, ...r }) => r);
+    // تبديل صور النساء (صاحب المتجر 23/11/2026): لحسابات الرجال، التمرين يلي إلو بديل مختار بيطلع عليه `sw` (رقم البديل، أو "-" = مخفي)،
+    // والصفحات بتشيلو من التصفّح وبتحط البديل مطرحو بالبرامج. الحساب يلي جنسو أنثى (g = "f") بيشوف الأصلي. الحساب بلا جنس = رجل.
+    const ac = await acctFromReq(request, env).catch(() => null), fem = !!(ac && ac.g === "f");
+    let S = {}; if (!fem) { try { S = (await env.STORE.get("exlib:wsw", "json")) || {}; } catch { S = {}; } }
+    const out = merged.filter((x) => !x.h).map(({ x, h, ...r }) => (S[r.i] ? { ...r, sw: S[r.i] } : r));
     return new Response(JSON.stringify(out), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, max-age=60" } });
   }
   // برامج التمرين (قسم «البرامج»): بيانات مضغوطة {v,EX,P} بـ KV `exlib:prog`، لحساب المالك بس
@@ -5027,6 +5031,23 @@ async function exlibApi(request, env, path, m) {
   if (path === "/api/exlib/translation/stop" && m === "POST") return exlTranslationStop(request, env);
   if (path === "/api/exlib/translation/step" && m === "POST") return exlTranslationStep(env);
   // لوحة التحكم ← التمارين: كل اللائحة مع المخفية والمعدّلة
+  // صفحة «صور النساء» بحساب صاحب المتجر: القائمة والبدائل المقترحة والاختيارات ({رقم تمرين المرا: رقم البديل | "-"})
+  if (path === "/api/exlib/wsw" && m === "GET") {
+    if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
+    let S = {}; try { S = (await env.STORE.get("exlib:wsw", "json")) || {}; } catch {}
+    return json({ W: exlWomen(), S }, 200, nos);
+  }
+  if (path === "/api/exlib/wsw" && m === "POST") {
+    if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
+    let b = {}; try { b = await request.json(); } catch {}
+    const W = exlWomen(), i = String(b.i || ""), a = String(b.a || "");
+    if (!W[i]) return json({ error: "التمرين مو بالقائمة" }, 400, nos);
+    if (a && a !== "-" && !/^[a-f0-9]{6,16}$/.test(a)) return json({ error: "البديل غلط" }, 400, nos);
+    let S = {}; try { S = (await env.STORE.get("exlib:wsw", "json")) || {}; } catch {}
+    if (a) S[i] = a; else delete S[i];
+    await env.STORE.put("exlib:wsw", JSON.stringify(S));
+    return json({ ok: true, S }, 200, nos);
+  }
   if (path === "/api/exlib/adm" && m === "GET") {
     const { merged } = await exlibAll(env);
     const W = exlWomen();

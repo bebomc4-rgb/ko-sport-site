@@ -554,7 +554,7 @@ function gen(I,seed){
     if(LIB!==null)return LIB;LIB=[];
     try{const a=JSON.parse(localStorage.getItem("ko_acct")||"null");if(!(a&&a.token))return LIB;
       const r=await fetch("/api/exlib/list",{headers:{authorization:"Bearer "+a.token},credentials:"same-origin"});
-      if(r.ok)LIB=(await r.json()).filter(x=>x.m!=="Other").map(x=>({i:x.i,v:x.v,e:x.e,n:String(x.n||"").toLowerCase()}));}catch(e){}
+      if(r.ok)LIB=(await r.json()).filter(x=>x.m!=="Other"&&!x.sw).map(x=>({i:x.i,v:x.v,e:x.e,n:String(x.n||"").toLowerCase()}));}catch(e){}
     return LIB;
   }
   function find(q,r){

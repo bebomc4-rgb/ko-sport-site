@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=437" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=438" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +1981,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=437"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=438"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2034,7 +2034,9 @@
   const EXLC = "ko_exl_cache";
   function exlApply(L, cfg) {
     const c = cfg || {}, hid = Array.isArray(c.hideM) ? c.hideM : ["Other"]; // عضلات مخبّية من المكتبة (من لوحة التحكم)
-    const A = L.filter((x) => hid.indexOf(x.m) < 0);
+    // صور النساء (23/11/2026): التمرين يلي عليه sw (بديل مختار لحسابات الرجال) بينشال من التصفّح، وبيضل بـ exl.LA لربط البرامج
+    exl.LA = L;
+    const A = L.filter((x) => hid.indexOf(x.m) < 0 && !x.sw);
     A.forEach((x) => { x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; else if (x.m === "Thighs") x.m = exlThigh(x.n); else if (x.m === "Back") x.m = exlBack(x.n); }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
     A.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
     exl.cfg = c; exl.L = A;
@@ -2079,6 +2081,7 @@
     const sg = curRoute().split("/"), hm = sg[2] || "", he = sg[3] || "";
     if (hm === "programs") return exlProgPage(he);
     if (hm === "my") return exlMyPage();
+    if (hm === "women") return exlWomenPage();
     exl.m = hm && exl.L.some((x) => exlMIs(x, hm)) ? hm : "";
     exl.e = exl.m && he && (he === "*" || exl.L.some((x) => exlMIs(x, exl.m) && x.e === he)) ? he : "";
     exl.q = ""; exl.n = (exl.nm && exl.nm[curRoute()]) || exlPerN();
@@ -2087,6 +2090,7 @@
       <div class="exl exl-t-${esc(c.theme || "site")} exl-sh-${esc(c.shape || "round")}">
       <div class="crumbs"><a href="#/account">حسابي</a></div>
       <h1 class="page-title">📚 مكتبة التمارين</h1>
+      ${koOwn() ? '<a class="btn btn-ghost sm exl-wlink" href="#/exlib/women">👩 صور النساء: اختار البديل</a>' : ""}
       <input type="search" class="exl-q" placeholder="دوّر على تمرين بالعربي أو الإنكليزي" aria-label="بحث">
       <div class="exl-nav" data-exl-nav></div>
       <div data-exl-body></div>
@@ -2100,6 +2104,74 @@
       if (t.hasAttribute("data-exl-id")) return exlOpen(t.dataset.exlId);
     };
     exlRest(ry);
+  }
+  // ---------- صور النساء (صاحب المتجر 23/11/2026): #/exlib/women، لحسابو بس ----------
+  // كل تمرين صورتو لمرا وجنبو لحد 3 بدائل بصورة رجل؛ كبسة على بديل بتختارو. الاختيار بيتطبّق على حسابات الرجال بس (البرامج والتصفّح)،
+  // وحساب الأنثى بيشوف الأصلي. «خبّيه عن الرجال» = بلا بديل. البحث بيلاقي أي تمرين تاني كبديل.
+  async function exlWomenPage() {
+    document.title = "صور النساء | " + (C.name || "");
+    app.innerHTML = '<div class="loading">جاري التحميل…</div>';
+    let D = null; try { const r = await fetch("/api/exlib/wsw", { headers: socAuth(), credentials: "same-origin", cache: "no-store" }); D = r.ok ? await r.json() : null; } catch (e) {}
+    if (curRoute().indexOf("/exlib/women") !== 0) return;
+    if (!D || !D.W) { app.innerHTML = '<div class="empty"><b>ما قدرنا نفتح القائمة</b>جرّب كمان مرة<a href="#/exlib">رجوع للمكتبة</a></div>'; return; }
+    const all = {}, LL = exl.L || []; (exl.LA || LL).forEach((x) => { all[x.i] = x; });
+    const W = D.W, S = D.S || {}, ids = Object.keys(W).filter((i) => all[i]);
+    const st = { f: "todo", n: 24, q: {} };
+    const nm = (x) => (x ? x.a || x.n : "");
+    const img = (id, cls) => `<img class="${cls}" src="/exlib/m/${esc(id)}.jpg" alt="" loading="lazy" decoding="async">`;
+    const altBtn = (wid, a, on) => { const y = all[a]; if (!y) return ""; return `<button type="button" class="exw-alt${on ? " on" : ""}" data-wpick="${esc(wid)}" data-alt="${esc(a)}">${img(a, "")}<span dir="auto">${esc(nm(y))}</span>${on ? "<b>✓ مختار</b>" : ""}</button>`; };
+    const card = (wid) => {
+      const x = all[wid], cur = S[wid] || "", alts = (W[wid] || []).filter((a) => all[a]);
+      if (cur && cur !== "-" && alts.indexOf(cur) < 0) alts.unshift(cur);
+      const q = st.q[wid] || "", res = q.length > 1 ? LL.filter((y) => !W[y.i] && y.s && y.s.includes(exlArq(q))).slice(0, 6).map((y) => y.i).filter((a) => alts.indexOf(a) < 0) : [];
+      return `<div class="exw-card${cur ? " done" : ""}" data-wid="${esc(wid)}">
+        <div class="exw-w">${img(wid, "")}<b dir="auto">${esc(nm(x))}</b>${x.a ? `<small dir="ltr">${esc(x.n)}</small>` : ""}<span class="exw-tag">👩 الصورة الحالية</span></div>
+        <div class="exw-r">
+          <div class="exw-h">${cur === "-" ? "🚫 مخفي عن الرجال" : cur ? "✓ اخترت بديل" : alts.length ? "اختار البديل (صورة رجل):" : "ما في بديل مقترح، دوّر على واحد أو خبّيه"}</div>
+          <div class="exw-alts">${alts.map((a) => altBtn(wid, a, a === cur)).join("")}${res.map((a) => altBtn(wid, a, false)).join("")}</div>
+          <div class="exw-acts"><input type="search" class="exw-q" data-wq="${esc(wid)}" value="${esc(q)}" placeholder="دوّر على بديل تاني…" aria-label="بحث عن بديل">
+            <button type="button" class="btn btn-ghost sm" data-whide="${esc(wid)}"${cur === "-" ? " disabled" : ""}>🚫 خبّيه عن الرجال</button>
+            ${cur ? `<button type="button" class="btn btn-ghost sm" data-wundo="${esc(wid)}">↩ تراجع</button>` : ""}</div>
+        </div></div>`;
+    };
+    const list = () => ids.filter((i) => (st.f === "todo" ? !S[i] : st.f === "done" ? !!S[i] : true));
+    const paint = () => {
+      const L = list(), done = ids.filter((i) => S[i]).length;
+      app.querySelector("[data-wcnt]").textContent = `اخترت لـ ${done} من ${ids.length} تمرين`;
+      app.querySelectorAll("[data-wf]").forEach((b) => b.classList.toggle("on", b.dataset.wf === st.f));
+      app.querySelector("[data-wlist]").innerHTML = L.slice(0, st.n).map(card).join("") || '<div class="empty"><b>خلصت كلها 👏</b></div>';
+      app.querySelector("[data-wmore]").hidden = L.length <= st.n;
+    };
+    app.innerHTML = `<div class="exl exw"><div class="exl-nav"><a href="#/exlib">المكتبة</a><span class="exl-sep">‹</span><b>صور النساء</b></div>
+      <h1 class="page-title">👩 تمارين صورتها لمرا</h1>
+      <p class="exw-note">كبسة على البديل بتختارو. التبديل بيصير <b>لحسابات الرجال بس</b> (بالمكتبة والبرامج)، وحساب الأنثى بيضل يشوف التمرين الأصلي.</p>
+      <div class="exl-pg-fl"><button type="button" class="chip exl-chip" data-wf="todo">لسا ما اخترت</button><button type="button" class="chip exl-chip" data-wf="done">اخترت</button><button type="button" class="chip exl-chip" data-wf="all">الكل</button></div>
+      <div class="exl-count" data-wcnt></div><div data-wlist></div>
+      <div class="exl-more" data-wmore><button type="button" class="btn btn-dark" data-wnext>اعرض كمان</button></div></div>`;
+    const save = async (wid, a, btn) => {
+      if (btn) btn.disabled = true;
+      try {
+        const r = await fetch("/api/exlib/wsw", { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify({ i: wid, a }) });
+        const j = await r.json(); if (!r.ok) throw new Error(j.error || "ما انحفظ");
+        Object.keys(S).forEach((k) => delete S[k]); Object.assign(S, j.S || {});
+        exl.prog = null; exl.L = null; exl.LA = null; try { localStorage.removeItem(EXLC); } catch (e) {} // المكتبة والبرامج بيتحدّثو بالفتحة الجاية
+        const el = app.querySelector(`[data-wid="${wid}"]`); if (el) el.outerHTML = card(wid);
+        if (st.f !== "all") setTimeout(paint, 900);
+        app.querySelector("[data-wcnt]").textContent = `اخترت لـ ${ids.filter((i) => S[i]).length} من ${ids.length} تمرين`;
+        toast(a === "-" ? "🚫 انخبّى عن الرجال" : a ? "✓ انحفظ البديل" : "↩ رجع متل ما كان");
+      } catch (e) { toast(esc(e.message || "ما انحفظ")); if (btn) btn.disabled = false; }
+    };
+    app.onclick = (ev) => {
+      const f = ev.target.closest("[data-wf]"); if (f) { st.f = f.dataset.wf; st.n = 24; paint(); return; }
+      if (ev.target.closest("[data-wnext]")) { st.n += 24; paint(); return; }
+      const p = ev.target.closest("[data-wpick]"); if (p) return save(p.dataset.wpick, p.dataset.alt, p);
+      const h = ev.target.closest("[data-whide]"); if (h) return save(h.dataset.whide, "-", h);
+      const u = ev.target.closest("[data-wundo]"); if (u) return save(u.dataset.wundo, "", u);
+    };
+    let qt = 0;
+    app.oninput = (ev) => { const q = ev.target.closest("[data-wq]"); if (!q) return; st.q[q.dataset.wq] = q.value; clearTimeout(qt); qt = setTimeout(() => { const el = app.querySelector(`[data-wid="${q.dataset.wq}"]`); if (!el) return; const pos = q.selectionStart; el.outerHTML = card(q.dataset.wq); const nq = app.querySelector(`[data-wq="${q.dataset.wq}"]`); if (nq) { nq.focus(); try { nq.setSelectionRange(pos, pos); } catch (e) {} } }, 300); };
+    app.onchange = null;
+    paint();
   }
   // ---------- برامج التمرين (صاحب المتجر 21/11/2026): #/exlib/programs ← #/exlib/programs/<رقم> ----------
   // البيانات ({EX:[[عضلة،أداة،ملف،اسم]], P:[برامج]}) بـ KV exlib:prog، وأغلفة pcNNN.webp بمخزن ملفات المكتبة؛ لحساب المالك بس. تمارين البرنامج بتنربط بتمارين المكتبة (عضلة+أداة+اسم) وبتعرض فيديوهاتها.
@@ -2159,12 +2231,14 @@
       const full = {}, byName = {}; // m|e|اسم ← تمرين، واسم لحالو (للاحتياط)
       // om/oe: العضلة/الأداة الأصلية (من السيرفر، للتمارين يلي تصحّح تصنيفها) — البرامج مربوطة بالتصنيف الأصلي
       const oM = (x) => x.om || x.m0 || x.m, oE = (x) => x.oe || x.e;
-      exl.L.forEach((x) => { const n = exlNm(x.n), k = oM(x) + "|" + oE(x) + "|" + n; full[k] = full[k] || x; (byName[n] = byName[n] || []).push(x); });
+      (exl.LA || exl.L).forEach((x) => { const n = exlNm(x.n), k = oM(x) + "|" + oE(x) + "|" + n; full[k] = full[k] || x; (byName[n] = byName[n] || []).push(x); });
+      const byId = {}; exl.L.forEach((x) => { byId[x.i] = x; });
+      const sw = (x) => (x && x.sw ? byId[x.sw] || null : x); // تمرين بصورة مرا ← البديل يلي اختارو صاحب المتجر (لحسابات الرجال)
       exl.pmap = exl.prog.EX.map((e) => {
         const n = exlNm(e[2]), n2 = exlNm(e[3]), hit = full[e[0] + "|" + e[1] + "|" + n] || full[e[0] + "|" + e[1] + "|" + n2];
-        if (hit) return hit;
+        if (hit) return sw(hit);
         const c = (byName[n] || byName[n2] || []).filter((x) => oM(x) === e[0]);
-        return c.length === 1 ? c[0] : (byName[n] || []).length === 1 ? byName[n][0] : null;
+        return sw(c.length === 1 ? c[0] : (byName[n] || []).length === 1 ? byName[n][0] : null);
       });
     }
     return exl.prog;
