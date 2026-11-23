@@ -162,6 +162,8 @@ ol.exl .xm{width:100%;height:100%;max-height:none;object-fit:contain}
 .pdfbar .btn{flex:1;min-width:110px;text-align:center;padding:11px 10px;font-size:.95rem}
 .pdfpg{display:block;width:100%;height:auto;margin:0 0 12px;border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);background:#fff}
 .pdfmsg{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--goldbg);border:1px solid var(--gold);font-weight:700;text-align:center}
+ol.exl li.sec{list-style:none;margin:12px 0 2px;font-weight:800;color:var(--gold2);font-size:.9rem;border-bottom:2px solid var(--gold);padding-bottom:4px}
+.ex .rs{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px;font-size:.78rem;color:var(--mut)}
 </style>
 </head>
 <body>
@@ -218,12 +220,77 @@ pwr:{n:"قوة ورفع أثقال",pref:/بالبار/,tips:["ركّز على �
 fb:{n:"كرة قدم",pl:1,pref:/بلغاري|رجل وحدة|ديدلفت|قفز|لانجز/,fin:()=>"ركض تسارع: 8 × 30 متر بأقصى سرعة، راحة 60 ثانية بين كل ركضة",tips:["خلّي تمارين الأرجل الثقيلة بعيدة 24-48 ساعة عن المباراة","ركّز على قوة الرجل الواحدة وتمارين الفخد الخلفي لحماية الركبة"]},
 bk:{n:"كرة سلة",pl:1,pref:/قفز|رجل وحدة|لانجز|سمانة/,fin:()=>"6 جولات: ركض ذهاب وإياب بين خطّين 20 ثانية جهد عالي، راحة 40 ثانية",tips:["النزول من القفزة بنعومة وبركب مثنية بيحمي ركبك وكاحلك","قوّي الكاحلين بالوقوف على رجل وحدة (30 ثانية لكل رجل)"]},
 vb:{n:"كرة طائرة",pl:1,pref:/قفز|رفرفة|فيس|بلانك/,fin:()=>"قفزات عمودية: 4 × 6 قفزات بأقصى ارتفاع، راحة دقيقة بين كل مجموعة",tips:["اهتم بأكتافك: تمارين السحب الخلفي مهمة بقدر الضغط","القفز وانت تعبان بيزيد الإصابات، فاخلّي القفز بأول الحصة"]},
-box:{n:"ملاكمة",pref:/بالوف|حطب|دوران|رفرفة|فيس|بلانك|حبل/,fin:a=>a.has("bg")?"6 جولات × 3 دقايق على الكيس بنص قوتك، راحة دقيقة بين الجولات":"6 جولات × 3 دقايق شادو بوكسينغ (ملاكمة بالهوا)، راحة دقيقة بين الجولات",tips:["قوة الدوران من الورك والجذع، فخلّي تمارين الكور من أساس البرنامج","حبل القفز بالتسخين بيحسّن خفة الرجلين والتحمّل"]},
-mma:{n:"قتال ومصارعة",pref:/تعليق|مشي المزارع|عقلة|كيتل|ديدلفت|تجديف/,fin:()=>"5 جولات × 3 دقايق شادو أو دريلات حرّة بشدّة متوسطة، راحة دقيقة",tips:["قوة القبضة والسحب أهم من العضلات الكبيرة","خلّي حصص التمرين الثقيلة بعيدة عن حصص السباراغ القاسية"]},
+box:{n:"ملاكمة",pref:/بالوف|حطب|دوران|فيس|بلانك|تجديف|عقلة|ديدلفت|سوينغ|جسر|بلغاري/,fin:()=>"جولات سرعة: 6 × (30 ثانية لكمات سريعة بالهوا بأقصى سرعة / 30 ثانية راحة)",tips:["قوة الدوران من الورك والجذع، فخلّي تمارين الكور من أساس البرنامج","حبل القفز بالتسخين بيحسّن خفة الرجلين والتحمّل"]},
+mma:{n:"قتال ومصارعة",pref:/تعليق|مشي المزارع|عقلة|كيتل|ديدلفت|تجديف/,fin:()=>"5 جولات × (20 ثانية سبرول وبيربي / 40 ثانية راحة)",tips:["قوة القبضة والسحب أهم من العضلات الكبيرة","خلّي حصص التمرين الثقيلة بعيدة عن حصص السباراغ القاسية"]},
 run:{n:"جري",pref:/رجل وحدة|لانجز|سمانة|جسر|بلغاري/,fin:()=>"6 × 100 متر ركض متسارع بالتدريج (ستريدز)، والرجوع مشي",tips:["قوة الرجل الواحدة والسمانة بتقلّل إصابات الركض","الجري الخفيف بيظل أساس البرنامج، والحديد بيكمّله"]},
 tn:{n:"تنس",pl:1,pref:/بالوف|حطب|دوران|رفرفة|فيس|لانجز/,fin:()=>"8 × 20 ثانية نقلات جانبية سريعة، راحة 40 ثانية",tips:["كتف سليم = لعب أطول: ركّز على الكتف الخلفي والدوران","التبديل السريع بالاتجاه بيحتاج رجلين قوية ومرنة"]}
 };
-const PR={mus:{c:[4,"6-10",90],i:[3,"10-15",60]},str:{c:[5,"3-5",150],i:[3,"6-8",90]},fat:{c:[3,"10-15",45],i:[3,"12-15",30]},end:{c:[3,"15-20",30],i:[2,"15-20",30]},pow:{c:[4,"3-5",120],i:[3,"8-10",60]},gen:{c:[3,"8-12",60],i:[2,"12-15",45]}};
+// [مجموعات، تكرار، راحة بين المجموعات بالثواني، راحة قبل التمرين الجاي] — حسب الهدف (مراجع ACSM/NSCA: القوة 2-3 د، الضخامة 1-2 د، التحمّل أقل من دقيقة)
+const PR={mus:{c:[4,"6-10",120,150],i:[3,"10-15",75,90]},str:{c:[5,"3-5",180,180],i:[3,"6-8",120,120]},fat:{c:[3,"10-15",60,75],i:[3,"12-15",45,60]},end:{c:[3,"15-20",45,60],i:[2,"15-20",30,45]},pow:{c:[4,"3-5",150,180],i:[3,"8-10",75,90]},gen:{c:[3,"8-12",90,120],i:[2,"12-15",60,75]}};
+// تمارين المهارة لكل رياضة (صاحب المتجر 23/11/2026: «بالملاكمة ما في ولا حركة ملاكمة»). بتجي بأول الحصة بعد التسخين، وبعدها القوة.
+// [الاسم، الأدوات ("|" = وحدة بتكفي)، أقل مستوى، بحث المكتبة، مجموعات/جولات، القيمة، الوحدة، راحة بين المجموعات (ث)، نصيحة، نوع: r جولات/b انفجاري/c تحكّم]
+const SKX={
+box:[
+ ["شادو بوكسينغ: جاب، كروس، هوك، أبركت مع حركة الرجلين","",0,"jab crosses|boxing jab",3,"3","دقايق",60,"إيدك مرفوعة تحمي وجهك، ورجّع إيدك بسرعة بعد كل ضربة","r"],
+ ["كومبينيشن على الكيس: جاب-كروس، وبعدين جاب-كروس-هوك، وبعدين جاب-كروس-هوك-كروس","bg",0,"jab jab right cross|boxing cross hook cross",4,"3","دقايق",60,"اضرب من الورك والرجل مو من الكتف، وتنفّس مع كل ضربة","r"],
+ ["دفاع: انحناء (داك) ورد بأبركت","",0,"boxing duck and uppercut",3,"2","دقيقة",45,"انزل من ركبك مو من ظهرك، وعينك عالخصم","r"],
+ ["هوك يمين ويسار بالتبادل","",0,"boxing right left hook",3,"1","دقيقة",45,"لف الورك ورجلك الأمامية مع الهوك، والكوع بمستوى الإيد","r"],
+ ["أبركت بأقصى سرعة","",1,"max speed uppercut",6,"20","ثانية",40,"سرعة مع تحكّم، ورجّع إيدك لوجهك","b"],
+ ["حبل قفز بإيقاع الملاكم","jr",0,"skip jump rope|jump rope",3,"3","دقايق",60,"على أطراف أصابعك وبخفّة، بدّل الرجلين","r"],
+ ["لكمات بالمطاط (قوة الضربة)","bd",0,"resistance band punch",3,"30","ثانية",45,"المطاط مثبّت ورا ضهرك، واضرب لقدّام وارجع ببطء","b"]
+],
+mma:[
+ ["شادو قتال: لكمات وركلات وتغيير مستوى","",0,"jab crosses|front leg hook kick",3,"3","دقايق",60,"تحرّك دايماً وما توقف قدّام خصم وهمي","r"],
+ ["ركلة دائرية بالتبادل","",0,"rear leg hook kick|hook kick kickboxing",3,"1","دقيقة",45,"لف رجل الارتكاز والورك مع الركلة","r"],
+ ["كيس: لكمات وركب وركلات","bg",0,"jab jab right cross",4,"3","دقايق",60,"جولات حقيقية: شغل متواصل بنص قوتك وبتركيز عالتقنية","r"],
+ ["سبرول (دفاع ضد المسكة) بسرعة","",1,"burpee",4,"8","تكرار",60,"الورك لتحت عالأرض بسرعة، والرجلين لورا وعريضة","b"],
+ ["مشي الدب (قوة وتحكّم)","",0,"bear crawl",3,"30","ثانية",45,"ركبك قريبة من الأرض وضهرك مستوي","r"],
+ ["تعليق عالعقلة (قوة القبضة)","pu",0,"dead hang|hanging",3,"30","ثانية",60,"شد كتافك لتحت، والقبضة كاملة","r"]
+],
+fb:[
+ ["ركض تسارع 20 متر","",0,"sprint",6,"1","ركضة",75,"ادفش الأرض لورا وجسمك مايل لقدّام بأول الخطوات","b"],
+ ["تغيير اتجاه 5-10-5 (شاتل)","",0,"side shuttle",5,"1","ركضة",75,"انزل بالورك قبل ما تلف، والمس الخط بإيدك","b"],
+ ["قفز جانبي (لاترال باوند)","",1,"lateral bound",3,"6","لكل جهة",60,"انزل بنعومة وثبّت ثانية قبل القفزة الجاية","b"],
+ ["سكيب A (ركب عالية بإيقاع)","",0,"sprinter skip|skips",3,"20","متر",45,"الركبة لفوق والقدم تحت الورك","c"],
+ ["نورديك هامسترينغ (حماية الفخد الخلفي)","",1,"nordic hamstring curl",3,"5","تكرار",90,"انزل ببطء قد ما فيك، وحدا يمسك كعبيك","c"]
+],
+bk:[
+ ["قفز عمودي بأقصى ارتفاع","",0,"jump squat",4,"5","تكرار",75,"إيدين لفوق مع القفزة، وانزل بركب مثنية","b"],
+ ["زحف دفاعي جانبي","",0,"side shuttle",4,"20","ثانية",40,"ورك واطي وإيدين مفتوحة، وما تصلّب رجليك","b"],
+ ["قفز على رجل وحدة","",1,"single leg vertical jump",3,"5","لكل رجل",60,"اهبط على نفس الرجل وثبّت","b"],
+ ["قفز عالستيب أو المصطبة","bn|st",1,"jump box",4,"5","تكرار",75,"انزل مشي مو قفز، وكل قفزة بأقصى قوة","b"],
+ ["ركض تسارع بين خطّين","",0,"sprint",6,"1","ركضة",60,"وقفة سريعة ولف، متل الهجمة المرتدة","b"]
+],
+vb:[
+ ["قفزة البلوك (إيدين لفوق)","",0,"jump squat",4,"6","تكرار",60,"إيدين قدّام وجهك وطالعة مع القفزة","b"],
+ ["قفزة الضرب بخطوات الاقتراب","",1,"single leg vertical jump",4,"5","تكرار",75,"آخر خطوتين سريعة، والإيدين بتمرجح لورا ولفوق","b"],
+ ["هبوط ناعم وتثبيت","",0,"box jump down with one leg stabilization",3,"5","تكرار",45,"الركبة باتجاه أصابع رجلك، وما تفوت لجوّا","c"],
+ ["دوران خارجي للكتف بالمطاط (حماية الكتف)","bd",0,"band standing external shoulder rotation",3,"15","تكرار",45,"الكوع لاصق جنبك، والحركة بطيئة","c"],
+ ["زحف جانبي سريع","",0,"side shuttle",4,"20","ثانية",40,"خطوات قصيرة وسريعة","b"]
+],
+run:[
+ ["ستريدز: ركض متسارع 80 متر","",0,"sprint",6,"1","ركضة",60,"بلّش هادي وسرّع لـ 90% بآخرها، والرجوع مشي","b"],
+ ["سكيب A","",0,"sprinter skip|skips",3,"20","متر",45,"الركبة لفوق والقدم بتنزل تحت الورك","c"],
+ ["ركب عالية سريعة","",0,"high knee run",3,"20","ثانية",45,"جذعك منتصب وإيدينك بتمرجح","b"],
+ ["رفع سمانة على رجل وحدة بنزول بطيء","",0,"single leg calf raise",3,"12","لكل رجل",45,"انزل بـ 3 ثواني، بيحمي وتر أخيل","c"],
+ ["توازن على رجل وحدة","",0,"single leg stand",3,"30","ثانية لكل رجل",30,"غمّض عيونك إذا صار سهل","c"]
+],
+tn:[
+ ["خطوة الاستعداد (سبليت ستيب) ونقلة جانبية","",0,"side shuttle",4,"20","ثانية",40,"نطّة صغيرة قبل كل نقلة، متل ما الخصم بيضرب","b"],
+ ["نقلات وتغيير اتجاه سريع","",0,"side shuttle",5,"15","ثانية",45,"ورك واطي، وخطوة أولى سريعة","b"],
+ ["دوران الجذع بالمطاط (حركة الضربة)","bd|cb",0,"resistance band kneeling high low anti rotation chop|chop",3,"12","لكل جهة",45,"القوة من الورك لفوق، مو من الإيد","c"],
+ ["دوران خارجي للكتف بالمطاط (حماية الكتف)","bd",0,"band standing external shoulder rotation",3,"15","تكرار",45,"الكوع لاصق جنبك","c"],
+ ["قفز سكيتر جانبي","",1,"skater hops",3,"8","لكل جهة",60,"اهبط على رجل وحدة وثبّت","b"]
+],
+cal:[
+ ["الوقوف على اليدين عالحيط","",1,"handstand against the wall|handstand",4,"20-30","ثانية",60,"شد بطنك وادفش الأرض بكتافك","c"],
+ ["إل-سيت على الأرض","",1,"l-sit on floor|l-sit",4,"10-20","ثانية",60,"الرجلين مستقيمة، وادفش الأرض لتحت","c"],
+ ["تعليق عالعقلة بكتاف مشدودة","pu",0,"dead hang|hanging",3,"30","ثانية",60,"شد لوحي الكتف لتحت","c"]
+]
+};
+// تقسيم الثواني لنص مفهوم
+const tsec=x=>{const s=[30,40,45,60,75,90,120,150,180,240].reduce((a,b)=>Math.abs(b-x)<Math.abs(a-x)?b:a);return{60:"دقيقة",90:"دقيقة ونص",120:"دقيقتين",150:"دقيقتين ونص",180:"3 دقايق",240:"4 دقايق"}[s]||s+" ثانية"};
+
 const DAYS={
 fbA:{t:"جسم كامل (أ)",ty:"fb",s:["sq","hp","hr","vp","hi","co","tr"]},
 fbB:{t:"جسم كامل (ب)",ty:"fb",s:["hi","vp","vr","lu","hp","co","bi"]},
@@ -294,21 +361,24 @@ function gen(I,seed){
     }
     return null;
   }
+  const r15=x=>Math.max(30,Math.round(x/15)*15);
   function rx(e){
-    if(e.k==="h")return{s:lv?3:2,r:["20-30 ث","30-45 ث","45-60 ث"][lv],rest:45,h:1};
-    if(e.k==="p")return e.r==="jr"?{s:3,r:"60 ث",rest:45,h:1}:{s:lv?4:3,r:lv?"5-6":"4-5",rest:75};
-    let[s,r,rest]=PR[effG][e.k==="c"?"c":"i"];
-    if(e.k==="c"&&lv===0){s=Math.min(s,3);if(effG==="str"){r="5-8";rest=120}if(effG==="pow")r="5-6"}
-    if(short){s=Math.min(s,e.k==="c"?3:2);rest=Math.round(rest*.75)}
-    if(I.age>=50)rest+=15;
-    return{s,r,rest};
+    if(e.k==="h")return{s:lv?3:2,r:["20-30","30-45","45-60"][lv],unit:"ثانية",rest:45,nx:60,h:1};
+    if(e.k==="p")return e.r==="jr"?{s:3,r:"60",unit:"ثانية",rest:45,nx:60,h:1}:{s:lv?4:3,r:lv?"5-6":"4-5",unit:"تكرار",rest:90,nx:120};
+    let[s,r,rest,nx]=PR[effG][e.k==="c"?"c":"i"];
+    if(e.k==="c"&&lv===0){s=Math.min(s,3);if(effG==="str"){r="5-8";rest=120;nx=150}if(effG==="pow")r="5-6"}
+    if(!e.r)r=(e.k==="c"?{str:"6-10",pow:"6-8",mus:"10-15",fat:"12-20",end:"15-25",gen:"10-15"}:{str:"10-12",pow:"10-12",mus:"12-20",fat:"15-20",end:"20-25",gen:"12-15"})[effG]; // وزن الجسم: تكرار أعلى أو نزول أبطأ
+    if(!e.r){rest=Math.min(rest,effG==="str"?120:90);nx=Math.min(nx,effG==="str"?150:120)}
+    if(short){s=Math.min(s,e.k==="c"?3:2);rest=r15(rest*.75);nx=r15(nx*.75)}
+    if(I.age>=50){rest+=15;nx+=15}
+    return{s,r,unit:"تكرار",rest,nx};
   }
   const est=(e,x)=>x.s*((x.h?45:e.k==="p"?20:40)+x.rest)/60+1;
   const split=splitFor(I),warm=short?5:8,days=[];
   split.forEach((tp,di)=>{
     const dayUsed=new Set(),rows=[];
     let slots=tp.s.slice();
-    if((tp.ty==="lo"||tp.ty==="fb")&&(sp.pl||G==="pow"))slots.unshift("pl");
+    if((tp.ty==="lo"||tp.ty==="fb")&&((sp.pl&&!SKX[I.sp])||G==="pow"))slots.unshift("pl");
     if(sp.more&&lv>0)slots=slots.concat(sp.more);
     const last=di>=split.length-2,sf=sp.fin&&last?sp.fin(A):null;
     let fin=null;
@@ -316,6 +386,23 @@ function gen(I,seed){
     else if((G==="fat"||G==="end")&&(split.length<=3||di%2===0)){fin=goalFin(G,A,lowImp);if(short)fin.m=Math.min(fin.m,6)}
     const budget=I.min-warm-(short?3:4)-(fin?fin.m:0),maxN=[6,7,8][lv]+(sp.more?1:0);
     let spent=0,n=0;
+    // 1) مهارة الرياضة بأول الحصة (لكل رياضة إلها مهارات)، وكل يوم بيبدّل الدريلات
+    const SK0=(SKX[I.sp]||[]).filter(d=>d[2]<=maxL&&has(d[1])&&!(lowImp&&d[9]==="b"&&!["box","mma"].includes(I.sp)));
+    // الدريلات يلي بتحتاج أداة عندك (كيس، حبل…) أولاً، وبعدين الباقي، وكل يوم بيبدّل
+    const SKe=SK0.filter(d=>d[1]),SKb=SK0.filter(d=>!d[1]),rot=(a,k)=>a.length?a.slice(k%a.length).concat(a.slice(0,k%a.length)):a;
+    const SK=rot(SKe,di+(seed||0)).slice(0,1).concat(rot(SKb,di*2+(seed||0)),rot(SKe,di+(seed||0)).slice(1));
+    if(SK.length){
+      // المهارة بتاخد لحد 45% من وقت الحصة، والباقي للقوة
+      const want=Math.min(SK.length,short?2:(lv?3:2)),st=0,skB=Math.max(14,(I.min-warm-(short?3:4))*(["box","mma"].includes(I.sp)?.55:.42));
+      for(let k=0,got=0;k<SK.length&&got<want;k++){
+        const d=SK[(st+k)%SK.length],v=parseFloat(d[5])||1,dur=/دق/.test(d[6])?v*60:/ثانية/.test(d[6])?v:25;
+        let sN=d[4];const tt=n2=>n2*(dur+d[7])/60+1.5;
+        while(spent+tt(sN)>skB&&sN>2)sN--;
+        if(spent+tt(sN)>skB)continue;
+        rows.push({n:d[0],q:d[3],eq:d[1],u:false,k:"s",sk:1,s:sN,r:d[5],unit:d[6],rest:d[7],nx:d[9]==="b"?120:90,tip:d[8]});
+        spent+=tt(sN);got++;
+      }
+    }
     for(const sl of slots){
       if(n>=maxN)break;
       const e=pick(sl,dayUsed);if(!e)continue;
@@ -323,7 +410,7 @@ function gen(I,seed){
       if(n<3){const allow=Math.max(4,(budget-spent)/(3-n));while(t>allow&&r.s>2){r.s--;t=est(e,r)}while(t>allow&&r.rest>60){r.rest-=15;t=est(e,r)}}
       else if(spent+t>budget)continue;
       dayUsed.add(e.n);used[e.n]=(used[e.n]||0)+1;spent+=t;n++;
-      rows.push({n:e.n,q:e.q,eq:e.r||"",u:e.u,k:e.k,s:r.s,r:r.r,rest:r.rest,h:!!r.h,tip:TIP[e.p]||""});
+      rows.push({n:e.n,q:e.q,eq:e.r||"",u:e.u,k:e.k,s:r.s,r:r.r,unit:r.unit,rest:r.rest,nx:r.nx,h:!!r.h,tip:TIP[e.p]||""});
     }
     days.push({t:tp.t,wd:WD[I.days][di],ty:tp.ty,warm:warmFor(tp.ty,A),cool:coolFor(tp.ty,A),rows,fin,total:Math.round(warm+(short?3:4)+spent+(fin?fin.m:0))});
   });
@@ -429,6 +516,15 @@ function gen(I,seed){
     return"";
   }
   const num=s=>`<bdi dir="ltr">${esc(s)}</bdi>`;
+  // «15 تكرار × 3 مجموعات»: الأول التكرار أو الوقت، والتاني عدد المجموعات (أو الجولات)
+  const unitOf=x=>x.unit!=null?x.unit:(x.h?"":"تكرار");
+  const setTxt=x=>{const u=unitOf(x),rr=String(x.r).replace(/(\d+)-(\d+)/,"$1 لـ $2");
+    if(u==="ركضة")return `${x.s} ركضات`;
+    if(/^دق/.test(u))return `${tsec((parseFloat(x.r)||1)*60)} × ${x.s} جولات`;
+    return `${rr}${u?" "+(/^لكل/.test(u)?"تكرار "+u:u):""} × ${x.s} مجموعات`};
+  const gapN=x=>/^دق/.test(unitOf(x))&&x.sk?"الجولات":unitOf(x)==="ركضة"?"الركضات":"المجموعات";
+  const SKN={box:"🥊 مهارة الملاكمة",mma:"🤼 مهارة القتال",fb:"⚽ سرعة ومهارة",bk:"🏀 قفز وسرعة",vb:"🏐 قفز وحماية الكتف",run:"🏃 تقنية الجري",tn:"🎾 حركة الملعب",cal:"🤸 مهارات الكالستنكس"};
+  const secHead=(rows,j)=>{const x=rows[j],p=rows[j-1];if(j===0&&x.sk)return`<li class="sec">${esc(SKN[I&&I.sp]||"مهارة")}</li>`;if(!x.sk&&(j===0||p.sk)&&rows.some(r=>r.sk))return'<li class="sec">🏋️ تمارين القوة</li>';return""};
   const rest=s=>s%60===0?num(s/60)+" د":num(s)+" ث";
   function show(){
     const r=R,N=r.nu;
@@ -439,7 +535,7 @@ function gen(I,seed){
     ${r.days.map((d,i)=>`<section class="dy"${i===DAY?"":" hidden"} data-dy="${i}">
       <div class="dyh"><div class="dn"><b>اليوم ${num(i+1)}</b><small>${esc(d.wd)}</small></div><div class="dt"><b>${esc(d.t)}</b><small>⏱ حوالي ${num(d.total)} د · ${num(d.rows.length)} تمارين</small></div></div>
       <div class="blk wu"><b>🔥 تسخين</b><span>${esc(d.warm)}</span></div>
-      <ol class="exl">${d.rows.map((x,j)=>`<li class="ex" data-q="${esc(x.q||"")}" data-w="${esc(x.eq||"")}"><span class="no">${num(j+1)}</span><div class="xb"><div class="n">${esc(x.n)}${x.u?`<em>لكل جهة</em>`:""}</div><div class="p"><b>${num(x.s)} × ${num(x.r)}${x.h?"":" تكرار"}</b><span>راحة ${rest(x.rest)}</span></div>${x.tip?`<div class="t">${esc(x.tip)}</div>`:""}</div></li>`).join("")}</ol>
+      <ol class="exl">${d.rows.map((x,j)=>`${secHead(d.rows,j)}<li class="ex" data-q="${esc(x.q||"")}" data-w="${esc(x.eq||"")}"><span class="no">${num(j+1)}</span><div class="xb"><div class="n">${esc(x.n)}${x.u?`<em>لكل جهة</em>`:""}</div><div class="p"><b>${esc(setTxt(x))}</b></div><div class="rs"><span>⏸ بين ${gapN(x)}: ${esc(tsec(x.rest))}</span>${x.nx&&j<d.rows.length-1?`<span>⏭ قبل التمرين الجاي: ${esc(tsec(x.nx))}</span>`:""}</div>${x.tip?`<div class="t">${esc(x.tip)}</div>`:""}</div></li>`).join("")}</ol>
       ${d.fin?`<div class="blk fin"><b>${esc(d.fin.t)} (${num(d.fin.m)} د)</b><span>${esc(d.fin.x)}</span></div>`:""}
       <div class="blk cd"><b>🧘 تبريد</b><span>${esc(d.cool)}</span></div></section>`).join("")}
     <div class="card"><h3>🍽 تغذيتك (تقدير تقريبي)</h3><div class="nu"><div><b>${num(N.k)}</b><small>سعرة باليوم</small></div><div><b>${num(N.p)}</b><small>غ بروتين</small></div><div><b>${num(N.c)}</b><small>غ كربوهيدرات</small></div><div><b>${num(N.f)}</b><small>غ دهون</small></div></div>
@@ -488,7 +584,7 @@ function gen(I,seed){
   }
   function asText(){
     const r=R,L=[`برنامجي من KO SPORT — ${r.sp} · ${GOALN[r.G]} · ${r.lv} · ${r.pl}`,""];
-    r.days.forEach((d,i)=>{L.push(`اليوم ${i+1} (${d.wd}) — ${d.t}`,`تسخين: ${d.warm}`);d.rows.forEach(x=>L.push(`• ${x.n}${x.u?" (لكل جهة)":""}: ${x.s} × ${x.r}${x.h?"":" تكرار"} · راحة ${x.rest} ث`));if(d.fin)L.push(`${d.fin.t}: ${d.fin.x}`);L.push(`تبريد: ${d.cool}`,"")});
+    r.days.forEach((d,i)=>{L.push(`اليوم ${i+1} (${d.wd}) — ${d.t}`,`تسخين: ${d.warm}`);d.rows.forEach(x=>L.push(`• ${x.n}${x.u?" (لكل جهة)":""}: ${setTxt(x)} · بين المجموعات ${tsec(x.rest)}${x.nx?" · قبل الجاي "+tsec(x.nx):""}`));if(d.fin)L.push(`${d.fin.t}: ${d.fin.x}`);L.push(`تبريد: ${d.cool}`,"")});
     const N=r.nu;L.push(`التغذية: ${N.k} سعرة · ${N.p}غ بروتين · ${N.c}غ كربوهيدرات · ${N.f}غ دهون · مي ${N.water} ل`,"",...r.notes.map(t=>"- "+t));
     return L.join("\n");
   }
@@ -553,7 +649,7 @@ function gen(I,seed){
       head(false);
       y+=box(g,y,"🔥 تسخين",d.warm,GBG,GOLD)+26;
       for(let j=0;j<d.rows.length;j++){
-        const x=d.rows[j],m=find(x.q||"",x.eq),RH=200;
+        const x=d.rows[j],m=find(x.q||"",x.eq),RH=222;
         if(y+RH>PH-120){pages.push(P.c);P=newPage();g=P.g;head(true)}
         rr(g,M,y,PW-2*M,RH-16,18,"#fff",LINE);
         // الرقم
@@ -563,8 +659,9 @@ function gen(I,seed){
         const tw=tr-M-20;let ty=y+18;
         ty+=text(g,x.n+(x.u?" (لكل جهة)":""),tr,ty,tw,32,800,INK,42)+6;
         const pill=(t,xr,bg,col)=>{font(g,26,800);const w=g.measureText(t).width+36;rr(g,xr-w,ty,w,46,23,bg);g.fillStyle=col;g.textAlign="right";g.fillText(t,xr-18,ty+8);return w};
-        let px=tr;px-=pill(x.s+" مجموعات",px,INK,"#fff")+10;px-=pill(String(x.r).replace(/(\d+)-(\d+)/,"$1 لـ $2")+(x.h?"":" تكرار"),px,INK,"#fff")+10;pill("راحة "+x.rest+" ثانية",px,GBG,GOLD2);
-        ty+=60;if(x.tip)text(g,x.tip,tr,ty,tw,22,400,MUT,30);
+        let px=tr;px-=pill(setTxt(x),px,INK,"#fff")+10;pill("راحة "+tsec(x.rest),px,GBG,GOLD2);
+        ty+=56;text(g,"راحة بين "+gapN(x)+": "+tsec(x.rest)+(x.nx&&j<d.rows.length-1?" · قبل التمرين الجاي: "+tsec(x.nx):""),tr,ty,tw,22,700,GOLD2,30);ty+=32;
+        if(x.tip)text(g,x.tip,tr,ty,tw,22,400,MUT,30);
         y+=RH;
       }
       const ends=[];if(d.fin)ends.push([d.fin.t+" ("+d.fin.m+" د)",d.fin.x,GBG,GOLD]);ends.push(["🧘 تبريد",d.cool,"#f7f5f0",LINE]);
