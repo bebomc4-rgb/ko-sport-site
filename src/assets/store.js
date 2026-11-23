@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=435" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=436" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +1981,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=435"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=436"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2195,8 +2195,9 @@
       const n = sn;
       main = n === 1 ? esc(val(P[0])) : isT ? esc(val(P[0]) + " × " + exlSetN(n)) : esc(P[0] + " تكرار × " + exlSetN(n));
     } else main = esc(exlSetN(P.length) + ": " + (isT ? P.map((v) => exlSecAr(sec(v))).join("، ") : P.join("، ") + " تكرار"));
-    const rs = +rest > 0 ? " · راحة " + esc(exlSecAr(+rest)) : "";
-    return main + rs;
+    // التكرار والمجموعات بنفس السطر دايماً، والراحة بسطر تحتهن
+    const rs = +rest > 0 ? `<span class="exl-nw exl-rs">راحة ${esc(exlSecAr(+rest))}</span>` : "";
+    return (main.indexOf(":") < 0 ? `<span class="exl-nw">${main}</span>` : main) + rs;
   }
   const exlPT = (i, p) => (exl.progAr && exl.progAr[i]) || p.t;
   const exlMeta = (p) => [p.dy ? p.dy + " أيام بالأسبوع" : "", p.wk ? p.wk + " أسابيع" : "", EXL_LV[p.lv] || ""].filter(Boolean).join(" · ");
