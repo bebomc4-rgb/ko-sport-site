@@ -4525,6 +4525,8 @@ const EXL_EFIX_G = {
   "Wheel roller": "3ac5af2550 6806e6cf2f c109250735",
 };
 const EXL_EFIX = {}; for (const [e, ids] of Object.entries(EXL_EFIX_G)) for (const i of ids.split(" ")) EXL_EFIX[i] = e;
+// أدوات صارت قسم واحد (حتى لو تعديل قديم من اللوحة فيه الاسم القديم)
+const EXL_EMERGE = { Band: "Resistance Band", Roll: "Massage", Rollball: "Massage", "Vibrate Plate": "Massage" };
 async function exlibAll(env) {
   let L = []; try { L = JSON.parse((await env.STORE.get("exlib:index")) || "[]"); } catch { L = []; }
   // om/oe = العضلة/الأداة الأصلية بالمكتبة (بس للتمارين يلي تصحّحت)، عشان روابط «برامج التمرين» تضل تلاقي تمارينها
@@ -4532,9 +4534,11 @@ async function exlibAll(env) {
   // «مطاط» و«مطاط مقاومة» نفس الأداة: صارو قسم واحد «مطاط مقاومة» (صاحب المتجر 23/11/2026)
   L = L.map((x) => (x.e === "Band" ? { ...x, e: "Resistance Band", oe: x.e } : x));
   L = L.map((x) => (EXL_EFIX[x.i] && EXL_EFIX[x.i] !== x.e ? { ...x, e: EXL_EFIX[x.i], oe: x.oe || x.e } : x));
+  // الرول وكرة المساج ومنصة الاهتزاز: قسم أداة واحد «مساج وإطالة» (صاحب المتجر 23/11/2026)
+  L = L.map((x) => (EXL_EMERGE[x.e] ? { ...x, e: EXL_EMERGE[x.e], oe: x.oe || x.e } : x));
   let ed = {}; try { ed = (await env.STORE.get("exlib:edits", "json")) || {}; } catch { ed = {}; }
   let ar = {}; try { ar = (await env.STORE.get("exlib:ar", "json")) || {}; } catch { ar = {}; }
-  return { L, ed, ar, merged: L.map((x) => { const o = ed[x.i] ? { ...x, ...ed[x.i], x: 1 } : x; return ar[x.i] ? { ...o, a: ar[x.i] } : o; }) };
+  return { L, ed, ar, merged: L.map((x) => { const o = ed[x.i] ? { ...x, ...ed[x.i], x: 1 } : x; if (EXL_EMERGE[o.e]) o.e = EXL_EMERGE[o.e]; return ar[x.i] ? { ...o, a: ar[x.i] } : o; }) };
 }
 const EXLIB_CFG_DEF = { theme: "site", size: 240, layout: "grid", speed: 1.5, autoplay: true, showEn: true, mCols: 3, eCols: 3, xCols: 2, shape: "round", showCount: true, hideM: ["Other"], skipE: ["Stretching"], per: 24, pCols: 0, gap: 12, radius: 14, ratio: 0 };
 function exlibCfgClean(b, cur) {

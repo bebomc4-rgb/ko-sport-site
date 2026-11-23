@@ -35,7 +35,7 @@
   };
   // صور حقيقية (أيقونات صاحب المتجر 21/11/2026) بـ /assets/exl/: لما تتوفر صورة للمفتاح بتنعرض، وإلا بيرجع الرسم SVG
   var PM = { Back: "Back", Biceps: "Biceps", "Upper Arms": "Biceps", Calves: "Calves", Cardio: "Cardio", Chest: "Chest", Forearms: "Forearms", Hamstrings: "Hamstrings", Hips: "Hips", Neck: "Neck", Quadriceps: "Quadriceps", Thighs: "Quadriceps", Shoulders: "Shoulders", Triceps: "Triceps", Waist: "Waist" };
-  var PE = { Band: "Band", Barbell: "Barbell", "Olympic barbell": "Barbell", "Battling Rope": "Battling_Rope", "Body weight": "Body_weight", "Bosu ball": "Bosu_ball", Cable: "Cable", Dumbbell: "Dumbbell", "EZ Barbell": "EZ_Barbell", Kettlebell: "Kettlebell", "Leverage machine": "Leverage_machine", "Medicine Ball": "Medicine_Ball", "Power Sled": "Power_Sled", "Resistance Band": "Resistance_Band", Roll: "Roll", Rollball: "Rollball", Rope: "Rope", "Sled machine": "Sled_machine", "Smith machine": "Smith_machine", "Stability ball": "Stability_ball", Suspension: "Suspension", "Trap bar": "Trap_bar", Weighted: "Weighted", "Wheel roller": "Wheel_roller" };
+  var PE = { Band: "Band", Barbell: "Barbell", "Olympic barbell": "Barbell", "Battling Rope": "Battling_Rope", "Body weight": "Body_weight", "Bosu ball": "Bosu_ball", Cable: "Cable", Dumbbell: "Dumbbell", "EZ Barbell": "EZ_Barbell", Kettlebell: "Kettlebell", "Leverage machine": "Leverage_machine", "Medicine Ball": "Medicine_Ball", "Power Sled": "Power_Sled", "Resistance Band": "Resistance_Band", Roll: "Roll", Massage: "Roll", Rollball: "Rollball", Rope: "Rope", "Sled machine": "Sled_machine", "Smith machine": "Smith_machine", "Stability ball": "Stability_ball", Suspension: "Suspension", "Trap bar": "Trap_bar", Weighted: "Weighted", "Wheel roller": "Wheel_roller" };
   function ph(t, f) { return '<img class="exl-ph exl-p' + t + '" src="/assets/exl/' + t + "_" + f + '.webp?v=365" alt="" width="192" height="192" loading="lazy" decoding="async">'; }
   function m(k) {
     if (PM[k]) return ph("m", PM[k]);
@@ -71,6 +71,7 @@
     "Stability ball": '<circle cx="12" cy="12" r="9"/><path d="M5 8c4 2 10 2 14 0M5 16c4-2 10-2 14 0"/>',
     Rollball: '<circle cx="12" cy="12" r="5.5"/><path d="M8 10c2 1 6 1 8 0"/>',
     Roll: '<rect x="3" y="8" width="18" height="8" rx="4"/><path d="M8 8v8M12 8v8M16 8v8"/>',
+    Massage: '<rect x="3" y="8" width="18" height="8" rx="4"/><path d="M8 8v8M12 8v8M16 8v8"/>',
     Stick: '<path d="M4 20 20 4M3 21l2-2"/>',
     Suspension: '<path d="M12 3v3M5 6h14M7 6l-2 14M17 6l2 14M4.5 20h3M16.5 20h3"/>',
     "Vibrate Plate": '<rect x="4" y="14" width="16" height="4" rx="1.5"/><path d="M8 10V8M12 11V6M16 10V8"/>',
