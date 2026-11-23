@@ -1,0 +1,12 @@
+name: progdump
+# مؤقت: بيسحب تصدير البرامج المشفّر (ما بينقرا بلا المفتاح الخاص) كـ artifact ليوم واحد
+on: workflow_dispatch
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for i in 1 2 3 4 5 6; do curl -sS -m 60 -o dump.json -w "%{http_code}\n" "https://ko-sport.pages.dev/api/exlib/progdump?t=$(date +%s)" && head -c 30 dump.json && grep -q '"k"' dump.json && break; sleep 20; done
+          ls -la dump.json
+      - uses: actions/upload-artifact@v4
+        with: { name: dump, path: dump.json, retention-days: 1 }
