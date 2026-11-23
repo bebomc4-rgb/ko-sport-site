@@ -31,6 +31,7 @@ h2{font-size:1.05rem;margin:18px 2px 8px;font-weight:800}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chips button{flex:none;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:8px 15px;font:inherit;font-size:.9rem;cursor:pointer;min-height:40px}
 .chips button.on{background:var(--btn);color:var(--btnfg);border-color:var(--btn);font-weight:700}
+.chips.eq button.on::before{content:"✓ ";font-weight:800}
 .chips.eq button.on{background:var(--goldbg);color:var(--gold2);border-color:var(--gold)}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
 .g3 label{display:flex;flex-direction:column;font-size:.8rem;color:var(--mut);gap:4px}
@@ -255,7 +256,7 @@ function gen(I,seed){
   if(home){[["db","دمبل"],["bd","مطاط مقاومة"],["pu","عقلة"],["jr","حبل قفز"],["kb","كيتل بيل"],["tx","حبل TRX"]].forEach(([t,w])=>{if(!A.has(t)&&shop.length<4)shop.push(w)});
     if(["box","mma"].includes(I.sp)&&!A.has("bg")&&shop.length<4)shop.push("كيس ملاكمة")}
   const b=Math.round(bmi*10)/10,bc=b<18.5?"نحيف":b<25?"طبيعي":b<30?"زيادة وزن":"سمنة";
-  return{days,notes,nu:nutri(I),bmi:b,bmiC:bc,shop:lvl?shop:[],G,sp:sp.n,lv:LVN[lv],split:split.length,pl:home?"بالبيت":"بالنادي"};
+  return{eqs:home?(I.eq.map(k=>EQN[k]).filter(Boolean).join("، ")||"وزن الجسم بس"):"كل أجهزة النادي",days,notes,nu:nutri(I),bmi:b,bmiC:bc,shop:lvl?shop:[],G,sp:sp.n,lv:LVN[lv],split:split.length,pl:home?"بالبيت":"بالنادي"};
 }
 /*END*/
 
@@ -273,10 +274,13 @@ function gen(I,seed){
     if(CFG.on===false){const a=document.getElementById("app");a.innerHTML='<div class="card"><h3>الصفحة مقفلة حالياً</h3><p class="hint">رجّع جرّب بعدين.</p></div>';return false}
     return true;
   }
-  let S={g:"m",age:"",h:"",w:"",lv:1,sp:"gen",goal:"gen",pl:"",eq:["db"],days:4,min:60},seed=0,R=null,I=null;
+  let S={g:"m",age:"",h:"",w:"",lv:1,sp:"gen",goal:"gen",pl:"",eq:[],days:4,min:60,v:0},seed=0,R=null,I=null;
   try{const o=JSON.parse(localStorage.getItem(KEY)||"{}");Object.assign(S,o)}catch{}
   if(!Array.isArray(S.eq))S.eq=[];
-  if(S.pl!=="gym"&&S.pl!=="home")S.pl=S.eq.includes("mc")?"gym":"home";
+  // نسخة 2: الأدوات بتبلش فاضية، عشان ما يضل شي مختار من قبل بلا ما ينتبه (صاحب المتجر: «اخترت ستيب بس وطلعلي بار»)
+  if(S.v!==2){S.eq=[];S.v=2;S.pl="";}
+  const eqSel=()=>S.eq.filter(k=>EQN[k]).map(k=>EQN[k]);
+  const eqLine=()=>{const a=eqSel();return a.length?"✅ اخترت: "+a.join("، ")+" (ووزن الجسم)":"ما اخترت شي: البرنامج رح يكون بوزن الجسم بس"};
   // الأدوات المحسوبة: النادي = كل شي، البيت = يلي اختارو (من لائحة البيت بس)
   // (كرة المساج والعصاية مو مضمونين بكل نادي، والكيس بس لرياضات القتال)
   const eqOf=()=>S.pl==="gym"?EQALL.filter(k=>!["mb","sk","bg"].includes(k)||(k==="bg"&&["box","mma"].includes(S.sp))):S.eq.filter(k=>EQN[k]);
@@ -299,7 +303,7 @@ function gen(I,seed){
     <div class="card"><h3>4) هدفك</h3>${ch("goal",Object.entries(GOALN))}</div>
     <div class="card"><h3>5) وين بتتمرّن؟</h3>${ch("pl",[["gym","🏋️ نادي كامل"],["home","🏠 بالبيت"]])}
       <p class="hint" id="eqg"${S.pl==="gym"?"":" hidden"}>بالنادي منستعمل كل الأجهزة والأدوات.</p>
-      <div id="eqh"${S.pl==="gym"?" hidden":""}><p class="hint" style="margin:12px 0 8px">شو الأدوات يلي عندك بالبيت؟ (اختار كل شي عندك)</p>${ch("eq",Object.entries(EQN),true)}<p class="hint">وزن الجسم دايماً متوفر. إذا ما عندك شي، خلّيها فاضية وبنعملك برنامج بلا أدوات.</p></div></div>
+      <div id="eqh"${S.pl==="gym"?" hidden":""}><p class="hint" style="margin:12px 0 8px">شو الأدوات يلي عندك بالبيت؟ (اكبس على كل أداة عندك، واكبس مرة تانية لتلغيها)</p>${ch("eq",Object.entries(EQN),true)}<p class="hint" id="eqs" style="font-weight:700;margin-top:10px">${esc(eqLine())}</p><p class="hint">وزن الجسم دايماً متوفر. إذا ما عندك شي، خلّيها فاضية وبنعملك برنامج بلا أدوات.</p></div></div>
     <div class="card"><h3>6) وقتك</h3><p class="hint" style="margin:0 0 8px">كم يوم بالأسبوع؟</p>${ch("days",[2,3,4,5,6].map(x=>[x,x+" أيام"]))}<p class="hint" style="margin-top:12px">كم دقيقة للحصة؟</p>${ch("min",[30,45,60,75,90].map(x=>[x,x+" دقيقة"]))}</div>
     <button class="btn w" id="go" type="button">اعمل برنامجي</button>`;
   }
@@ -308,6 +312,7 @@ function gen(I,seed){
     if(!(a>=12&&a<=80))return"اكتب عمرك (من 12 لـ 80 سنة)";
     if(!(h>=120&&h<=230))return"اكتب طولك بالسنتيمتر (من 120 لـ 230)";
     if(!(w>=30&&w<=250))return"اكتب وزنك بالكيلو (من 30 لـ 250)";
+    if(S.pl!=="gym"&&S.pl!=="home")return"اختار وين بتتمرّن: نادي كامل أو بالبيت";
     return"";
   }
   const num=s=>`<bdi dir="ltr">${esc(s)}</bdi>`;
@@ -315,7 +320,7 @@ function gen(I,seed){
   function show(){
     const r=R,N=r.nu;
     app.innerHTML=`<div class="sum"><b>برنامجك جاهز 💪</b>
-      <div class="tags"><span class="tag">${esc(r.sp)}</span><span class="tag">${esc(GOALN[r.G])}</span><span class="tag">${esc(r.lv)}</span><span class="tag">${esc(r.pl)}</span><span class="tag">${num(S.days)} أيام بالأسبوع</span><span class="tag">${num(S.min)} دقيقة</span></div></div>
+      <div class="tags"><span class="tag">${esc(r.sp)}</span><span class="tag">${esc(GOALN[r.G])}</span><span class="tag">${esc(r.lv)}</span><span class="tag">${esc(r.pl)}</span><span class="tag">${num(S.days)} أيام بالأسبوع</span><span class="tag">${num(S.min)} دقيقة</span></div><p class="hint" style="margin:8px 0 0">🧰 الأدوات: ${esc(r.eqs)}</p></div>
     <div class="bar noprint"><button class="btn" id="re">🔀 نسخة تانية</button><button class="btn ghost" id="pr">🖨 طباعة / PDF</button><button class="btn ghost" id="cp">📋 انسخ كنص</button><button class="btn ghost" id="ed">✏️ عدّل إجاباتي</button></div>
     ${r.days.map((d,i)=>`<div class="card dy"><div class="hd"><b>اليوم ${num(i+1)} · ${esc(d.wd)} · ${esc(d.t)}</b><span>حوالي ${num(d.total)} د</span></div>
       <div class="wu">🔥 تسخين: ${esc(d.warm)}</div>
@@ -394,7 +399,7 @@ function gen(I,seed){
   app.addEventListener("click",async e=>{
     const b=e.target.closest("button");if(!b)return;
     if(b.dataset.k){const k=b.dataset.k,v=b.dataset.v;
-      if(k==="eq"){const i=S.eq.indexOf(v);i<0?S.eq.push(v):S.eq.splice(i,1);b.classList.toggle("on")}
+      if(k==="eq"){const i=S.eq.indexOf(v);i<0?S.eq.push(v):S.eq.splice(i,1);b.classList.toggle("on");const q=$("#eqs");if(q)q.textContent=eqLine()}
       else{S[k]=["lv","days","min"].includes(k)?+v:v;b.parentNode.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))}
       if(k==="pl"){const h=$("#eqh"),g=$("#eqg");if(h)h.hidden=S.pl==="gym";if(g)g.hidden=S.pl!=="gym"}
       save();return}
