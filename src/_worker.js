@@ -2029,14 +2029,24 @@ async function acctApi(request, env, path, m) {
     await env.STORE.put(`acct:waip:${ip}:${hr}`, String(nIp + 1), { expirationTtl: 3700 });
     return json({ ok: true, t });
   }
-  if (path === "/api/acct/wa-check") {
+  // wa-done (23/11/2026): البوت بيدق هون أول ما توصلو رسالة الكود، فالحساب بينعمل حتى لو الزبون ما رجع للموقع (كان الحساب يضيع والاسم معو).
+  // ما فيه سر: الموقع نفسو بيسأل البوت (claim موقّع) عن الرقم. wa-check بعدها بيلاقي الحساب جاهز (acct:wadone:<رمز>)
+  if (path === "/api/acct/wa-check" || path === "/api/acct/wa-done") {
+    const push = path === "/api/acct/wa-done";
     const t = String(b.t || "").toUpperCase();
     if (!/^[A-Z0-9]{6}$/.test(t)) return json({ error: "رمز غلط" }, 400);
     const pend = await env.STORE.get("acct:wapend:" + t, "json");
-    if (!pend) return json({ error: "انتهى الوقت، جرّب من جديد", expired: true }, 410);
+    if (!pend) {
+      const dph = await env.STORE.get("acct:wadone:" + t);
+      const da = dph ? await env.STORE.get("acct:" + dph, "json") : null;
+      if (da && !push && !da.blocked) { await env.STORE.delete("acct:wadone:" + t); await acctTouch(env, request, da); return json({ ok: true, token: await acctToken(env, da), account: acctOut(da), existed: true }); }
+      return json({ error: "انتهى الوقت، جرّب من جديد", expired: true }, 410);
+    }
+    if (push && pend.login) return json({ ok: true, skip: true }); // الدخول: الزبون عم يستنّى بالصفحة
     const c = await botCall(env, "claim", t);
     if (!c) return json({ ok: true, waiting: true, off: true });
-    if (!c.known) return json({ ok: true, waiting: true }); // the store's WhatsApp may have just moved PC ↔ phone: keep waiting (this code still lives 20 minutes here)
+    if (!c.known) return json({ ok: true, waiting: true });
+    if (push && (!c.phone || !syPhone(c.phone))) return json({ ok: true, waiting: true }); // رقم مخفي أو مو مفهوم: الصفحة بتكمّل الطريق التاني // the store's WhatsApp may have just moved PC ↔ phone: keep waiting (this code still lives 20 minutes here)
     // WhatsApp hid the sender's number (@lid): the customer types the number and gets a code on WhatsApp instead
     if (!c.phone && c.hidden) { await env.STORE.delete("acct:wapend:" + t); return json({ error: "واتسابك ما بيبيّن رقمك، اكتب رقم موبايلك ومنبعتلك كود تأكيد عالواتساب", needPhone: true, login: !!pend.login }, 409); }
     const phone = syPhone(c.phone);
@@ -2044,11 +2054,12 @@ async function acctApi(request, env, path, m) {
     if (!phone) return json({ ok: true, waiting: true });
     await env.STORE.delete("acct:wapend:" + t);
     const ex = await env.STORE.get("acct:" + phone, "json");
-    if (ex) { if (ex.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403); await acctTouch(env, request, ex); return json({ ok: true, token: await acctToken(env, ex), account: acctOut(ex), existed: true }); }
+    if (ex) { if (ex.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403); if (push) { await env.STORE.put("acct:wadone:" + t, phone, { expirationTtl: 1800 }); return json({ ok: true }); } await acctTouch(env, request, ex); return json({ ok: true, token: await acctToken(env, ex), account: acctOut(ex), existed: true }); }
     if (pend.login) return json({ error: "ما في حساب على رقمك لهلق، سجّل حساب جديد", missing: true, phone }, 404);
     const a = { name: pend.name, phone, governorate: pend.governorate, salt: pend.salt, hash: pend.hash, verified: true, via: "whatsapp", at: new Date().toISOString(), dev: devOf(request), dev0: devOf(request), seen: new Date().toISOString() };
     await env.STORE.put("acct:" + phone, JSON.stringify(a));
     try { const all = (await env.STORE.get("customers", "json")) || {}, k = custKey(phone); all[k] = { ...cleanCust({ name: a.name, phone, gov: a.governorate, tags: ["حساب بالموقع"] }), ...(all[k] || {}), name: a.name, phone, gov: a.governorate, account: true }; await env.STORE.put("customers", JSON.stringify(all)); } catch {}
+    if (push) { await env.STORE.put("acct:wadone:" + t, phone, { expirationTtl: 1800 }); await botContacts(env, [a]).catch(() => {}); return json({ ok: true, created: true }); }
     return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
   }
   const phone = syPhone(b.phone), pw = String(b.password || "");
