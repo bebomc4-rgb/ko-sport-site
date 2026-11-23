@@ -4486,8 +4486,29 @@ async function exlibMedia(request, env, name) {
 // تعديلات صاحب المتجر على التمارين (21/11/2026): اسم/عضلة/أداة/إخفاء، محفوظة لحالها بـ exlib:edits ({id:{n,m,e,h}})
 // عشان تضل حتى لو انعاد رفع exlib:index. الإخفاء ما بيمسح الفيديو ولا الصورة.
 // (21/11/2026) + الاسم بالعربي بـ exlib:ar ({id:اسم}) وإعدادات المظهر بـ exlib:cfg
+// تصحيح عضلة التمارين يلي مصنّفة غلط بالمكتبة الأصلية (صاحب المتجر 23/11/2026: «شفت متوازي بالظهر وبايسبس بالترايسبس»).
+// انراجعو كل الـ 6101 تمرين بالاسم، وهي التمارين يلي انتقلت (رقم التمرين ← العضلة الصح). تعديل صاحب المتجر من اللوحة بيربح عليها.
+// متل: متوازي ← صدر، تمارين ترايسبس كانت بالبايسبس ← ترايسبس، كيرل هامر كان بالساعد ← بايسبس، هايبر إكستنشن كان بالبطن ← ظهر، بايك بوش أب ← أكتاف.
+const EXL_MFIX_G = {
+  "Back": "0b245850e7 0b992c0cef 108127c8ba 11a04752e7 1a8418517a 266b15ae8a 2740bfd647 2ddcff2c46 41da2607be 48757697fb 656015c68b 6d2c22ddd8 6ddfbacc18 7045d32790 71b3ba1cb7 8535d9fcbc a8c008c72d abcb1207b6 ba94c9becb bd531940f1 c6233b7c52 c8c7593713 d1d571d612 dfcd640a49 f5f3ce53e6 f8be04d5c7 f9715aeba5",
+  "Biceps": "0fa1309ff2 126488b6d6 24fb30e7b2 2ccd2c7eb5 2d1184afc7 40883e9e1b 4b83529f2b 54993084d5 6f19f7fc0e 771212e285 7a243d0c34 87e490e8c9 8c155977a9 a8c45dcdec abb37e3626 b397a24c7e cec796e86a cf3f70a639 e8d5f1514f fc525f0fc8",
+  "Cardio": "1a688cda03",
+  "Chest": "01eb2b9957 2468daeaf7 2918251cde 4888fee252 5cf921d517 79e9e499da 7f8dd1787d 817d522528 84c92d114f 8798cef88a 9bee98274f c2fbc2f1af cc62c589cd d22a026b33 d22dfd9c9a d4e64366e3 d5657f9538 d7a903aa64 e36b7ae4a9 e81e592204 f5dd476302 f94c88bcce",
+  "Forearms": "463ca7e146 655972d5da 9d32cebf0f c5d6712261",
+  "Hamstrings": "1ebc456724 21c3acad16 8a81c8708d 8e37310355",
+  "Hips": "3919341f50 55b346ddbe 85e9270784 e98d425f8c",
+  "Neck": "2746e3b9bf e66dedd578",
+  "Quadriceps": "920abdd4b7",
+  "Shoulders": "10e8483514 2e4e4b97c2 2ef8fd2c4e 4e33f682e1 69cbfc9d88 a3edb76c84 a41242a89b ba2596ed3d c2681f386b d9f29915e5 f7743a856b f9ec4076e3",
+  "Stretching": "29cf0525d6 34508c4df6 467bccc88b 64591658ba 68698ea866 6a4e5332c4 9ab6d7578c b4bc5a0c3d c68d8b296d dd269d4ea8 edc66a65c4 f5540c25fb f69082114a",
+  "Triceps": "010c5c80de 07176671e6 12d4b22254 1f13d42967 224be9866b 2f35dc2eb8 3812164594 48c5df43b1 4d8170a614 5622206395 5ea0058f7d 77667acb60 833086b152 840b694f1f 8641003565 88d78d938d 9457a5583e b730df6666 c8da55bc6f f48571e482 ff1ffc97df",
+  "Waist": "04df9eb093 068123da03 077a7be794 0a36baabd1 125d7caece 1c6990d17a 21c52b3f2d 2418a48c69 2daaa89405 34fba9ec0f 3bdd3b45ca 40c1fca9b2 41ba83f9ab 4b74258c71 51f9949e7b 56df1e84d8 5e68c7a642 70733e00d9 7d05b0a477 8998c960f7 93da2ab050 9c4aca6765 b270442c20 b8ea8d10bd bc4b8a3106 bf5abcd0c4 c26fa78201 c4e038cc6d cc1cb0a322 d45cf41574 e14287b9a8 e30c107ee9 e58d42a11f eafdfa3b37 ec4a59f91c",
+  "Yoga": "2a93151113 61f6ad9e09 aacdfd8f8d ec393de0a4",
+};
+const EXL_MFIX = {}; for (const [m, ids] of Object.entries(EXL_MFIX_G)) for (const i of ids.split(" ")) EXL_MFIX[i] = m;
 async function exlibAll(env) {
   let L = []; try { L = JSON.parse((await env.STORE.get("exlib:index")) || "[]"); } catch { L = []; }
+  L = L.map((x) => (EXL_MFIX[x.i] && EXL_MFIX[x.i] !== x.m ? { ...x, m: EXL_MFIX[x.i] } : x));
   let ed = {}; try { ed = (await env.STORE.get("exlib:edits", "json")) || {}; } catch { ed = {}; }
   let ar = {}; try { ar = (await env.STORE.get("exlib:ar", "json")) || {}; } catch { ar = {}; }
   return { L, ed, ar, merged: L.map((x) => { const o = ed[x.i] ? { ...x, ...ed[x.i], x: 1 } : x; return ar[x.i] ? { ...o, a: ar[x.i] } : o; }) };
