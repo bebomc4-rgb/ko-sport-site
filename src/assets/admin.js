@@ -741,7 +741,7 @@
   }
   function exlFiltered() {
     const q = ($("[data-exl-q]").value || "").trim().toLowerCase(), m = $("[data-exl-m]").value, e = $("[data-exl-e]").value, s = $("[data-exl-s]").value;
-    return EXL.filter((x) => (!q || String(x.n).toLowerCase().includes(q) || String(x.a || "").includes(q)) && (!m || x.m === m) && (!e || x.e === e) && (s === "h" ? x.h : s === "x" ? x.x : s === "na" ? !x.a : true));
+    return EXL.filter((x) => (!q || String(x.n).toLowerCase().includes(q) || String(x.a || "").includes(q)) && (!m || x.m === m) && (!e || x.e === e) && (s === "h" ? x.h : s === "x" ? x.x : s === "na" ? !x.a : s === "w" ? x.w && !x.h : s === "wh" ? x.w && x.h : true));
   }
   function exlOpts(map, cur) {
     const keys = Object.keys(map); if (cur && !map[cur]) keys.push(cur);
@@ -760,15 +760,22 @@
         <label>العضلة<select data-exf="m">${exlOpts(EXL_M, x.m)}</select></label>
         <label>الأداة<select data-exf="e">${exlOpts(EXL_E, x.e)}</select></label>
       </div>
+      ${x.w ? exlAltHtml(x) : ""}
       <div class="ab-acts"><label class="sub-off"><input type="checkbox" data-exf="h"${x.h ? " checked" : ""}> خبّي التمرين</label>${x.x ? '<button type="button" class="btn btn-ghost sm" data-exreset>رجّع الأصلي</button>' : ""}</div>
     </div>`).join("") || '<div class="w-card dc-empty"><b>ما في تمارين</b><p class="hint">غيّر الفلتر أو اكبس «تحديث».</p></div>';
+  }
+  // صور نساء: جنب التمرين البدائل بصورة رجل (نفس التمرين أو الأقرب)، كبسة عالبديل بتفتحو بالبحث
+  function exlAltHtml(x) {
+    const A = (x.alt || []).map((id) => EXL.find((v) => v.i === id)).filter(Boolean);
+    return `<div class="exl-alt wide"><b>👩 الصورة فيها مرا</b> · ${A.length ? `البديل بصورة رجل (${A.length}):` : "ما في بديل بصورة رجل، خبّيه إذا ما بدك ياه"}
+      ${A.length ? `<div class="exl-alt-l">${A.map((y) => `<button type="button" class="exl-alt-i" data-exalt="${esc(y.i)}" title="${esc(y.n)}"><img src="/exlib/m/${esc(y.i)}.jpg" alt="" loading="lazy" width="64" height="64"><span>${esc(y.a || y.n)}</span>${y.h ? "<small>(مخفي)</small>" : ""}</button>`).join("")}</div>` : ""}</div>`;
   }
   async function exlSave(row, reset) {
     const x = EXL.find((v) => v.i === row.dataset.exid); if (!x) return;
     const body = reset ? { i: x.i, reset: true } : { i: x.i, a: row.querySelector('[data-exf="a"]').value, n: row.querySelector('[data-exf="n"]').value, m: row.querySelector('[data-exf="m"]').value, e: row.querySelector('[data-exf="e"]').value, h: row.querySelector('[data-exf="h"]').checked };
     try {
       const j = await api("/api/exlib/edit", { method: "POST", body: JSON.stringify(body) });
-      const k = EXL.findIndex((v) => v.i === x.i); if (k >= 0) EXL[k] = j.item;
+      const k = EXL.findIndex((v) => v.i === x.i); if (k >= 0) EXL[k] = x.w ? { ...j.item, w: 1, alt: x.alt } : j.item;
       toast("✓ انحفظ");
       if (reset) renderExlib(); else { row.classList.toggle("exl-hid", !!j.item.h); if (j.item.x && !row.querySelector("[data-exreset]")) row.querySelector(".ab-acts").insertAdjacentHTML("beforeend", '<button type="button" class="btn btn-ghost sm" data-exreset>رجّع الأصلي</button>'); }
     } catch (e) { toast(e.message); }
@@ -894,6 +901,7 @@
       $("[data-exl-tstop]").addEventListener("click", stopExlTranslation);
       $("[data-ptr-stop]").addEventListener("click", stopExlTranslation);
       v.addEventListener("click", (e) => { const rs = e.target.closest("[data-exreset]"); if (rs) exlSave(rs.closest("[data-exid]"), true); });
+      v.addEventListener("click", (e) => { const al = e.target.closest("[data-exalt]"); if (!al) return; const y = EXL.find((z) => z.i === al.dataset.exalt); if (!y) return; $("[data-exl-q]").value = y.n; $("[data-exl-m]").value = ""; $("[data-exl-e]").value = ""; $("[data-exl-s]").value = ""; exlShown = 40; renderExlib(); });
       v.addEventListener("error", (e) => { if (e.target.tagName === "IMG") e.target.style.visibility = "hidden"; }, true);
       let qT = 0; v.addEventListener("input", (e) => { if (e.target.matches("[data-exl-q]")) { clearTimeout(qT); qT = setTimeout(() => { exlShown = 40; renderExlib(); }, 250); } });
       v.addEventListener("change", (e) => { if (e.target.matches("[data-exl-m],[data-exl-e],[data-exl-s]")) { exlShown = 40; renderExlib(); } });
