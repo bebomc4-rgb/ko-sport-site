@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=413" title="اعمل برنامجك" loading="eager"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=414" title="اعمل برنامجك" loading="eager"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     window.onmessage = (e) => { if (e.origin === location.origin && e.data && e.data.koPbH && fr && fr.isConnected) fr.style.height = Math.max(500, +e.data.koPbH) + "px"; };
   }
@@ -1969,7 +1969,7 @@
   function koOwn() { const a = acct(); const p = String((a && a.account && a.account.phone) || "").replace(/\D/g, ""); return p.slice(-9) === "938986875"; }
   // ---------- مكتبة التمارين الخاصة (صاحب المتجر 21/11/2026) ----------
   // تمارين صاحب المتجر (شاريها): الملفات بالـ KV (/exlib/m/<id>.mp4|jpg)، مو بالريبو، والسيرفر ما بيعطيها إلا لحسابو.
-  const EXL_M = { Back: "الظهر", Biceps: "الباي (البايسبس)", Calves: "السمانة", Cardio: "كارديو", Chest: "الصدر", Forearms: "الساعد", "Full Body": "الجسم كامل", Hamstrings: "الفخذ الخلفي", Hips: "الورك والمؤخرة", Neck: "الرقبة", Other: "منوعات", Plyometrics: "قفز وانفجار", Quadriceps: "الفخذ الأمامي", Shoulders: "الأكتاف", Stretching: "إطالة", Thighs: "الفخاد", Triceps: "التراي (الترايسبس)", "Upper Arms": "الذراع", Waist: "البطن والخصر", Weightlifting: "رفع أثقال", Yoga: "يوغا" };
+  const EXL_M = { Back: "الظهر", "Back:Lats": "الظهر العريض (المجنص)", "Back:Mid": "وسط وأعلى الظهر", "Back:Traps": "الترابيس", "Back:Lower": "أسفل الظهر", "Back:Rot": "مدوّرات الكتف (ورا الكتف)", "Back:Str": "إطالة ومساج الظهر", Biceps: "الباي (البايسبس)", Calves: "السمانة", Cardio: "كارديو", Chest: "الصدر", Forearms: "الساعد", "Full Body": "الجسم كامل", Hamstrings: "الفخذ الخلفي", Hips: "الورك والمؤخرة", Neck: "الرقبة", Other: "منوعات", Plyometrics: "قفز وانفجار", Quadriceps: "الفخذ الأمامي", Shoulders: "الأكتاف", Stretching: "إطالة", Thighs: "الفخاد", Triceps: "التراي (الترايسبس)", "Upper Arms": "الذراع", Waist: "البطن والخصر", Weightlifting: "رفع أثقال", Yoga: "يوغا" };
   const EXL_E = { Assisted: "بمساعدة", Band: "مطاط", Barbell: "بار", "Battling Rope": "حبل المعركة", "Body weight": "وزن الجسم", "Bosu ball": "كرة بوسو", Cable: "كابل", Dumbbell: "دمبل", "EZ Barbell": "بار EZ", Hammer: "مطرقة", Kettlebell: "كيتل بيل", "Leverage machine": "آلة", "Medicine Ball": "كرة طبية", "Olympic barbell": "بار أولمبي", "Power Sled": "زلّاجة دفع", "Resistance Band": "مطاط مقاومة", Roll: "رول", Rollball: "كرة مساج", Rope: "حبل", "Sled machine": "آلة زلّاجة", "Smith machine": "سميث", "Stability ball": "كرة اللياقة", Stick: "عصا", Suspension: "حبال تعليق", "Trap bar": "تراب بار", "Vibrate Plate": "منصة اهتزاز", Weighted: "بأوزان", "Wheel roller": "عجلة البطن" };
   const exl = { L: null, cfg: null, m: "", e: "", q: "", n: 24, io: null, io2: null };
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
@@ -2006,6 +2006,21 @@
     if (/glute|hip thrust|\bbridge|kickback|kick back|donkey|abduct|adduct|hydrant|clam|hip extension|\bhip\b|pull.?through/.test(t)) return "Hips";
     return "Quadriceps";
   }
+  // قسم «الظهر» بيتقسّم لعضلاتو من اسم التمرين (طلب صاحب المتجر 23/11/2026). الترتيب مهم: أول قاعدة بتنطبق بتربح.
+  // الظهر العريض = سحب لتحت وعقلة وبول أوفر · وسط وأعلى الظهر = كل أنواع السحب الأفقي (Row) والفلاي الخلفي · الترابيس = شراغ
+  // أسفل الظهر = هايبر إكستنشن وديدلفت وسوبرمان · مدوّرات الكتف = تدوير الكتف لجوّا ولبرّا · إطالة ومساج = الإطالات والفوم رولر
+  const EXL_BACK = ["Back:Lats", "Back:Mid", "Back:Traps", "Back:Lower", "Back:Rot", "Back:Str"];
+  function exlBack(n) {
+    const t = String(n || "").toLowerCase();
+    if (/stretch|mobility|warm.?up|yoga|\bpose\b|\bcat\b|cat cow|hang ?back|slopes towards|toe touch|pendulum|shoulder circle|shoulders rotation|side circle|corn cob|^roll\b|foam|relaxation|massage/.test(t)) return "Back:Str";
+    if (/external rotation|internal rotation|external shoulder rotation|internal shoulder rotation|rotator cuff/.test(t)) return "Back:Rot";
+    if (/shrug|\btraps?\b(?! bar)|trapezius|high pull|upright row|farmer|\bcarry\b|yoke/.test(t)) return "Back:Traps";
+    if (/hyperextension|hyper extension|back extension|good ?morning|superman|deadlift|reverse hyper|bird ?dog|lower back|erector|lumbar|swimmer|rack pull|\bcobra|jefferson|glute ham|\brdl\b|pelvic tilt|locust|sphinx|upward facing dog|hip extension|trunk extensor|\bbridge/.test(t)) return "Back:Lower";
+    if (/pull.?ups?\b|chin.?ups?\b|\bchin\b|pull ?down|pushdown|pullover|pull over|\blats?\b|latissimus|muscle.?up|straight.?arm|rope climb|front lever|back lever|\bl.?sit|skin the cat|\bhang\b|rollout|battling/.test(t)) return "Back:Lats";
+    return "Back:Mid";
+  }
+  const exlMG = (k) => (String(k).indexOf("Back:") === 0 ? "Back" : k); // القسم الكبير للعضلة (أجزاء الظهر ← الظهر)
+  const exlMIs = (x, m) => x.m === m || (m === "Back" && exlMG(x.m) === "Back"); // «الظهر» لحالو = كل أجزاء الظهر
   // زر الرجوع: ارجع لنفس مكان السكرول بعد ما ينرسم المحتوى (بعضو بيجي async)، وبنفس عدد التمارين يلي كانت مفتوحة
   const exlRY = () => { try { const k = (history.state || {}).koK; return k != null && scrollMem[k] > 0 ? scrollMem[k] : 0; } catch (e) { return 0; } };
   const exlRest = (y) => { if (y) scrollRestore(y, (history.state || {}).koK); };
@@ -2014,7 +2029,7 @@
   function exlApply(L, cfg) {
     const c = cfg || {}, hid = Array.isArray(c.hideM) ? c.hideM : ["Other"]; // عضلات مخبّية من المكتبة (من لوحة التحكم)
     const A = L.filter((x) => hid.indexOf(x.m) < 0);
-    A.forEach((x) => { x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; else if (x.m === "Thighs") x.m = exlThigh(x.n); }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
+    A.forEach((x) => { x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; else if (x.m === "Thighs") x.m = exlThigh(x.n); else if (x.m === "Back") x.m = exlBack(x.n); }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
     A.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
     exl.cfg = c; exl.L = A;
   }
@@ -2031,7 +2046,9 @@
     if (cached && Array.isArray(cached.L) && cached.L.length) {
       exlApply(cached.L, cached.cfg || {});
       await Promise.all([exlLoad(), exlRatio()]);
-      net.then((f) => { const old = exl.L && exl.L.length; exlApply(f.L, f.cfg); if (old !== exl.L.length && curRoute().indexOf("/exlib") === 0 && !curRoute().startsWith("/exlib/programs")) exlibPage(); }).catch(() => {});
+      // بيعيد الرسم إذا تغيّر العدد أو أي اسم عربي أو تصنيف (كان يعيد بس إذا تغيّر العدد، فالترجمة الجديدة ما كانت تبين لحد الفتحة الجاية)
+      const sig = (L) => (L || []).length + "|" + (L || []).map((x) => x.i + (x.a || "") + x.m + x.e + (x.n || "")).join("");
+      net.then((f) => { const old = sig(cached.L) + JSON.stringify(cached.cfg || {}); exlApply(f.L, f.cfg); if (old !== sig(f.L) + JSON.stringify(f.cfg || {}) && curRoute().indexOf("/exlib") === 0 && !curRoute().startsWith("/exlib/programs")) exlibPage(); }).catch(() => {});
       return;
     }
     const f = await net; exlApply(f.L, f.cfg);
@@ -2056,8 +2073,8 @@
     const sg = curRoute().split("/"), hm = sg[2] || "", he = sg[3] || "";
     if (hm === "programs") return exlProgPage(he);
     if (hm === "my") return exlMyPage();
-    exl.m = hm && exl.L.some((x) => x.m === hm) ? hm : "";
-    exl.e = exl.m && he && (he === "*" || exl.L.some((x) => x.m === exl.m && x.e === he)) ? he : "";
+    exl.m = hm && exl.L.some((x) => exlMIs(x, hm)) ? hm : "";
+    exl.e = exl.m && he && (he === "*" || exl.L.some((x) => exlMIs(x, exl.m) && x.e === he)) ? he : "";
     exl.q = ""; exl.n = (exl.nm && exl.nm[curRoute()]) || exlPerN();
     const c = exl.cfg || {};
     app.innerHTML = `
@@ -2115,7 +2132,7 @@
       exl.pmap = exl.prog.EX.map((e) => {
         const n = exlNm(e[2]), n2 = exlNm(e[3]), hit = full[e[0] + "|" + e[1] + "|" + n] || full[e[0] + "|" + e[1] + "|" + n2];
         if (hit) return hit;
-        const c = (byName[n] || byName[n2] || []).filter((x) => x.m === e[0]);
+        const c = (byName[n] || byName[n2] || []).filter((x) => (x.m0 || x.m) === e[0]);
         return c.length === 1 ? c[0] : (byName[n] || []).length === 1 ? byName[n][0] : null;
       });
     }
@@ -2216,17 +2233,21 @@
     const step = exl.q ? 3 : !exl.m ? 1 : !exl.e ? 2 : 3;
     if (exl.io) exl.io.disconnect();
     const tr = [];
-    if (exl.m) tr.push(`<a href="${exlH()}">العضلات</a>`, step === 2 || skip ? `<b>${esc(EXL_M[exl.m] || exl.m)}</b>` : `<a href="${exlH(exl.m)}">${esc(EXL_M[exl.m] || exl.m)}</a>`);
+    if (exl.m) { tr.push(`<a href="${exlH()}">العضلات</a>`); if (exl.m !== exlMG(exl.m)) tr.push(`<a href="${exlH(exlMG(exl.m))}">${esc(EXL_M[exlMG(exl.m)])}</a>`); tr.push(step === 2 || skip ? `<b>${esc(EXL_M[exl.m] || exl.m)}</b>` : `<a href="${exlH(exl.m)}">${esc(EXL_M[exl.m] || exl.m)}</a>`); }
     if (exl.e && !exl.q && !skip) tr.push(`<b>${exl.e === "*" ? "كل الأدوات" : esc(EXL_E[exl.e] || exl.e)}</b>`);
     nav.innerHTML = tr.join('<span class="exl-sep">‹</span>');
     if (step === 1) {
-      const cm = {}; exl.L.forEach((x) => { cm[x.m] = (cm[x.m] || 0) + 1; });
+      const cm = {}; exl.L.forEach((x) => { const g = exlMG(x.m); cm[g] = (cm[g] || 0) + 1; });
       const ks = EXL_MORD.filter((k) => cm[k]).concat(Object.keys(cm).filter((k) => EXL_MORD.indexOf(k) < 0));
       body.innerHTML = `<a class="exl-prog-bn" href="#/build"><span>🏋️</span><b>اعمل برنامجك</b><small>جاوب عالأسئلة وبيطلعلك برنامج تمرين وتغذية على قدّك بصور وفيديوهات التمارين</small></a><a class="exl-prog-bn" href="#/exlib/programs"><span>📋</span><b>برامج التمرين</b><small>برامج جاهزة بأيامها وتمارينها، والتمارين مربوطة بالفيديوهات</small></a><h2 class="exl-h">اختار العضلة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(exlH(k), exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
+    } else if (step === 2 && exl.m === "Back") {
+      // الظهر: اختار الجزء أول شي، وبعدها الأداة
+      const cp = {}; exl.L.forEach((x) => { if (exlMG(x.m) === "Back") cp[x.m] = (cp[x.m] || 0) + 1; });
+      body.innerHTML = `<h2 class="exl-h">اختار جزء الظهر</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${EXL_BACK.filter((k) => cp[k]).map((k) => exlTile(exlH(k), exlI("m", "Back"), EXL_M[k], cp[k], c)).join("")}${exlTile(exlH("Back", "*"), exlI("m", "Back"), "كل تمارين الظهر", Object.values(cp).reduce((a, b) => a + b, 0), c)}</div>`;
     } else if (step === 2) {
       const sub = exl.L.filter((x) => x.m === exl.m), ce = {}; sub.forEach((x) => { ce[x.e] = (ce[x.e] || 0) + 1; });
       const ks = Object.keys(ce).sort((a, b) => ce[b] - ce[a]);
-      body.innerHTML = `<h2 class="exl-h">اختار الأداة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${exlTile(exlH(exl.m, "*"), exlI("m", exl.m), "كل الأدوات", sub.length, c)}${ks.map((k) => exlTile(exlH(exl.m, k), exlI("e", k), EXL_E[k] || k, ce[k], c)).join("")}</div>`;
+      body.innerHTML = `<h2 class="exl-h">اختار الأداة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${exlTile(exlH(exl.m, "*"), exlI("m", exlMG(exl.m)), "كل الأدوات", sub.length, c)}${ks.map((k) => exlTile(exlH(exl.m, k), exlI("e", k), EXL_E[k] || k, ce[k], c)).join("")}</div>`;
     } else {
       body.innerHTML = '<div class="exl-count" data-exl-count></div><div class="exl-grid" data-exl-grid></div><div class="exl-more" data-exl-more></div>';
       exlDraw();
@@ -2234,7 +2255,7 @@
   }
   function exlList() {
     const q = exlArq(exl.q).split(/\s+/).filter(Boolean);
-    const r = exl.L.filter((x) => (!exl.m || x.m === exl.m) && (!exl.e || exl.e === "*" || x.e === exl.e) && q.every((w) => x.s.includes(w)));
+    const r = exl.L.filter((x) => (!exl.m || exlMIs(x, exl.m)) && (!exl.e || exl.e === "*" || x.e === exl.e) && q.every((w) => x.s.includes(w)));
     // الفيديوهات (متحركة) فوق، والتمارين بصورة ثابتة بس بالآخر (طلب صاحب المتجر 21/11/2026). الترتيب جوّا كل مجموعة بيضل متل ما هو.
     return r.filter((x) => x.v).concat(r.filter((x) => !x.v));
   }
@@ -2342,20 +2363,23 @@
     openSheet("أضف تمرين ليوم " + day, '<div class="exl"><input type="search" class="exl-q" data-pk-q placeholder="دوّر على تمرين بالعربي أو الإنكليزي" aria-label="بحث"><div class="exl-nav" data-pk-nav></div><div class="exl-pk" data-pk></div></div>', (root) => {
       const r = root || document, box = r.querySelector("[data-pk]"), nav = r.querySelector("[data-pk-nav]"), qi = r.querySelector("[data-pk-q]");
       const skip = () => (Array.isArray(c.skipE) ? c.skipE : ["Stretching"]).indexOf(st.m) >= 0;
-      const list = () => { const q = exlArq(st.q).split(/\s+/).filter(Boolean); const a = exl.L.filter((x) => (!st.m || x.m === st.m) && (!st.e || st.e === "*" || x.e === st.e) && q.every((w) => x.s.includes(w))); return a.filter((x) => x.v).concat(a.filter((x) => !x.v)); };
+      const list = () => { const q = exlArq(st.q).split(/\s+/).filter(Boolean); const a = exl.L.filter((x) => (!st.m || exlMIs(x, st.m)) && (!st.e || st.e === "*" || x.e === st.e) && q.every((w) => x.s.includes(w))); return a.filter((x) => x.v).concat(a.filter((x) => !x.v)); };
       const row = (x) => `<button type="button" class="exl-my-row exl-my-pick" data-pick="${esc(x.i)}"><img src="/exlib/m/${esc(x.i)}.jpg" alt="" loading="lazy" width="84" height="84"><b>${esc(x.a || x.n)}</b><span>➕</span></button>`;
       const draw = () => {
         const step = st.q ? 3 : !st.m ? 1 : !st.e ? 2 : 3, tr = [];
-        if (st.m && !st.q) { tr.push('<a href="#" data-pk-go="">العضلات</a>'); tr.push(step === 2 ? `<b>${esc(EXL_M[st.m] || st.m)}</b>` : `<a href="#" data-pk-go="${esc(st.m)}">${esc(EXL_M[st.m] || st.m)}</a>`); if (step === 3 && !skip()) tr.push(`<b>${st.e === "*" ? "كل الأدوات" : esc(EXL_E[st.e] || st.e)}</b>`); }
+        if (st.m && !st.q) { tr.push('<a href="#" data-pk-go="">العضلات</a>'); if (st.m !== exlMG(st.m)) tr.push(`<a href="#" data-pk-go="${exlMG(st.m)}">${esc(EXL_M[exlMG(st.m)])}</a>`); tr.push(step === 2 ? `<b>${esc(EXL_M[st.m] || st.m)}</b>` : `<a href="#" data-pk-go="${esc(st.m)}">${esc(EXL_M[st.m] || st.m)}</a>`); if (step === 3 && !skip()) tr.push(`<b>${st.e === "*" ? "كل الأدوات" : esc(EXL_E[st.e] || st.e)}</b>`); }
         nav.innerHTML = tr.join('<span class="exl-sep">‹</span>');
         if (step === 1) {
-          const cm = {}; exl.L.forEach((x) => { cm[x.m] = (cm[x.m] || 0) + 1; });
+          const cm = {}; exl.L.forEach((x) => { const g = exlMG(x.m); cm[g] = (cm[g] || 0) + 1; });
           const ks = EXL_MORD.filter((k) => cm[k]).concat(Object.keys(cm).filter((k) => EXL_MORD.indexOf(k) < 0));
           box.innerHTML = `<div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => tile(`data-pk-m="${esc(k)}"`, exlI("m", k), EXL_M[k] || k, cm[k])).join("")}</div>`;
+        } else if (step === 2 && st.m === "Back") {
+          const cp = {}; exl.L.forEach((x) => { if (exlMG(x.m) === "Back") cp[x.m] = (cp[x.m] || 0) + 1; });
+          box.innerHTML = `<div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${EXL_BACK.filter((k) => cp[k]).map((k) => tile(`data-pk-m="${k}"`, exlI("m", "Back"), EXL_M[k], cp[k])).join("")}${tile('data-pk-e="*"', exlI("m", "Back"), "كل تمارين الظهر", Object.values(cp).reduce((a, b) => a + b, 0))}</div>`;
         } else if (step === 2) {
           const sub = exl.L.filter((x) => x.m === st.m), ce = {}; sub.forEach((x) => { ce[x.e] = (ce[x.e] || 0) + 1; });
           const ks = Object.keys(ce).sort((a, b) => ce[b] - ce[a]);
-          box.innerHTML = `<div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${tile('data-pk-e="*"', exlI("m", st.m), "كل الأدوات", sub.length)}${ks.map((k) => tile(`data-pk-e="${esc(k)}"`, exlI("e", k), EXL_E[k] || k, ce[k])).join("")}</div>`;
+          box.innerHTML = `<div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${tile('data-pk-e="*"', exlI("m", exlMG(st.m)), "كل الأدوات", sub.length)}${ks.map((k) => tile(`data-pk-e="${esc(k)}"`, exlI("e", k), EXL_E[k] || k, ce[k])).join("")}</div>`;
         } else {
           const L = list(); box.innerHTML = `<div class="exl-count">${L.length} تمرين</div><div class="exl-pk-l">${L.slice(0, st.n).map(row).join("") || '<p class="exl-count">ما في نتيجة</p>'}</div>${L.length > st.n ? '<div class="exl-sent" data-pk-s>…</div>' : ""}`;
           const se = box.querySelector("[data-pk-s]");
