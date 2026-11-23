@@ -5002,7 +5002,7 @@ async function exlibApi(request, env, path, m) {
   // مؤقت (23/11/2026): سحب صور التمارين مشفّرة (RSA-OAEP + AES-GCM، ما بتنقرا بلا المفتاح الخاص) لفحص صور النساء، بينشال بعدها
   if (path === "/api/exlib/jpgdump" && m === "GET") {
     let L = []; try { L = JSON.parse((await env.STORE.get("exlib:index")) || "[]"); } catch {}
-    const part = Math.max(0, +url.searchParams.get("p") || 0), N = 400, ids = L.slice(part * N, part * N + N).map((x) => x.i);
+    const part = Math.max(0, +new URL(request.url).searchParams.get("p") || 0), N = 400, ids = L.slice(part * N, part * N + N).map((x) => x.i);
     const bufs = await Promise.all(ids.map((id) => env.STORE.get("exlib:f:" + id + ".jpg", "arrayBuffer").catch(() => null)));
     const enc = new TextEncoder(), parts = []; let tot = 0;
     ids.forEach((id, k) => { const b = bufs[k] ? new Uint8Array(bufs[k]) : new Uint8Array(0), h = enc.encode(id.padEnd(16, " ")), l = new Uint8Array(4); new DataView(l.buffer).setUint32(0, b.length); parts.push(h, l, b); tot += 20 + b.length; });
