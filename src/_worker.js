@@ -1912,14 +1912,14 @@ async function botContacts(env, list) {
   const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`contacts|${text}|${ts}|${nonce}`)));
   try { const r = await botPost("/api/otp/ko-contacts", JSON.stringify({ text, ts, nonce, sig }), 15000); return !!(r && r.ok); } catch { return false; }
 }
-// مرة وحدة: كل الحسابات الموجودة لجهات الاتصال (يلي إلو اسم حقيقي محفوظ ما بيتغيّر)
+// مرة وحدة: كل الحسابات الموجودة لجهات الاتصال (يلي إلو اسم حقيقي محفوظ ما بيتغيّر). waNames3 (23/11/2026): انبعتو من جديد بعد ما ضاعت أسماء عند البوت
 async function contactsBackfill(env) {
-  if (await env.STORE.get("acct:waNames2")) return;
+  if (await env.STORE.get("acct:waNames3")) return;
   const keys = [];
   for (const pre of ["acct:09", "acct:+"]) { let cursor; do { const r = await env.STORE.list({ prefix: pre, limit: 1000, cursor }); for (const k of r.keys) if (ACCT_PH.test(k.name.slice(5))) keys.push(k.name); cursor = r.list_complete ? null : r.cursor; } while (cursor && keys.length < 3000); }
   const all = [];
   for (let i = 0; i < keys.length && i < 900; i += 50) { const v = await Promise.all(keys.slice(i, i + 50).map((k) => env.STORE.get(k, "json").catch(() => null))); for (const a of v) if (a && a.phone && !a.blocked) all.push(a); }
-  if (await botContacts(env, all)) await env.STORE.put("acct:waNames2", JSON.stringify({ at: new Date().toISOString(), n: all.length }));
+  if (await botContacts(env, all)) await env.STORE.put("acct:waNames3", JSON.stringify({ at: new Date().toISOString(), n: all.length }));
 }
 
 // ---------- طلباتي: قائمة طلبات الزبون محفوظة بحسابو (acctord:<phone> = مفاتيح الطلبات، الأحدث أول) ----------
