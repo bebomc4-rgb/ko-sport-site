@@ -2273,7 +2273,8 @@ html.sheet-lock,html.sheet-lock body{overscroll-behavior:none}.sheet-wrap,.sheet
 .exl-my-pic{display:block;width:min(320px,86%);margin:0 auto;background:#fff;border-radius:10px;overflow:hidden}
 .exl-my-pic img,.exl-my-pic video{width:100%;height:auto;object-fit:contain;display:block}
 .exl-my-row.exl-my-big .exl-my-f{grid-template-columns:1fr 1fr}
-.pb-fr{display:block;width:100%;min-height:80vh;border:0;background:transparent;margin:0 auto;max-width:900px}
+html:has(.pb-fr){overflow-anchor:none}
+.pb-fr{display:block;width:100%;min-height:400px;border:0;background:transparent;margin:0 auto;max-width:900px}
 /* بلا علامة تشغيل ولا لقطة: المربع أبيض لحد ما يشتغل الفيديو (طلب صاحب المتجر 22/11/2026) */
 .exl-pic,.exl-vw,.exl-my-pic{background:#fff}
 .exl-pic video,.exl-vw video,.exl-lb video,.exl-my-pic video,.xmw video{background:#fff}
