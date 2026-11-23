@@ -96,28 +96,30 @@ html,body{font-size:18px}
 <div id="toast"></div>
 <script>
 /*GEN*/
-const EQN={db:"دمبلات",bb:"بار وأقراص",kb:"كيتل بيل",bd:"أحبال مقاومة",pu:"عقلة أو متوازي",bn:"بنش",mc:"أجهزة نادي وكابلات",bg:"كيس ملاكمة",jr:"حبل قفز"};
+// أدوات البيت (بالترتيب يلي بيظهر فيه)، و«نادي كامل» = كل الأدوات + أجهزة النادي
+const EQN={db:"دمبل",bb:"بار وأقراص",ch:"كرسي",bn:"بنش",bd:"مطاط مقاومة",sb:"كرة أيروبيك (كرة اللياقة)",st:"ستيب",fr:"فوم رول",mb:"كرة مساج",sk:"عصاية",bg:"كيس ملاكمة",cb:"كيبل",jr:"حبل قفز",tx:"حبال TRX",kb:"كيتل بيل",wr:"رولر البطن (العجلة)",tm:"جهاز مشي",pu:"عقلة أو متوازي"};
+const EQALL=Object.keys(EQN).concat("mc");
 const LVN=["مبتدئ","متوسط","متقدّم"];
 const GOALN={mus:"بناء عضل وحجم",fat:"تنشيف وخسارة دهون",str:"قوة",pow:"سرعة وانفجارية",end:"تحمّل ولياقة قلب",gen:"لياقة عامة وصحة"};
 // [الاسم، النمط، الأدوات المطلوبة، أقل مستوى (0 مبتدئ)، النوع: c مركّب، i عزل، h تثبيت بالثواني، p قفز، يد/رجل وحدة]
 const RAW=[
-["سكوات بوزن الجسم","sq","",0,"c"],["سكوات بوقفة واسعة","sq","",0,"c"],["سكوات كأسي بدمبل","sq","db",0,"c"],["سكوات كأسي بكيتل بيل","sq","kb",0,"c"],["ضغط أرجل بالجهاز","sq","mc",0,"c"],["سكوات بوقفة ثانية بالنص","sq","",1,"c"],["سكوات بالبار","sq","bb",1,"c"],["سكوات أمامي بالبار","sq","bb",2,"c"],["سكوات مسدّس بمساعدة","sq","",2,"c",1],
-["انحناء الورك بوزن الجسم","hi","",0,"c"],["ديدلفت رومانياني بدمبلات","hi","db",0,"c"],["ديدلفت رومانياني بحبل المقاومة","hi","bd",0,"c"],["سوينغ بالكيتل بيل","hi","kb",0,"c"],["ثني الأرجل الخلفي بالجهاز","hi","mc",0,"i"],["تمديد الظهر (سوبرمان)","hi","",0,"i"],["ديدلفت رومانياني بالبار","hi","bb",1,"c"],["ديدلفت رومانياني على رجل وحدة بوزن الجسم","hi","",1,"c",1],["ديدلفت على رجل وحدة بدمبل","hi","db",1,"c",1],["ديدلفت تقليدي بالبار","hi","bb",2,"c"],
-["لانجز تبادلي بوزن الجسم","lu","",0,"c",1],["لانجز بدمبلات","lu","db",0,"c",1],["صعود ستيب أب على مصطبة ثابتة","lu","bn",0,"c",1],["لانجز جانبي","lu","",1,"c",1],["سكوات بلغاري","lu","",1,"c",1],["سكوات بلغاري بدمبلات","lu","db,bn",1,"c",1],["لانجز بالكيتل بيل","lu","kb",1,"c",1],
-["ضغط (بوش أب)","hp","",0,"c"],["ضغط من الركبتين","hp","",0,"c"],["ضغط دمبلات عالأرض","hp","db",0,"c"],["ضغط صدر بالدمبلات عالبنش","hp","db,bn",0,"c"],["ضغط صدر بالجهاز","hp","mc",0,"c"],["ضغط بحبل المقاومة","hp","bd",0,"c"],["ضغط مرفوع القدمين","hp","",1,"c"],["ضغط صدر مائل بالدمبلات","hp","db,bn",1,"c"],["ضغط صدر بالبار عالبنش","hp","bb,bn",1,"c"],["ضغط أركر (على كل جهة)","hp","",2,"c"],["متوازي (ديبس)","hp","pu",2,"c"],["فتح صدر بالدمبلات","hp","db,bn",1,"i"],["فتح صدر بالكابل","hp","mc",1,"i"],
-["ضغط بايك مخفّف (ركب مثنية)","vp","",0,"c"],["ضغط أكتاف بالدمبلات","vp","db",0,"c"],["ضغط أكتاف بالجهاز","vp","mc",0,"c"],["ضغط أكتاف بحبل المقاومة","vp","bd",0,"c"],["ضغط بايك","vp","",1,"c"],["ضغط أكتاف بالبار","vp","bb",1,"c"],["ضغط أكتاف بالكيتل بيل","vp","kb",1,"c",1],["ضغط الوقوف على اليدين عالحيط","vp","",2,"c"],
-["تجديف مقلوب تحت طاولة ثقيلة وثابتة","hr","",0,"c"],["تجديف بدمبل بيد وحدة","hr","db",0,"c",1],["تجديف بحبل المقاومة","hr","bd",0,"c"],["تجديف بالكابل جالس","hr","mc",0,"c"],["تجديف مقلوب تحت بار ثابت","hr","pu",0,"c"],["تجديف بالكيتل بيل","hr","kb",0,"c",1],["تجديف بالبار","hr","bb",1,"c"],["رفع الذراعين Y-T-W وانت منبطح","hr","",0,"i"],
-["عقلة بمساعدة حبل مقاومة","vr","pu,bd",0,"c"],["سحب علوي بالجهاز","vr","mc",0,"c"],["سحب علوي بحبل المقاومة","vr","bd",0,"c"],["تعليق ثابت عالعقلة","vr","pu",0,"h"],["عقلة بقبضة عكسية","vr","pu",1,"c"],["عقلة","vr","pu",2,"c"],
-["جسر الورك","gl","",0,"c"],["ركلة خلفية بحبل المقاومة","gl","bd",0,"i",1],["ركلة خلفية بالكابل","gl","mc",0,"i",1],["جسر الورك على رجل وحدة","gl","",1,"c",1],["رفع الورك بدمبل عالبنش","gl","db,bn",1,"c"],["رفع الورك بالبار عالبنش","gl","bb,bn",2,"c"],
-["رفع سمانة وقوف","ca","",0,"i"],["رفع سمانة بدمبل","ca","db",0,"i"],["رفع سمانة بالجهاز","ca","mc",0,"i"],["رفع سمانة على رجل وحدة","ca","",1,"i",1],
-["بايسبس بالدمبلات","bi","db",0,"i"],["بايسبس بالبار","bi","bb",0,"i"],["بايسبس بحبل المقاومة","bi","bd",0,"i"],["بايسبس بالكابل","bi","mc",0,"i"],["بايسبس هامر بالدمبلات","bi","db",0,"i"],
-["ضغط ضيق للترايسبس","tr","",0,"i"],["ديبس ترايسبس على كرسي ثابت","tr","",0,"i"],["ترايسبس بالدمبل فوق الراس","tr","db",0,"i"],["ترايسبس بالكابل","tr","mc",0,"i"],["ترايسبس بحبل المقاومة","tr","bd",0,"i"],["ترايسبس بالبار وانت مستلقي","tr","bb,bn",1,"i"],
-["رفرفة جانبية بالدمبلات","sd","db",0,"i"],["رفرفة جانبية بحبل المقاومة","sd","bd",0,"i"],["رفرفة جانبية بالكابل","sd","mc",0,"i",1],
-["سحب الحبل لوجهك (فيس بول)","rd","bd",0,"i"],["رفرفة خلفية بالدمبلات","rd","db",0,"i"],["رفرفة خلفية بالكابل","rd","mc",0,"i"],["رفع الذراعين على شكل T وانت منبطح","rd","",0,"i"],
-["بلانك","co","",0,"h"],["بلانك جانبي","co","",0,"h",1],["ديد باغ","co","",0,"i"],["رفع الأرجل وانت مستلقي","co","",0,"i"],["دوران روسي","co","",0,"i"],["هولو هولد","co","",1,"h"],["بالوف برس بحبل المقاومة","co","bd",0,"i",1],["حطب بالكابل","co","mc",0,"i",1],["كرنش بالكابل","co","mc",0,"i"],["مشي المزارع بالدمبلات","co","db",0,"h"],["رفع الأرجل معلّق عالعقلة","co","pu",1,"i"],
-["رفع الركب العالي","pl","",0,"p"],["قفز حبل","pl","jr",0,"p"],["قفز من الثبات","pl","",1,"p"],["قفز عريض للأمام","pl","",1,"p"],["قفز جانبي متبادل","pl","",1,"p"],["قفز على مصطبة ثابتة","pl","bn",1,"p"]
+["سكوات بوزن الجسم","sq","",0,"c"],["سكوات بوقفة واسعة","sq","",0,"c"],["سكوات كأسي بدمبل","sq","db",0,"c"],["سكوات كأسي بكيتل بيل","sq","kb",0,"c"],["ضغط أرجل بالجهاز","sq","mc",0,"c"],["سكوات بوقفة ثانية بالنص","sq","",1,"c"],["سكوات بالبار","sq","bb",1,"c"],["سكوات أمامي بالبار","sq","bb",2,"c"],["سكوات مسدّس بمساعدة","sq","",2,"c",1],["سكوات للكرسي (قعود ووقوف)","sq","ch|bn",0,"c"],["سكوات على الحيط بكرة اللياقة","sq","sb",0,"c"],["سكوات بحبال TRX","sq","tx",0,"c"],
+["انحناء الورك بوزن الجسم","hi","",0,"c"],["ديدلفت رومانياني بدمبلات","hi","db",0,"c"],["ديدلفت رومانياني بالمطاط","hi","bd",0,"c"],["سوينغ بالكيتل بيل","hi","kb",0,"c"],["ثني الأرجل الخلفي بالجهاز","hi","mc",0,"i"],["تمديد الظهر (سوبرمان)","hi","",0,"i"],["ديدلفت رومانياني بالبار","hi","bb",1,"c"],["ديدلفت رومانياني على رجل وحدة بوزن الجسم","hi","",1,"c",1],["ديدلفت على رجل وحدة بدمبل","hi","db",1,"c",1],["ديدلفت تقليدي بالبار","hi","bb",2,"c"],["تمديد الظهر على كرة اللياقة","hi","sb",0,"i"],["ثني الأرجل الخلفي على كرة اللياقة","hi","sb",1,"i"],["ثني الأرجل الخلفي بحبال TRX","hi","tx",1,"i"],
+["لانجز تبادلي بوزن الجسم","lu","",0,"c",1],["لانجز بدمبلات","lu","db",0,"c",1],["صعود ستيب أب (على ستيب أو كرسي ثابت)","lu","bn|st|ch",0,"c",1],["لانجز جانبي","lu","",1,"c",1],["سكوات بلغاري","lu","",1,"c",1],["سكوات بلغاري بدمبلات","lu","db,bn|ch|st",1,"c",1],["لانجز بالكيتل بيل","lu","kb",1,"c",1],["لانجز خلفي بحبال TRX","lu","tx",1,"c",1],
+["ضغط (بوش أب)","hp","",0,"c"],["ضغط من الركبتين","hp","",0,"c"],["ضغط دمبلات عالأرض","hp","db",0,"c"],["ضغط صدر بالدمبلات عالبنش","hp","db,bn",0,"c"],["ضغط صدر بالجهاز","hp","mc",0,"c"],["ضغط بالمطاط","hp","bd",0,"c"],["ضغط مرفوع القدمين","hp","",1,"c"],["ضغط صدر مائل بالدمبلات","hp","db,bn",1,"c"],["ضغط صدر بالبار عالبنش","hp","bb,bn",1,"c"],["ضغط أركر (على كل جهة)","hp","",2,"c"],["متوازي (ديبس)","hp","pu",2,"c"],["فتح صدر بالدمبلات","hp","db,bn",1,"i"],["فتح صدر بالكيبل","hp","cb",1,"i"],["ضغط مائل ويديك على ستيب أو كرسي ثابت","hp","st|ch|bn",0,"c"],["ضغط صدر بالدمبلات على كرة اللياقة","hp","db,sb",1,"c"],["ضغط بحبال TRX","hp","tx",1,"c"],
+["ضغط بايك مخفّف (ركب مثنية)","vp","",0,"c"],["ضغط أكتاف بالدمبلات","vp","db",0,"c"],["ضغط أكتاف بالجهاز","vp","mc",0,"c"],["ضغط أكتاف بالمطاط","vp","bd",0,"c"],["ضغط بايك","vp","",1,"c"],["ضغط أكتاف بالبار","vp","bb",1,"c"],["ضغط أكتاف بالكيتل بيل","vp","kb",1,"c",1],["ضغط الوقوف على اليدين عالحيط","vp","",2,"c"],
+["تجديف مقلوب تحت طاولة ثقيلة وثابتة","hr","",0,"c"],["تجديف بدمبل بيد وحدة","hr","db",0,"c",1],["تجديف بالمطاط","hr","bd",0,"c"],["تجديف بالكيبل جالس","hr","cb",0,"c"],["تجديف مقلوب تحت بار ثابت","hr","pu",0,"c"],["تجديف بالكيتل بيل","hr","kb",0,"c",1],["تجديف بالبار","hr","bb",1,"c"],["رفع الذراعين Y-T-W وانت منبطح","hr","",0,"i"],["تجديف بحبال TRX","hr","tx",0,"c"],
+["عقلة بمساعدة المطاط","vr","pu,bd",0,"c"],["سحب علوي بالكيبل (لات بول داون)","vr","cb",0,"c"],["سحب علوي بالمطاط","vr","bd",0,"c"],["تعليق ثابت عالعقلة","vr","pu",0,"h"],["عقلة بقبضة عكسية","vr","pu",1,"c"],["عقلة","vr","pu",2,"c"],
+["جسر الورك","gl","",0,"c"],["ركلة خلفية بالمطاط","gl","bd",0,"i",1],["ركلة خلفية بالكيبل","gl","cb",0,"i",1],["جسر الورك على رجل وحدة","gl","",1,"c",1],["رفع الورك بدمبل عالبنش","gl","db,bn",1,"c"],["رفع الورك بالبار عالبنش","gl","bb,bn",2,"c"],["جسر الورك ورجليك على كرة اللياقة","gl","sb",1,"c"],
+["رفع سمانة وقوف","ca","",0,"i"],["رفع سمانة بدمبل","ca","db",0,"i"],["رفع سمانة بالجهاز","ca","mc",0,"i"],["رفع سمانة على رجل وحدة","ca","",1,"i",1],["رفع سمانة على حافة الستيب","ca","st",0,"i"],
+["بايسبس بالدمبلات","bi","db",0,"i"],["بايسبس بالبار","bi","bb",0,"i"],["بايسبس بالمطاط","bi","bd",0,"i"],["بايسبس بالكيبل","bi","cb",0,"i"],["بايسبس هامر بالدمبلات","bi","db",0,"i"],["بايسبس بحبال TRX","bi","tx",0,"i"],
+["ضغط ضيق للترايسبس","tr","",0,"i"],["ديبس ترايسبس على كرسي ثابت","tr","ch|bn",0,"i"],["ترايسبس بالدمبل فوق الراس","tr","db",0,"i"],["ترايسبس بالكيبل","tr","cb",0,"i"],["ترايسبس بالمطاط","tr","bd",0,"i"],["ترايسبس بالبار وانت مستلقي","tr","bb,bn",1,"i"],["ترايسبس بحبال TRX","tr","tx",1,"i"],
+["رفرفة جانبية بالدمبلات","sd","db",0,"i"],["رفرفة جانبية بالمطاط","sd","bd",0,"i"],["رفرفة جانبية بالكيبل","sd","cb",0,"i",1],
+["سحب المطاط لوجهك (فيس بول)","rd","bd",0,"i"],["رفرفة خلفية بالدمبلات","rd","db",0,"i"],["رفرفة خلفية بالكيبل","rd","cb",0,"i"],["رفع الذراعين على شكل T وانت منبطح","rd","",0,"i"],["رفرفة خلفية بحبال TRX","rd","tx",0,"i"],
+["بلانك","co","",0,"h"],["بلانك جانبي","co","",0,"h",1],["ديد باغ","co","",0,"i"],["رفع الأرجل وانت مستلقي","co","",0,"i"],["دوران روسي","co","",0,"i"],["هولو هولد","co","",1,"h"],["بالوف برس بالمطاط","co","bd",0,"i",1],["حطب بالكيبل","co","cb",0,"i",1],["كرنش بالكيبل","co","cb",0,"i"],["مشي المزارع بالدمبلات","co","db",0,"h"],["رفع الأرجل معلّق عالعقلة","co","pu",1,"i"],["كرنش على كرة اللياقة","co","sb",0,"i"],["رول آوت بكرة اللياقة","co","sb",1,"i"],["سحب الركب لصدرك على كرة اللياقة","co","sb",1,"i"],["رول آوت بعجلة البطن من الركب","co","wr",1,"i"],["رول آوت بعجلة البطن وقوف","co","wr",2,"i"],["بايك بحبال TRX","co","tx",2,"i"],
+["رفع الركب العالي","pl","",0,"p"],["قفز حبل","pl","jr",0,"p"],["قفز من الثبات","pl","",1,"p"],["قفز عريض للأمام","pl","",1,"p"],["قفز جانبي متبادل","pl","",1,"p"],["قفز على ستيب أو مصطبة ثابتة","pl","bn|st",1,"p"]
 ];
-const EXEN=["bodyweight squat|air squat|squat", "sumo squat|wide stance squat|squat", "goblet squat|dumbbell squat", "kettlebell goblet squat|kettlebell squat", "leg press|sled leg press", "pause squat|squat", "barbell squat|barbell full squat", "front squat", "pistol squat|assisted squat", "good morning|hip hinge", "dumbbell romanian deadlift|dumbbell stiff leg deadlift", "band romanian deadlift|romanian deadlift", "kettlebell swing", "leg curl|lying leg curl|seated leg curl", "superman|back extension|hyperextension", "barbell romanian deadlift|romanian deadlift", "single leg deadlift|romanian deadlift", "dumbbell single leg deadlift|single leg deadlift", "barbell deadlift|deadlift", "lunge|walking lunge|alternate lunge", "dumbbell lunge", "step up|bench step up|box step up", "side lunge|lateral lunge", "bulgarian split squat|split squat", "dumbbell bulgarian split squat|dumbbell split squat", "kettlebell lunge|kettlebell front rack lunge", "push up|push-up", "knee push up|incline push up", "dumbbell floor press|floor press", "dumbbell bench press", "machine chest press|chest press", "band chest press|resistance band chest press|push up", "feet elevated push up|decline push up", "dumbbell incline bench press|incline dumbbell press", "barbell bench press", "archer push up|archer push-up", "chest dip|dip", "dumbbell fly|dumbbell flye", "cable fly|cable cross over|cable crossover", "pike push up|incline push up", "dumbbell shoulder press|dumbbell seated shoulder press", "machine shoulder press|lever shoulder press", "band shoulder press|resistance band shoulder press", "pike push up|handstand push up", "barbell shoulder press|barbell military press|overhead press", "kettlebell shoulder press|kettlebell press", "wall handstand|handstand", "inverted row|bodyweight row", "dumbbell one arm row|one arm row|dumbbell row", "band row|resistance band row", "cable seated row|seated row", "inverted row|bodyweight row", "kettlebell row|kettlebell bent over row", "barbell bent over row|barbell row", "prone y raise|prone t raise|reverse fly", "assisted pull up|band pull up|pull up", "lat pulldown|cable pulldown", "band lat pulldown|resistance band pulldown|lat pulldown", "dead hang|hanging", "chin up|chin-up", "pull up|pull-up", "glute bridge|hip bridge|bridge", "band kickback|glute kickback", "cable kickback|cable glute kickback", "single leg glute bridge|single leg bridge", "dumbbell hip thrust|hip thrust", "barbell hip thrust|hip thrust", "standing calf raise|calf raise", "dumbbell calf raise|dumbbell standing calf raise", "machine calf raise|lever calf raise|seated calf raise", "single leg calf raise|calf raise", "dumbbell biceps curl|dumbbell curl", "barbell curl", "band biceps curl|resistance band curl|biceps curl", "cable curl|cable biceps curl", "dumbbell hammer curl|hammer curl", "diamond push up|close grip push up", "bench dip|triceps dip|dip", "dumbbell triceps extension|dumbbell overhead triceps extension|overhead triceps extension", "cable triceps pushdown|triceps pushdown|pushdown", "band triceps pushdown|triceps pushdown", "lying triceps extension|skull crusher|barbell lying triceps extension", "dumbbell lateral raise|lateral raise", "band lateral raise|resistance band lateral raise|lateral raise", "cable lateral raise", "face pull|band face pull", "dumbbell rear delt fly|dumbbell reverse fly|rear delt", "cable rear delt fly|reverse fly|rear delt", "prone t raise|reverse fly|rear delt", "plank", "side plank", "dead bug", "lying leg raise|leg raise", "russian twist", "hollow hold|hollow body", "pallof press|band pallof", "cable woodchop|woodchop|wood chopper", "cable crunch", "farmer walk|farmers walk|farmer's walk", "hanging leg raise|hanging knee raise", "high knees|high knee", "jump rope|jumping rope|rope jump", "squat jump|jump squat", "broad jump|standing long jump", "skater jump|lateral jump|side jump", "box jump"];
+const EXEN=["bodyweight squat|air squat|squat", "sumo squat|wide stance squat|squat", "goblet squat|dumbbell squat", "kettlebell goblet squat|kettlebell squat", "leg press|sled leg press", "pause squat|squat", "barbell squat|barbell full squat", "front squat", "pistol squat|assisted squat", "bodyweight squat|air squat|squat", "exercise ball wall squat|wall squat", "suspension squat", "good morning|hip hinge", "dumbbell romanian deadlift|dumbbell stiff leg deadlift", "band romanian deadlift|romanian deadlift", "kettlebell swing", "leg curl|lying leg curl|seated leg curl", "superman|back extension|hyperextension", "barbell romanian deadlift|romanian deadlift", "single leg deadlift|romanian deadlift", "dumbbell single leg deadlift|single leg deadlift", "barbell deadlift|deadlift", "back extension on exercise ball", "exercise ball leg curl", "suspension leg curl", "lunge|walking lunge|alternate lunge", "dumbbell lunge", "step up|bench step up|box step up", "side lunge|lateral lunge", "bulgarian split squat with chair|bulgarian split squat|split squat", "dumbbell bulgarian split squat|dumbbell split squat", "kettlebell lunge|kettlebell front rack lunge", "suspension rear lunge", "push up|push-up", "knee push up|incline push up", "dumbbell floor press|floor press", "dumbbell bench press", "machine chest press|chest press", "band chest press|resistance band chest press|push up", "feet elevated push up|decline push up", "dumbbell incline bench press|incline dumbbell press", "barbell bench press", "archer push up|archer push-up", "chest dip|dip", "dumbbell fly|dumbbell flye", "cable fly|cable cross over|cable crossover", "incline push-up|incline push up", "dumbbell press on exercise ball", "suspension push-up", "pike push up|incline push up", "dumbbell shoulder press|dumbbell seated shoulder press", "machine shoulder press|lever shoulder press", "band shoulder press|resistance band shoulder press", "pike push up|handstand push up", "barbell shoulder press|barbell military press|overhead press", "kettlebell shoulder press|kettlebell press", "wall handstand|handstand", "inverted row|bodyweight row", "dumbbell one arm row|one arm row|dumbbell row", "band row|resistance band row", "cable seated row|seated row", "inverted row|bodyweight row", "kettlebell row|kettlebell bent over row", "barbell bent over row|barbell row", "prone y raise|prone t raise|reverse fly", "suspension row|suspender row", "assisted pull up|band pull up|pull up", "lat pulldown|cable pulldown", "band lat pulldown|resistance band pulldown|lat pulldown", "dead hang|hanging", "chin up|chin-up", "pull up|pull-up", "glute bridge|hip bridge|bridge", "band kickback|glute kickback", "cable kickback|cable glute kickback", "single leg glute bridge|single leg bridge", "dumbbell hip thrust|hip thrust", "barbell hip thrust|hip thrust", "lying hip lift", "standing calf raise|calf raise", "dumbbell calf raise|dumbbell standing calf raise", "machine calf raise|lever calf raise|seated calf raise", "single leg calf raise|calf raise", "calf raise off step|standing calf raise", "dumbbell biceps curl|dumbbell curl", "barbell curl", "band biceps curl|resistance band curl|biceps curl", "cable curl|cable biceps curl", "dumbbell hammer curl|hammer curl", "suspender biceps curl|suspension arm curl", "diamond push up|close grip push up", "bench dip|triceps dip|dip", "dumbbell triceps extension|dumbbell overhead triceps extension|overhead triceps extension", "cable triceps pushdown|triceps pushdown|pushdown", "band triceps pushdown|triceps pushdown", "lying triceps extension|skull crusher|barbell lying triceps extension", "suspension triceps extension", "dumbbell lateral raise|lateral raise", "band lateral raise|resistance band lateral raise|lateral raise", "cable lateral raise", "face pull|band face pull", "dumbbell rear delt fly|dumbbell reverse fly|rear delt", "cable rear delt fly|reverse fly|rear delt", "prone t raise|reverse fly|rear delt", "suspension reverse fly", "plank", "side plank", "dead bug", "lying leg raise|leg raise", "russian twist", "hollow hold|hollow body", "pallof press|band pallof", "cable woodchop|woodchop|wood chopper", "cable crunch", "farmer walk|farmers walk|farmer's walk", "hanging leg raise|hanging knee raise", "stability ball crunch", "stability ball rollout on knees|stability ball rollout", "jack knife on ball|pull-in", "wheel rollout", "standing wheel rollout", "suspension pike", "high knees|high knee", "jump rope|jumping rope|rope jump", "squat jump|jump squat", "broad jump|standing long jump", "skater jump|lateral jump|side jump", "box jump"];
 let EX=RAW.map(([n,p,r,l,k,u],i)=>({n,p,r,l,k,u:!!u,q:EXEN[i]||""}));
 const TIP={sq:"ظهرك مستقيم وركبك باتجاه أصابع رجليك",hi:"حرّك الورك لورا وظهرك ثابت، والوزن قريب من جسمك",lu:"خطوة طويلة وجذعك منتصب",hp:"كتافك لورا وصدرك لقدّام، ونزّل بتحكّم",vp:"شد بطنك وما تقوّس ظهرك",hr:"اسحب بمرفقك لورا وشد لوحي الكتف",vr:"ابدأ من كتافك مو من دراعاتك",gl:"اعصر المؤخرة فوق وثبّت لحظة",ca:"طلوع كامل ونزول بطيء",bi:"مرفقك ثابت جنب جسمك",tr:"مرفقك ثابت والحركة من الساعد",sd:"ارفع لمستوى الكتف وبلا تأرجح",rd:"اسحب لورا وانت عاصر لوحي الكتف",co:"شد بطنك وتنفّس بانتظام",pl:"انزل بنعومة وبركب مثنية"};
 const SP={
@@ -147,11 +149,27 @@ pull:{t:"سحب: ظهر وبايسبس",ty:"up",s:["vr","hr","rd","bi","co","bi"
 legs:{t:"أرجل",ty:"lo",s:["sq","hi","lu","gl","ca","co"]}
 };
 const WD={2:["السبت","الأربعاء"],3:["السبت","الإثنين","الأربعاء"],4:["السبت","الأحد","الأربعاء","الخميس"],5:["السبت","الأحد","الإثنين","الأربعاء","الخميس"],6:["السبت","الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس"]};
-const WARM={up:"5 دقايق (مشي سريع أو حبل) + دوران كتافين ×10 + ضغط ×8 + سحب بحبل أو تجديف خفيف ×10",lo:"5 دقايق (مشي سريع أو حبل) + دوران ورك ×10 + سكوات بوزن الجسم ×10 + جسر الورك ×10",fb:"5 دقايق (مشي سريع أو حبل) + دوران مفاصل (كتاف، ورك، ركب) + سكوات ×8 + ضغط ×6"};
+const WARM={up:"دوران كتافين ×10 + ضغط ×8 + سحب بالمطاط أو تجديف خفيف ×10",lo:"دوران ورك ×10 + سكوات بوزن الجسم ×10 + جسر الورك ×10",fb:"دوران مفاصل (كتاف، ورك، ركب) + سكوات ×8 + ضغط ×6"};
+// التسخين والتبريد بيستعملو أدوات البيت إذا موجودة (جهاز مشي، حبل قفز، عصاية، فوم رول، كرة مساج)
+function warmFor(ty,A){
+  const c=A.has("tm")?"5 دقايق مشي سريع على جهاز المشي":A.has("jr")?"5 دقايق (حبل قفز خفيف أو مشي سريع)":"5 دقايق مشي سريع أو مشي بالمحل";
+  const k=A.has("sk")?(ty==="lo"?" + انحناء الورك والعصاية على ظهرك ×10":" + تمرير العصاية من فوق راسك لورا ×10"):"";
+  return c+" + "+WARM[ty]+k;
+}
+const ROLL={lo:"الفخد الأمامي والخلفي والمؤخرة والسمانة",up:"الظهر العريض وأعلى الظهر والصدر",fb:"الفخاد والمؤخرة والظهر"};
+const BALL={lo:"أسفل القدم والمؤخرة",up:"بين لوحي الكتف والصدر",fb:"أسفل القدم والمؤخرة وبين لوحي الكتف"};
+function coolFor(ty,A){
+  let t="مشي خفيف وإطالة للعضلات يلي اشتغلت (20-30 ثانية لكل عضلة)";
+  if(A.has("fr"))t+=" + فوم رول 30-60 ثانية على "+ROLL[ty];
+  if(A.has("mb"))t+=" + كرة المساج على الأماكن المشدودة ("+BALL[ty]+")";
+  if(A.has("sk")&&!A.has("fr"))t+=" + إطالة الكتافين بالعصاية";
+  return t;
+}
 const hsh=s=>{let x=2166136261;for(let i=0;i<s.length;i++)x=Math.imul(x^s.charCodeAt(i),16777619);return(x>>>0)%1000/1000};
-function goalFin(G,A){
-  const base=A.has("bg")?"كيس ملاكمة: 6 جولات × دقيقتين جهد عالي، راحة 45 ثانية":A.has("jr")?"حبل قفز: 10 جولات × (45 ثانية قفز / 15 ثانية راحة)":A.has("kb")?"سوينغ بالكيتل بيل: 10 جولات × (30 ثانية جهد / 30 ثانية راحة)":"8 جولات × (30 ثانية جهد / 30 ثانية راحة): بيربي، قفز سكوات، تسلّق الجبل، رفع الركب";
-  return G==="end"?{t:"ختام تحمّل",x:"15 دقيقة كارديو متواصل بإيقاع بتقدر تحكي فيه جملة قصيرة (ركض خفيف، مشي سريع، دراجة) — أو: "+base,m:12}:{t:"ختام حرق دهون",x:base,m:8};
+function goalFin(G,A,low){
+  const tm=low?"جهاز المشي: 6 جولات × (45 ثانية مشي سريع مع ميل / 45 ثانية مشي عادي)":"جهاز المشي: 6 جولات × (30 ثانية ركض سريع / 45 ثانية مشي)";
+  const base=A.has("bg")?"كيس ملاكمة: 6 جولات × دقيقتين جهد عالي، راحة 45 ثانية":A.has("tm")?tm:A.has("jr")?"حبل قفز: 10 جولات × (45 ثانية قفز / 15 ثانية راحة)":A.has("kb")?"سوينغ بالكيتل بيل: 10 جولات × (30 ثانية جهد / 30 ثانية راحة)":"8 جولات × (30 ثانية جهد / 30 ثانية راحة): بيربي، قفز سكوات، تسلّق الجبل، رفع الركب";
+  return G==="end"?{t:"ختام تحمّل",x:A.has("tm")?"15 دقيقة على جهاز المشي بإيقاع بتقدر تحكي فيه جملة قصيرة (ركض خفيف أو مشي سريع مع ميل)":"15 دقيقة كارديو متواصل بإيقاع بتقدر تحكي فيه جملة قصيرة (ركض خفيف، مشي سريع، دراجة) — أو: "+base,m:12}:{t:"ختام حرق دهون",x:base,m:8};
 }
 function splitFor(I){
   const d=I.days,b=I.lv===0,sp=SP[I.sp],ath=!!sp.pl||["box","mma","run","tn"].includes(I.sp);
@@ -174,9 +192,9 @@ function gen(I,seed){
   seed=seed||0;
   const lv=I.lv,A=new Set(I.eq),sp=SP[I.sp],G=I.goal,short=I.min<=40;
   const bmi=I.w/((I.h/100)**2),effG=(I.age<16&&G==="str")?"gen":G,maxL=I.age<16?Math.min(lv,1):lv,lowImp=I.age>=50||bmi>=32;
-  const has=r=>!r||r.split(",").every(t=>A.has(t));
+  const has=r=>!r||r.split(",").every(t=>t.split("|").some(u=>A.has(u)));
   const used={},FB={vr:"hr",vp:"hp",hp:"vp",hi:"gl",sq:"lu",lu:"sq",gl:"hi"};
-  const sc=e=>{let s=e.l;if(e.r&&["mus","str","pow"].includes(effG))s+=1;if(sp.pref&&sp.pref.test(e.n))s+=2;s-=(used[e.n]||0)*(effG==="str"?.4:1.5);if(seed)s+=hsh(e.n+seed)*1.2;return s};
+  const sc=e=>{let s=e.l;if(e.r)s+=["mus","str","pow"].includes(effG)?1:.4;if(sp.pref&&sp.pref.test(e.n))s+=2;s-=(used[e.n]||0)*(effG==="str"?.4:1.5);if(seed)s+=hsh(e.n+seed)*1.2;return s};
   function pick(slot,dayUsed){
     const[p0,k]=slot.split(":");
     for(const p of[p0,FB[p0]]){
@@ -207,7 +225,7 @@ function gen(I,seed){
     const last=di>=split.length-2,sf=sp.fin&&last?sp.fin(A):null;
     let fin=null;
     if(sf)fin={t:"ختام رياضي",x:sf,m:short?6:8};
-    else if((G==="fat"||G==="end")&&(split.length<=3||di%2===0)){fin=goalFin(G,A);if(short)fin.m=Math.min(fin.m,6)}
+    else if((G==="fat"||G==="end")&&(split.length<=3||di%2===0)){fin=goalFin(G,A,lowImp);if(short)fin.m=Math.min(fin.m,6)}
     const budget=I.min-warm-(short?3:4)-(fin?fin.m:0),maxN=[6,7,8][lv]+(sp.more?1:0);
     let spent=0,n=0;
     for(const sl of slots){
@@ -219,25 +237,25 @@ function gen(I,seed){
       dayUsed.add(e.n);used[e.n]=(used[e.n]||0)+1;spent+=t;n++;
       rows.push({n:e.n,q:e.q,u:e.u,k:e.k,s:r.s,r:r.r,rest:r.rest,h:!!r.h,tip:TIP[e.p]||""});
     }
-    days.push({t:tp.t,wd:WD[I.days][di],ty:tp.ty,warm:WARM[tp.ty],rows,fin,total:Math.round(warm+(short?3:4)+spent+(fin?fin.m:0))});
+    days.push({t:tp.t,wd:WD[I.days][di],ty:tp.ty,warm:warmFor(tp.ty,A),cool:coolFor(tp.ty,A),rows,fin,total:Math.round(warm+(short?3:4)+spent+(fin?fin.m:0))});
   });
   const notes=[];
   notes.push("اختار وزن بيخليك تخلّص التكرارات وبيضل عندك تكرارين أو تلاتة احتياط. الجودة قبل الوزن.");
   notes.push("التقدّم: أسبوع 1 خفيف لتتعلّم الحركة. أسابيع 2 و3 زيد وزن صغير (2.5-5%) أو تكرار. أسبوع 4 خفّف الحجم للنص وارتاح، وبعدها ابدأ دورة جديدة وبدّل التمارين.");
   if(["mus","str","pow"].includes(G))notes.push("نام 7-9 ساعات، والعضلة بتكبر وقت الراحة مو وقت التمرين.");
-  if(G==="fat")notes.push("ضيف 2-3 جلسات كارديو خفيف (مشي سريع أو ركض خفيف 25-40 دقيقة) بالأيام الفاضية.");
+  if(G==="fat")notes.push(A.has("tm")?"ضيف 2-3 جلسات مشي سريع أو ركض خفيف على جهاز المشي (25-40 دقيقة) بالأيام الفاضية.":"ضيف 2-3 جلسات كارديو خفيف (مشي سريع أو ركض خفيف 25-40 دقيقة) بالأيام الفاضية.");
   if(G==="end")notes.push("ضيف جلستين كارديو متواصل 30-45 دقيقة بالأسبوع، وزيد المدة 5 دقايق كل أسبوع.");
   if(I.lv===0&&I.days>4)notes.push("للمبتدئ: ابدأ بـ 3-4 أيام أول 4 أسابيع، وبعدها زيد إذا جسمك ارتاح منيح.");
   if(I.age<16)notes.push("بعمرك ركّز على التقنية الصح وحمل خفيف أو متوسط، وبلا رفع أقصى. يفضّل تتمرّن بإشراف مدرّب.");
   if(I.age>=50)notes.push("زدنا الراحة بين المجموعات وشلنا القفزات القوية. سخّن أكتر، وإذا عندك مشكلة بالقلب أو المفاصل استشر دكتورك قبل ما تبدأ.");
   if(bmi>=32)notes.push("شلنا القفزات والتمارين القوية عالمفاصل وركّزنا عالحركات الآمنة. ابدأ بالتدريج وزيد الشدّة مع الوقت.");
   (sp.tips||[]).forEach(t=>notes.push(t));
-  const lvl=(A.has("mc")||(A.has("bb")&&A.has("bn")))?0:1;
+  const home=I.pl!=="gym",lvl=home?1:0;
   const shop=[];
-  if(!A.has("mc")){[["db","دمبل"],["bd","حبل مقاومة"],["pu","عقلة"],["jr","حبل قفز"],["kb","كيتل بيل"]].forEach(([t,w])=>{if(!A.has(t)&&shop.length<4)shop.push(w)});
+  if(home){[["db","دمبل"],["bd","مطاط مقاومة"],["pu","عقلة"],["jr","حبل قفز"],["kb","كيتل بيل"],["tx","حبل TRX"]].forEach(([t,w])=>{if(!A.has(t)&&shop.length<4)shop.push(w)});
     if(["box","mma"].includes(I.sp)&&!A.has("bg")&&shop.length<4)shop.push("كيس ملاكمة")}
   const b=Math.round(bmi*10)/10,bc=b<18.5?"نحيف":b<25?"طبيعي":b<30?"زيادة وزن":"سمنة";
-  return{days,notes,nu:nutri(I),bmi:b,bmiC:bc,shop:lvl?shop:[],G,sp:sp.n,lv:LVN[lv],split:split.length};
+  return{days,notes,nu:nutri(I),bmi:b,bmiC:bc,shop:lvl?shop:[],G,sp:sp.n,lv:LVN[lv],split:split.length,pl:home?"بالبيت":"بالنادي"};
 }
 /*END*/
 
@@ -255,8 +273,13 @@ function gen(I,seed){
     if(CFG.on===false){const a=document.getElementById("app");a.innerHTML='<div class="card"><h3>الصفحة مقفلة حالياً</h3><p class="hint">رجّع جرّب بعدين.</p></div>';return false}
     return true;
   }
-  let S={g:"m",age:"",h:"",w:"",lv:1,sp:"gen",goal:"gen",eq:["db"],days:4,min:60},seed=0,R=null,I=null;
+  let S={g:"m",age:"",h:"",w:"",lv:1,sp:"gen",goal:"gen",pl:"",eq:["db"],days:4,min:60},seed=0,R=null,I=null;
   try{const o=JSON.parse(localStorage.getItem(KEY)||"{}");Object.assign(S,o)}catch{}
+  if(!Array.isArray(S.eq))S.eq=[];
+  if(S.pl!=="gym"&&S.pl!=="home")S.pl=S.eq.includes("mc")?"gym":"home";
+  // الأدوات المحسوبة: النادي = كل شي، البيت = يلي اختارو (من لائحة البيت بس)
+  // (كرة المساج والعصاية مو مضمونين بكل نادي، والكيس بس لرياضات القتال)
+  const eqOf=()=>S.pl==="gym"?EQALL.filter(k=>!["mb","sk","bg"].includes(k)||(k==="bg"&&["box","mma"].includes(S.sp))):S.eq.filter(k=>EQN[k]);
   if(window.top!==window)document.documentElement.classList.add("emb");
   // جوّا المتجر (iframe): بيبعت طولو للصفحة الأم لتكبّر الإطار على قدّو
   if(window.top!==window){const sendH=()=>{try{parent.postMessage({koPbH:Math.ceil(document.body.getBoundingClientRect().height)+8},location.origin)}catch(e){}};try{new ResizeObserver(sendH).observe(document.body)}catch(e){}addEventListener("load",sendH);}
@@ -274,7 +297,9 @@ function gen(I,seed){
     <div class="card"><h3>2) مستواك</h3>${ch("lv",[[0,"مبتدئ (أقل من 6 شهور)"],[1,"متوسط (سنة تقريباً)"],[2,"متقدّم (أكتر من سنتين)"]])}</div>
     <div class="card"><h3>3) رياضتك</h3>${ch("sp",Object.entries(SP).map(([k,v])=>[k,v.n]))}</div>
     <div class="card"><h3>4) هدفك</h3>${ch("goal",Object.entries(GOALN))}</div>
-    <div class="card"><h3>5) شو الأدوات المتوفرة عندك؟</h3>${ch("eq",Object.entries(EQN),true)}<p class="hint">وزن الجسم دايماً متوفر. إذا ما عندك شي، خلّيها فاضية وبنعملك برنامج بلا أدوات.</p></div>
+    <div class="card"><h3>5) وين بتتمرّن؟</h3>${ch("pl",[["gym","🏋️ نادي كامل"],["home","🏠 بالبيت"]])}
+      <p class="hint" id="eqg"${S.pl==="gym"?"":" hidden"}>بالنادي منستعمل كل الأجهزة والأدوات.</p>
+      <div id="eqh"${S.pl==="gym"?" hidden":""}><p class="hint" style="margin:12px 0 8px">شو الأدوات يلي عندك بالبيت؟ (اختار كل شي عندك)</p>${ch("eq",Object.entries(EQN),true)}<p class="hint">وزن الجسم دايماً متوفر. إذا ما عندك شي، خلّيها فاضية وبنعملك برنامج بلا أدوات.</p></div></div>
     <div class="card"><h3>6) وقتك</h3><p class="hint" style="margin:0 0 8px">كم يوم بالأسبوع؟</p>${ch("days",[2,3,4,5,6].map(x=>[x,x+" أيام"]))}<p class="hint" style="margin-top:12px">كم دقيقة للحصة؟</p>${ch("min",[30,45,60,75,90].map(x=>[x,x+" دقيقة"]))}</div>
     <button class="btn w" id="go" type="button">اعمل برنامجي</button>`;
   }
@@ -290,13 +315,13 @@ function gen(I,seed){
   function show(){
     const r=R,N=r.nu;
     app.innerHTML=`<div class="sum"><b>برنامجك جاهز 💪</b>
-      <div class="tags"><span class="tag">${esc(r.sp)}</span><span class="tag">${esc(GOALN[r.G])}</span><span class="tag">${esc(r.lv)}</span><span class="tag">${num(S.days)} أيام بالأسبوع</span><span class="tag">${num(S.min)} دقيقة</span></div></div>
+      <div class="tags"><span class="tag">${esc(r.sp)}</span><span class="tag">${esc(GOALN[r.G])}</span><span class="tag">${esc(r.lv)}</span><span class="tag">${esc(r.pl)}</span><span class="tag">${num(S.days)} أيام بالأسبوع</span><span class="tag">${num(S.min)} دقيقة</span></div></div>
     <div class="bar noprint"><button class="btn" id="re">🔀 نسخة تانية</button><button class="btn ghost" id="pr">🖨 طباعة / PDF</button><button class="btn ghost" id="cp">📋 انسخ كنص</button><button class="btn ghost" id="ed">✏️ عدّل إجاباتي</button></div>
     ${r.days.map((d,i)=>`<div class="card dy"><div class="hd"><b>اليوم ${num(i+1)} · ${esc(d.wd)} · ${esc(d.t)}</b><span>حوالي ${num(d.total)} د</span></div>
       <div class="wu">🔥 تسخين: ${esc(d.warm)}</div>
       ${d.rows.map(x=>`<div class="ex" data-q="${esc(x.q||"")}"><div class="n">${esc(x.n)}${x.u?`<em>لكل جهة</em>`:""}</div><div class="p"><b>${num(x.s)} × ${num(x.r)}${x.h?"":" تكرار"}</b><span>راحة ${rest(x.rest)}</span></div>${x.tip?`<div class="t">${esc(x.tip)}</div>`:""}</div>`).join("")}
       ${d.fin?`<div class="fin"><b>${esc(d.fin.t)} (${num(d.fin.m)} د):</b> ${esc(d.fin.x)}</div>`:""}
-      <div class="cd">🧘 تبريد: مشي خفيف وإطالة للعضلات يلي اشتغلت (20-30 ثانية لكل عضلة)</div></div>`).join("")}
+      <div class="cd">🧘 تبريد: ${esc(d.cool)}</div></div>`).join("")}
     <div class="card"><h3>🍽 تغذيتك (تقدير تقريبي)</h3><div class="nu"><div><b>${num(N.k)}</b><small>سعرة باليوم</small></div><div><b>${num(N.p)}</b><small>غ بروتين</small></div><div><b>${num(N.c)}</b><small>غ كربوهيدرات</small></div><div><b>${num(N.f)}</b><small>غ دهون</small></div></div>
       <p class="hint">مؤشر كتلة الجسم عندك ${num(r.bmi)} (${esc(r.bmiC)}). المي: حوالي ${num(N.water)} ليتر باليوم. الأرقام تقديرية (±10%): تابع وزنك كل أسبوعين وعدّل حسب النتيجة.</p></div>
     <div class="card"><h3>📌 ملاحظات</h3><ul class="nt">${r.notes.concat(CFG.note?[CFG.note]:[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
@@ -341,8 +366,8 @@ function gen(I,seed){
     });
   }
   function asText(){
-    const r=R,L=[`برنامجي من KO SPORT — ${r.sp} · ${GOALN[r.G]} · ${r.lv}`,""];
-    r.days.forEach((d,i)=>{L.push(`اليوم ${i+1} (${d.wd}) — ${d.t}`,`تسخين: ${d.warm}`);d.rows.forEach(x=>L.push(`• ${x.n}${x.u?" (لكل جهة)":""}: ${x.s} × ${x.r}${x.h?"":" تكرار"} · راحة ${x.rest} ث`));if(d.fin)L.push(`${d.fin.t}: ${d.fin.x}`);L.push("")});
+    const r=R,L=[`برنامجي من KO SPORT — ${r.sp} · ${GOALN[r.G]} · ${r.lv} · ${r.pl}`,""];
+    r.days.forEach((d,i)=>{L.push(`اليوم ${i+1} (${d.wd}) — ${d.t}`,`تسخين: ${d.warm}`);d.rows.forEach(x=>L.push(`• ${x.n}${x.u?" (لكل جهة)":""}: ${x.s} × ${x.r}${x.h?"":" تكرار"} · راحة ${x.rest} ث`));if(d.fin)L.push(`${d.fin.t}: ${d.fin.x}`);L.push(`تبريد: ${d.cool}`,"")});
     const N=r.nu;L.push(`التغذية: ${N.k} سعرة · ${N.p}غ بروتين · ${N.c}غ كربوهيدرات · ${N.f}غ دهون · مي ${N.water} ل`,"",...r.notes.map(t=>"- "+t));
     return L.join("\n");
   }
@@ -371,8 +396,9 @@ function gen(I,seed){
     if(b.dataset.k){const k=b.dataset.k,v=b.dataset.v;
       if(k==="eq"){const i=S.eq.indexOf(v);i<0?S.eq.push(v):S.eq.splice(i,1);b.classList.toggle("on")}
       else{S[k]=["lv","days","min"].includes(k)?+v:v;b.parentNode.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))}
+      if(k==="pl"){const h=$("#eqh"),g=$("#eqg");if(h)h.hidden=S.pl==="gym";if(g)g.hidden=S.pl!=="gym"}
       save();return}
-    if(b.id==="go"){const m=chk();if(m){form(m);window.scrollTo({top:0});return}seed=0;I={...S,age:+S.age,h:+S.h,w:+S.w};R=gen(I,seed);show();return}
+    if(b.id==="go"){const m=chk();if(m){form(m);window.scrollTo({top:0});return}seed=0;I={...S,age:+S.age,h:+S.h,w:+S.w,eq:eqOf()};R=gen(I,seed);show();return}
     if(b.id==="re"){seed++;R=gen(I,seed);show();toast("هي نسخة تانية بتمارين مختلفة");return}
     if(b.id==="ed"){form();return}
     if(b.id==="pr"){printProgram();return}
