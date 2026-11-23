@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=429" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=430" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +1981,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=429"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=430"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2146,7 +2146,18 @@
     }
     return exl.prog;
   }
-  const exlCover = (p) => (p.c ? `<img src="/exlib/m/pc${String(p.c).padStart(3, "0")}.webp" alt="" loading="lazy" decoding="async" width="480" height="480">` : `<span class="exl-pgph"><b>${p.dy || ""}</b><small>${p.dy ? "أيام" : "برنامج"}</small></span>`);
+  // البرامج يلي ما إلها غلاف: غلاف من صور تمارين البرنامج نفسو (4 صور، من مكتبتنا المشتراة، مو من النت)
+  const exlMix = (p) => {
+    const ids = [], pm = exl.pmap || [];
+    for (const d of p.w || []) for (const r of d[1] || []) { const x = pm[r[0]]; if (x && x.i && !ids.includes(x.i)) ids.push(x.i); if (ids.length >= 4) break; }
+    return ids.length >= 1 ? ids.slice(0, ids.length >= 4 ? 4 : 1) : null;
+  };
+  const exlCover = (p) => {
+    if (p.c) return `<img src="/exlib/m/pc${String(p.c).padStart(3, "0")}.webp" alt="" loading="lazy" decoding="async" width="480" height="480">`;
+    const ids = exlMix(p);
+    if (ids) return `<span class="exl-pgmix${ids.length > 1 ? "" : " one"}">${ids.map((id) => `<img src="/exlib/m/${esc(id)}.jpg" alt="" loading="lazy" decoding="async">`).join("")}${p.dy ? `<i>${p.dy} أيام</i>` : ""}</span>`;
+    return `<span class="exl-pgph"><b>${p.dy || ""}</b><small>${p.dy ? "أيام" : "برنامج"}</small></span>`;
+  };
   const exlPT = (i, p) => (exl.progAr && exl.progAr[i]) || p.t;
   const exlMeta = (p) => [p.dy ? p.dy + " أيام بالأسبوع" : "", p.wk ? p.wk + " أسابيع" : "", EXL_LV[p.lv] || ""].filter(Boolean).join(" · ");
   async function exlProgPage(idx) {
