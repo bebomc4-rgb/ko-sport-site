@@ -5024,13 +5024,6 @@ async function exlibApi(request, env, path, m) {
     return json(await exlibCfg(env), 200, nos);
   }
   if (path === "/api/exlib/translation/tick" && m === "POST") return exlTranslationTick(request, env);
-  // الرفع والتعديل: بكلمة سر لوحة التحكم (المالك بس)
-  if (!isAdmin(request, env, "owner")) return denied();
-  if (path === "/api/exlib/translation/start" && m === "POST") return exlTranslationStart(request, env);
-  if (path === "/api/exlib/translation/status" && m === "GET") return exlTranslationStatus(request, env);
-  if (path === "/api/exlib/translation/stop" && m === "POST") return exlTranslationStop(request, env);
-  if (path === "/api/exlib/translation/step" && m === "POST") return exlTranslationStep(env);
-  // لوحة التحكم ← التمارين: كل اللائحة مع المخفية والمعدّلة
   // صفحة «صور النساء» بحساب صاحب المتجر: القائمة والبدائل المقترحة والاختيارات ({رقم تمرين المرا: رقم البديل | "-"})
   if (path === "/api/exlib/wsw" && m === "GET") {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
@@ -5048,6 +5041,13 @@ async function exlibApi(request, env, path, m) {
     await env.STORE.put("exlib:wsw", JSON.stringify(S));
     return json({ ok: true, S }, 200, nos);
   }
+  // الرفع والتعديل: بكلمة سر لوحة التحكم (المالك بس)
+  if (!isAdmin(request, env, "owner")) return denied();
+  if (path === "/api/exlib/translation/start" && m === "POST") return exlTranslationStart(request, env);
+  if (path === "/api/exlib/translation/status" && m === "GET") return exlTranslationStatus(request, env);
+  if (path === "/api/exlib/translation/stop" && m === "POST") return exlTranslationStop(request, env);
+  if (path === "/api/exlib/translation/step" && m === "POST") return exlTranslationStep(env);
+  // لوحة التحكم ← التمارين: كل اللائحة مع المخفية والمعدّلة
   if (path === "/api/exlib/adm" && m === "GET") {
     const { merged } = await exlibAll(env);
     const W = exlWomen();
