@@ -221,6 +221,12 @@ async function diagApi(request, env) {
       });
     }
   } catch (e) { out.error = String((e && e.message) || e).slice(0, 200); }
+  // صحة الدخول والتسجيل: مصدر السر (بلا السر نفسو) وعدّادات آخر 24 ساعة
+  try {
+    const S = await acctSecrets(env), ks = (await env.STORE.list({ prefix: "acct:st:" })).keys.map((k) => k.name).sort().slice(-24);
+    const hours = {}; for (const k of ks) hours[k.slice(8)] = await env.STORE.get(k, "json");
+    out.auth = { secret: { src: env.ACCT_SECRET ? "env" : "kv", n: S.all.length, fp: (await sha(S.main)).slice(0, 6) }, hours };
+  } catch (e) { out.authError = String((e && e.message) || e).slice(0, 120); }
   return json(out);
 }
 
@@ -971,21 +977,52 @@ function syPhone(v) {
   return /^[1-9]\d{9,14}$/.test(d) ? "+" + d : "";
 }
 const ACCT_PH = /^(09\d{8}|\+[1-9]\d{9,14})$/;
-async function acctSecret(env) {
-  if (env.ACCT_SECRET) return env.ACCT_SECRET;
-  if (env.__acs) return env.__acs;
-  let k = await env.STORE.get("acct:secret");
-  if (!k) { k = b64u(crypto.getRandomValues(new Uint8Array(32))); await env.STORE.put("acct:secret", k); }
-  return (env.__acs = k);
+// سر توقيع الدخول (صاحب المتجر 24/11/2026: «احفظ التسجيل للابد»): ما بيتغيّر أبداً.
+// - كل سر انستعمل بينحفظ بـ acct:secrets، والتوكن بيتقبّل بأي واحد منهن: إذا انضاف أو انشال ACCT_SECRET بإعدادات Cloudflare، ما حدا بيطلع من حسابو
+// - سر جديد بينعمل بس أول مرة بحياة الموقع (KV قال أكتر من مرة إنو ما في ولا سر). إذا KV علّق، الطلب بيفشل وما منغيّر شي
+let ACS = null, ACS_AT = 0;
+const nap = (ms) => new Promise((r) => setTimeout(r, ms));
+async function acctSecrets(env) {
+  if (ACS && Date.now() - ACS_AT < 600e3) return ACS;
+  const rd = async (k, t) => { for (let i = 0; i < 3; i++) { try { return { v: await env.STORE.get(k, t) }; } catch {} await nap(150 * (i + 1)); } throw new Error("KV busy"); };
+  let one = (await rd("acct:secret")).v, list = (await rd("acct:secrets", "json")).v;
+  list = Array.isArray(list) ? list.filter((x) => typeof x === "string" && x.length >= 16) : [];
+  if (!one && !list.length && !env.ACCT_SECRET) { // أول مرة: منتأكّد كمان مرة بعد لحظة قبل ما نعمل سر
+    await nap(400); one = (await rd("acct:secret")).v;
+    if (!one) { one = b64u(crypto.getRandomValues(new Uint8Array(32))); await env.STORE.put("acct:secret", one); }
+  }
+  const all = [...list]; let ch = false;
+  for (const x of [one, env.ACCT_SECRET]) if (x && !all.includes(x)) { all.push(x); ch = true; }
+  if (ch) await env.STORE.put("acct:secrets", JSON.stringify(all)).catch(() => {});
+  if (!one && !env.ACCT_SECRET && all.length) { one = all[0]; await env.STORE.put("acct:secret", one).catch(() => {}); } // acct:secret انمسح: منرجّع الأصلي
+  const main = env.ACCT_SECRET || one;
+  ACS = { main, all: [main, ...all.filter((x) => x !== main)] }; ACS_AT = Date.now();
+  return ACS;
+}
+async function acctSecret(env) { return (await acctSecrets(env)).main; }
+const HK = new Map();
+async function hmacWith(secret, msg) {
+  let key = HK.get(secret);
+  if (!key) { key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]); HK.set(secret, key); }
+  return b64u(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg)));
+}
+// التوكن بيتقبّل بأي سر انستعمل قبل (شوف acctSecrets)
+async function hmacOk(env, msg, sig) { sig = String(sig || ""); for (const x of (await acctSecrets(env)).all) if (sameStr(await hmacWith(x, msg), sig)) return true; return false; }
+// عدّادات الدخول والتسجيل لـ /api/diag (بلا أرقام ولا أسماء): مفتاح لكل ساعة acct:st:<YYYYMMDDHH>
+const ST = { c: {}, at: 0 };
+function stat(env, ctx, k) {
+  ST.c[k] = (ST.c[k] || 0) + 1;
+  if (!env.STORE || Date.now() - ST.at < 20e3) return;
+  ST.at = Date.now(); const c = ST.c; ST.c = {};
+  const key = "acct:st:" + new Date().toISOString().slice(0, 13).replace(/\D/g, "");
+  const p = (async () => { const o = (await env.STORE.get(key, "json")) || {}; for (const [x, n] of Object.entries(c)) o[x] = (o[x] || 0) + n; await env.STORE.put(key, JSON.stringify(o), { expirationTtl: 4 * 86400 }); })().catch(() => {});
+  if (ctx && ctx.waitUntil) ctx.waitUntil(p);
 }
 async function passHash(pw, salt) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
   return b64u(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode(salt), iterations: 100000 }, key, 256));
 }
-async function hmac(env, msg) {
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(await acctSecret(env)), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  return b64u(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg)));
-}
+async function hmac(env, msg) { return hmacWith(await acctSecret(env), msg); }
 async function acctToken(env, a) {
   const exp = Date.now() + 10 * 365 * 864e5, body = `${a.phone}.${exp}.${a.hash.slice(0, 8)}`; // الدخول ما بينتهي (10 سنين، وبيتجدّد لحالو)
   return `${body}.${await hmac(env, body)}`;
@@ -996,6 +1033,7 @@ const sessOf = (request) => { const m = (request.headers.get("cookie") || "").ma
 const sessCookie = (t) => t ? `${SESS}=${encodeURIComponent(t)}; Max-Age=34560000; Path=/; HttpOnly; Secure; SameSite=Lax` : `${SESS}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`;
 async function acctFromReq(request, env, why) {
   const h = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim(), c = sessOf(request);
+  if (!h && !c) { if (why) why.reason = "none"; return null; } // ما في دخول محفوظ أصلاً
   if (h && h !== c) { const w = {}, a = await acctFromTok(h, env, w); if (a) return a; if (!c) { if (why) why.reason = w.reason; return null; } }
   return acctFromTok(c || h, env, why);
 }
@@ -1003,11 +1041,13 @@ async function acctFromTok(t, env, why) {
   const [phone, exp, pv, sig] = String(t || "").split(".");
   const no = (r) => { if (why) why.reason = r; return null; };
   if (!sig || !ACCT_PH.test(phone) || !(+exp > Date.now())) return no("token");
-  if ((await hmac(env, `${phone}.${exp}.${pv}`)) !== sig) return no("token");
+  try { if (!(await hmacOk(env, `${phone}.${exp}.${pv}`, sig))) return no("token"); } catch { return no("busy"); }
   let a = null; try { a = await env.STORE.get("acct:" + phone, "json"); } catch { return no("busy"); }
   if (!a) return no("missing"); // حساب جديد ممكن ياخد لحد دقيقة ليوصل لكل السيرفرات: ما منطلّع الزبون
   if (a.blocked) return no("blocked");
-  return a.hash.slice(0, 8) === pv ? a : no("password");
+  if (String(a.hash || "").slice(0, 8) === pv) return a;
+  // رسالتين واتساب ورا بعض لنفس الرقم عملو الحساب مرتين بنفس اللحظة: الدخول الأول بيضل صالح (أول ساعة من عمر الحساب)
+  return Date.now() - Date.parse(a.at || 0) < 3600e3 ? a : no("password");
 }
 // أسماء وهمية (صاحب المتجر 24/11/2026، زبون سمّى حالو «مالك اسم عندي»): الحساب بيطلعلو بطاقة «تأكيد الاسم»:
 // ما منقبل أسماء وهمية، اكتب اسمك الحقيقي وارفع صورة الهوية (بتنحذف لحالها بعد التأكيد). صاحب المتجر بيوصلو إشعار عالواتس وبيأكّد أو بيرفض
@@ -1026,6 +1066,7 @@ async function ownerNotify(env, request, text, push) {
 const later = (ctx, p) => { if (ctx && ctx.waitUntil) ctx.waitUntil(p.catch(() => {})); else return p.catch(() => {}); };
 // WhatsApp code: the site signs the request (ECDSA P-256, private key kept in KV), K FAST AI checks it with /api/acct/otp-key
 const OTP_SENDER = "https://k-fast-ai.pages.dev/api/otp/ko";
+const SITE = "https://ko-sport.online"; // روابط صاحب المتجر بالواتساب: دايماً العنوان الأساسي (مو pages.dev)
 // the workers.dev address switches to the phone a few seconds faster than pages.dev when the PC goes down: try it first
 const OTP_HOSTS = ["https://k-fast-ai.sfa7al3asme.workers.dev", "https://k-fast-ai.pages.dev"];
 async function botPost(path, body, ms) {
@@ -1034,15 +1075,18 @@ async function botPost(path, body, ms) {
   }
   return null;
 }
+let OTPK = null;
 async function otpKeys(env) {
+  if (OTPK) return OTPK;
   if (env.__otpk) return env.__otpk;
   let k = await env.STORE.get("acct:otpkey", "json");
+  if (!k) { await nap(400); k = await env.STORE.get("acct:otpkey", "json"); } // ما منعمل مفتاح جديد إلا إذا KV قال مرتين إنو ما في
   if (!k) {
     const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
     k = { priv: await crypto.subtle.exportKey("jwk", kp.privateKey), pub: await crypto.subtle.exportKey("jwk", kp.publicKey) };
     await env.STORE.put("acct:otpkey", JSON.stringify(k));
   }
-  return (env.__otpk = k);
+  return (OTPK = env.__otpk = k);
 }
 async function sendOtp(env, phone, code) {
   const k = await otpKeys(env), ts = Date.now(), nonce = b64u(crypto.getRandomValues(new Uint8Array(12)));
@@ -2075,7 +2119,7 @@ async function susNotify(env, request, list) {
     const tok = b64u(crypto.getRandomValues(new Uint8Array(18)));
     await env.STORE.put("acctsus:" + tok, JSON.stringify({ phone: a.phone, name: a.name, gov: a.governorate || "", why, at: new Date().toISOString() }), { expirationTtl: 30 * 86400 });
     const k = "acct:" + a.phone, cur = await env.STORE.get(k, "json"); if (cur) { cur.susAt = new Date().toISOString(); await env.STORE.put(k, JSON.stringify(cur)); }
-    L.push({ a, why, link: new URL(request.url).origin + "/fn/" + tok });
+    L.push({ a, why, link: SITE + "/fn/" + tok });
   }
   if (!L.length) return 0;
   const text = L.length === 1
@@ -2141,11 +2185,59 @@ async function accountsList(request, env) {
   out.sort((x, y) => String(y.at || "").localeCompare(String(x.at || "")));
   return json({ total: keys.length, accounts: out });
 }
+// ---------- التسجيل والدخول بالواتساب (مساعدات لـ acctApi) ----------
+const waNh = async (n) => (/^[A-Za-z0-9_-]{16,64}$/.test(String(n || "")) ? (await sha("wa|" + n)).slice(0, 32) : "");
+const waFlags = (d) => ({ ...(d.created ? { created: true } : {}), ...(d.existed ? { existed: true } : {}), ...(d.missing ? { missing: true } : {}), ...(d.blocked ? { blocked: true } : {}) });
+// خانات الحساب الجديد (الاسم الثلاثي بالعربي، المحافظة، كلمة السر)
+async function waRegFields(b) {
+  const name = clip(String(b.name || "").replace(/\s+/g, " ").trim(), 80), parts = name.split(" ").filter(Boolean), pw = String(b.password || "");
+  const bad = (error, field) => ({ err: json({ error, field }, 400) });
+  if (parts.length < 3 || parts.some((w) => w.length < 2) || /[0-9٠-٩@#$%^&*_=+<>{}\[\]|\\\/]/.test(name)) return bad("اكتب الاسم الثلاثي متل الهوية (الاسم، اسم الأب، الكنية)", "name");
+  // صاحب المتجر (16 تشرين التاني 2026): الحسابات الجديدة بالاسم العربي بس (القديمة بتضل متل ما هي)
+  if (!/^[\u0600-\u06FF\s]+$/.test(name)) return bad("اكتب اسمك بالعربي (متل الهوية)", "name");
+  if (isFakeName(name)) return bad("ما منقبل أسماء وهمية، اكتب اسمك الحقيقي متل الهوية", "name");
+  if (!ACCT_GOVS.includes(b.governorate)) return bad("اختار المحافظة", "governorate");
+  if (pw.length < 6 || pw.length > 64) return bad("كلمة السر لازم تكون 6 أحرف أو أكتر", "password");
+  const salt = b64u(crypto.getRandomValues(new Uint8Array(16)));
+  return { pend: { name, governorate: b.governorate, salt, hash: await passHash(pw, salt) } };
+}
+// الرقم تأكّد بالواتساب: منعمل الحساب (أو منلاقي الموجود)، ومنحفظ النتيجة مع الرمز لتلاقيها الصفحة حتى لو انسكّرت وانفتحت
+async function waFinish(env, request, ctx, t, pend, phone, push) {
+  const now = new Date().toISOString(), ex = await env.STORE.get("acct:" + phone, "json");
+  let d;
+  if (ex) d = ex.blocked ? { phone, blocked: 1 } : pend.hash && ex.hash === pend.hash ? { phone, acct: ex, created: 1 } : { phone, existed: 1 }; // نفس التسجيل (البوت والصفحة بنفس اللحظة)
+  else if (pend.login) d = { phone, missing: 1 };
+  else {
+    const dv = push ? "" : devOf(request); // wa-done جاي من البوت، مو من جهاز الزبون
+    const a = { name: pend.name, phone, governorate: pend.governorate, salt: pend.salt, hash: pend.hash, verified: true, via: "whatsapp", at: now, ...(dv ? { dev: dv, dev0: dv } : {}), seen: now };
+    await env.STORE.put("acct:" + phone, JSON.stringify(a));
+    try { const all = (await env.STORE.get("customers", "json")) || {}, k = custKey(phone); all[k] = { ...cleanCust({ name: a.name, phone, gov: a.governorate, tags: ["حساب بالموقع"] }), ...(all[k] || {}), name: a.name, phone, gov: a.governorate, account: true }; await env.STORE.put("customers", JSON.stringify(all)); } catch {}
+    later(ctx, botContacts(env, [a])); later(ctx, susNotify(env, request, [a]));
+    d = { phone, acct: a, created: 1 };
+  }
+  stat(env, ctx, "wa:" + (push ? "push-" : "page-") + (d.created ? "created" : d.existed ? "in" : d.missing ? "missing" : "blocked"));
+  const rest = { ...pend }; delete rest.done;
+  await env.STORE.put("acct:wapend:" + t, JSON.stringify({ ...rest, done: { ...d, at: now } }), { expirationTtl: 86400 }).catch(() => {});
+  return d;
+}
+// الصفحة بتفوّت الزبون من نتيجة الرمز. الحساب الجديد ممكن ما يكون وصل لهالسيرفر لسا (KV لحد دقيقة): منستعمل النسخة يلي انحفظت مع الرمز
+async function waLogin(env, request, ctx, d) {
+  if (d.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403);
+  if (d.missing) return json({ error: "ما في حساب على رقمك لهلق", missing: true, verified: true, phone: d.phone }, 404);
+  let a = await env.STORE.get("acct:" + d.phone, "json").catch(() => null);
+  if (a && a.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403);
+  if (a) await acctTouch(env, request, a);
+  else if (d.created && d.acct) a = d.acct;
+  else return json({ ok: true, waiting: true });
+  stat(env, ctx, "wa:in");
+  return json({ ok: true, token: await acctToken(env, a), account: acctOut(a), ...(d.created ? {} : { existed: true }) });
+}
 async function acctApi(request, env, path, m, ctx) {
   if (!env.STORE) return json({ error: "الحسابات مو متاحة هلق" }, 503);
   if (path === "/api/acct/orders" && m === "GET") return acctOrders(request, env);
   if (path === "/api/acct/me") {
     const why = {}, a = await acctFromReq(request, env, why);
+    if (m === "GET") stat(env, ctx, a ? "me:ok" : "me:" + (why.reason || "x"));
     // بس الحساب الموقوف أو كلمة سر تغيّرت بيطلّعو الزبون. غير هيك (ضغط أو حساب لسا عم يوصل) بيضل داخل
     if (!a) return json({ error: "سجّل دخول من جديد", reason: why.reason || "", logout: why.reason === "blocked" || why.reason === "password" || why.reason === "token" }, 401);
     if (m === "GET" && idState(a) === 1 && !a.idSeen) { // فتح الموقع وطلعتلو بطاقة «تأكيد الاسم»: منخبّر صاحب المتجر (مرة وحدة)
@@ -2188,7 +2280,7 @@ async function acctApi(request, env, path, m, ctx) {
     if (!a.idReq) a.idReq = { at: now, why: "auto" };
     a.idSub = { at: now, name, tok }; delete a.idRej;
     await env.STORE.put("acct:" + a.phone, JSON.stringify(a));
-    const link = new URL(request.url).origin + "/id/" + tok;
+    const link = SITE + "/id/" + tok;
     later(ctx, ownerNotify(env, request, `🪪 الزبون كتب اسمو الحقيقي ورفع الهوية\n\nالرقم: ${a.phone}\nكان كاتب: «${a.old || a.name}»\nكتب هلق: «${name}»${a.governorate ? "\nالمحافظة: " + a.governorate : ""}\n\nشوف صورة الهوية وأكّد أو ارفض من هون (الصورة بتنحذف لحالها أول ما تأكّد):\n${link}`,
       { title: "🪪 زبون رفع الهوية", body: `${name} — ${a.phone}`, url: "/id/" + tok, tag: "id-" + a.phone }));
     return json({ ok: true, account: acctOut(a) });
@@ -2223,63 +2315,77 @@ async function acctApi(request, env, path, m, ctx) {
     if (ok) later(ctx, botContacts(env, [{ phone: a.phone, name: a.name, fix: 1 }])); // الاسم الصح لجهات اتصال واتساب المتجر (بيكتب فوق الاسم الوهمي)
     return json({ ok: true, name: a.name });
   }
-  // «سجّل / ادخل بالواتساب»: the customer sends KO-XXXXXX from their own WhatsApp to the store; that proves the number
+  // «سجّل / ادخل بالواتساب»: الزبون بيبعت KO-XXXXXX من واتسابو لرقم المتجر، وهيك بيتأكّد رقمو.
+  // صاحب المتجر (24/11/2026): «يلي بدو يسجّل فوراً افتحلو وسجّل الحساب، مشان ما يضل يبعت كود التأكيد عالواتس»:
+  // - الصفحة بتبعت wa-start بنفس الكبسة (sendBeacon) ومعو n (سر من الجهاز)، فما بيضيع حتى لو الموبايل وقّف الصفحة لما انفتح الواتساب
+  // - أول ما توصل رسالة الزبون، البوت بيدق wa-done: الحساب بينعمل (أو الدخول بيتسجّل) والنتيجة بتنحفظ مع الرمز 24 ساعة (acct:wapend:<رمز>.done)
+  // - الصفحة (حتى لو انسكّرت وانفتحت من جديد) بتلاقي النتيجة وبتفوّت الزبون، بلا رسالة تانية
+  // - رسالة الزبون سبقت الصفحة؟ الرقم المتأكّد بينحفظ (acct:waearly:<رمز>) وأول ما توصل الصفحة بينعمل الحساب
   if (path === "/api/acct/wa-start") {
-    const login = !!b.login;
-    let pend = { login };
-    if (!login) {
-      const name = clip(String(b.name || "").replace(/\s+/g, " "), 80), parts = name.split(" ").filter(Boolean), pw = String(b.password || "");
-      if (parts.length < 3 || parts.some((w) => w.length < 2) || /[0-9٠-٩@#$%^&*_=+<>{}\[\]|\\\/]/.test(name)) return json({ error: "اكتب الاسم الثلاثي متل الهوية (الاسم، اسم الأب، الكنية)", field: "name" }, 400);
-      // صاحب المتجر (16 تشرين التاني 2026): الحسابات الجديدة بالاسم العربي بس (القديمة بتضل متل ما هي)
-      if (!/^[\u0600-\u06FF\s]+$/.test(name)) return json({ error: "اكتب اسمك بالعربي (متل الهوية)", field: "name" }, 400);
-      if (isFakeName(name)) return json({ error: "ما منقبل أسماء وهمية، اكتب اسمك الحقيقي متل الهوية", field: "name" }, 400);
-      if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة", field: "governorate" }, 400);
-      if (pw.length < 6 || pw.length > 64) return json({ error: "كلمة السر لازم تكون 6 أحرف أو أكتر", field: "password" }, 400);
-      const salt = b64u(crypto.getRandomValues(new Uint8Array(16)));
-      pend = { login, name, governorate: b.governorate, salt, hash: await passHash(pw, salt) };
-    }
-    const ip = request.headers.get("cf-connecting-ip") || "x", hr = Math.floor(Date.now() / 3600e3), nIp = +(await env.STORE.get(`acct:waip:${ip}:${hr}`)) || 0;
-    if (nIp >= 20) return json({ error: "جرّبت كتير، استنى شوي" }, 429);
-    // the shop makes the code itself (so WhatsApp opens on the very same tap); a fresh one is made only if it's malformed or taken
+    const login = !!b.login, nh = await waNh(b.n);
     let t = String(b.t || "").toUpperCase();
-    if (!/^[A-Z0-9]{6}$/.test(t) || (await env.STORE.get("acct:wapend:" + t))) { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", rb = crypto.getRandomValues(new Uint8Array(6)); t = [...rb].map((x) => A[x % A.length]).join(""); }
-    if (!(await botCall(env, "open", t))) return json({ error: "التأكيد بالواتساب مو متاح هلق، جرّب بعد شوي أو سجّل برقم الموبايل", off: true }, 503);
-    await env.STORE.put("acct:wapend:" + t, JSON.stringify(pend), { expirationTtl: 1200 });
+    const okT = /^[A-Z0-9]{6}$/.test(t), prev = okT ? await env.STORE.get("acct:wapend:" + t, "json") : null;
+    if (prev && nh && prev.nh === nh) { stat(env, ctx, "wa:start-again"); return prev.done ? waLogin(env, request, ctx, prev.done) : json({ ok: true, t }); } // نفس الطلب مرتين (sendBeacon وبعدو fetch)
+    let pend = { login };
+    if (!login) { const r = await waRegFields(b); if (r.err) return r.err; pend = { login, ...r.pend }; }
+    const ip = request.headers.get("cf-connecting-ip") || "x", hr = Math.floor(Date.now() / 3600e3), nIp = +(await env.STORE.get(`acct:waip:${ip}:${hr}`)) || 0;
+    if (nIp >= 60) return json({ error: "جرّبت كتير، استنى شوي" }, 429); // كتير زباين بسوريا بيطلعو بنفس الـ IP (شبكة الموبايل)
+    // the shop makes the code itself (so WhatsApp opens on the very same tap); a fresh one is made only if it's malformed or taken
+    if (!okT || prev) { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", rb = crypto.getRandomValues(new Uint8Array(6)); t = [...rb].map((x) => A[x % A.length]).join(""); }
+    pend.nh = nh; pend.at = new Date().toISOString();
+    await env.STORE.put("acct:wapend:" + t, JSON.stringify(pend), { expirationTtl: 86400 });
     await env.STORE.put(`acct:waip:${ip}:${hr}`, String(nIp + 1), { expirationTtl: 3700 });
-    return json({ ok: true, t });
+    stat(env, ctx, login ? "wa:start-login" : "wa:start-reg");
+    const early = await env.STORE.get("acct:waearly:" + t, "json");
+    if (early && early.phone) { stat(env, ctx, "wa:early-used"); return waLogin(env, request, ctx, await waFinish(env, request, ctx, t, pend, early.phone, false)); }
+    // منخبّر البوت بالرمز (مو ضروري: الرسالة فيها «تأكيد حسابي» أو «دخول لحسابي» والبوت بيعرفها لحالو)
+    const op = botCall(env, "open", t).catch(() => null), r = await Promise.race([op, nap(2500).then(() => 0)]);
+    if (r === 0) later(ctx, op);
+    return json({ ok: true, t, ...(r === null ? { off: true } : {}) });
   }
-  // wa-done (23/11/2026): البوت بيدق هون أول ما توصلو رسالة الكود، فالحساب بينعمل حتى لو الزبون ما رجع للموقع (كان الحساب يضيع والاسم معو).
-  // ما فيه سر: الموقع نفسو بيسأل البوت (claim موقّع) عن الرقم. wa-check بعدها بيلاقي الحساب جاهز (acct:wadone:<رمز>)
+  // wa-done: البوت بيدق هون أول ما توصلو رسالة الكود. wa-check: الصفحة بتسأل كل كم ثانية. نفس الشغل، والنتيجة بتنحفظ مع الرمز.
+  // ما فيه سر: الموقع نفسو بيسأل البوت (claim موقّع) عن الرقم
   if (path === "/api/acct/wa-check" || path === "/api/acct/wa-done") {
     const push = path === "/api/acct/wa-done";
     const t = String(b.t || "").toUpperCase();
     if (!/^[A-Z0-9]{6}$/.test(t)) return json({ error: "رمز غلط" }, 400);
     const pend = await env.STORE.get("acct:wapend:" + t, "json");
     if (!pend) {
-      const dph = await env.STORE.get("acct:wadone:" + t);
+      const dph = await env.STORE.get("acct:wadone:" + t); // رموز خلصت قبل v448
       const da = dph ? await env.STORE.get("acct:" + dph, "json") : null;
-      if (da && !push && !da.blocked) { await env.STORE.delete("acct:wadone:" + t); await acctTouch(env, request, da); return json({ ok: true, token: await acctToken(env, da), account: acctOut(da), existed: true }); }
+      if (da && !push && !da.blocked) { await acctTouch(env, request, da); return json({ ok: true, token: await acctToken(env, da), account: acctOut(da), existed: true }); }
+      if (push) { // رسالة الزبون سبقت الصفحة: منحفظ الرقم المتأكّد، وأول ما توصل الصفحة (wa-start) بينعمل الحساب
+        const c = await botCall(env, "claim", t), ph = c && c.known ? syPhone(c.phone || "") : "";
+        if (ph) { await env.STORE.put("acct:waearly:" + t, JSON.stringify({ phone: ph, at: new Date().toISOString() }), { expirationTtl: 86400 }); stat(env, ctx, "wa:early"); return json({ ok: true, early: true }); }
+        stat(env, ctx, "wa:push-unknown"); return json({ ok: true, waiting: true });
+      }
+      stat(env, ctx, "wa:check-expired");
       return json({ error: "انتهى الوقت، جرّب من جديد", expired: true }, 410);
     }
-    if (push && pend.login) return json({ ok: true, skip: true }); // الدخول: الزبون عم يستنّى بالصفحة
+    if (!push && pend.nh && pend.nh !== (await waNh(b.n))) return json({ error: "هالرمز مو من هالجهاز، جرّب من جديد", expired: true }, 403);
+    if (pend.done) return push ? json({ ok: true, done: true, ...waFlags(pend.done) }) : waLogin(env, request, ctx, pend.done);
     const c = await botCall(env, "claim", t);
-    if (!c) return json({ ok: true, waiting: true, off: true });
-    if (!c.known) return json({ ok: true, waiting: true });
-    if (push && (!c.phone || !syPhone(c.phone))) return json({ ok: true, waiting: true }); // رقم مخفي أو مو مفهوم: الصفحة بتكمّل الطريق التاني // the store's WhatsApp may have just moved PC ↔ phone: keep waiting (this code still lives 20 minutes here)
-    // WhatsApp hid the sender's number (@lid): the customer types the number and gets a code on WhatsApp instead
-    if (!c.phone && c.hidden) { await env.STORE.delete("acct:wapend:" + t); return json({ error: "واتسابك ما بيبيّن رقمك، اكتب رقم موبايلك ومنبعتلك كود تأكيد عالواتساب", needPhone: true, login: !!pend.login }, 409); }
-    const phone = syPhone(c.phone);
-    if (!phone && c.phone) { await env.STORE.delete("acct:wapend:" + t); return json({ error: "ما قدرنا نقرا رقم واتسابك، اكتب رقم موبايلك ومنبعتلك كود تأكيد", needPhone: true, login: !!pend.login }, 409); }
-    if (!phone) return json({ ok: true, waiting: true });
-    await env.STORE.delete("acct:wapend:" + t);
-    const ex = await env.STORE.get("acct:" + phone, "json");
-    if (ex) { if (ex.blocked) return json({ error: "الحساب موقوف، تواصل معنا" }, 403); if (push) { await env.STORE.put("acct:wadone:" + t, phone, { expirationTtl: 1800 }); return json({ ok: true }); } await acctTouch(env, request, ex); return json({ ok: true, token: await acctToken(env, ex), account: acctOut(ex), existed: true }); }
-    if (pend.login) return json({ error: "ما في حساب على رقمك لهلق، سجّل حساب جديد", missing: true, phone }, 404);
-    const a = { name: pend.name, phone, governorate: pend.governorate, salt: pend.salt, hash: pend.hash, verified: true, via: "whatsapp", at: new Date().toISOString(), dev: devOf(request), dev0: devOf(request), seen: new Date().toISOString() };
-    await env.STORE.put("acct:" + phone, JSON.stringify(a));
-    try { const all = (await env.STORE.get("customers", "json")) || {}, k = custKey(phone); all[k] = { ...cleanCust({ name: a.name, phone, gov: a.governorate, tags: ["حساب بالموقع"] }), ...(all[k] || {}), name: a.name, phone, gov: a.governorate, account: true }; await env.STORE.put("customers", JSON.stringify(all)); } catch {}
-    if (push) { await env.STORE.put("acct:wadone:" + t, phone, { expirationTtl: 1800 }); await botContacts(env, [a]).catch(() => {}); return json({ ok: true, created: true }); }
-    return json({ ok: true, token: await acctToken(env, a), account: acctOut(a) });
+    let phone = c && c.known ? syPhone(c.phone || "") : "";
+    if (!phone && !(c && c.known && c.phone)) { const e = await env.STORE.get("acct:waearly:" + t, "json"); if (e && e.phone) phone = e.phone; } // البوت عاد تشغيل ونسي الرمز، بس كان خبّرنا بالرقم
+    if (!phone) {
+      if (!c) return json({ ok: true, waiting: true, off: true });
+      if (!c.known || push) return json({ ok: true, waiting: true }); // رقم مخفي أو مو مفهوم: الصفحة بتكمّل الطريق التاني
+      // WhatsApp hid the sender's number (@lid): the customer types the number and gets a code on WhatsApp instead
+      if (!c.phone && c.hidden) { await env.STORE.delete("acct:wapend:" + t); return json({ error: "واتسابك ما بيبيّن رقمك، اكتب رقم موبايلك ومنبعتلك كود تأكيد عالواتساب", needPhone: true, login: !!pend.login }, 409); }
+      if (c.phone) { await env.STORE.delete("acct:wapend:" + t); return json({ error: "ما قدرنا نقرا رقم واتسابك، اكتب رقم موبايلك ومنبعتلك كود تأكيد", needPhone: true, login: !!pend.login }, 409); }
+      return json({ ok: true, waiting: true });
+    }
+    const d = await waFinish(env, request, ctx, t, pend, phone, push);
+    return push ? json({ ok: true, ...waFlags(d) }) : waLogin(env, request, ctx, d);
+  }
+  // كبس «دخول بالواتساب» وما عندو حساب: رقمو تأكّد، فبيكمّل اسمو ومحافظتو وكلمة السر هون وبينعمل حسابو فوراً، بلا رسالة تانية
+  if (path === "/api/acct/wa-reg") {
+    const t = String(b.t || "").toUpperCase(), pend = /^[A-Z0-9]{6}$/.test(t) ? await env.STORE.get("acct:wapend:" + t, "json") : null;
+    if (!pend || !pend.done || !pend.done.phone || !pend.nh || pend.nh !== (await waNh(b.n))) return json({ error: "انتهى الوقت، جرّب من جديد", expired: true }, 410);
+    if (!pend.done.missing) return waLogin(env, request, ctx, pend.done);
+    const r = await waRegFields(b); if (r.err) return r.err;
+    stat(env, ctx, "wa:reg");
+    return waLogin(env, request, ctx, await waFinish(env, request, ctx, t, { ...pend, login: false, done: undefined, ...r.pend }, pend.done.phone, false));
   }
   const phone = syPhone(b.phone), pw = String(b.password || "");
   if (!phone) return json({ error: "اكتب رقم موبايل صحيح: سوري (09xxxxxxxx) أو من برّا مع رمز الدولة (متل +90…)", field: "phone" }, 400);
@@ -5611,7 +5717,7 @@ const koMain = {
         if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
         const r = await acctApi(request, env, path, m, ctx);
         if (r.status === 200 && (r.headers.get("content-type") || "").includes("json")) { try { const j = await r.clone().json(); if (j && j.token) {
-              if (j.account && !j.existed && ["/api/acct/wa-check", "/api/acct/verify", "/api/acct/register"].includes(path) && ctx && ctx.waitUntil) { ctx.waitUntil(botContacts(env, [j.account]).catch(() => {})); ctx.waitUntil(susNotify(env, request, [j.account]).catch(() => {})); } const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie(j.token)); r2.headers.set("cache-control", "no-store"); return r2; } } catch {} }
+              if (j.account && !j.existed && ["/api/acct/verify", "/api/acct/register"].includes(path) && ctx && ctx.waitUntil) { ctx.waitUntil(botContacts(env, [j.account]).catch(() => {})); ctx.waitUntil(susNotify(env, request, [j.account]).catch(() => {})); } const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie(j.token)); r2.headers.set("cache-control", "no-store"); return r2; } } catch {} }
         if (r.status === 401) { try { const j = await r.clone().json(); if (j && j.logout) { const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie("")); return r2; } } catch {} }
         return r;
       }

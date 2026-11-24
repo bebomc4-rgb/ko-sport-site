@@ -1663,34 +1663,46 @@
   const acctSet = (j) => { const v = { token: j.token, account: j.account }; store.set(ACK, v); ckSet(v); };
   const acctOut = () => { try { localStorage.removeItem(ACK); } catch {} ckSet(null); fetch("/api/acct/logout", { method: "POST", keepalive: true }).catch(() => {}); };
   // الجهاز نسي الدخول (سفاري/إنستغرام مسحو التخزين، أو تحديث): منرجّعو من كوكي السيرفر بلا ما يسجّل دخول من جديد
-  const acctRestore = () => fetch("/api/acct/me", { credentials: "same-origin", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j && j.token && j.account) { acctSet(j); return true; } return false; }).catch(() => false);
+  // 1 = رجع الدخول، 0 = ما في دخول محفوظ، -1 = ما قدرنا نتأكّد (نت ضعيف أو ضغط عالسيرفر)، فمنرجع نجرّب بدل ما نطلّع واجهة الدخول
+  const acctRestore = async () => {
+    try {
+      const r = await fetch("/api/acct/me", { credentials: "same-origin", cache: "no-store" }), j = await r.json().catch(() => null);
+      if (r.ok && j && j.token && j.account) { acctSet(j); return 1; }
+      return r.status === 401 && j && !/^(missing|busy)$/.test(j.reason || "") ? 0 : -1;
+    } catch { return -1; }
+  };
+  // «سجّل / ادخل بالواتساب»: سر صغير من الجهاز (n) بيمشي مع الرمز، والرمز بيوصل للموقع بنفس الكبسة (sendBeacon) حتى لو الموبايل وقّف الصفحة لما ينفتح الواتساب
+  const waNonce = () => { const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"; return [...crypto.getRandomValues(new Uint8Array(22))].map((x) => A[x & 63]).join(""); };
+  const waBeacon = (body) => { const s = JSON.stringify(body); try { if (navigator.sendBeacon && navigator.sendBeacon("/api/acct/wa-start", s)) return; } catch {} fetch("/api/acct/wa-start", { method: "POST", headers: { "content-type": "application/json" }, body: s, keepalive: true }).catch(() => {}); };
   const ACCT_GOVS = ["دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "إدلب", "درعا", "السويداء", "القنيطرة", "دير الزور", "الرقة", "الحسكة"];
   // sign up / log in, then carry on with what the customer was doing (checkout, account…)
   function authView(next, why, startTab) {
     let tab = startTab || "reg", via = "wa";
     let keep = {}; // صاحب المتجر (16 تشرين التاني 2026): يلي كتبو الزبون ما بينمسح لما يبدّل بين «بالواتساب» و«ابعتلي كود»
+    let vreg = null; // { t, n, phone }: كبس «دخول بالواتساب» وما عندو حساب. رقمو تأكّد، فبيكمّل اسمو وكلمة السر وبينعمل حسابو فوراً بلا رسالة تانية
     const WA_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9 0-1.4.7-2 1-2.3.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.7-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"/></svg>`;
     // سوري → 09xxxxxxxx، أي دولة تانية → +رمز الدولة والرقم
     const fixPh = (x) => { let d = String(x || "").replace(/[٠-٩]/g, (c) => "٠١٢٣٤٥٦٧٨٩".indexOf(c)).replace(/\D/g, ""); if (d.startsWith("00")) d = d.slice(2); if (d.startsWith("963")) d = d.slice(3).replace(/^0/, ""); if (/^9\d{8}$/.test(d)) d = "0" + d; if (/^09\d{8}$/.test(d)) return d; return /^[1-9]\d{9,14}$/.test(d) ? "+" + d : d; };
     const okPh = (p) => /^(09\d{8}|\+[1-9]\d{9,14})$/.test(p), PH_ERR = "اكتب رقم موبايل صحيح: سوري (09xxxxxxxx) أو من برّا مع رمز الدولة (متل +90…)";
     const draw = () => {
-      const reg = tab === "reg", wa = reg && via === "wa";
+      const reg = tab === "reg", vr = reg && !!vreg, wa = reg && via === "wa" && !vr;
       app.innerHTML = `<div class="auth"><h1 class="page-title">${reg ? "حساب جديد" : "تسجيل الدخول"}</h1>
         ${why ? `<p class="auth-why">${esc(why)}</p>` : ""}
         <div class="auth-tabs"><button type="button" data-tab="reg" class="${reg ? "on" : ""}">حساب جديد</button><button type="button" data-tab="login" class="${reg ? "" : "on"}">عندي حساب</button></div>
         <form class="form auth-form" data-auth novalidate>
+          ${vr ? `<p class="auth-ok">✅ رقمك تأكّد بالواتساب: <b dir="ltr">${esc(vreg.phone)}</b><br>كمّل اسمك والمحافظة وكلمة السر، وبينعمل حسابك فوراً بلا ما تبعت شي تاني.</p>` : ""}
           ${reg ? `<div class="field"><label for="a-name">الاسم الثلاثي بالعربي (متل الهوية)</label><input id="a-name" name="name" autocomplete="name" placeholder="مثلاً: أحمد محمد الحسن" required><div class="msg"></div></div>` : ""}
           ${wa || reg ? "" : `<div class="field"><label for="a-phone">رقم الموبايل</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx أو +90…" autocomplete="tel" required><div class="msg"></div></div>`}
           ${reg ? `<div class="field"><label for="a-gov">المحافظة</label><select id="a-gov" name="governorate" required><option value="">اختار المحافظة</option>${ACCT_GOVS.map((g) => `<option>${esc(g)}</option>`).join("")}</select><div class="msg"></div></div>` : ""}
           <div class="field"><label for="a-pw">كلمة السر</label><input id="a-pw" name="password" type="password" autocomplete="${reg ? "new-password" : "current-password"}" ${reg ? 'placeholder="6 أحرف أو أكتر"' : ""} required><div class="msg"></div></div>
           ${reg ? `<div class="field"><label for="a-pw2">أعد كلمة السر</label><input id="a-pw2" name="password2" type="password" autocomplete="new-password" required><div class="msg"></div></div>` : ""}
-          ${reg && !wa ? `<div class="field ph-code"><label for="a-phone">📲 اكتب رقم موبايلك هون، ومنبعتلك عليه كود التأكيد عالواتساب</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx أو +90…" autocomplete="tel" required><div class="msg"></div></div>` : ""}
+          ${reg && !wa && !vr ? `<div class="field ph-code"><label for="a-phone">📲 اكتب رقم موبايلك هون، ومنبعتلك عليه كود التأكيد عالواتساب</label><input id="a-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="09xxxxxxxx أو +90…" autocomplete="tel" required><div class="msg"></div></div>` : ""}
           ${wa ? `<a class="btn btn-wa-go" href="#" target="_blank" rel="noopener" data-wa-go>${WA_ICON}<span>أكّد رقمي بالواتساب وكمّل</span></a>
                   <small class="auth-note">بينفتح الواتساب ومعو رسالة جاهزة، بس اكبس إرسال وارجع لهون. رقمك بينأخد من الواتساب لحالو.</small>
                   <button type="button" class="btn btn-ghost" data-via="phone">💬 ابعتلي كود عالواتساب</button>
                   <small class="auth-note">الواتساب مو على هالجهاز؟ اكتب رقمك ومنبعتلك كود عالواتساب بأي جهاز تاني.</small>`
-              : `<button class="btn btn-red" data-auth-go>${reg ? "ابعتلي كود عالواتساب وكمّل" : "دخول"}</button>
-                 ${reg ? `<small class="auth-note"><button type="button" class="link-btn" data-via="wa">سجّل بالواتساب (أسهل)</button></small>`
+              : `<button class="btn btn-red" data-auth-go>${vr ? "اعمل حسابي وكمّل ✓" : reg ? "ابعتلي كود عالواتساب وكمّل" : "دخول"}</button>
+                 ${vr ? `<small class="auth-note"><button type="button" class="link-btn" data-vreg-off>مو رقمي؟ سجّل برقم تاني</button></small>` : reg ? `<small class="auth-note"><button type="button" class="link-btn" data-via="wa">سجّل بالواتساب (أسهل)</button></small>`
                        : `<a class="btn btn-wa-go ghost" href="#" target="_blank" rel="noopener" data-wa-login>${WA_ICON}<span>ادخل بالواتساب (بلا كلمة سر)</span></a>
                           <button type="button" class="btn btn-ghost" data-code-login>💬 ابعتلي كود عالواتساب</button>
                           <small class="auth-note">نسيت كلمة السر؟ ادخل بالواتساب. والواتساب مو على هالجهاز؟ اكتب رقمك واطلب كود، بيوصلك عالواتساب بأي جهاز تاني.</small>`}`}
@@ -1726,6 +1738,7 @@
       app.onclick = (e) => {
         const grab = () => { keep = {}; ["name", "phone", "governorate", "password", "password2"].forEach((k) => { if (f[k] && f[k].value) keep[k] = f[k].value; }); };
         const t = e.target.closest("[data-tab]"); if (t) { grab(); tab = t.dataset.tab; draw(); return; }
+        if (e.target.closest("[data-vreg-off]")) { grab(); vreg = null; try { localStorage.removeItem("ko_wa_pending"); } catch {} draw(); return; }
         const vv = e.target.closest("[data-via]"); if (vv) { grab(); via = vv.dataset.via; draw(); if (via === "phone") { const pf = app.querySelector("#a-phone"); if (pf) { pf.scrollIntoView({ block: "center", behavior: "smooth" }); setTimeout(() => { try { pf.focus({ preventScroll: true }); } catch {} }, 350); } } return; }
         // الدخول بكود عالواتساب (الواتساب على جهاز تاني)
         const cl = e.target.closest("[data-code-login]");
@@ -1749,19 +1762,32 @@
           if (!login) { const errs = regErrs(v); if (Object.keys(errs).length) { e.preventDefault(); showErrs(errs); return; } }
           const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", rb = crypto.getRandomValues(new Uint8Array(6)), code = [...rb].map((x) => A[x % A.length]).join("");
           go.href = `https://wa.me/${C.whatsapp}?text=${encodeURIComponent((login ? "دخول لحسابي بمتجر KO SPORT" : "تأكيد حسابي بمتجر KO SPORT") + "\nKO-" + code)}`;
-          const payload = login ? { login: true, t: code } : { t: code, name: v.name, governorate: v.governorate, password: v.password };
-          store.set("ko_wa_pending", { t: code, login, at: Date.now() });
-          setTimeout(() => waWait(code, login, payload), 60); // after the tap has opened the link
+          const payload = login ? { login: true, t: code } : { t: code, name: v.name, governorate: v.governorate, password: v.password }, n = waNonce();
+          store.set("ko_wa_pending", { t: code, login, at: Date.now(), n });
+          try { sessionStorage.setItem("ko_wa_pay", JSON.stringify({ t: code, p: payload })); } catch {} // إذا الصفحة انفتحت من جديد بنفس التبويب
+          waBeacon({ ...payload, n });
+          setTimeout(() => waWait(code, login, payload, n), 60); // after the tap has opened the link
           return; // the link opens WhatsApp
         }
       };
       f.addEventListener("submit", async (e) => {
         e.preventDefault(); clear();
         const v = Object.fromEntries(new FormData(f)), ph = fixPh(v.phone), errs = reg ? regErrs(v) : {};
-        if (!okPh(ph)) errs.phone = PH_ERR;
+        if (!vr && !okPh(ph)) errs.phone = PH_ERR;
         if (!reg && !v.password) errs.password = "اكتب كلمة السر";
         if (Object.keys(errs).length) { showErrs(errs); return; }
         const btn = f.querySelector("[data-auth-go]"), lbl = btn.textContent; btn.disabled = true; btn.textContent = "لحظة…";
+        if (vr) { // الرقم تأكّد بالواتساب: الحساب بينعمل هلق
+          try {
+            const r = await fetch("/api/acct/wa-reg", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t: vreg.t, n: vreg.n, name: v.name, governorate: v.governorate, password: v.password }) });
+            const j = await r.json().catch(() => ({}));
+            if (r.ok && j.token) return done(j);
+            btn.disabled = false; btn.textContent = lbl;
+            if (j.expired) { vreg = null; try { localStorage.removeItem("ko_wa_pending"); } catch {} keep = { name: v.name, governorate: v.governorate, password: v.password, password2: v.password2 }; draw(); toast(esc(j.error || "انتهى الوقت، جرّب من جديد")); return; }
+            if (j.field && f[j.field]) show(j.field, esc(j.error)); else toast(esc(j.error || "صار خطأ، جرّب كمان مرة"));
+          } catch { btn.disabled = false; btn.textContent = lbl; toast("ما في اتصال، جرّب كمان مرة"); }
+          return;
+        }
         try {
           const r = await fetch(reg ? "/api/acct/register" : "/api/acct/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: v.name, phone: ph, governorate: v.governorate, password: v.password }) });
           const j = await r.json().catch(() => ({}));
@@ -1778,7 +1804,8 @@
       });
     };
     const done = (j) => {
-      try { localStorage.removeItem("ko_wa_pending"); } catch {}
+      try { localStorage.removeItem("ko_wa_pending"); sessionStorage.removeItem("ko_wa_pay"); } catch {}
+      vreg = null;
       acctSet(j);
       soundOk();
       const old = store.get("ko_customer", {}) || {};
@@ -1811,42 +1838,64 @@
       });
     };
     // waiting for the customer's WhatsApp message (the bot sees it and tells us the number)
-    const waWait = (code, login, payload) => {
-      let stop = false, started = !payload, tries = 0, timer = 0; const t0 = Date.now();
-      const until = Date.now() + 20 * 60e3;
+    // (24/11/2026) أول رسالة بتكفي: إذا الرمز ما وصل للموقع منبعتو كمان مرة، وإذا الصفحة انسكّرت بتكمّل لما تنفتح (الرمز صالح 24 ساعة)
+    const waWait = (code, login, payload, n) => {
+      if (!payload) { try { const x = JSON.parse(sessionStorage.getItem("ko_wa_pay") || "null"); if (x && x.t === code && x.p) payload = x.p; } catch {} }
+      let stop = false, started = !payload, tries = 0, timer = 0, again = 0; const t0 = Date.now();
+      const until = Date.now() + 2 * 3600e3;
+      const waLink = () => `https://wa.me/${C.whatsapp}?text=${encodeURIComponent((login ? "دخول لحسابي بمتجر KO SPORT" : "تأكيد حسابي بمتجر KO SPORT") + "\nKO-" + code)}`;
       app.innerHTML = `<div class="auth"><h1 class="page-title">${login ? "الدخول بالواتساب" : "تأكيد بالواتساب"}</h1>
         <div class="wa-wait"><div class="wa-pulse">${WA_ICON}</div>
           <b>انفتح الواتساب ومعو رسالة جاهزة</b>
           <p>اكبس <b>إرسال ✈️</b> بالواتساب، وارجع لهون. ${login ? "بتدخل" : "بينعمل حسابك"} لحالو خلال ثواني.</p>
           <small class="wa-code" dir="ltr">KO-${esc(code)}</small>
-          <a class="btn btn-wa-go" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent((login ? "دخول لحسابي بمتجر KO SPORT" : "تأكيد حسابي بمتجر KO SPORT") + "\nKO-" + code)}">${WA_ICON}<span>افتح الواتساب مرة تانية</span></a>
+          <a class="btn btn-wa-go" target="_blank" rel="noopener" data-wa-again href="${waLink()}">${WA_ICON}<span>افتح الواتساب مرة تانية</span></a>
           <button type="button" class="link-btn" data-wa-cancel>إلغاء</button>
           <div class="msg" data-wa-msg></div></div></div>`;
       const msg = app.querySelector("[data-wa-msg]");
+      const forget = () => { try { localStorage.removeItem("ko_wa_pending"); sessionStorage.removeItem("ko_wa_pay"); } catch {} };
       const end = () => { stop = true; clearTimeout(timer); document.removeEventListener("visibilitychange", vis); };
-      app.querySelector("[data-wa-cancel]").onclick = () => { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} draw(); };
+      app.querySelector("[data-wa-cancel]").onclick = () => { end(); forget(); draw(); };
+      // طريق تاني أكيد: يكتب رقمو ومنبعتلو كود عالواتساب
+      const toPhone = () => { end(); forget(); tab = login ? "login" : "reg"; via = "phone"; draw(); const ff = app.querySelector("[data-auth]"); if (ff && payload) { if (ff.name && payload.name) ff.name.value = payload.name; if (ff.governorate && payload.governorate) ff.governorate.value = payload.governorate; } if (ff && ff.phone) ff.phone.focus(); };
+      const offer = () => {
+        if (app.querySelector("[data-wa-phone]")) return;
+        const b = document.createElement("button"); b.type = "button"; b.className = "btn btn-ghost"; b.dataset.waPhone = "1"; b.textContent = "بعتّ الرسالة وما زبط؟ اكتب رقمك ومنبعتلك كود";
+        b.onclick = toPhone; msg.after(b);
+      };
       const poll = async () => {
         if (stop || !app.querySelector("[data-wa-msg]")) return end();
-        if (Date.now() > until) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} msg.textContent = "انتهى الوقت، جرّب من جديد."; return; }
+        if (Date.now() > until) { end(); forget(); msg.textContent = "انتهى الوقت، جرّب من جديد."; return; }
         try {
+          let r = null, j = {}, chk = false;
           if (!started) {
-            const r = await fetch("/api/acct/wa-start", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload), keepalive: true });
-            const j = await r.json().catch(() => ({}));
-            if (!r.ok) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} if (j.off && !login) return quickPhone(payload); if (j.off) { via = "phone"; } draw(); toast(esc(j.error || "صار خطأ، جرّب كمان مرة")); return; }
-            started = true;
+            r = await fetch("/api/acct/wa-start", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...payload, n }), keepalive: true });
+            j = await r.json().catch(() => ({}));
+            if (r.ok && !j.token) {
+              if (j.t && j.t !== code) { code = j.t; store.set("ko_wa_pending", { t: code, login, at: Date.now(), n }); const ag = app.querySelector("[data-wa-again]"), cd = app.querySelector(".wa-code"); if (ag) ag.href = waLink(); if (cd) cd.textContent = "KO-" + code; }
+              started = true;
+              if (j.off) { if (!login) { end(); return quickPhone(payload); } offer(); } // رقم المتجر عالواتساب مو شغّال هلق
+            }
           } else if (document.visibilityState === "visible") {
-            const r = await fetch("/api/acct/wa-check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t: code }) });
-            const j = await r.json().catch(() => ({}));
+            r = await fetch("/api/acct/wa-check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t: code, n }) });
+            j = await r.json().catch(() => ({})); chk = true;
+          }
+          if (r) {
             if (r.ok && j.token) { end(); return done(j); }
-            if (j.needPhone) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} tab = j.login || login ? "login" : "reg"; via = "phone"; draw(); toast(esc(j.error)); const ff = app.querySelector("[data-auth]"); if (ff && payload) { if (ff.name && payload.name) ff.name.value = payload.name; if (ff.governorate && payload.governorate) ff.governorate.value = payload.governorate; } if (ff && ff.phone) ff.phone.focus(); return; }
-            if (j.missing) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} tab = "reg"; via = "wa"; draw(); toast("ما في حساب على رقمك لهلق، سجّل حساب جديد بكبسة"); return; }
-            if (j.expired || r.status === 403) { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} draw(); toast(esc(j.error || "انتهى الوقت، جرّب من جديد")); return; }
-            msg.textContent = j.off ? "عم نستنى رسالتك… (إذا بعتها وطوّل، اكبس «افتح الواتساب مرة تانية» وابعتها كمان مرة)" : "";
-            // بعد 45 ثانية بلا نتيجة: طريق تاني أكيد — يكتب رقمو ومنبعتلو كود عالواتساب
-            if (Date.now() - t0 > 45e3 && !app.querySelector("[data-wa-phone]")) {
-              const b = document.createElement("button"); b.type = "button"; b.className = "btn btn-ghost"; b.dataset.waPhone = "1"; b.textContent = "بعتّ الرسالة وما زبط؟ اكتب رقمك ومنبعتلك كود";
-              b.onclick = () => { end(); try { localStorage.removeItem("ko_wa_pending"); } catch {} tab = login ? "login" : "reg"; via = "phone"; draw(); const ff = app.querySelector("[data-auth]"); if (ff && payload) { if (ff.name && payload.name) ff.name.value = payload.name; if (ff.governorate && payload.governorate) ff.governorate.value = payload.governorate; } if (ff && ff.phone) ff.phone.focus(); };
-              msg.after(b);
+            if (j.needPhone) { end(); forget(); tab = j.login || login ? "login" : "reg"; via = "phone"; draw(); toast(esc(j.error)); const ff = app.querySelector("[data-auth]"); if (ff && payload) { if (ff.name && payload.name) ff.name.value = payload.name; if (ff.governorate && payload.governorate) ff.governorate.value = payload.governorate; } if (ff && ff.phone) ff.phone.focus(); return; }
+            if (j.missing) { // دخل بالواتساب وما عندو حساب: رقمو تأكّد، فبيكمّل اسمو وكلمة السر بس
+              end();
+              if (j.verified && j.phone && n) { vreg = { t: code, n, phone: j.phone }; store.set("ko_wa_pending", { t: code, login, at: Date.now(), n, miss: j.phone }); } else forget();
+              tab = "reg"; via = "wa"; draw(); toast(vreg ? "✅ رقمك تأكّد. كمّل اسمك وكلمة السر وبينعمل حسابك" : "ما في حساب على رقمك لهلق، سجّل حساب جديد بكبسة"); return;
+            }
+            if (!chk && !r.ok) { end(); forget(); if (j.off && !login) return quickPhone(payload); if (j.off) { via = "phone"; } draw(); toast(esc(j.error || "صار خطأ، جرّب كمان مرة")); return; }
+            if (chk) {
+              if (r.status === 410 && payload && again < 3) { again++; started = false; } // الرمز ما وصل للموقع (الصفحة انسكّرت بسرعة): منبعتو كمان مرة
+              else if (j.expired || r.status === 403) { end(); forget(); draw(); toast(esc(j.error || "انتهى الوقت، جرّب من جديد")); return; }
+              else {
+                msg.textContent = j.off ? "عم نستنى رسالتك… (إذا بعتها وطوّل، اكبس «افتح الواتساب مرة تانية» وابعتها كمان مرة)" : "";
+                if (j.off || Date.now() - t0 > 45e3) offer(); // بعد 45 ثانية بلا نتيجة
+              }
             }
           }
         } catch {}
@@ -1939,10 +1988,20 @@
         } catch { btn.disabled = false; btn.textContent = "دخول"; toast("ما في اتصال، جرّب كمان مرة"); }
       });
     };
-    // came back from WhatsApp after the page was closed: carry on waiting
-    const pw = store.get("ko_wa_pending", null);
-    if (pw && pw.t && Date.now() - pw.at < 20 * 60e3) { tab = pw.login ? "login" : "reg"; waWait(pw.t, pw.login, null); }
-    else draw();
+    // came back from WhatsApp after the page was closed: carry on waiting. الرمز بيضل صالح 24 ساعة، فإذا رجع بعدين بيفوت لحالو
+    const pw = store.get("ko_wa_pending", null), age = pw && pw.t ? Date.now() - pw.at : 1e15;
+    if (pw && pw.miss && pw.n && age < 864e5) { vreg = { t: pw.t, n: pw.n, phone: pw.miss }; tab = "reg"; via = "wa"; draw(); }
+    else if (age < 20 * 60e3) { tab = pw.login ? "login" : "reg"; waWait(pw.t, pw.login, null, pw.n); }
+    else {
+      draw();
+      if (age < 864e5) fetch("/api/acct/wa-check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t: pw.t, n: pw.n }) })
+        .then((r) => r.json().then((j) => {
+          if (!app.querySelector("[data-auth]")) return;
+          if (r.ok && j.token) return done(j);
+          if (j.missing && j.verified && j.phone && pw.n) { vreg = { t: pw.t, n: pw.n, phone: j.phone }; store.set("ko_wa_pending", { ...pw, miss: j.phone }); tab = "reg"; via = "wa"; draw(); }
+        })).catch(() => {});
+      else if (pw) { try { localStorage.removeItem("ko_wa_pending"); } catch {} }
+    }
     window.scrollTo(0, 0);
   }
   // صفحة التوقعات جوّا المتجر نفسو (صاحب المتجر 17 تشرين التاني 2026): صفحة نظامية بالموقع وبالتطبيق، مو موقع لحالو
@@ -1960,7 +2019,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=447" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=448" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +2040,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=447"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=448"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -3672,7 +3731,12 @@ ${trustH()}
     try { const k = "ixd42oc3"; if (new URLSearchParams(location.search).get("speed") === k) { sessionStorage.setItem("ko_speed", k); return true; } return sessionStorage.getItem("ko_speed") === k; } catch { return false; } })();
   function gateView() {
     // قبل ما نطلب تسجيل دخول: منجرّب نرجّع الدخول المحفوظ بالسيرفر (مرة وحدة بكل فتحة)
-    if (!gateView.tried) { gateView.tried = 1; app.innerHTML = '<div class="loading">لحظة…</div>'; acctRestore().then((ok) => { if (ok) route(null, false); else if (!acct()) gateView(); else route(null, false); }); return; }
+    // (24/11/2026) النت الضعيف أو ضغط عالسيرفر ما بيطلّعو واجهة الدخول: منجرّب 3 مرات، وإذا طلعت منضل نجرّب بالخلفية (gateRetry)
+    if (!gateView.tried) {
+      gateView.tried = 1; app.innerHTML = '<div class="loading">لحظة…</div>';
+      (async () => { let s = 0; for (let i = 0; i < 3; i++) { s = await acctRestore(); if (s !== -1) break; await new Promise((r) => setTimeout(r, 1500 * (i + 1))); } if (s === 1 || acct()) return route(null, false); gateView(); if (s === -1) gateRetry(); })();
+      return;
+    }
     document.body.classList.add("gated");
     authView(() => { document.body.classList.remove("gated"); route(null, false); }, "", "reg");
     const li = document.querySelector("[data-logo] img"), src = li && (li.currentSrc || li.src);
@@ -3681,6 +3745,17 @@ ${trustH()}
     auth.classList.add("gate-card");
     auth.insertAdjacentHTML("afterbegin", `<div class="gate-hero"><div class="gate-logo${src ? " img" : ""}">${logo}</div><h2>أهلاً فيك بمتجر <span dir="ltr">KO SPORT</span></h2><p>تسجيل الدخول بياخد ثواني بس، وبعدها فيك تتصفّح كل المنتجات وأسعارها وتطلب بسرعة الصاروخ</p></div>`);
     auth.insertAdjacentHTML("beforeend", `<div class="gate-trust"><span><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v10H6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>بياناتك محمية</span><span><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7" cy="17.5" r="1.6" fill="currentColor"/><circle cx="17" cy="17.5" r="1.6" fill="currentColor"/></svg>توصيل لكل المحافظات</span></div>`);
+  }
+  // ما قدرنا نتأكّد من الدخول المحفوظ (نت ضعيف): منضل نجرّب بالخلفية، وأول ما يزبط بيرجع الزبون لحسابو لحالو
+  function gateRetry() {
+    let n = 0, id = 0;
+    const stop = () => { clearInterval(id); window.removeEventListener("online", go); };
+    const go = async () => {
+      if (acct() || !document.body.classList.contains("gated") || ++n > 20) return stop();
+      const s = await acctRestore();
+      if (s === 1) { stop(); document.body.classList.remove("gated"); toast("✓ رجعت لحسابك"); route(null, false); } else if (s === 0) stop();
+    };
+    id = setInterval(go, 8000); window.addEventListener("online", go);
   }
   // الجلسة: مرة بالجلسة منتأكد إنو الدخول لسا صالح (وبيتسجّل جهاز الزبون للوحة التحكم)
   try {
