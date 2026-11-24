@@ -6,16 +6,11 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - run: |
           S=https://ko-sport.online
           echo "== sw:"; curl -sS -m 20 "$S/sw.js?x=$(date +%s)" | grep -oE 'ko-v[0-9]+' | head -1
-          echo "== store.js:"; curl -sS -m 20 "$S/assets/store.js?v=448" | grep -oE 'waBeacon|gateRetry|data-vreg-off' | sort -u | tr '\n' ' '; echo
-          echo "== me (no login):"; curl -sS -m 20 "$S/api/acct/me"; echo
-          N=probe$(date +%s)xxxxxxxxxxxx; T=$(head -c 64 /dev/urandom | tr -dc 'A-HJ-NP-Z2-9' | head -c 6)
-          echo "== wa-start (login) $T:"; curl -sS -m 20 -H 'content-type: text/plain' -d "{\"login\":true,\"t\":\"$T\",\"n\":\"$N\"}" "$S/api/acct/wa-start"; echo
-          echo "== wa-start again:"; curl -sS -m 20 -H 'content-type: application/json' -d "{\"login\":true,\"t\":\"$T\",\"n\":\"$N\"}" "$S/api/acct/wa-start"; echo
-          echo "== wa-check:"; curl -sS -m 20 -H 'content-type: application/json' -d "{\"t\":\"$T\",\"n\":\"$N\"}" "$S/api/acct/wa-check"; echo
-          echo "== wa-check other device:"; curl -sS -m 20 -H 'content-type: application/json' -d "{\"t\":\"$T\",\"n\":\"otherdevicexxxxxxxxxx\"}" "$S/api/acct/wa-check"; echo
-          echo "== wa-done unknown:"; curl -sS -m 20 -H 'content-type: application/json' -d '{"t":"ZZZZZ9"}' "https://ko-sport.pages.dev/api/acct/wa-done"; echo
-          echo "== diag auth:"; curl -sS -m 30 "$S/api/diag" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({"build": d.get("build"), "auth": d.get("auth"), "authError": d.get("authError")}, ensure_ascii=False))'
+          echo "== gym.js:"; curl -sS -m 20 -o /dev/null -w "%{http_code} %{size_download}\n" "$S/assets/gym.js?v=460"
+          for i in $(seq 1 9); do echo "== seed $i:"; curl -sS -m 30 "$S/api/studies?seed=1&t=$(date +%s)" | python3 -c 'import json,sys; d=json.load(sys.stdin); L=d.get("list",[]); print(len(L), d.get("at")); [print(" -", x.get("d"), x.get("c"), x.get("ja"), "|", x.get("t")) for x in L[:3]]'; sleep 58; done
+          echo "== sample:"; curl -sS -m 30 "$S/api/studies" | python3 -c 'import json,sys; L=json.load(sys.stdin)["list"]; print(json.dumps(L[:2],ensure_ascii=False,indent=1))'
