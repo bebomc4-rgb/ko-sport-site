@@ -2223,6 +2223,7 @@ body:has(#exl-selbar) .exl{padding-bottom:230px}
 .exl-own-b .btn{flex:1}
 .exl-own-f{display:grid;gap:10px;margin-top:12px}
 .exl-own-f label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.exl-own-f input{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--c-card-bg,var(--card));color:inherit;font:inherit}
 .exl-own-f select{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--c-card-bg,var(--card));color:inherit;font:inherit}
 .exl-desc{margin:0 0 14px;padding:10px 14px;border-radius:12px;background:var(--c-card-bg,var(--card));border:1px solid var(--line);font-size:14px;line-height:1.8;color:var(--muted)}
 .exl-rvs{display:grid;gap:8px;margin-bottom:18px}

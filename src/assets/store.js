@@ -2019,7 +2019,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=457" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=458" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -2045,7 +2045,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=457"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=458"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2169,6 +2169,7 @@
       if (ev.target.closest("[data-sel-on]")) { exl.selOn = !exl.selOn; if (!exl.selOn) exl.sel = new Set(); else exl.sel = exl.sel || new Set(); exlBody(); exlSelBar(); return; }
       if (ev.target.closest("[data-sel-all]")) { exlList().forEach((y) => exl.sel.add(y.i)); app.querySelectorAll(".exl-card").forEach((b) => b.classList.add("sel")); exlSelBar(); return; }
       if (exl.selOn) { const cd = ev.target.closest(".exl-card[data-exl-id]"); if (cd) { const id = cd.dataset.exlId; if (exl.sel.has(id)) exl.sel.delete(id); else exl.sel.add(id); cd.classList.toggle("sel", exl.sel.has(id)); exlSelBar(); return; } }
+      const qn = ev.target.closest("[data-q-nm]"); if (qn) { exlOpen(qn.dataset.qNm); setTimeout(() => { const b = document.querySelector("[data-own-nm]"); if (b) b.click(); }, 80); return; }
       const qm = ev.target.closest("[data-q-mv]"); if (qm) { exlOpen(qm.dataset.qMv); setTimeout(() => { const b = document.querySelector("[data-own-mv]"); if (b) b.click(); }, 80); return; }
       const qd = ev.target.closest("[data-q-del]"); if (qd) {
         if (!qd.dataset.ok) { qd.dataset.ok = "1"; qd.textContent = "اكبس كمان مرة"; setTimeout(() => { if (qd.isConnected) { delete qd.dataset.ok; qd.textContent = "🗑 حذف"; } }, 4000); return; }
@@ -2606,7 +2607,7 @@
   function exlCardHtml(x, auto, en) {
       const ar = x.a || "";
       const main = ar || x.n; // إذا ما في ترجمة بعد، الاسم الإنكليزي هو الأساسي
-      const own = koOwn() ? `<div class="exl-q"><button type="button" class="btn btn-dark sm" data-q-mv="${x.i}">↔️ نقل</button><button type="button" class="btn btn-ghost sm" data-q-del="${x.i}">🗑 حذف</button></div>` : ""; // صاحب المتجر: الزرين على كل تمرين
+      const own = koOwn() ? `<div class="exl-q"><button type="button" class="btn btn-dark sm" data-q-mv="${x.i}">↔️ نقل</button><button type="button" class="btn btn-ghost sm" data-q-nm="${x.i}">✏️ الاسم</button><button type="button" class="btn btn-ghost sm" data-q-del="${x.i}">🗑 حذف</button></div>` : ""; // صاحب المتجر: الزرين على كل تمرين
       return (own ? '<div class="exl-cw">' : "") + `<button type="button" class="exl-card${exl.sel && exl.sel.has(x.i) ? " sel" : ""}" data-exl-id="${x.i}"><span class="exl-pic">${exlMedia(x, "", auto)}</span><span class="exl-tx"><b${ar ? "" : ' dir="ltr"'}>${esc(main)}</b>${en && ar ? `<small class="exl-en" dir="ltr">${esc(x.n)}</small>` : ""}<span class="exl-tags"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span><span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></span></span></button>` + (own ? own + "</div>" : "");
   }
   // النزول لتحت بيفتح باقي التمارين لحالو (بلا زر «عرض المزيد»): دفعة جديدة بتنضاف لما توصل لآخر القائمة تقريباً
@@ -2661,11 +2662,16 @@
         const mains = EXL_MORD.filter((k) => k !== "Upper Arms" && k !== "Thighs" && k !== "Other");
         const opts = mains.map((k) => EXL_SUBS[k] ? `<optgroup label="${esc(EXL_M[k] || k)}">${EXL_SUBS[k].filter((s, j, a) => a.indexOf(s) === j && exlMG(s) === k).map((s) => `<option value="${s}"${s === x.m ? " selected" : ""}>${esc(EXL_M[s] || s)}</option>`).join("")}</optgroup>` : `<option value="${k}"${k === x.m ? " selected" : ""}>${esc(EXL_M[k] || k)}</option>`).join("");
         const eqs = [...new Set(exl.L.map((y) => y.e))].sort((a, b) => String(EXL_E[a] || a).localeCompare(String(EXL_E[b] || b), "ar"));
-        bx.insertAdjacentHTML("beforeend", `<div class="exl-own"><div class="exl-own-b"><button type="button" class="btn btn-dark" data-own-mv>↔️ نقل التمرين</button><button type="button" class="btn btn-ghost" data-own-del>🗑 حذف (مكرر)</button></div>
+        bx.insertAdjacentHTML("beforeend", `<div class="exl-own"><div class="exl-own-b"><button type="button" class="btn btn-dark" data-own-mv>↔️ نقل التمرين</button><button type="button" class="btn btn-ghost" data-own-nm>✏️ عدّل الاسم</button><button type="button" class="btn btn-ghost" data-own-del>🗑 حذف (مكرر)</button></div>
+          <div class="exl-own-f" data-own-nf hidden><label>الاسم بالعربي<input data-own-a value="${esc(x.a || "")}" maxlength="90" dir="auto"></label><label>الاسم بالإنكليزي<input data-own-n value="${esc(x.n)}" maxlength="120" dir="ltr"></label><button type="button" class="btn btn-red" data-own-nsave>احفظ الاسم ✓</button></div>
           <div class="exl-own-f" data-own-f hidden><label>العضلة والجزء<select data-own-m>${opts}</select></label><label>الأداة<select data-own-e>${eqs.map((e) => `<option value="${esc(e)}"${e === x.e ? " selected" : ""}>${esc(EXL_E[e] || e)}</option>`).join("")}</select></label><button type="button" class="btn btn-red" data-own-save>انقل ✓</button></div></div>`);
         const post = async (u, body) => { const r = await fetch(u, { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "ما زبط"); return j; };
         const done = () => { try { localStorage.removeItem(EXLC); } catch (e) {} exl.prog = null; closeSheet(); if (curRoute().indexOf("/exlib/review") === 0) exlReviewPage(); else if (app.querySelector("[data-exl-body]")) exlBody(); };
         bx.querySelector("[data-own-mv]").onclick = () => { const f = bx.querySelector("[data-own-f]"); f.hidden = !f.hidden; };
+        bx.querySelector("[data-own-nm]").onclick = () => { const f = bx.querySelector("[data-own-nf]"); f.hidden = !f.hidden; if (!f.hidden) f.querySelector("[data-own-a]").focus(); };
+        bx.querySelector("[data-own-nsave]").onclick = async (ev) => { const b = ev.currentTarget, a2 = bx.querySelector("[data-own-a]").value.trim(), n2 = bx.querySelector("[data-own-n]").value.trim();
+          if (!n2) return toast("الاسم الإنكليزي فاضي"); b.disabled = true;
+          try { await post("/api/exlib/oname", { i: x.i, a: a2, n: n2 }); [exl.L, exl.LA].forEach((L) => (L || []).forEach((y) => { if (y.i === x.i) { y.a = a2; y.n = n2; y.s = exlArq(n2 + " " + a2 + " " + (EXL_M[y.m] || "") + " " + (EXL_E[y.e] || "")); } })); toast("✓ انحفظ الاسم"); done(); } catch (e) { b.disabled = false; toast(esc(e.message)); } };
         bx.querySelector("[data-own-save]").onclick = async (ev) => { const b = ev.currentTarget, m2 = bx.querySelector("[data-own-m]").value, e2 = bx.querySelector("[data-own-e]").value; b.disabled = true;
           try { await post("/api/exlib/omove", { i: x.i, m: m2, e: e2 }); [exl.L, exl.LA].forEach((L) => (L || []).forEach((y) => { if (y.i === x.i) { y.m = m2; y.e = e2; } })); toast("✓ انتقل لـ " + (EXL_M[m2] || m2)); done(); } catch (e) { b.disabled = false; toast(esc(e.message)); } };
         bx.querySelector("[data-own-del]").onclick = async (ev) => { const b = ev.currentTarget;
