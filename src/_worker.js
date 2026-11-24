@@ -5439,6 +5439,7 @@ Return ONLY JSON: {"t":"Arabic headline, max 90 chars, says the finding","s":"Ar
         const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 1200, temperature: 0.2 }), 11000);
         const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out);
         o = typeof raw === "object" ? raw : exlAiMap(String(raw || ""));
+        if (!o || !o.t) gm.err = (gm.err || "") + " | " + model.split("/").pop() + " raw: " + JSON.stringify(out).slice(0, 160);
       } catch (e) { gm.err = (gm.err || "") + " | " + model.split("/").pop() + ": " + String((e && e.message) || e).slice(0, 60); }
     }
     seen[a.id] = 1;
