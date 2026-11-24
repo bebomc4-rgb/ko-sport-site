@@ -12,5 +12,6 @@ jobs:
           S=https://ko-sport.online
           echo "== sw:"; curl -sS -m 20 "$S/sw.js?x=$(date +%s)" | grep -oE 'ko-v[0-9]+' | head -1
           echo "== gym.js:"; curl -sS -m 20 -o /dev/null -w "%{http_code} %{size_download}\n" "$S/assets/gym.js?v=460"
-          for i in $(seq 1 7); do echo "== seed $i:"; curl -sS -m 30 "$S/api/studies?seed=1&t=$(date +%s)" | python3 -c 'import json,sys; d=json.load(sys.stdin); L=d.get("list",[]); print(len(L), d.get("at"), d.get("err")); [print(" -", x.get("d"), x.get("c"), x.get("ja"), "|", x.get("t")) for x in L[:3]]'; sleep 58; done
+          for i in $(seq 1 4); do echo "== seed $i:"; curl -sS -m 30 "$S/api/studies?seed=1&t=$(date +%s)" | python3 -c 'import json,sys; d=json.load(sys.stdin); L=d.get("list",[]); print(len(L), d.get("at"), d.get("err")); [print(" -", x.get("d"), x.get("c"), x.get("ja"), "|", x.get("t")) for x in L[:3]]'; sleep 58; done
+          echo "== notify:"; curl -sS -m 30 -o /dev/null -w "%{http_code}\n" "$S/api/studies?done=459&t=$(date +%s)"
           echo "== sample:"; curl -sS -m 30 "$S/api/studies" | python3 -c 'import json,sys; L=json.load(sys.stdin)["list"]; print(json.dumps(L[:2],ensure_ascii=False,indent=1))'
