@@ -5415,7 +5415,8 @@ async function studiesRefresh(env, n) {
   await env.STORE.put("studies:at", now);
   const E = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/", tool = "&tool=kosport&email=info%40ko-sport.online";
   const r = await fetch(`${E}esearch.fcgi?db=pubmed&retmode=json&sort=pub_date&retmax=40&reldate=60&datetype=edat&term=${encodeURIComponent(STUDY_TERM)}${tool}`, { signal: AbortSignal.timeout(8000) });
-  const ids = ((await r.json()).esearchresult || {}).idlist || [];
+  const rt = await r.text(); let ids = []; try { ids = (JSON.parse(rt).esearchresult || {}).idlist || []; } catch { throw new Error("esearch " + r.status + " " + rt.slice(0, 120)); }
+  if (!ids.length) throw new Error("esearch: 0 ids " + rt.slice(0, 160));
   let seen = {}; try { seen = (await env.STORE.get("studies:seen", "json")) || {}; } catch {}
   const todo = ids.filter((i) => !seen[i]).slice(0, n || 2);
   if (!todo.length) return { added: 0 };
@@ -5434,7 +5435,7 @@ Return ONLY JSON: {"t":"Arabic headline, max 90 chars, says the finding","s":"Ar
     if ((!o || !o.t) && env.AI && Date.now() - t0 < 18000) { try { o = exlAiMap(exlAiText(await exlRace(env.AI.run(AI_TR_MODELS[0], { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 1200, temperature: 0.2 }), 12000))); } catch {} }
     seen[a.id] = 1;
     const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[؀-ۿ]/g) || []).length > 40;
-    if (!ok) { seen[a.id] = 0; continue; } // بنرجع نجرّبها المرة الجاية
+    if (!ok) { seen[a.id] = 0; await env.STORE.put("studies:err", "AI: " + String(gm.err || "") + " | " + JSON.stringify(o || {}).slice(0, 200)).catch(() => {}); continue; } // بنرجع نجرّبها المرة الجاية
     list.unshift({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c: ["nutrition", "medicine", "training"].includes(o.c) ? o.c : "training", tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, at: now });
     added++;
   }
@@ -5448,8 +5449,9 @@ Return ONLY JSON: {"t":"Arabic headline, max 90 chars, says the finding","s":"Ar
 async function studiesApi(request, env, ctx) {
   let list = []; try { list = (await env.STORE.get("studies:list", "json")) || []; } catch {}
   const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0, gap = new URL(request.url).searchParams.get("seed") && list.length < 40 ? 50e3 : list.length < 12 ? 10 * 60e3 : 60 * 60e3; // seed: أول تعبئة (كل 50 ثانية لحد 40 دراسة)
-  if (Date.now() - at > gap && ctx && ctx.waitUntil) ctx.waitUntil(studiesRefresh(env, list.length < 12 ? 3 : 2).catch(() => {}));
-  return new Response(JSON.stringify({ list, at: at ? new Date(at).toISOString() : "" }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=120" } });
+  if (Date.now() - at > gap && ctx && ctx.waitUntil) ctx.waitUntil(studiesRefresh(env, list.length < 12 ? 3 : 2).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
+  const err = list.length ? "" : (await env.STORE.get("studies:err")) || ""; // سبب آخر فشل (للفحص، بلا أسرار)
+  return new Response(JSON.stringify({ list, at: at ? new Date(at).toISOString() : "", ...(err ? { err } : {}) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=120" } });
 }
 async function exlibApi(request, env, path, m) {
   const nos = { "cache-control": "no-store" };
