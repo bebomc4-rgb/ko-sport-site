@@ -5499,22 +5499,26 @@ async function exlibApi(request, env, path, m) {
   if (path === "/api/exlib/omove" && m === "POST") {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
     let b = {}; try { b = await request.json(); } catch {}
-    const id = String(b.i || ""); if (!/^[a-f0-9]{10}$/.test(id)) return json({ error: "رقم التمرين غلط" }, 400, nos);
+    // تمرين واحد {i} أو دفعة {ids: [...]} (تحديد أكتر من تمرين). الأداة فاضية = بتضل متل ما هي
+    const ids = (Array.isArray(b.ids) ? b.ids : [b.i]).map(String).slice(0, 1000);
+    if (!ids.length || ids.some((id) => !/^[a-f0-9]{10}$/.test(id))) return json({ error: "رقم التمرين غلط" }, 400, nos);
     const mm = String(b.m || "").trim(), ee = String(b.e || "").trim();
     if (!/^[A-Za-z][A-Za-z ]{1,30}(:[A-Za-z]{2,12})?$/.test(mm)) return json({ error: "اختار العضلة" }, 400, nos);
-    if (!/^[A-Za-z][A-Za-z .-]{1,40}$/.test(ee)) return json({ error: "اختار الأداة" }, 400, nos);
-    const { L, ed } = await exlibAll(env), base = L.find((x) => x.i === id); if (!base) return json({ error: "التمرين مو موجود" }, 404, nos);
-    const e2 = { ...(ed[id] || {}) }; e2.m = mm; if (ee !== base.e) e2.e = ee; else delete e2.e;
-    ed[id] = e2; await env.STORE.put("exlib:edits", JSON.stringify(ed));
-    return json({ ok: true, m: mm, e: ee }, 200, nos);
+    if (ee && !/^[A-Za-z][A-Za-z .-]{1,40}$/.test(ee)) return json({ error: "اختار الأداة" }, 400, nos);
+    const { L, ed } = await exlibAll(env), byId = new Map(L.map((x) => [x.i, x]));
+    let n = 0;
+    for (const id of ids) { const base = byId.get(id); if (!base) continue; const e2 = { ...(ed[id] || {}) }; e2.m = mm; if (ee) { if (ee !== base.e) e2.e = ee; else delete e2.e; } ed[id] = e2; n++; }
+    if (!n) return json({ error: "التمرين مو موجود" }, 404, nos);
+    await env.STORE.put("exlib:edits", JSON.stringify(ed));
+    return json({ ok: true, n, m: mm, e: ee }, 200, nos);
   }
   if (path === "/api/exlib/ohide" && m === "POST") {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
     let b = {}; try { b = await request.json(); } catch {}
-    const id = String(b.i || ""); if (!/^[a-f0-9]{10}$/.test(id)) return json({ error: "رقم التمرين غلط" }, 400, nos);
-    const { L, ed } = await exlibAll(env); if (!L.some((x) => x.i === id)) return json({ error: "التمرين مو موجود" }, 404, nos);
-    const e2 = { ...(ed[id] || {}) }; if (b.h === false) delete e2.h; else e2.h = 1;
-    if (Object.keys(e2).length) ed[id] = e2; else delete ed[id];
+    const ids = (Array.isArray(b.ids) ? b.ids : [b.i]).map(String).slice(0, 1000); // تمرين واحد أو دفعة
+    if (!ids.length || ids.some((id) => !/^[a-f0-9]{10}$/.test(id))) return json({ error: "رقم التمرين غلط" }, 400, nos);
+    const { L, ed } = await exlibAll(env), has = new Set(L.map((x) => x.i)); if (!ids.some((id) => has.has(id))) return json({ error: "التمرين مو موجود" }, 404, nos);
+    for (const id of ids) { if (!has.has(id)) continue; const e2 = { ...(ed[id] || {}) }; if (b.h === false) delete e2.h; else e2.h = 1; if (Object.keys(e2).length) ed[id] = e2; else delete ed[id]; }
     await env.STORE.put("exlib:edits", JSON.stringify(ed));
     return json({ ok: true }, 200, nos);
   }

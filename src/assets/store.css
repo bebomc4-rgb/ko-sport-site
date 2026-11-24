@@ -2208,6 +2208,14 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 
 .exl-h{font-size:17px;margin:8px 0 12px}
 .exl-cw{display:grid;gap:6px}
+.exl-card.sel{outline:3px solid var(--red);outline-offset:-3px;position:relative}
+.exl-card.sel::after{content:"✓";position:absolute;top:8px;inset-inline-start:8px;width:28px;height:28px;border-radius:50%;background:var(--red);color:var(--card);display:grid;place-items:center;font-weight:800}
+.exl-selbtn{margin-inline-start:8px}
+.exl-selbar{position:fixed;inset-inline:0;bottom:0;z-index:60;display:grid;gap:8px;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:var(--c-card-bg,var(--card));border-top:1px solid var(--line);box-shadow:0 -6px 24px color-mix(in srgb,var(--ink) 18%,transparent)}
+.exl-selbar select{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--c-card-bg,var(--card));color:inherit;font:inherit}
+.exl-selbar-b{display:flex;gap:8px}
+.exl-selbar-b .btn{flex:1}
+body:has(#exl-selbar) .exl{padding-bottom:230px}
 .exl-q{display:flex;gap:6px}
 .exl-q .btn{flex:1;padding:8px 6px;font-size:13px}
 .exl-own{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}

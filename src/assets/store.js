@@ -2019,7 +2019,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=455" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=456" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -2045,7 +2045,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=455"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=456"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2166,6 +2166,9 @@
     qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { const was = !!exl.q; exl.q = qi.value.trim(); exl.n = exlPerN(); if (exl.q && !was) ovOpen("exq", () => { exl.q = ""; qi.value = ""; exl.n = 24; exlBody(); }); else if (!exl.q && was) ovShut("exq"); exlBody(); }, 200); };
     app.onchange = null;
     app.onclick = (ev) => {
+      if (ev.target.closest("[data-sel-on]")) { exl.selOn = !exl.selOn; if (!exl.selOn) exl.sel = new Set(); else exl.sel = exl.sel || new Set(); exlBody(); exlSelBar(); return; }
+      if (ev.target.closest("[data-sel-all]")) { exlList().forEach((y) => exl.sel.add(y.i)); app.querySelectorAll(".exl-card").forEach((b) => b.classList.add("sel")); exlSelBar(); return; }
+      if (exl.selOn) { const cd = ev.target.closest(".exl-card[data-exl-id]"); if (cd) { const id = cd.dataset.exlId; if (exl.sel.has(id)) exl.sel.delete(id); else exl.sel.add(id); cd.classList.toggle("sel", exl.sel.has(id)); exlSelBar(); return; } }
       const qm = ev.target.closest("[data-q-mv]"); if (qm) { exlOpen(qm.dataset.qMv); setTimeout(() => { const b = document.querySelector("[data-own-mv]"); if (b) b.click(); }, 80); return; }
       const qd = ev.target.closest("[data-q-del]"); if (qd) {
         if (!qd.dataset.ok) { qd.dataset.ok = "1"; qd.textContent = "اكبس كمان مرة"; setTimeout(() => { if (qd.isConnected) { delete qd.dataset.ok; qd.textContent = "🗑 حذف"; } }, 4000); return; }
@@ -2570,11 +2573,41 @@
   }
   const exlPerN = () => exlN((exl.cfg || {}).per, 12, 60, 24);
   function exlLook(g, c) { g.style.setProperty("--exl-gap", exlN(c.gap, 0, 30, 12) + "px"); g.style.setProperty("--exl-r", exlN(c.radius, 0, 30, 14) + "px"); }
+  // تحديد أكتر من تمرين (صاحب المتجر 24/11/2026): شريط تحت الشاشة فيه العدد، والعضلة والجزء، والأداة، و«انقل» أو «احذف» للكل دفعة وحدة
+  function exlSelBar() {
+    let bar = document.getElementById("exl-selbar");
+    if (!exl.selOn || curRoute().indexOf("/exlib") !== 0) { if (bar) bar.remove(); return; }
+    const n = exl.sel.size;
+    if (!bar) {
+      const mains = EXL_MORD.filter((k) => k !== "Upper Arms" && k !== "Thighs" && k !== "Other");
+      const opts = mains.map((k) => EXL_SUBS[k] ? `<optgroup label="${esc(EXL_M[k] || k)}">${EXL_SUBS[k].filter((s, j, a) => a.indexOf(s) === j && exlMG(s) === k).map((s) => `<option value="${s}">${esc(EXL_M[s] || s)}</option>`).join("")}</optgroup>` : `<option value="${k}">${esc(EXL_M[k] || k)}</option>`).join("");
+      const eqs = [...new Set((exl.LA || exl.L).map((y) => y.e))].sort((a, b) => String(EXL_E[a] || a).localeCompare(String(EXL_E[b] || b), "ar"));
+      document.body.insertAdjacentHTML("beforeend", `<div id="exl-selbar" class="exl-selbar"><b data-sel-n></b><select data-sel-m aria-label="العضلة والجزء"><option value="">لوين؟ اختار العضلة والجزء</option>${opts}</select><select data-sel-e aria-label="الأداة"><option value="">الأداة متل ما هي</option>${eqs.map((e) => `<option value="${esc(e)}">${esc(EXL_E[e] || e)}</option>`).join("")}</select><div class="exl-selbar-b"><button type="button" class="btn btn-red" data-sel-go>↔️ انقل المحددين</button><button type="button" class="btn btn-ghost" data-sel-del>🗑 احذفهن</button><button type="button" class="btn btn-ghost" data-sel-x>إلغاء</button></div></div>`);
+      bar = document.getElementById("exl-selbar");
+      const post = async (u, body) => { const r = await fetch(u, { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "ما زبط"); return j; };
+      const fin = (msg) => { try { localStorage.removeItem(EXLC); } catch (e) {} exl.prog = null; exl.sel = new Set(); exl.selOn = false; exlSelBar(); toast(msg); if (app.querySelector("[data-exl-body]")) exlBody(); };
+      bar.querySelector("[data-sel-x]").onclick = () => { exl.selOn = false; exl.sel = new Set(); exlSelBar(); if (app.querySelector("[data-exl-body]")) exlBody(); };
+      bar.querySelector("[data-sel-go]").onclick = async (ev) => {
+        const b = ev.currentTarget, m2 = bar.querySelector("[data-sel-m]").value, e2 = bar.querySelector("[data-sel-e]").value, ids = [...exl.sel];
+        if (!ids.length) return toast("حدّد تمارين أول شي"); if (!m2) return toast("اختار لوين بدك تنقلهن");
+        b.disabled = true;
+        try { const j = await post("/api/exlib/omove", { ids, m: m2, e: e2 }); [exl.L, exl.LA].forEach((L) => (L || []).forEach((y) => { if (exl.sel.has(y.i)) { y.m = m2; if (e2) y.e = e2; } })); fin(`✓ انتقلو ${j.n} تمرين لـ ${EXL_M[m2] || m2}`); } catch (e) { b.disabled = false; toast(esc(e.message)); }
+      };
+      bar.querySelector("[data-sel-del]").onclick = async (ev) => {
+        const b = ev.currentTarget, ids = [...exl.sel]; if (!ids.length) return toast("حدّد تمارين أول شي");
+        if (!b.dataset.ok) { b.dataset.ok = "1"; b.textContent = `اكبس كمان مرة لحذف ${ids.length}`; setTimeout(() => { if (b.isConnected) { delete b.dataset.ok; b.textContent = "🗑 احذفهن"; } }, 4000); return; }
+        b.disabled = true;
+        try { await post("/api/exlib/ohide", { ids }); exl.L = exl.L.filter((y) => !exl.sel.has(y.i)); if (exl.LA) exl.LA = exl.LA.filter((y) => !exl.sel.has(y.i)); fin(`✓ انحذفو ${ids.length} (بيرجعو من لوحة التحكم ← المخفية)`); } catch (e) { b.disabled = false; toast(esc(e.message)); }
+      };
+    }
+    bar.querySelector("[data-sel-n]").textContent = n ? `${n} محدد` : "كبّس عالتمارين لتحددها";
+  }
+  window.addEventListener("hashchange", () => { if (curRoute().indexOf("/exlib") !== 0) { exl.selOn = false; exl.sel = new Set(); exlSelBar(); } });
   function exlCardHtml(x, auto, en) {
       const ar = x.a || "";
       const main = ar || x.n; // إذا ما في ترجمة بعد، الاسم الإنكليزي هو الأساسي
       const own = koOwn() ? `<div class="exl-q"><button type="button" class="btn btn-dark sm" data-q-mv="${x.i}">↔️ نقل</button><button type="button" class="btn btn-ghost sm" data-q-del="${x.i}">🗑 حذف</button></div>` : ""; // صاحب المتجر: الزرين على كل تمرين
-      return (own ? '<div class="exl-cw">' : "") + `<button type="button" class="exl-card" data-exl-id="${x.i}"><span class="exl-pic">${exlMedia(x, "", auto)}</span><span class="exl-tx"><b${ar ? "" : ' dir="ltr"'}>${esc(main)}</b>${en && ar ? `<small class="exl-en" dir="ltr">${esc(x.n)}</small>` : ""}<span class="exl-tags"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span><span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></span></span></button>` + (own ? own + "</div>" : "");
+      return (own ? '<div class="exl-cw">' : "") + `<button type="button" class="exl-card${exl.sel && exl.sel.has(x.i) ? " sel" : ""}" data-exl-id="${x.i}"><span class="exl-pic">${exlMedia(x, "", auto)}</span><span class="exl-tx"><b${ar ? "" : ' dir="ltr"'}>${esc(main)}</b>${en && ar ? `<small class="exl-en" dir="ltr">${esc(x.n)}</small>` : ""}<span class="exl-tags"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span><span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></span></span></button>` + (own ? own + "</div>" : "");
   }
   // النزول لتحت بيفتح باقي التمارين لحالو (بلا زر «عرض المزيد»): دفعة جديدة بتنضاف لما توصل لآخر القائمة تقريباً
   function exlInf() {
@@ -2591,7 +2624,7 @@
     g.className = "exl-grid" + (list ? " exl-list" : "");
     g.style.gridTemplateColumns = list ? "" : `repeat(${exlN(c.xCols, 1, 4, 2)},minmax(0,1fr))`;
     g.style.setProperty("--exl-pic", sz + "px"); exlLook(g, c);
-    app.querySelector("[data-exl-count]").textContent = L.length + " تمرين";
+    { const ct = app.querySelector("[data-exl-count]"); ct.textContent = L.length + " تمرين"; if (koOwn()) ct.insertAdjacentHTML("beforeend", ` <button type="button" class="btn ${exl.selOn ? "btn-red" : "btn-ghost"} sm exl-selbtn" data-sel-on>${exl.selOn ? "✓ عم تحدد: كبّس عالتمارين" : "☑️ حدّد أكتر من تمرين"}</button>${exl.selOn ? ' <button type="button" class="btn btn-ghost sm" data-sel-all>حدّد الكل هون</button>' : ""}`); }
     const auto = c.autoplay !== false, en = c.showEn !== false;
     const from = more && g._n ? g._n : 0, to = Math.min(L.length, exl.n);
     const html = L.slice(from, to).map((x) => exlCardHtml(x, auto, en)).join("");
