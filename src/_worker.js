@@ -5142,7 +5142,8 @@ Silently proofread every title for accuracy, natural wording, and consistency. R
     if (!pending.length || !env.AI || exlLeft(t0) < 8000) break;
     try {
       const user = prUser(pending, 3000);
-      const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: desc ? 8000 : 3500, temperature: 0.2 }), exlLeft(t0) - 3000);
+      // (24/11/2026) كل نموذج إلو حد (12 ثانية للعناوين)، فإذا واحد علّق بيجرّب التاني بدل ما تروح الدفعة كلها
+      const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: desc ? 8000 : 3500, temperature: 0.2 }), desc ? exlLeft(t0) - 3000 : Math.min(12000, exlLeft(t0) - 3000));
       replied = true;
       prTake(exlAiMap(exlAiText(out)), pending);
       last = "رد غير مفهوم";
@@ -5150,7 +5151,8 @@ Silently proofread every title for accuracy, natural wording, and consistency. R
   }
   const nGot = Object.keys(got).length;
   // خطأ بس إذا الذكاء ما ردّ أبداً (شبكة/حصة). إذا ردّ ورفضنا الرد، بنعدّ فشل للدفعة وبنكمّل، وبعد 3 مرات البرنامج بيطلع من الدور (كان يعلق على نفس الدفعة للأبد)
-  if (!nGot && !replied) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + gemErr + (last || "ما في رد") }, 502);
+  // الذكاء علّق (طوّل كتير): ما منوقّف الترجمة كلها؛ الدفعة بتنعدّ فشل وبتنعاد بدفعات أصغر، وبعد 3 مرات البرنامج بيطلع من الدور
+  if (!nGot && !replied && !/طوّل كتير|ما ضل وقت/.test(gemErr + last)) return json({ error: "ما قدر الذكاء الاصطناعي يترجم: " + gemErr + (last || "ما في رد") }, 502);
   Object.keys(got).forEach((i) => { ar[i] = got[i]; arv[i] = EXL_TRV; });
   await env.STORE.put(KA, JSON.stringify(ar));
   await env.STORE.put(KV, JSON.stringify(arv));

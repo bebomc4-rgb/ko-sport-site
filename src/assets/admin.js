@@ -922,7 +922,17 @@
   async function progUpload(file) {
     const msg = $("[data-prog-msg]");
     let B; try { B = JSON.parse(await file.text()); } catch (e) { msg.textContent = "الملف مو JSON صحيح."; return; }
-    if (!B || B.kind !== "ko-programs" || !B.data || !B.covers) { msg.textContent = "هاد مو ملف برامج KO."; return; }
+    // (24/11/2026) ملف ترجمة (متل ko-programs-ar.json) انرفع من هالزر: منستوردو كترجمة بدل ما نرفضو
+    if (B && B.kind !== "ko-programs" && (B.ar || B.pt || B.pd) && typeof (B.ar || B.pt || B.pd) === "object") {
+      msg.textContent = "هاد ملف ترجمة، عم نستوردو…";
+      try {
+        const j = await api("/api/exlib/arimport", { method: "POST", body: JSON.stringify(B) });
+        msg.textContent = `✓ انستوردت الترجمة: ${nf(j.ex)} تمرين، ${nf(j.pt)} عنوان برنامج، ${nf(j.pd)} وصف.`;
+        await loadExlib(); exlTStat();
+      } catch (e) { msg.textContent = "ما انستوردت الترجمة: " + e.message; }
+      progStat(); return;
+    }
+    if (!B || B.kind !== "ko-programs" || !B.data || !B.covers) { msg.textContent = "هاد مو ملف برامج KO ولا ملف ترجمة. ارفع ko-programs.json أو ko-programs-ar.json."; return; }
     const ks = Object.keys(B.covers); let done = 0;
     try {
       for (let i = 0; i < ks.length; i += 4) {
