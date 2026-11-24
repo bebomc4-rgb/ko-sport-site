@@ -2207,6 +2207,11 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-list .exl-tx{padding:8px 0}
 
 .exl-h{font-size:17px;margin:8px 0 12px}
+.exl-desc{margin:0 0 14px;padding:10px 14px;border-radius:12px;background:var(--c-card-bg,var(--card));border:1px solid var(--line);font-size:14px;line-height:1.8;color:var(--muted)}
+.exl-rvs{display:grid;gap:8px;margin-bottom:18px}
+.exl-rv{display:grid;gap:2px;text-align:start;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--c-card-bg,var(--card));color:inherit;font:inherit;cursor:pointer}
+.exl-rv small{color:var(--muted);font-size:12px}
+.exl-rv span{font-size:13px;color:var(--muted)}
 .exl-nav{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 2px;font-size:14px}
 .exl-nav:empty{display:none}
 .exl-nav a{color:#a8843f;font-weight:800;padding:6px 2px;text-decoration:none}

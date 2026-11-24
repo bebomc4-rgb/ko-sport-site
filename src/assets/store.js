@@ -2019,7 +2019,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=450" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=451" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -2035,16 +2035,21 @@
   // ---------- مكتبة التمارين الخاصة (صاحب المتجر 21/11/2026) ----------
   // تمارين صاحب المتجر (شاريها): الملفات بالـ KV (/exlib/m/<id>.mp4|jpg)، مو بالريبو، والسيرفر ما بيعطيها إلا لحسابو.
   const EXL_M = { Back: "الظهر", "Back:Lats": "الظهر العريض (المجنص)", "Back:Mid": "وسط وأعلى الظهر", "Back:Traps": "الترابيس", "Back:Lower": "أسفل الظهر", "Back:Rot": "مدوّرات الكتف (ورا الكتف)", "Back:Str": "إطالة ومساج الظهر", Biceps: "الباي (البايسبس)", Calves: "السمانة", Cardio: "كارديو", Chest: "الصدر", Forearms: "الساعد", "Full Body": "الجسم كامل", Hamstrings: "الفخذ الخلفي", Hips: "الورك والمؤخرة", Neck: "الرقبة", Other: "منوعات", Plyometrics: "قفز وانفجار", Quadriceps: "الفخذ الأمامي", Shoulders: "الأكتاف", Stretching: "إطالة", Thighs: "الفخاد", Triceps: "التراي (الترايسبس)", "Upper Arms": "الذراع", Waist: "البطن والخصر", Weightlifting: "رفع أثقال", Yoga: "يوغا" };
+  Object.assign(EXL_M, {"Glutes": "المؤخرة (الغلوتس)", "Hips": "الورك (المقرّبة والمبعدة)", "Chest:Upper": "الصدر العلوي", "Chest:Mid": "وسط الصدر", "Chest:Lower": "الصدر السفلي", "Chest:All": "كل الصدر (تمارين شاملة)", "Chest:Str": "إطالة وتحمية الصدر", "Shoulders:Front": "الكتف الأمامي", "Shoulders:Side": "الكتف الجانبي", "Shoulders:Rear": "الكتف الخلفي", "Shoulders:Rot": "مدوّرات الكتف", "Shoulders:All": "كل الكتف (تمارين شاملة)", "Shoulders:Str": "إطالة وتحمية الكتف", "Back:TrapL": "الترابيس السفلية", "Back:Traps": "الترابيس العلوية", "Back:Mid": "وسط الظهر", "Back:All": "كل الظهر (تمارين شاملة)", "Biceps:Long": "الراس الطويل (برّا)", "Biceps:Short": "الراس القصير (جوّا)", "Biceps:Brach": "العضدية (تحت البايسبس)", "Biceps:All": "كل البايسبس", "Biceps:Str": "إطالة البايسبس", "Triceps:Long": "الراس الطويل", "Triceps:Lat": "الراس الجانبي", "Triceps:Med": "الراس الإنسي", "Triceps:All": "كل الترايسبس (تمارين شاملة)", "Triceps:Str": "إطالة الترايسبس", "Forearms:Flex": "القابضة (جوّا الساعد)", "Forearms:Ext": "الباسطة والتدوير (برّا الساعد)", "Forearms:BR": "العضدية الكعبرية", "Forearms:Grip": "قوة القبضة", "Forearms:Str": "إطالة ومساج الساعد", "Waist:Upper": "البطن العلوي", "Waist:Lower": "البطن السفلي", "Waist:Obl": "الجوانب (المائلة)", "Waist:Core": "الثبات (العرضية)", "Waist:All": "كل البطن", "Waist:Str": "إطالة البطن", "Glutes:Max": "الألوية الكبرى", "Glutes:All": "كل المؤخرة (تمارين شاملة)", "Glutes:Str": "إطالة المؤخرة", "Hips:Abd": "المبعدة + الألوية الوسطى والصغرى", "Hips:Add": "المقرّبة (جوّا الفخذ)", "Hips:Flex": "القابضة (رفع الفخذ)", "Hips:Rot": "مدوّرات الورك", "Hips:Str": "إطالة الورك", "Quadriceps:RF": "المستقيمة الفخذية", "Quadriceps:VM": "الإنسية (الدمعة)", "Quadriceps:All": "كل الرباعي (تمارين شاملة)", "Quadriceps:Str": "إطالة ومساج الرباعي", "Hamstrings:Hip": "من الورك (رومانيان وأخواتو)", "Hamstrings:Knee": "من الركبة (ليغ كيرل)", "Hamstrings:Str": "إطالة الخلفية", "Calves:Gas": "البطة (وقوف)", "Calves:Sol": "النعلية (جلوس)", "Calves:Tib": "قدّام وجنب الساق", "Calves:Str": "إطالة ومساج السمانة", "Neck:Flex": "لقدّام", "Neck:Ext": "لورا", "Neck:Lat": "عالجنب", "Neck:All": "كل الرقبة", "Neck:Str": "إطالة الرقبة"});
+  // أجزاء كل عضلة وشرحها (صاحب المتجر 24/11/2026). التمرين بيجي من السيرفر m = «العضلة:الجزء» (EXL_SUB بـ _worker.js)
+  const EXL_SUBS = {"Chest": ["Chest:Upper", "Chest:Mid", "Chest:Lower", "Chest:All", "Chest:Str"], "Shoulders": ["Shoulders:Front", "Shoulders:Side", "Shoulders:Rear", "Shoulders:Rot", "Shoulders:All", "Shoulders:Str"], "Back": ["Back:Lats", "Back:Mid", "Back:Traps", "Back:TrapL", "Back:Lower", "Back:All", "Back:Rot", "Back:Str"], "Biceps": ["Biceps:Long", "Biceps:Short", "Biceps:Brach", "Biceps:All", "Biceps:Str"], "Triceps": ["Triceps:Long", "Triceps:Lat", "Triceps:Med", "Triceps:All", "Triceps:Str"], "Forearms": ["Forearms:Flex", "Forearms:Ext", "Forearms:BR", "Forearms:Grip", "Forearms:Str"], "Waist": ["Waist:Upper", "Waist:Lower", "Waist:Obl", "Waist:Core", "Waist:All", "Waist:Str"], "Glutes": ["Glutes:Max", "Hips:Abd", "Glutes:All", "Glutes:Str"], "Hips": ["Hips:Abd", "Hips:Add", "Hips:Flex", "Hips:Rot", "Hips:Str"], "Quadriceps": ["Quadriceps:RF", "Quadriceps:VM", "Quadriceps:All", "Quadriceps:Str"], "Hamstrings": ["Hamstrings:Hip", "Hamstrings:Knee", "Hamstrings:Str"], "Calves": ["Calves:Gas", "Calves:Sol", "Calves:Tib", "Calves:Str"], "Neck": ["Neck:Flex", "Neck:Ext", "Neck:Lat", "Neck:All", "Neck:Str"]};
+  const EXL_MD = {"Chest": "الصدر عضلة كبيرة (الصدرية الكبرى) إلها 3 أجزاء: علوي (الراس الترقوي)، ووسط، وسفلي. المائل لفوق بيركّز عالعلوي، والمائل لتحت والمتوازي عالسفلي، والبنش والضغط العادي بيشغّلو كل الصدر.", "Chest:Upper": "الراس الترقوي تحت الترقوة: الضغط والفتح عالمقعد المائل لفوق (30–45 درجة)، والكابل من تحت لفوق.", "Chest:Mid": "أكبر جزء بالصدر. تمارين عزل: الفتح عالمقعد المستوي، الكروس أوفر، وجهاز الفراشة.", "Chest:Lower": "أسفل الصدر: الضغط المائل لتحت، المتوازي، والكابل من فوق لتحت.", "Chest:All": "بتشغّل كل الصدر سوا: البنش برس المستوي، الضغط (بوش أب)، جهاز ضغط الصدر، ورمي الكرة.", "Shoulders": "الكتف (الدالية) إلها 3 رؤوس: أمامي وجانبي وخلفي، وتحتها 4 عضلات صغيرة بتثبّت المفصل (مدوّرات الكتف). الضغط فوق الراس بيشغّل الأمامي والجانبي سوا.", "Shoulders:Front": "الراس الأمامي: الرفع لقدّام. بيشتغل كمان بكل تمارين الصدر والضغط.", "Shoulders:Side": "الراس الجانبي، يلي بيعطي عرض للكتف: الرفع الجانبي والسحب العمودي (أبرايت رو).", "Shoulders:Rear": "الراس الخلفي: الفتح العكسي، الفيس بول، والرفع وانت منحني.", "Shoulders:Rot": "4 عضلات صغيرة (فوق الشوكة، تحت الشوكة، المدوّرة الصغيرة، تحت الكتف): تدوير الكتف لبرّا ولجوّا. بتحمي الكتف من الإصابة.", "Shoulders:All": "بتشغّل كل الكتف: الضغط فوق الراس، الأرنولد، البوش برس، والوقوف عالإيدين.", "Back": "الظهر فيه: العريضة (المجنص)، ووسط الظهر (المعيّنية والترابيس الوسطى)، والترابيس العلوية والسفلية، وأسفل الظهر (الناصبة للفقرات).", "Back:Lats": "العريضة (المجنص)، يلي بتعطي شكل V: العقلة، السحب لتحت، والبول أوفر.", "Back:Mid": "المعيّنية والترابيس الوسطى: كل أنواع السحب الأفقي (رو) والفتح الخلفي.", "Back:Traps": "الترابيس العلوية: الشراغ (رفع الكتفين)، حمل الأوزان والمشي فيها، والسحب العالي.", "Back:TrapL": "الترابيس السفلية: رفع Y وانت منبطح، وتنزيل لوح الكتف لتحت.", "Back:Lower": "الناصبة للفقرات: الهايبر إكستنشن، السوبرمان، والغود مورنينغ.", "Back:All": "بتشغّل كل الظهر سوا: الديدلفت، الراك بول، والرينيغيد رو.", "Biceps": "البايسبس إلو راسين: طويل (برّا) وقصير (جوّا)، وتحتو العضلة العضدية. مكان الإيد والمسكة بيحددو مين بيشتغل أكتر.", "Biceps:Long": "الراس الطويل: الكيرل والكوع ورا الجسم، متل الكيرل عالمقعد المائل والدراغ كيرل والمسكة الضيقة.", "Biceps:Short": "الراس القصير: الكيرل والكوع قدّام الجسم، متل البريتشر والكونسنتريشن والمسكة العريضة.", "Biceps:Brach": "العضدية تحت البايسبس (وبتشتغل معها العضدية الكعبرية): الهامر كيرل والمسكة المقلوبة.", "Biceps:All": "كيرل عادي بيشغّل الراسين سوا.", "Triceps": "الترايسبس إلو 3 رؤوس: الطويل والجانبي والإنسي، وهوي تلتين حجم الدراع.", "Triceps:Long": "أكبر راس، وبيشتغل أكتر والإيد فوق الراس: الفرنش برس، السكال كراشر، والتمديد فوق الراس.", "Triceps:Lat": "الراس الجانبي (برّا الدراع): البوش داون والكيك باك.", "Triceps:Med": "الراس الإنسي: البوش داون بالمسكة المقلوبة.", "Triceps:All": "بتشغّل كل الترايسبس: البنش بالمسكة الضيقة، المتوازي، والضغط الماسي.", "Forearms": "الساعد فيه عضلات قابضة (جوّا) وباسطة (برّا)، والعضدية الكعبرية فوق، وعضلات القبضة.", "Forearms:Flex": "القابضة: ثني الرسغ لفوق.", "Forearms:Ext": "الباسطة: ثني الرسغ المقلوب، وتدوير الساعد.", "Forearms:BR": "العضدية الكعبرية: الكيرل بالمسكة المقلوبة والهامر.", "Forearms:Grip": "قوة القبضة: التعليق، حمل الأوزان، والقرص.", "Waist": "البطن: المستقيمة (السكس باك، عضلة وحدة، بس في تمارين بتركّز على فوقها أو تحتها)، والمائلة عالجنبين، والعرضية تحتهن بتثبّت الجسم.", "Waist:Upper": "تركيز على فوق المستقيمة: الكرانش والسيت أب.", "Waist:Lower": "تركيز على تحت المستقيمة: رفع الرجلين والركب، والكرانش العكسي.", "Waist:Obl": "المائلة الخارجية والداخلية: اللف، الرشن تويست، الوود تشوب، والانحناء عالجنب.", "Waist:Core": "العرضية والثبات: البلانك، الرول أوت، والفاكيوم.", "Glutes": "المؤخرة فيها 3 عضلات: الكبرى (أكبر عضلة بالجسم، بتمدّ الورك لورا)، والوسطى والصغرى (عالجنب، بتفتح الرجل وبتثبّت الحوض). الوسطى والصغرى بيشتغلو بنفس التمارين.", "Glutes:Max": "الألوية الكبرى: الهيب ثرست، الجسر، والكيك باك.", "Glutes:All": "بتشغّل كل المؤخرة مع الرجلين: الستيب أب، اللانج لورا، والسومو ديدلفت.", "Hips": "عضلات الورك: المبعدة بتفتح الرجل لبرّا، والمقرّبة (5 عضلات جوّا الفخذ) بتسكّرها، والقابضة (الحرقفية القطنية) بترفع الفخذ لقدّام، والمدوّرات بتلف الفخذ.", "Hips:Abd": "الألوية الوسطى والصغرى وموتّرة اللفافة: فتح الرجل، المشي بالمطاط، والكلام شيل.", "Hips:Add": "المقرّبة: سكّر الرجل لجوّا، جهاز التقريب، والسكوات العريض.", "Hips:Flex": "القابضة: رفع الركبة لقدّام، المارش، والركبة العالية.", "Hips:Rot": "مدوّرات الورك: تدوير الفخذ لجوّا ولبرّا.", "Quadriceps": "الرباعي إلو 4 رؤوس: المستقيمة الفخذية (بالنص)، والمتسعة الخارجية، والإنسية (الدمعة جنب الركبة)، والمتوسطة (تحتهن). السكوات والليغ برس بيشغّلو الأربعة سوا، وما في تمرين بيعزل الخارجية أو المتوسطة.", "Quadriceps:RF": "المستقيمة الفخذية: الليغ إكستنشن، السيسي سكوات، ورفع الرجل مفرودة.", "Quadriceps:VM": "الإنسية (الدمعة): تمديد الركبة لآخر درجة.", "Quadriceps:All": "بتشغّل كل الرباعي: السكوات، الليغ برس، اللانج، والهاك سكوات.", "Hamstrings": "الخلفية فيها 3 عضلات: ذات الراسين الفخذية (برّا، إلها راسين)، والنصف وترية والنصف غشائية (جوّا). التمارين من الورك بتشغّل أكتر الراس الطويل والغشائية، وثني الركبة بيشغّل أكتر الراس القصير والوترية.", "Hamstrings:Hip": "من الورك: الرومانيان ديدلفت، الستيف ليغ، الغود مورنينغ، والسوينغ.", "Hamstrings:Knee": "من الركبة: الليغ كيرل، النورديك، والسلايدر كيرل.", "Calves": "السمانة: البطة (إلها راسين، بتشتغل والركبة مفرودة)، والنعلية (تحتها، بتشتغل والركبة مثنية)، وقدّام الساق الظنبوبية.", "Calves:Gas": "البطة: رفع الكعب وانت واقف والرجل مفرودة، والقفز.", "Calves:Sol": "النعلية: رفع الكعب وانت قاعد والركبة مثنية.", "Calves:Tib": "الظنبوبية والشظوية: رفع رؤوس الأصابع، وتدوير القدم لجوّا ولبرّا.", "Neck": "عضلات الرقبة: لقدّام (القابضة)، لورا (الباسطة)، وعالجنب."};
+  const exlDesc = (k) => (EXL_MD[k] ? `<p class="exl-desc">${esc(EXL_MD[k])}</p>` : "");
   const EXL_E = { Assisted: "بمساعدة", Band: "مطاط", Barbell: "بار", "Battling Rope": "حبل المعركة", "Body weight": "وزن الجسم", "Bosu ball": "كرة بوسو", Cable: "كابل", "Cardio machine": "أجهزة كارديو", Dumbbell: "دمبل", "EZ Barbell": "بار EZ", Hammer: "مطرقة", Kettlebell: "كيتل بيل", "Leverage machine": "آلة", "Medicine Ball": "كرة طبية", Massage: "مساج وإطالة", "Olympic barbell": "بار أولمبي", "Power Sled": "زلّاجة دفع", "Resistance Band": "مطاط مقاومة", Roll: "رول", Rollball: "كرة مساج", Rope: "حبل", "Sled machine": "آلة زلّاجة", "Smith machine": "سميث", "Stability ball": "كرة اللياقة", Stick: "عصا", Suspension: "حبال تعليق", "Trap bar": "تراب بار", "Vibrate Plate": "منصة اهتزاز", Weighted: "بأوزان", "Wheel roller": "عجلة البطن" };
   const exl = { L: null, cfg: null, m: "", e: "", q: "", n: 24, io: null, io2: null };
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=450"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=451"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
-  const EXL_MORD = ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Forearms", "Waist", "Hips", "Quadriceps", "Hamstrings", "Calves", "Neck", "Cardio", "Upper Arms", "Thighs", "Full Body", "Plyometrics", "Stretching", "Weightlifting", "Yoga", "Other"];
+  const EXL_MORD = ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Forearms", "Waist", "Glutes", "Hips", "Quadriceps", "Hamstrings", "Calves", "Neck", "Cardio", "Upper Arms", "Thighs", "Full Body", "Plyometrics", "Stretching", "Weightlifting", "Yoga", "Other"];
   const exlN = (v, a, b, d) => Math.min(b, Math.max(a, Math.round(+v) || d));
   // نسبة الصورة/الفيديو (عرض÷ارتفاع) بتنقاس مرة وحدة وبتتثبّت، فالبطاقة ما بتكبر وتصغر وإنت عم تسكرول. بتنحفظ بالجهاز، فالفتحة الجاية بتكون ثابتة من أول لحظة.
   async function exlRatio() {
@@ -2084,8 +2089,9 @@
     if (/pull.?ups?\b|chin.?ups?\b|\bchin\b|pull ?down|pushdown|pullover|pull over|\blats?\b|latissimus|muscle.?up|straight.?arm|rope climb|front lever|back lever|\bl.?sit|skin the cat|\bhang\b|rollout|battling/.test(t)) return "Back:Lats";
     return "Back:Mid";
   }
-  const exlMG = (k) => (String(k).indexOf("Back:") === 0 ? "Back" : k); // القسم الكبير للعضلة (أجزاء الظهر ← الظهر)
-  const exlMIs = (x, m) => x.m === m || (m === "Back" && exlMG(x.m) === "Back"); // «الظهر» لحالو = كل أجزاء الظهر
+  const exlMG = (k) => String(k).split(":")[0]; // القسم الكبير للعضلة (الصدر العلوي ← الصدر)
+  // «الصدر» لحالو = كل أجزائو. «المبعدة» (Hips:Abd) كمان جزء من المؤخرة (الألوية الوسطى والصغرى)
+  const exlMIs = (x, m) => x.m === m || exlMG(x.m) === m || (m === "Glutes" && x.m === "Hips:Abd");
   // زر الرجوع: ارجع لنفس مكان السكرول بعد ما ينرسم المحتوى (بعضو بيجي async)، وبنفس عدد التمارين يلي كانت مفتوحة
   const exlRY = () => { try { const k = (history.state || {}).koK; return k != null && scrollMem[k] > 0 ? scrollMem[k] : 0; } catch (e) { return 0; } };
   const exlRest = (y) => { if (y) scrollRestore(y, (history.state || {}).koK); };
@@ -2096,7 +2102,7 @@
     // صور النساء (23/11/2026): التمرين يلي عليه sw (بديل مختار لحسابات الرجال) بينشال من التصفّح، وبيضل بـ exl.LA لربط البرامج
     exl.LA = L;
     const A = L.filter((x) => hid.indexOf(x.m) < 0 && !x.sw && !x.mgp); // mgp = الصورة التانية لتمرين مدموج
-    A.forEach((x) => { x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; else if (x.m === "Thighs") x.m = exlThigh(x.n); else if (x.m === "Back") x.m = exlBack(x.n); }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
+    A.forEach((x) => { if (String(x.m).indexOf(":") > 0) return; x.m0 = x.m; if (x.m === "Upper Arms") x.m = "Triceps"; else if (x.m === "Thighs") x.m = exlThigh(x.n); else if (x.m === "Back") x.m = exlBack(x.n); }); // «عضلات الدراع» هي نفسها الترايسبس (طلب صاحب المتجر)
     A.forEach((x) => { x.s = exlArq(x.n + " " + (x.a || "") + " " + (EXL_M[x.m] || "") + " " + (EXL_E[x.e] || "")); });
     exl.cfg = c; exl.L = A;
   }
@@ -2141,6 +2147,7 @@
     if (hm === "programs") return exlProgPage(he);
     if (hm === "my") return exlMyPage();
     if (hm === "women") return exlWomenPage();
+    if (hm === "review") return exlReviewPage();
     exl.m = hm && exl.L.some((x) => exlMIs(x, hm)) ? hm : "";
     exl.e = exl.m && he && (he === "*" || exl.L.some((x) => exlMIs(x, exl.m) && x.e === he)) ? he : "";
     exl.q = ""; exl.n = (exl.nm && exl.nm[curRoute()]) || exlPerN();
@@ -2149,7 +2156,7 @@
       <div class="exl exl-t-${esc(c.theme || "site")} exl-sh-${esc(c.shape || "round")}">
       <div class="crumbs"><a href="#/account">حسابي</a></div>
       <h1 class="page-title">📚 مكتبة التمارين</h1>
-      ${koOwn() ? '<a class="btn btn-ghost sm exl-wlink" href="#/exlib/women">👩 صور النساء: اختار البديل</a>' : ""}
+      ${koOwn() ? '<a class="btn btn-ghost sm exl-wlink" href="#/exlib/women">👩 صور النساء: اختار البديل</a> <a class="btn btn-ghost sm exl-wlink" href="#/exlib/review">🔎 راجع توزيع العضلات</a>' : ""}
       <input type="search" class="exl-q" placeholder="دوّر على تمرين بالعربي أو الإنكليزي" aria-label="بحث">
       <div class="exl-nav" data-exl-nav></div>
       <div data-exl-body></div>
@@ -2163,6 +2170,20 @@
       if (t.hasAttribute("data-exl-id")) return exlOpen(t.dataset.exlId);
     };
     exlRest(ry);
+  }
+  // ---------- مراجعة توزيع العضلات (صاحب المتجر 24/11/2026): #/exlib/review ----------
+  // التمارين يلي انتقلت لعضلة تانية، ويلي ما انعرف مكانها أكيد من اسمها (sq). كبسة عالتمرين بتفتحو
+  function exlReviewPage() {
+    document.title = "مراجعة توزيع العضلات | " + (C.name || "");
+    const map0 = { "Upper Arms": "Triceps", Thighs: "Quadriceps" };
+    const L = exl.L.filter((x) => x.sq || (x.m0 && String(x.m).indexOf(":") > 0 && exlMG(x.m) !== (map0[x.m0] || x.m0) && !(x.m0 === "Hips" && exlMG(x.m) === "Glutes") && x.m0 !== "Thighs"));
+    const row = (x) => `<button type="button" class="exl-rv" data-exl-id="${esc(x.i)}"><b dir="auto">${esc(x.a || x.n)}</b><small dir="ltr">${esc(x.n)}</small><span>${esc(EXL_M[x.m0] || x.m0 || "")} ← <b>${esc(EXL_M[exlMG(x.m)] || "")}: ${esc(EXL_M[x.m] || x.m)}</b></span></button>`;
+    const un = L.filter((x) => x.sq), mv = L.filter((x) => !x.sq);
+    app.innerHTML = `<div class="exl"><div class="crumbs"><a href="#/exlib">المكتبة</a></div><h1 class="page-title">🔎 مراجعة توزيع العضلات</h1>
+      <p class="exl-desc">كل تمرين انحط بالجزء يلي بيستهدفو أكتر شي حسب اسمو. هون التمارين يلي انتقلت لعضلة تانية، ويلي لازم تتأكد منها. إذا شي غلط، افتح التمرين وعدّل العضلة من لوحة التحكم.</p>
+      ${un.length ? `<h2 class="exl-h">⚠️ لازم تتأكد منها (${un.length})</h2><div class="exl-rvs">${un.map(row).join("")}</div>` : ""}
+      <h2 class="exl-h">انتقلت لعضلة تانية (${mv.length})</h2><div class="exl-rvs">${mv.map(row).join("")}</div></div>`;
+    app.onclick = (ev) => { const t = ev.target.closest("[data-exl-id]"); if (t) exlOpen(t.dataset.exlId); };
   }
   // ---------- صور النساء (صاحب المتجر 23/11/2026): #/exlib/women، لحسابو بس ----------
   // كل تمرين صورتو لمرا وجنبو لحد 3 بدائل بصورة رجل؛ كبسة على بديل بتختارو. الاختيار بيتطبّق على حسابات الرجال بس (البرامج والتصفّح)،
@@ -2488,14 +2509,14 @@
       const cm = {}; exl.L.forEach((x) => { const g = exlMG(x.m); cm[g] = (cm[g] || 0) + 1; });
       const ks = EXL_MORD.filter((k) => cm[k]).concat(Object.keys(cm).filter((k) => EXL_MORD.indexOf(k) < 0));
       body.innerHTML = `<a class="exl-prog-bn" href="#/build"><span>🏋️</span><b>اعمل برنامجك</b><small>جاوب عالأسئلة وبيطلعلك برنامج تمرين وتغذية على قدّك بصور وفيديوهات التمارين</small></a><a class="exl-prog-bn" href="#/exlib/programs"><span>📋</span><b>برامج التمرين</b><small>برامج جاهزة بأيامها وتمارينها، والتمارين مربوطة بالفيديوهات</small></a><h2 class="exl-h">اختار العضلة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(exlH(k), exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
-    } else if (step === 2 && exl.m === "Back") {
-      // الظهر: اختار الجزء أول شي، وبعدها الأداة
-      const cp = {}; exl.L.forEach((x) => { if (exlMG(x.m) === "Back") cp[x.m] = (cp[x.m] || 0) + 1; });
-      body.innerHTML = `<h2 class="exl-h">اختار جزء الظهر</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${EXL_BACK.filter((k) => cp[k]).map((k) => exlTile(exlH(k), exlI("m", "Back"), EXL_M[k], cp[k], c)).join("")}${exlTile(exlH("Back", "*"), exlI("m", "Back"), "كل تمارين الظهر", Object.values(cp).reduce((a, b) => a + b, 0), c)}</div>`;
+    } else if (step === 2 && EXL_SUBS[exl.m]) {
+      // العضلة: الشرح، وبعدين اختار الجزء، وبعدها الأداة
+      const cp = {}; exl.L.forEach((x) => { cp[x.m] = (cp[x.m] || 0) + 1; }); const tot = exl.L.filter((x) => exlMIs(x, exl.m)).length, ic = exlI("m", exl.m === "Glutes" ? "Hips" : exl.m);
+      body.innerHTML = `${exlDesc(exl.m)}<h2 class="exl-h">اختار الجزء</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${EXL_SUBS[exl.m].filter((k) => cp[k]).map((k) => exlTile(exlH(k), ic, EXL_M[k], cp[k], c)).join("")}${exlTile(exlH(exl.m, "*"), ic, "كل تمارين " + (EXL_M[exl.m] || exl.m), tot, c)}</div>`;
     } else if (step === 2) {
       const sub = exl.L.filter((x) => x.m === exl.m), ce = {}; sub.forEach((x) => { ce[x.e] = (ce[x.e] || 0) + 1; });
       const ks = Object.keys(ce).sort((a, b) => ce[b] - ce[a]);
-      body.innerHTML = `<h2 class="exl-h">اختار الأداة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${exlTile(exlH(exl.m, "*"), exlI("m", exlMG(exl.m)), "كل الأدوات", sub.length, c)}${ks.map((k) => exlTile(exlH(exl.m, k), exlI("e", k), EXL_E[k] || k, ce[k], c)).join("")}</div>`;
+      body.innerHTML = `${exlDesc(exl.m)}<h2 class="exl-h">اختار الأداة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${exlTile(exlH(exl.m, "*"), exlI("m", exlMG(exl.m)), "كل الأدوات", sub.length, c)}${ks.map((k) => exlTile(exlH(exl.m, k), exlI("e", k), EXL_E[k] || k, ce[k], c)).join("")}</div>`;
     } else {
       body.innerHTML = '<div class="exl-count" data-exl-count></div><div class="exl-grid" data-exl-grid></div><div class="exl-more" data-exl-more></div>';
       exlDraw();
@@ -2623,9 +2644,9 @@
           const cm = {}; exl.L.forEach((x) => { const g = exlMG(x.m); cm[g] = (cm[g] || 0) + 1; });
           const ks = EXL_MORD.filter((k) => cm[k]).concat(Object.keys(cm).filter((k) => EXL_MORD.indexOf(k) < 0));
           box.innerHTML = `<div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => tile(`data-pk-m="${esc(k)}"`, exlI("m", k), EXL_M[k] || k, cm[k])).join("")}</div>`;
-        } else if (step === 2 && st.m === "Back") {
-          const cp = {}; exl.L.forEach((x) => { if (exlMG(x.m) === "Back") cp[x.m] = (cp[x.m] || 0) + 1; });
-          box.innerHTML = `<div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${EXL_BACK.filter((k) => cp[k]).map((k) => tile(`data-pk-m="${k}"`, exlI("m", "Back"), EXL_M[k], cp[k])).join("")}${tile('data-pk-e="*"', exlI("m", "Back"), "كل تمارين الظهر", Object.values(cp).reduce((a, b) => a + b, 0))}</div>`;
+        } else if (step === 2 && EXL_SUBS[st.m]) {
+          const cp = {}; exl.L.forEach((x) => { cp[x.m] = (cp[x.m] || 0) + 1; }); const tot = exl.L.filter((x) => exlMIs(x, st.m)).length, ic = exlI("m", st.m === "Glutes" ? "Hips" : st.m);
+          box.innerHTML = `<div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.eCols, 1, 6, 3)},1fr)">${EXL_SUBS[st.m].filter((k) => cp[k]).map((k) => tile(`data-pk-m="${k}"`, ic, EXL_M[k], cp[k])).join("")}${tile('data-pk-e="*"', ic, "كل تمارين " + (EXL_M[st.m] || st.m), tot)}</div>`;
         } else if (step === 2) {
           const sub = exl.L.filter((x) => x.m === st.m), ce = {}; sub.forEach((x) => { ce[x.e] = (ce[x.e] || 0) + 1; });
           const ks = Object.keys(ce).sort((a, b) => ce[b] - ce[a]);
