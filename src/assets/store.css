@@ -2207,6 +2207,9 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-list .exl-tx{padding:8px 0}
 
 .exl-h{font-size:17px;margin:8px 0 12px}
+.exl-cw{display:grid;gap:6px}
+.exl-q{display:flex;gap:6px}
+.exl-q .btn{flex:1;padding:8px 6px;font-size:13px}
 .exl-own{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .exl-own-b{display:flex;gap:8px;flex-wrap:wrap}
 .exl-own-b .btn{flex:1}

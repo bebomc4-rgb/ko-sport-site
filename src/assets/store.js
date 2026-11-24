@@ -2019,7 +2019,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=454" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=455" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -2045,7 +2045,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=454"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=455"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2166,6 +2166,15 @@
     qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { const was = !!exl.q; exl.q = qi.value.trim(); exl.n = exlPerN(); if (exl.q && !was) ovOpen("exq", () => { exl.q = ""; qi.value = ""; exl.n = 24; exlBody(); }); else if (!exl.q && was) ovShut("exq"); exlBody(); }, 200); };
     app.onchange = null;
     app.onclick = (ev) => {
+      const qm = ev.target.closest("[data-q-mv]"); if (qm) { exlOpen(qm.dataset.qMv); setTimeout(() => { const b = document.querySelector("[data-own-mv]"); if (b) b.click(); }, 80); return; }
+      const qd = ev.target.closest("[data-q-del]"); if (qd) {
+        if (!qd.dataset.ok) { qd.dataset.ok = "1"; qd.textContent = "اكبس كمان مرة"; setTimeout(() => { if (qd.isConnected) { delete qd.dataset.ok; qd.textContent = "🗑 حذف"; } }, 4000); return; }
+        qd.disabled = true; const id = qd.dataset.qDel;
+        fetch("/api/exlib/ohide", { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify({ i: id }) }).then((r) => r.json().then((j) => { if (!r.ok) throw new Error(j.error || "ما انحذف");
+          exl.L = exl.L.filter((y) => y.i !== id); if (exl.LA) exl.LA = exl.LA.filter((y) => y.i !== id); try { localStorage.removeItem(EXLC); } catch (e) {} exl.prog = null;
+          const w = qd.closest(".exl-cw"); if (w) w.remove(); toast("✓ انحذف (بيرجع من لوحة التحكم ← المخفية)"); })).catch((e) => { qd.disabled = false; toast(esc(e.message)); });
+        return;
+      }
       const t = ev.target.closest("[data-exl-more] button,[data-exl-id]"); if (!t) return;
       if (t.hasAttribute("data-exl-id")) return exlOpen(t.dataset.exlId);
     };
@@ -2564,7 +2573,8 @@
   function exlCardHtml(x, auto, en) {
       const ar = x.a || "";
       const main = ar || x.n; // إذا ما في ترجمة بعد، الاسم الإنكليزي هو الأساسي
-      return `<button type="button" class="exl-card" data-exl-id="${x.i}"><span class="exl-pic">${exlMedia(x, "", auto)}</span><span class="exl-tx"><b${ar ? "" : ' dir="ltr"'}>${esc(main)}</b>${en && ar ? `<small class="exl-en" dir="ltr">${esc(x.n)}</small>` : ""}<span class="exl-tags"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span><span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></span></span></button>`;
+      const own = koOwn() ? `<div class="exl-q"><button type="button" class="btn btn-dark sm" data-q-mv="${x.i}">↔️ نقل</button><button type="button" class="btn btn-ghost sm" data-q-del="${x.i}">🗑 حذف</button></div>` : ""; // صاحب المتجر: الزرين على كل تمرين
+      return (own ? '<div class="exl-cw">' : "") + `<button type="button" class="exl-card" data-exl-id="${x.i}"><span class="exl-pic">${exlMedia(x, "", auto)}</span><span class="exl-tx"><b${ar ? "" : ' dir="ltr"'}>${esc(main)}</b>${en && ar ? `<small class="exl-en" dir="ltr">${esc(x.n)}</small>` : ""}<span class="exl-tags"><span class="exl-tag">${exlI("m", x.m)}${esc(EXL_M[x.m] || x.m)}</span><span class="exl-tag">${exlI("e", x.e)}${esc(EXL_E[x.e] || x.e)}</span></span></span></button>` + (own ? own + "</div>" : "");
   }
   // النزول لتحت بيفتح باقي التمارين لحالو (بلا زر «عرض المزيد»): دفعة جديدة بتنضاف لما توصل لآخر القائمة تقريباً
   function exlInf() {
