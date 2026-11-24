@@ -2051,6 +2051,70 @@ button:disabled{opacity:.6}
 </script>
 </body>
 </html>`;
+  idReviewPage.html = html;
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer" } });
+}
+// صاحب المتجر (24/11/2026): «البطاقة لا تطلّعها لحدا تاني. الاسم يلي بتشك فيه بعتلي إشعار، وأنا بقلك إذا وهمي طالع البطاقة أو لا».
+// يعني ما في بطاقة لحالها: الاسم المشكوك فيه بيوصل لصاحب المتجر عالواتس مع رابط /fn/<رمز> فيه زرين، وهوي بيقرّر
+const SUS_WORDS = ["اسم", "اسمي", "عندي", "عندك", "مالي", "مافي", "ما", "لا", "بلا", "مجهول", "حدا", "شي", "شو", "انا", "مو", "بدي", "وهمي", "زبون", "تجربه", "تجريب", "تست", "مرحبا", "هلق", "ليش", "كيف", "يا", "حبيبي", "اخ", "اخي", "حياتي", "قلبي", "متجر", "رياضه", "ابو", "ام"];
+function nameSuspect(name) {
+  const w = normAr(name).split(" ").filter(Boolean);
+  if (w.length < 2) return "الاسم كلمة وحدة";
+  const bad = w.filter((x) => SUS_WORDS.includes(x) && x !== "ابو" && x !== "ام");
+  if (bad.length) return "فيه كلمات مو أسماء: " + bad.join("، ");
+  if (w.filter((x) => x === "ابو" || x === "ام").length >= 2) return "ألقاب مو اسم";
+  if (w.some((x) => /(.)\1\1/.test(x))) return "حروف مكرّرة";
+  if (new Set(w).size < w.length) return "نفس الكلمة مكرّرة";
+  if (w.some((x) => x.length > 14)) return "كلمة طويلة كتير";
+  return "";
+}
+async function susNotify(env, request, list) {
+  const L = [];
+  for (const a of list) {
+    const why = nameSuspect(a.name); if (!why) continue;
+    const tok = b64u(crypto.getRandomValues(new Uint8Array(18)));
+    await env.STORE.put("acctsus:" + tok, JSON.stringify({ phone: a.phone, name: a.name, gov: a.governorate || "", why, at: new Date().toISOString() }), { expirationTtl: 30 * 86400 });
+    const k = "acct:" + a.phone, cur = await env.STORE.get(k, "json"); if (cur) { cur.susAt = new Date().toISOString(); await env.STORE.put(k, JSON.stringify(cur)); }
+    L.push({ a, why, link: new URL(request.url).origin + "/fn/" + tok });
+  }
+  if (!L.length) return 0;
+  const text = L.length === 1
+    ? `🤔 اسم مشكوك فيه بموقع KO SPORT\n\nالرقم: ${L[0].a.phone}\nالاسم: «${L[0].a.name}»\nليش شكّيت: ${L[0].why}\n\nإذا وهمي، اكبس «وهمي» وبتطلعلو بطاقة «تأكيد الاسم» (اسمو الحقيقي + صورة الهوية). إذا طبيعي، اكبس «طبيعي» وما بيطلعلو شي:\n${L[0].link}`
+    : `🤔 ${L.length} أسماء مشكوك فيها بموقع KO SPORT. كل واحد افتحو وقرّر: «وهمي» (بتطلعلو بطاقة «تأكيد الاسم») أو «طبيعي» (ما بيطلعلو شي):\n\n` + L.map((x, i) => `${i + 1}) «${x.a.name}» ${x.a.phone} (${x.why})\n${x.link}`).join("\n\n");
+  await ownerNotify(env, request, text, { title: "🤔 اسم مشكوك فيه", body: L.map((x) => x.a.name).join("، ").slice(0, 120), url: "/admin", tag: "sus" });
+  return L.length;
+}
+// مرة وحدة: الحسابات الموجودة يلي اسمها مشكوك فيه (بلا يلي انطلب منو هوية أو انأكّد اسمو)، برسالة وحدة (أول 25)
+async function susBackfill(env, request) {
+  if (await env.STORE.get("acct:sus1")) return;
+  await env.STORE.put("acct:sus1", new Date().toISOString());
+  const keys = [];
+  for (const pre of ["acct:09", "acct:+"]) { let cursor; do { const r = await env.STORE.list({ prefix: pre, limit: 1000, cursor }); for (const k of r.keys) if (ACCT_PH.test(k.name.slice(5))) keys.push(k.name); cursor = r.list_complete ? null : r.cursor; } while (cursor && keys.length < 3000); }
+  const sus = [];
+  for (let i = 0; i < keys.length && i < 1500 && sus.length < 25; i += 50) { const v = await Promise.all(keys.slice(i, i + 50).map((k) => env.STORE.get(k, "json").catch(() => null))); for (const a of v) if (a && a.phone && !a.blocked && !a.idReq && !a.idOk && !a.susAt && !isFakeName(a.name) && nameSuspect(a.name)) sus.push(a); }
+  await susNotify(env, request, sus.slice(0, 25));
+}
+function susPage() {
+  if (!idReviewPage.html) idReviewPage();
+  const html = idReviewPage.html.replace("تأكيد اسم زبون</title>", "اسم مشكوك فيه</title>").replace("<b>تأكيد اسم زبون</b>", "<b>اسم مشكوك فيه</b>")
+    .replace(/<script>\n\(function\(\)\{[\s\S]*<\/script>\n<\/body>/, `<script>
+(function(){
+  var tok = location.pathname.split("/").pop(), box = document.getElementById("box");
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function call(body){ body.tok = tok; return fetch("/api/acct/susdec", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ if (!r.ok) throw new Error(j.error || "صار خطأ، جرّب كمان مرة"); return j; }); }); }
+  call({ view: 1 }).then(function(j){
+    box.innerHTML = '<dl><dt>الرقم</dt><dd dir="ltr">' + esc(j.phone) + '</dd><dt>الاسم</dt><dd class="new">«' + esc(j.name) + '»</dd>' + (j.gov ? '<dt>المحافظة</dt><dd>' + esc(j.gov) + '</dd>' : '') + '<dt>ليش شكّيت</dt><dd>' + esc(j.why) + '</dd></dl>'
+      + (j.done ? '<p class="done">' + esc(j.done) + '</p>' : '<p class="mut">إذا وهمي: أول ما يفتح الموقع بتطلعلو بطاقة «تأكيد الاسم» (اسمو الحقيقي + صورة الهوية)، وبيوصلك إشعار. إذا طبيعي: ما بيطلعلو شي.</p><div class="btns"><button class="ok" data-f="1">🪪 وهمي، طالعلو البطاقة</button><button class="no" data-f="0">👍 طبيعي، خلّيه</button></div>');
+  }).catch(function(e){ box.innerHTML = '<p class="done">' + esc(e.message) + '</p>'; });
+  box.addEventListener("click", function(e){
+    var b = e.target.closest("[data-f]"); if (!b) return; var fake = b.getAttribute("data-f") === "1";
+    box.querySelectorAll("button").forEach(function(x){ x.disabled = true; });
+    call({ fake: fake }).then(function(){ box.innerHTML = fake ? '<p class="done">🪪 تمام. أول ما يفتح الموقع بتطلعلو بطاقة «تأكيد الاسم»، وبيوصلك إشعار شو عمل.</p>' : '<p class="done">👍 تمام، ما رح يطلعلو شي.</p>'; })
+      .catch(function(err){ box.querySelectorAll("button").forEach(function(x){ x.disabled = false; }); alert(err.message); });
+  });
+})();
+</script>
+</body>`);
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer" } });
 }
 // لوحة التحكم: اطلب من زبون اسمو الحقيقي وصورة الهوية (اسم وهمي)، أو ألغي الطلب
@@ -2128,6 +2192,19 @@ async function acctApi(request, env, path, m, ctx) {
     later(ctx, ownerNotify(env, request, `🪪 الزبون كتب اسمو الحقيقي ورفع الهوية\n\nالرقم: ${a.phone}\nكان كاتب: «${a.old || a.name}»\nكتب هلق: «${name}»${a.governorate ? "\nالمحافظة: " + a.governorate : ""}\n\nشوف صورة الهوية وأكّد أو ارفض من هون (الصورة بتنحذف لحالها أول ما تأكّد):\n${link}`,
       { title: "🪪 زبون رفع الهوية", body: `${name} — ${a.phone}`, url: "/id/" + tok, tag: "id-" + a.phone }));
     return json({ ok: true, account: acctOut(a) });
+  }
+  // قرار صاحب المتجر على اسم مشكوك فيه (/fn/<رمز>): وهمي ← بطاقة «تأكيد الاسم»، طبيعي ← ما بيطلعلو شي أبداً
+  if (path === "/api/acct/susdec") {
+    const tok = String(b.tok || "");
+    if (!/^[A-Za-z0-9_-]{20,40}$/.test(tok)) return json({ error: "الرابط مو صحيح" }, 400);
+    const r = await env.STORE.get("acctsus:" + tok, "json"); if (!r) return json({ error: "الرابط انتهى" }, 404);
+    const a = await env.STORE.get("acct:" + r.phone, "json"); if (!a) return json({ error: "الحساب مو موجود" }, 404);
+    if (b.view) return json({ ok: true, phone: a.phone, name: a.name, gov: a.governorate || "", why: r.why, done: r.dec ? (r.dec === "fake" ? "قرّرت إنو وهمي: انطلب منو اسمو الحقيقي والهوية." : "قرّرت إنو طبيعي.") : "" });
+    const now = new Date().toISOString();
+    if (b.fake) { a.idReq = { at: now, why: "owner" }; delete a.idOk; delete a.idSeen; } else { delete a.idReq; a.idOk = { at: now, why: "owner-ok" }; }
+    await env.STORE.put("acct:" + a.phone, JSON.stringify(a));
+    r.dec = b.fake ? "fake" : "ok"; await env.STORE.put("acctsus:" + tok, JSON.stringify(r), { expirationTtl: 30 * 86400 });
+    return json({ ok: true });
   }
   // صفحة صاحب المتجر (/id/<رمز> من رسالة الواتس): يشوف الهوية، وبعدين يأكّد (الاسم بيتغيّر بالموقع وبجهات الاتصال) أو يرفض. بالحالتين الصورة بتنحذف
   if (path === "/api/acct/idrev") {
@@ -5371,6 +5448,7 @@ const koMain = {
     if (migDone && mig2Done && mig3Done && mig4Done && mig5Done && !mig6Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig6(env).catch(() => {}));
     if (!mig7Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig7(env).catch(() => {}));
     if (!mig8Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig8(env).catch(() => {}));
+    if (ctx && ctx.waitUntil && env.STORE && !globalThis.__sus1) { globalThis.__sus1 = 1; ctx.waitUntil(susBackfill(env, request).catch(() => { globalThis.__sus1 = 0; })); }
     if (ctx && ctx.waitUntil && env.STORE && !globalThis.__waNames) { globalThis.__waNames = 1; ctx.waitUntil(contactsBackfill(env).catch(() => { globalThis.__waNames = 0; })); }
     if (ctx && ctx.waitUntil && env.STORE && Date.now() - (globalThis.__subsAt || 0) > 3600e3) { globalThis.__subsAt = Date.now(); ctx.waitUntil(subsTick(env, false).catch(() => {})); }
     if (mig7Done && !mig9Done && env.STORE && ctx && ctx.waitUntil) ctx.waitUntil(runMig9(env).catch(() => {}));
@@ -5441,6 +5519,7 @@ const koMain = {
       if (path === "/api/catalog/search" && m === "GET" && env.STORE) return catalogApi(request, env, ctx, "search");
       if ((path === "/api/catalog.txt" || path === "/catalog.txt") && m === "GET" && env.STORE) return catalogApi(request, env, ctx, "txt");
       if (path.startsWith("/id/") && m === "GET") return idReviewPage();
+      if (path.startsWith("/fn/") && m === "GET") return susPage();
       if (path.startsWith("/p/") && m === "GET" && env.STORE) { const id = decodeURIComponent(path.slice(3)), t = await productByAlias(env, request, id); return productShare(request, env, ctx, t ? t.id : id); }
       if (path.startsWith("/s/") && m === "GET" && env.STORE) { const c = path.slice(3).toLowerCase(), d = await catalogData(request, env, ctx).catch(() => null), hit = d && d.products.find((x) => shortCode(x.id) === c); return hit ? productShare(request, env, ctx, hit.id) : Response.redirect(new URL("/", request.url).href, 302); }
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
@@ -5532,7 +5611,7 @@ const koMain = {
         if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
         const r = await acctApi(request, env, path, m, ctx);
         if (r.status === 200 && (r.headers.get("content-type") || "").includes("json")) { try { const j = await r.clone().json(); if (j && j.token) {
-              if (j.account && !j.existed && ["/api/acct/wa-check", "/api/acct/verify", "/api/acct/register"].includes(path) && ctx && ctx.waitUntil) ctx.waitUntil(botContacts(env, [j.account]).catch(() => {})); const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie(j.token)); r2.headers.set("cache-control", "no-store"); return r2; } } catch {} }
+              if (j.account && !j.existed && ["/api/acct/wa-check", "/api/acct/verify", "/api/acct/register"].includes(path) && ctx && ctx.waitUntil) { ctx.waitUntil(botContacts(env, [j.account]).catch(() => {})); ctx.waitUntil(susNotify(env, request, [j.account]).catch(() => {})); } const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie(j.token)); r2.headers.set("cache-control", "no-store"); return r2; } } catch {} }
         if (r.status === 401) { try { const j = await r.clone().json(); if (j && j.logout) { const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie("")); return r2; } } catch {} }
         return r;
       }
