@@ -2302,3 +2302,25 @@ video{pointer-events:none}
 .exw-ab{display:flex;flex-direction:column;gap:4px}.exw-mini{display:flex;gap:4px;justify-content:center}.exw-mini button,.exw-lnk{border:0;background:none;color:var(--c-link,inherit);font:inherit;font-size:12px;cursor:pointer;padding:2px 4px;text-decoration:underline}
 .exw-ed{margin:10px 0;padding:10px;border:1px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;gap:8px}.exw-ed label{display:flex;flex-direction:column;gap:4px;font-size:13px}.exw-ed input{padding:8px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:transparent;color:inherit}
 .exw-alt .exl-anim{width:96px;height:96px}.exw-alt .exl-anim img{height:96px}
+
+/* ---------- بطاقة «تأكيد الاسم» (24/11/2026): اسم وهمي ← الاسم الحقيقي + صورة الهوية. ما بتتسكّر لحتى يبعت ---------- */
+.idc-wrap{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:max(20px,env(safe-area-inset-top)) 14px 24px}
+.idc{width:100%;max-width:440px;margin:auto;background:var(--c-card-bg);color:var(--c-card-fg);border:1px solid color-mix(in srgb,var(--c-card-fg) 12%,var(--c-card-bg));border-radius:24px;padding:26px 20px 18px;box-shadow:var(--shadow);text-align:center}
+.idc-pv{display:inline-block;margin:-6px 0 12px;padding:3px 12px;border-radius:999px;background:color-mix(in srgb,var(--c-btn-bg) 14%,transparent);font-size:12px;font-weight:700}
+.idc-ic{font-size:44px;line-height:1;margin-bottom:8px}
+.idc h2{font-family:var(--head);font-size:22px;margin:0 0 8px}
+.idc-lead{font-weight:700;font-size:16px;margin:0 0 6px}
+.idc-txt{margin:0 0 14px;color:var(--muted);font-size:15px}
+.idc-txt b{color:var(--c-card-fg)}
+.idc-err{margin:0 0 12px;padding:8px 12px;border-radius:10px;background:color-mix(in srgb,var(--red) 10%,transparent);color:var(--red);font-size:14px;font-weight:600}
+.idc-form{display:grid;gap:12px;text-align:start}
+.field .idc-up{position:relative;display:grid;place-items:center;margin:0;min-height:118px;border:2px dashed var(--line);border-radius:14px;padding:12px;cursor:pointer;text-align:center;color:var(--muted);font-weight:600}
+.idc-up:focus-within{border-color:var(--c-card-fg)}
+.idc-up input{position:absolute;width:1px;height:1px;opacity:0}
+.idc-up-t{display:grid;gap:6px;justify-items:center}
+.idc-up img{max-height:180px;width:auto;border-radius:10px}
+.idc-up small{font-weight:500;font-size:12px}
+.field.err .idc-up{border-color:var(--red)}
+.idc-note{margin:0;font-size:13px;color:var(--muted);text-align:center}
+.idc-send{width:100%}
+.idc-out{border:0;background:none;color:var(--muted);font-size:13px;text-decoration:underline;justify-self:center;padding:4px 8px}

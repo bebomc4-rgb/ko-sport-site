@@ -1009,7 +1009,21 @@ async function acctFromTok(t, env, why) {
   if (a.blocked) return no("blocked");
   return a.hash.slice(0, 8) === pv ? a : no("password");
 }
-const acctOut = (a) => ({ name: a.name, phone: a.phone, governorate: a.governorate, at: a.at, av: a.av || "" });
+// أسماء وهمية (صاحب المتجر 24/11/2026، زبون سمّى حالو «مالك اسم عندي»): الحساب بيطلعلو بطاقة «تأكيد الاسم»:
+// ما منقبل أسماء وهمية، اكتب اسمك الحقيقي وارفع صورة الهوية (بتنحذف لحالها بعد التأكيد). صاحب المتجر بيوصلو إشعار عالواتس وبيأكّد أو بيرفض
+const FAKE_NAMES = ["مالك اسم عندي", "ما الك اسم عندي"];
+const isFakeName = (n) => { const x = normAr(n); return !!x && FAKE_NAMES.some((f) => normAr(f) === x); };
+// 0 = ما في شي، 1 = لازم يكتب اسمو الحقيقي ويرفع الهوية، 2 = بعتهن وناطر تأكيد صاحب المتجر
+const idState = (a) => (a.idSub ? 2 : a.idReq || (!a.idOk && isFakeName(a.name)) ? 1 : 0);
+const acctOut = (a) => ({ name: a.name, phone: a.phone, governorate: a.governorate, at: a.at, av: a.av || "", id: idState(a), idRej: a.idRej ? 1 : 0 });
+// إشعار لصاحب المتجر عالواتس (نفس أرقام إشعارات الطلبات) + إشعار لوحة التحكم
+async function ownerNotify(env, request, text, push) {
+  const settings = await getSettings(env, request).catch(() => ({}));
+  const nums = ((settings.notify && settings.notify.whatsapp) || ["963938986875"]).slice(0, 5);
+  for (const to of nums) await botSign(env, "notify", to, text).catch(() => false);
+  if (push) await pushToAdmins(env, push).catch(() => {});
+}
+const later = (ctx, p) => { if (ctx && ctx.waitUntil) ctx.waitUntil(p.catch(() => {})); else return p.catch(() => {}); };
 // WhatsApp code: the site signs the request (ECDSA P-256, private key kept in KV), K FAST AI checks it with /api/acct/otp-key
 const OTP_SENDER = "https://k-fast-ai.pages.dev/api/otp/ko";
 // the workers.dev address switches to the phone a few seconds faster than pages.dev when the PC goes down: try it first
@@ -1905,7 +1919,7 @@ async function subsApi(request, env, m) {
 // الاسم الثلاثي متل ما كتبو الزبون بالموقع (صاحب المتجر، 11 تشرين التاني 2026)
 const waName = (a) => String(a.name || "").replace(/\s+/g, " ").trim().slice(0, 40);
 async function botContacts(env, list) {
-  const L = list.map((a) => ({ phone: a.phone, name: waName(a) })).filter((x) => x.phone && x.name);
+  const L = list.map((a) => ({ phone: a.phone, name: waName(a), ...(a.fix ? { fix: 1 } : {}) })).filter((x) => x.phone && x.name);
   if (!L.length) return false;
   const k = await otpKeys(env), ts = Date.now(), nonce = b64u(crypto.getRandomValues(new Uint8Array(12))), text = JSON.stringify(L);
   const key = await crypto.subtle.importKey("jwk", k.priv, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
@@ -1973,6 +1987,83 @@ async function acctOrders(request, env) {
 // جهاز الزبون (للوحة التحكم): آيفون / أندرويد / تطبيق الأندرويد / كمبيوتر
 const devOf = (request) => { const ua = request.headers.get("user-agent") || ""; return /; wv\)|appcreator/i.test(ua) ? "app" : /iphone|ipad|ipod/i.test(ua) ? "ios" : /android/i.test(ua) ? "android" : /macintosh/i.test(ua) && /mobile/i.test(ua) ? "ios" : "pc"; };
 async function acctTouch(env, request, a) { const d = devOf(request); if (a.dev === d && a.seen && Date.now() - Date.parse(a.seen) < 864e5) return; a.dev = d; if (!a.dev0) a.dev0 = d; a.seen = new Date().toISOString(); await env.STORE.put("acct:" + a.phone, JSON.stringify(a)).catch(() => {}); }
+// صفحة صاحب المتجر لتأكيد اسم زبون (الرابط بيوصلو عالواتس). الصورة ما بتنبعت بالصفحة نفسها: بتنجاب بعدين بطلب POST (لحتى ما تبيّن لأي حدا بيفتح الرابط بلا جافاسكربت)
+function idReviewPage() {
+  const html = `<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>تأكيد اسم زبون | KO SPORT</title>
+<link rel="icon" href="/brand/icon-192.png?v=3" type="image/png">
+<script>try{var t=localStorage.getItem("ko_theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
+<style>
+:root{--bg:#ffffff;--hdr:#fdfbf7;--ink:#100f14;--mut:#5f5c56;--line:#e4e0d8;--card:#ffffff;--card2:#f7f5f0;--gold:#c9a45c;--gold2:#a8843f;--goldbg:#fbf6ea;--btn:#100f14;--btnfg:#ffffff;--ok:#1f8f4e;--bad:#c62828;--r:14px;--shadow:0 1px 0 rgba(201,164,92,.3) inset,0 14px 34px -18px rgba(0,0,0,.35);color-scheme:light}
+html[data-theme=dark]{--bg:#0f0f12;--hdr:#141418;--ink:#f2f2f5;--mut:#a4a4af;--line:#2c2c34;--card:#1a1a20;--card2:#22222a;--goldbg:#2a2416;--btn:#f2f2f5;--btnfg:#100f14;--shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.4);color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;font-size:16px;line-height:1.55}
+.top{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--hdr);border-bottom:1px solid var(--line)}
+.top img{width:40px;height:40px;border-radius:50%;box-shadow:0 0 0 2px var(--gold)}
+.top b{font-size:17px}
+main{max-width:520px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0 0 14px}
+dt{color:var(--mut)}
+dd{margin:0;font-weight:600}
+.new{color:var(--gold2);font-size:18px}
+.id{display:block;width:100%;height:auto;border-radius:12px;border:1px solid var(--line);background:var(--card2)}
+.mut{color:var(--mut);font-size:14px}
+.btns{display:grid;gap:10px;margin-top:14px}
+button{font:inherit;border:0;border-radius:12px;padding:13px;font-weight:700;cursor:pointer}
+.ok{background:var(--btn);color:var(--btnfg)}
+.no{background:transparent;color:var(--bad);border:2px solid var(--line)}
+button:disabled{opacity:.6}
+.done{font-size:17px;font-weight:600;margin:6px 0}
+</style>
+</head>
+<body>
+<header class="top"><img src="/brand/icon-192.png" alt="" width="40" height="40"><b>تأكيد اسم زبون</b></header>
+<main><div class="card" id="box"><p class="mut">جاري التحميل…</p></div></main>
+<script>
+(function(){
+  var tok = location.pathname.split("/").pop(), box = document.getElementById("box");
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function call(body){ body.tok = tok; return fetch("/api/acct/idrev", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ if (!r.ok) throw new Error(j.error || "صار خطأ، جرّب كمان مرة"); return j; }); }); }
+  call({ view: 1 }).then(function(j){
+    box.innerHTML = '<dl><dt>الرقم</dt><dd dir="ltr">' + esc(j.phone) + '</dd><dt>كان كاتب</dt><dd>«' + esc(j.old) + '»</dd><dt>كتب هلق</dt><dd class="new">«' + esc(j.name) + '»</dd>' + (j.gov ? '<dt>المحافظة</dt><dd>' + esc(j.gov) + '</dd>' : '') + '</dl>'
+      + '<img class="id" src="' + j.img + '" alt="صورة الهوية">'
+      + '<p class="mut">قارن الاسم مع الهوية. أول ما تأكّد أو ترفض، صورة الهوية بتنحذف لحالها.</p>'
+      + '<div class="btns"><button class="ok" data-ok="1">✅ الاسم صح، أكّد</button><button class="no" data-ok="0">❌ ما طابق الهوية، ارفض</button></div>';
+  }).catch(function(e){ box.innerHTML = '<p class="done">' + esc(e.message) + '</p>'; });
+  box.addEventListener("click", function(e){
+    var b = e.target.closest("[data-ok]"); if (!b) return;
+    var ok = b.getAttribute("data-ok") === "1";
+    if (!ok && !confirm("أكيد بدك ترفض؟ الزبون رح يطلعلو طلب الاسم والهوية من جديد.")) return;
+    box.querySelectorAll("button").forEach(function(x){ x.disabled = true; });
+    call({ ok: ok }).then(function(j){
+      box.innerHTML = ok ? '<p class="done">✅ تمام. صار اسمو «' + esc(j.name) + '» بالموقع، وانبعت لجهات الاتصال. وصورة الهوية انحذفت.</p>'
+        : '<p class="done">تمام، انرفض. صورة الهوية انحذفت، والزبون رح يطلعلو طلب الاسم والهوية من جديد.</p>';
+    }).catch(function(err){ box.querySelectorAll("button").forEach(function(x){ x.disabled = false; }); alert(err.message); });
+  });
+})();
+</script>
+</body>
+</html>`;
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer" } });
+}
+// لوحة التحكم: اطلب من زبون اسمو الحقيقي وصورة الهوية (اسم وهمي)، أو ألغي الطلب
+async function acctIdReq(request, env) {
+  if (!isAdmin(request, env, "orders")) return denied();
+  const b = await request.json().catch(() => ({})), ph = syPhone(b.phone), a = ph && (await env.STORE.get("acct:" + ph, "json"));
+  if (!a) return json({ error: "الزبون ما عندو حساب بالموقع" }, 404);
+  const now = new Date().toISOString();
+  if (b.on) { a.idReq = { at: now, why: "owner" }; delete a.idOk; delete a.idSeen; }
+  else { if (a.idSub && a.idSub.tok) await env.STORE.delete("acctid:" + a.idSub.tok).catch(() => {}); delete a.idReq; delete a.idSub; delete a.idRej; a.idOk = { at: now, why: "owner-skip" }; }
+  await env.STORE.put("acct:" + ph, JSON.stringify(a));
+  return json({ ok: true, id: idState(a) });
+}
 // لوحة التحكم: كل الحسابات المسجّلة بالموقع
 async function accountsList(request, env) {
   if (!isAdmin(request, env, "orders")) return denied();
@@ -1981,18 +2072,22 @@ async function accountsList(request, env) {
   const out = [];
   for (let i = 0; i < keys.length && i < 900; i += 50) {
     const vals = await Promise.all(keys.slice(i, i + 50).map((k) => env.STORE.get(k, "json").catch(() => null)));
-    for (const a of vals) if (a && a.phone) out.push({ name: a.name, phone: a.phone, gov: a.governorate, at: a.at, dev: a.dev || "", dev0: a.dev0 || "", seen: a.seen || "", verified: !!a.verified, blocked: !!a.blocked });
+    for (const a of vals) if (a && a.phone) out.push({ name: a.name, phone: a.phone, gov: a.governorate, at: a.at, dev: a.dev || "", dev0: a.dev0 || "", seen: a.seen || "", verified: !!a.verified, blocked: !!a.blocked, id: idState(a), idTok: (a.idSub && a.idSub.tok) || "" });
   }
   out.sort((x, y) => String(y.at || "").localeCompare(String(x.at || "")));
   return json({ total: keys.length, accounts: out });
 }
-async function acctApi(request, env, path, m) {
+async function acctApi(request, env, path, m, ctx) {
   if (!env.STORE) return json({ error: "الحسابات مو متاحة هلق" }, 503);
   if (path === "/api/acct/orders" && m === "GET") return acctOrders(request, env);
   if (path === "/api/acct/me") {
     const why = {}, a = await acctFromReq(request, env, why);
     // بس الحساب الموقوف أو كلمة سر تغيّرت بيطلّعو الزبون. غير هيك (ضغط أو حساب لسا عم يوصل) بيضل داخل
     if (!a) return json({ error: "سجّل دخول من جديد", reason: why.reason || "", logout: why.reason === "blocked" || why.reason === "password" || why.reason === "token" }, 401);
+    if (m === "GET" && idState(a) === 1 && !a.idSeen) { // فتح الموقع وطلعتلو بطاقة «تأكيد الاسم»: منخبّر صاحب المتجر (مرة وحدة)
+      a.idSeen = new Date().toISOString(); await env.STORE.put("acct:" + a.phone, JSON.stringify(a)).catch(() => {});
+      later(ctx, ownerNotify(env, request, `👀 زبون اسمو وهمي فتح موقع KO SPORT\n\nالرقم: ${a.phone}\nالاسم يلي كاتبو: «${a.name}»\n\nطلعتلو بطاقة «تأكيد الاسم»: ما منقبل أسماء وهمية، يكتب اسمو الحقيقي ويرفع صورة الهوية. بخبّرك شو بيعمل.`));
+    }
     if (m === "GET") { await acctTouch(env, request, a); const _pc = await predCfg(env); const _pt = (!OWNER_ONLY_EXTRAS && _pc.live !== false) || [...PRED_TESTERS, ...(Array.isArray(_pc.testers) ? _pc.testers : [])].includes(a.phone); return json({ ok: true, account: { ...acctOut(a), predOpen: _pt }, token: await acctToken(env, a) }); } // predOpen: يشوف قسم التوقعات (live أو تستر)
     if (m === "PUT") {
       const b = await request.json().catch(() => ({}));
@@ -2005,6 +2100,52 @@ async function acctApi(request, env, path, m) {
   if (path === "/api/acct/otp-key" && m === "GET") return json({ jwk: (await otpKeys(env)).pub });
   if (m !== "POST") return json({ error: "Method not allowed" }, 405);
   const b = await request.json().catch(() => ({}));
+  // بطاقة «تأكيد الاسم»: الزبون بيبعت اسمو الحقيقي وصورة الهوية. الصورة بـ KV لحالها (acctid:<رمز>) وبتنحذف بعد ما يأكّد صاحب المتجر (أو بعد 7 أيام بأبعد تقدير)
+  if (path === "/api/acct/id" || path === "/api/acct/idout") {
+    const a = await acctFromReq(request, env); if (!a) return json({ error: "سجّل دخول من جديد" }, 401);
+    if (path === "/api/acct/idout") { // طلع من حسابو بدل ما يبعت
+      if (idState(a) === 1) later(ctx, ownerNotify(env, request, `🚪 الزبون ${a.phone} («${a.name}») طلعتلو بطاقة «تأكيد الاسم»، وطلع من حسابو بلا ما يكتب اسمو أو يرفع الهوية.`));
+      return json({ ok: true });
+    }
+    if (idState(a) !== 1) return json({ ok: true, account: acctOut(a) });
+    const name = clip(String(b.name || "").replace(/\s+/g, " ").trim(), 80), parts = name.split(" ").filter(Boolean);
+    if (parts.length < 3 || parts.some((w) => w.length < 2) || /[0-9٠-٩@#$%^&*_=+<>{}\[\]|\\\/]/.test(name)) return json({ error: "اكتب اسمك الثلاثي متل ما هو بالهوية", field: "name" }, 400);
+    if (!/^[\u0600-\u06FF\s]+$/.test(name)) return json({ error: "اكتب اسمك بالعربي متل الهوية", field: "name" }, 400);
+    if (isFakeName(name)) return json({ error: "ما منقبل أسماء وهمية، اكتب اسمك الحقيقي", field: "name" }, 400);
+    const mm = String(b.img || "").match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+    if (!mm || mm[2].length < 15000) return json({ error: "ارفع صورة واضحة للهوية", field: "img" }, 400);
+    if (mm[2].length > 4500000) return json({ error: "الصورة كبيرة كتير، جرّب صورة تانية", field: "img" }, 400);
+    const day = new Date().toISOString().slice(0, 10), dk = `acct:idn:${a.phone}:${day}`, n = +(await env.STORE.get(dk)) || 0;
+    if (n >= 6) return json({ error: "جرّبت كتير اليوم، جرّب بكرا" }, 429);
+    await env.STORE.put(dk, String(n + 1), { expirationTtl: 2 * 86400 });
+    const tok = b64u(crypto.getRandomValues(new Uint8Array(18))), now = new Date().toISOString();
+    await env.STORE.put("acctid:" + tok, JSON.stringify({ phone: a.phone, old: a.name, name, gov: a.governorate || "", type: mm[1], img: mm[2], at: now }), { expirationTtl: 7 * 86400 });
+    if (a.idSub && a.idSub.tok) await env.STORE.delete("acctid:" + a.idSub.tok).catch(() => {}); // الصورة القديمة (إذا بعت قبل) بتنحذف
+    if (!a.idReq) a.idReq = { at: now, why: "auto" };
+    a.idSub = { at: now, name, tok }; delete a.idRej;
+    await env.STORE.put("acct:" + a.phone, JSON.stringify(a));
+    const link = new URL(request.url).origin + "/id/" + tok;
+    later(ctx, ownerNotify(env, request, `🪪 الزبون كتب اسمو الحقيقي ورفع الهوية\n\nالرقم: ${a.phone}\nكان كاتب: «${a.old || a.name}»\nكتب هلق: «${name}»${a.governorate ? "\nالمحافظة: " + a.governorate : ""}\n\nشوف صورة الهوية وأكّد أو ارفض من هون (الصورة بتنحذف لحالها أول ما تأكّد):\n${link}`,
+      { title: "🪪 زبون رفع الهوية", body: `${name} — ${a.phone}`, url: "/id/" + tok, tag: "id-" + a.phone }));
+    return json({ ok: true, account: acctOut(a) });
+  }
+  // صفحة صاحب المتجر (/id/<رمز> من رسالة الواتس): يشوف الهوية، وبعدين يأكّد (الاسم بيتغيّر بالموقع وبجهات الاتصال) أو يرفض. بالحالتين الصورة بتنحذف
+  if (path === "/api/acct/idrev") {
+    const tok = String(b.tok || "");
+    if (!/^[A-Za-z0-9_-]{20,40}$/.test(tok)) return json({ error: "الرابط مو صحيح" }, 400);
+    const r = await env.STORE.get("acctid:" + tok, "json");
+    if (!r) return json({ error: "الرابط انتهى أو انستعمل قبل، وصورة الهوية انحذفت" }, 404);
+    if (b.view) return json({ ok: true, phone: r.phone, old: r.old, name: r.name, gov: r.gov || "", at: r.at, img: `data:image/${r.type};base64,${r.img}` });
+    const a = await env.STORE.get("acct:" + r.phone, "json");
+    if (!a || !a.idSub || a.idSub.tok !== tok) { await env.STORE.delete("acctid:" + tok); return json({ error: "هالطلب قديم (الزبون بعت طلب أحدث أو الحساب انحذف). انحذفت صورة الهوية" }, 409); }
+    const now = new Date().toISOString(), ok = !!b.ok;
+    if (ok) { a.name = r.name; a.idOk = { at: now, name: r.name, old: r.old }; delete a.idReq; delete a.idSub; delete a.idRej; delete a.idSeen; }
+    else { delete a.idSub; a.idRej = { at: now }; if (!a.idReq) a.idReq = { at: now, why: "owner" }; }
+    await env.STORE.put("acct:" + a.phone, JSON.stringify(a));
+    await env.STORE.delete("acctid:" + tok); // صورة الهوية انحذفت
+    if (ok) later(ctx, botContacts(env, [{ phone: a.phone, name: a.name, fix: 1 }])); // الاسم الصح لجهات اتصال واتساب المتجر (بيكتب فوق الاسم الوهمي)
+    return json({ ok: true, name: a.name });
+  }
   // «سجّل / ادخل بالواتساب»: the customer sends KO-XXXXXX from their own WhatsApp to the store; that proves the number
   if (path === "/api/acct/wa-start") {
     const login = !!b.login;
@@ -2014,6 +2155,7 @@ async function acctApi(request, env, path, m) {
       if (parts.length < 3 || parts.some((w) => w.length < 2) || /[0-9٠-٩@#$%^&*_=+<>{}\[\]|\\\/]/.test(name)) return json({ error: "اكتب الاسم الثلاثي متل الهوية (الاسم، اسم الأب، الكنية)", field: "name" }, 400);
       // صاحب المتجر (16 تشرين التاني 2026): الحسابات الجديدة بالاسم العربي بس (القديمة بتضل متل ما هي)
       if (!/^[\u0600-\u06FF\s]+$/.test(name)) return json({ error: "اكتب اسمك بالعربي (متل الهوية)", field: "name" }, 400);
+      if (isFakeName(name)) return json({ error: "ما منقبل أسماء وهمية، اكتب اسمك الحقيقي متل الهوية", field: "name" }, 400);
       if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة", field: "governorate" }, 400);
       if (pw.length < 6 || pw.length > 64) return json({ error: "كلمة السر لازم تكون 6 أحرف أو أكتر", field: "password" }, 400);
       const salt = b64u(crypto.getRandomValues(new Uint8Array(16)));
@@ -2078,6 +2220,7 @@ async function acctApi(request, env, path, m) {
     if (parts.length < 3 || parts.some((w) => w.length < 2) || /[0-9٠-٩@#$%^&*_=+<>{}\[\]|\\\/]/.test(name)) return json({ error: "اكتب الاسم الثلاثي متل الهوية (الاسم، اسم الأب، الكنية)", field: "name" }, 400);
     // صاحب المتجر (16 تشرين التاني 2026): الحسابات الجديدة بالاسم العربي بس (القديمة بتضل متل ما هي)
     if (!/^[\u0600-\u06FF\s]+$/.test(name)) return json({ error: "اكتب اسمك بالعربي (متل الهوية)", field: "name" }, 400);
+    if (isFakeName(name)) return json({ error: "ما منقبل أسماء وهمية، اكتب اسمك الحقيقي متل الهوية", field: "name" }, 400);
     if (!ACCT_GOVS.includes(b.governorate)) return json({ error: "اختار المحافظة", field: "governorate" }, 400);
     if (pw.length < 6 || pw.length > 64) return json({ error: "كلمة السر لازم تكون 6 أحرف أو أكتر", field: "password" }, 400);
     if (await env.STORE.get("acct:" + phone)) return json({ error: "هالرقم عندو حساب، سجّل دخول", field: "phone", exists: true }, 409);
@@ -5297,6 +5440,7 @@ const koMain = {
       if (path === "/api/catalog" && m === "GET" && env.STORE) return catalogApi(request, env, ctx, "json");
       if (path === "/api/catalog/search" && m === "GET" && env.STORE) return catalogApi(request, env, ctx, "search");
       if ((path === "/api/catalog.txt" || path === "/catalog.txt") && m === "GET" && env.STORE) return catalogApi(request, env, ctx, "txt");
+      if (path.startsWith("/id/") && m === "GET") return idReviewPage();
       if (path.startsWith("/p/") && m === "GET" && env.STORE) { const id = decodeURIComponent(path.slice(3)), t = await productByAlias(env, request, id); return productShare(request, env, ctx, t ? t.id : id); }
       if (path.startsWith("/s/") && m === "GET" && env.STORE) { const c = path.slice(3).toLowerCase(), d = await catalogData(request, env, ctx).catch(() => null), hit = d && d.products.find((x) => shortCode(x.id) === c); return hit ? productShare(request, env, ctx, hit.id) : Response.redirect(new URL("/", request.url).href, 302); }
       if (path === "/api/diag/purge" && m === "GET") { await purgeEdge("settings"); await purgeEdge("products"); return json({ ok: true, purged: ["settings", "products"], note: "هاد بيمسح الكاش بهي المنطقة بس" }); }
@@ -5386,13 +5530,14 @@ const koMain = {
       if (path.startsWith("/api/exlib/")) return exlibApi(request, env, path, m);
       if (path.startsWith("/api/acct/")) {
         if (path === "/api/acct/logout" && m === "POST") { const r = json({ ok: true }); r.headers.append("set-cookie", sessCookie("")); return r; }
-        const r = await acctApi(request, env, path, m);
+        const r = await acctApi(request, env, path, m, ctx);
         if (r.status === 200 && (r.headers.get("content-type") || "").includes("json")) { try { const j = await r.clone().json(); if (j && j.token) {
               if (j.account && !j.existed && ["/api/acct/wa-check", "/api/acct/verify", "/api/acct/register"].includes(path) && ctx && ctx.waitUntil) ctx.waitUntil(botContacts(env, [j.account]).catch(() => {})); const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie(j.token)); r2.headers.set("cache-control", "no-store"); return r2; } } catch {} }
         if (r.status === 401) { try { const j = await r.clone().json(); if (j && j.logout) { const r2 = new Response(r.body, r); r2.headers.append("set-cookie", sessCookie("")); return r2; } } catch {} }
         return r;
       }
       if (path === "/api/accounts" && m === "GET") return accountsList(request, env);
+      if (path === "/api/accounts/idreq" && m === "PUT") return acctIdReq(request, env);
       if (path === "/api/login" && m === "POST") return env.__role ? json({ ok: true, role: env.__role, name: env.__staff }) : denied();
       if (path === "/api/products") {
         if (m === "GET") return productsGet(request, env, ctx);

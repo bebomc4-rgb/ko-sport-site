@@ -191,7 +191,7 @@
   }
   document.addEventListener("click", (e) => { const m = $("[data-menu]"); if (!m.hidden && !e.target.closest("[data-menu],[data-dots]")) m.hidden = true; }, true);
   const DOTS = (attr) => `<button type="button" class="w-dots" data-dots ${attr} aria-label="خيارات">•••</button>`;
-  const MI = { edit: "✎", eye: "👁", del: "🗑", wa: "💬", block: "⛔", ok: "✓", list: "☰" };
+  const MI = { edit: "✎", eye: "👁", del: "🗑", wa: "💬", block: "⛔", ok: "✓", list: "☰", id: "🪪" };
 
   // ---------- customers (orders + saved info: tags, notes, blocking, manual adds, imports) ----------
   let CUST = {}, custTab = "all", custSel = new Set(), allLoaded = false, ACCTS = null;
@@ -255,7 +255,7 @@
     custSel = new Set([...custSel].filter((k) => CROWS.some((c) => c.key === k)));
     box.innerHTML = `<div class="w-table cu-table"><div class="w-tr w-th"><span><input type="checkbox" data-cu-all ${CROWS.length && custSel.size === CROWS.length ? "checked" : ""}></span><span>بيانات العميل</span><span>المكان</span><span>حالة الحساب</span><span>تصنيفاتي</span><span>الطلبات</span><span>النفقات</span><span></span></div>` +
       CROWS.slice(0, 500).map((c) => `<div class="w-tr cu-row" data-cu="${esc(c.key)}"><span><input type="checkbox" data-cu-chk="${esc(c.key)}" ${custSel.has(c.key) ? "checked" : ""}></span>
-        <span class="cu-id"><i class="cu-av">${esc(initials(c.name))}</i><span><b>${esc(c.name || "بدون اسم")}</b><small dir="ltr">${esc(c.email || c.phone || "")}</small>${c.acct ? devChip(c.acct.dev) : ""}</span></span>
+        <span class="cu-id"><i class="cu-av">${esc(initials(c.name))}</i><span><b>${esc(c.name || "بدون اسم")}</b><small dir="ltr">${esc(c.email || c.phone || "")}</small>${c.acct ? devChip(c.acct.dev) : ""}${c.acct && c.acct.id ? `<em class="cu-tag">${c.acct.id === 2 ? "🪪 ناطر تأكيد الهوية" : "🪪 مطلوب اسمو الحقيقي"}</em>` : ""}</span></span>
         <span>${c.gov ? `Syria, ${esc(c.gov)}` : '<small class="hint">لا يوجد عنوان</small>'}</span>
         <span><em class="cu-st ${c.blocked ? "bl" : ""}">● ${c.blocked ? "محظور" : "نشط"}</em></span>
         <span>${(c.tags || []).map((t) => `<em class="cu-tag">${esc(t)}</em>`).join("") || "-"}</span>
@@ -301,6 +301,12 @@
       openMenu(dm, [["تعديل", MI.edit, () => custEditor(c)],
         ...(c.orders.length ? [["طلباته", MI.list, () => { $("[data-order-q]").value = c.phone || c.name; show("orders"); renderOrders(); }]] : []),
         ...(wa ? [["واتساب", MI.wa, () => window.open("https://wa.me/" + wa, "_blank")]] : []),
+        ...(c.acct && c.acct.id === 2 && c.acct.idTok ? [["شوف الهوية وأكّد", MI.id, () => window.open("/id/" + encodeURIComponent(c.acct.idTok), "_blank")]] : []),
+        ...(c.acct ? [[c.acct.id ? "إلغاء طلب الهوية" : "اسم وهمي: اطلب اسمو الحقيقي والهوية", MI.id, async () => {
+          const on = !c.acct.id;
+          if (on && !confirm(`رح يطلعلو «تأكيد الاسم» أول ما يفتح الموقع: يكتب اسمو الحقيقي ويرفع صورة الهوية، وبيوصلك إشعار عالواتس. نكمّل؟`)) return;
+          try { const j = await api("/api/accounts/idreq", { method: "PUT", body: JSON.stringify({ phone: c.acct.phone, on }) }); c.acct.id = j.id; if (!j.id) c.acct.idTok = ""; renderCustomers(); toast(on ? "تمام، رح يطلعلو طلب الاسم والهوية" : "انلغى طلب الهوية"); } catch (err) { toast(err.message); }
+        }]] : []),
         [c.blocked ? "إلغاء الحظر" : "حظر", c.blocked ? MI.ok : MI.block, async () => { try { await saveCust(c, { blocked: !c.blocked }); renderCustomers(); toast(c.blocked ? "انلغى الحظر" : "انحظر العميل"); } catch (err) { toast(err.message); } }],
         ...(c.stored ? [["إزالة البيانات المحفوظة", MI.del, async () => { if (!confirm("نحذف بيانات هالعميل المحفوظة؟ (طلباته بتضل)")) return; try { await api("/api/customers/" + encodeURIComponent(c.key), { method: "DELETE" }); delete CUST[c.key]; renderCustomers(); } catch (err) { toast(err.message); } }, true]] : [])]);
       return;

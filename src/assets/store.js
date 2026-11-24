@@ -1960,7 +1960,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=445" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=446" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -1981,7 +1981,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=445"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=446"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -3647,6 +3647,7 @@ ${trustH()}
     else if (a === "build") buildPage();
     else if (a === "exlib") exlibPage();
     else if (a === "o" && b) orderPage(b);
+    else if (a === "idcard" && koOwn()) { home(); idCard({ name: "مالك اسم عندي" }, true); } // معاينة بطاقة «تأكيد الاسم» لصاحب المتجر
     else home();
     if (a !== "exlib") exlWarm(); // خارج سلسلة else-if (v394 حشرها بنصها فصار home() يمسح المكتبة وصفحة الطلب ما تنفتح)
     finishRoute(hs, keepScroll, keepY, revisit);
@@ -3663,6 +3664,7 @@ ${trustH()}
     curK = hs.koK;
     closeMenu();
     if (!route.o && window.KOFx) { route.o = 1; KOFx.open(); }
+    idCheck();
   }
 
   // ---------- بوابة الدخول ----------
@@ -3684,10 +3686,95 @@ ${trustH()}
   try {
     const A0 = acct();
     if (A0 && !sessionStorage.getItem("ko_me_ok")) fetch("/api/acct/me", { credentials: "same-origin", headers: { authorization: "Bearer " + A0.token } }).then((r) => {
-      if (r.ok) { sessionStorage.setItem("ko_me_ok", "1"); r.json().then((j) => { if (j && j.token && j.account && acct()) acctSet({ token: j.token, account: j.account }); }).catch(() => {}); return; }
+      if (r.ok) { sessionStorage.setItem("ko_me_ok", "1"); r.json().then((j) => { if (j && j.token && j.account && acct()) { acctSet({ token: j.token, account: j.account }); idCheck(); } }).catch(() => {}); return; }
       if (r.status === 401) r.json().then((j) => { if (j && j.logout) { acctOut(); route(null, true); } }).catch(() => {});
     }).catch(() => {});
   } catch {}
+
+  // ---------- بطاقة «تأكيد الاسم» (صاحب المتجر 24/11/2026): اسم وهمي ← الاسم الحقيقي + صورة الهوية ----------
+  // السيرفر بيقرّر (account.id: 1 = لازم يبعت، 2 = بعت وناطر تأكيد). البطاقة ما بتتسكّر لحتى يبعت أو يطلع من الحساب
+  function idCheck() {
+    const A = acct();
+    if (!A || !A.account || A.account.id !== 1 || document.querySelector("[data-idc]")) return;
+    idCard(A.account, false);
+  }
+  function idClose() { document.querySelectorAll("[data-idc]").forEach((x) => x.remove()); if (!document.querySelector("[data-sheet]")) document.documentElement.classList.remove("sheet-lock"); }
+  // الصورة بتصغر قبل الرفع (أسرع وأخف): أطول ضلع 1600 بكسل، JPEG
+  function idShrink(file) {
+    return new Promise((ok, no) => {
+      const u = URL.createObjectURL(file), im = new Image();
+      im.onload = () => {
+        try {
+          const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+          c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u); ok(c.toDataURL("image/jpeg", 0.82));
+        } catch (e) { URL.revokeObjectURL(u); no(e); }
+      };
+      im.onerror = () => { URL.revokeObjectURL(u); no(new Error("img")); };
+      im.src = u;
+    });
+  }
+  function idCard(ac, preview) {
+    idClose();
+    const w = document.createElement("div");
+    w.className = "idc-wrap"; w.setAttribute("data-idc", ""); w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true"); w.setAttribute("aria-labelledby", "idc-t");
+    const UP = "📷 صوّر الهوية أو اختار صورة";
+    w.innerHTML = `<div class="idc">
+      ${preview ? `<div class="idc-pv">معاينة: هيك بتطلع للزبون</div>` : ""}
+      <div class="idc-ic" aria-hidden="true">🪪</div>
+      <h2 id="idc-t">تأكيد الاسم</h2>
+      <p class="idc-lead">ما منقبل أسماء وهمية بحسابات <bdi dir="ltr">KO&nbsp;SPORT</bdi>.</p>
+      <p class="idc-txt">اسمك عنا هلق: «<b>${esc(ac.name || "")}</b>». اكتب اسمك الحقيقي متل ما هو بالهوية، وارفع صورة الهوية لنتأكّد.</p>
+      ${ac.idRej ? `<p class="idc-err">الاسم يلي بعتّو ما طابق الهوية، جرّب مرة تانية.</p>` : ""}
+      <form class="idc-form" data-idc-form novalidate>
+        <div class="field"><label for="idc-name">اسمك الثلاثي (متل الهوية)</label><input id="idc-name" name="name" autocomplete="name" maxlength="80" placeholder="الاسم، اسم الأب، الكنية"><div class="msg"></div></div>
+        <div class="field"><label for="idc-file">صورة الهوية</label>
+          <label class="idc-up"><input id="idc-file" type="file" accept="image/*" data-idc-file><span class="idc-up-t" data-idc-pv>${UP}</span></label>
+          <div class="msg"></div></div>
+        <p class="idc-note">🔒 صورة الهوية ما بيشوفها غير صاحب المتجر، وبتنحذف لحالها بعد التأكيد.</p>
+        <button class="btn btn-red idc-send" type="submit">إرسال</button>
+        <button class="idc-out" type="button" data-idc-out>مو حسابي؟ اطلع منو</button>
+      </form>
+    </div>`;
+    document.body.appendChild(w); document.documentElement.classList.add("sheet-lock");
+    let img = "";
+    const f = w.querySelector("[data-idc-form]"), nameEl = w.querySelector("#idc-name"), fileEl = w.querySelector("[data-idc-file]"), pv = w.querySelector("[data-idc-pv]");
+    const setErr = (el, m) => { const fd = el.closest(".field"); fd.classList.toggle("err", !!m); fd.querySelector(".msg").textContent = m || ""; };
+    fileEl.addEventListener("change", async () => {
+      const file = fileEl.files && fileEl.files[0]; if (!file) return;
+      setErr(fileEl, ""); pv.textContent = "⏳ لحظة…";
+      try { img = await idShrink(file); pv.innerHTML = `<img src="${img}" alt="صورة الهوية"><small>✓ تمام. اكبس هون لتغيّرها</small>`; }
+      catch { img = ""; pv.textContent = UP; setErr(fileEl, "ما قدرنا نفتح الصورة، جرّب صورة تانية"); }
+    });
+    w.querySelector("[data-idc-out]").onclick = () => {
+      if (preview) { idClose(); return; }
+      const A = acct(); if (A) fetch("/api/acct/idout", { method: "POST", credentials: "same-origin", keepalive: true, headers: { "content-type": "application/json", authorization: "Bearer " + A.token }, body: "{}" }).catch(() => {});
+      acctOut(); idClose(); route(null, false);
+    };
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nm = nameEl.value.replace(/\s+/g, " ").trim(); let bad = false;
+      if (nm.split(" ").filter((x) => x.length > 1).length < 3 || /[0-9٠-٩]/.test(nm)) { setErr(nameEl, "اكتب اسمك الثلاثي متل الهوية"); bad = true; }
+      else if (!/^[\u0600-\u06FF\s]+$/.test(nm)) { setErr(nameEl, "اكتب اسمك بالعربي متل الهوية"); bad = true; }
+      else setErr(nameEl, "");
+      if (!img) { setErr(fileEl, "ارفع صورة الهوية"); bad = true; }
+      if (bad) return;
+      if (preview) { toast("هي معاينة بس، ما انبعت شي"); return; }
+      const btn = f.querySelector(".idc-send"); btn.disabled = true; btn.textContent = "عم نبعت…";
+      try {
+        const A = acct(), r = await fetch("/api/acct/id", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", authorization: "Bearer " + (A ? A.token : "") }, body: JSON.stringify({ name: nm, img }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          btn.disabled = false; btn.textContent = "إرسال";
+          if (j.field === "img") setErr(fileEl, j.error); else if (j.field === "name") setErr(nameEl, j.error); else toast(esc(j.error || "صار خطأ، جرّب كمان مرة"));
+          return;
+        }
+        if (j.account && A) acctSet({ token: A.token, account: { ...A.account, ...j.account } });
+        w.querySelector(".idc").innerHTML = `<div class="idc-ic" aria-hidden="true">✅</div><h2>وصلتنا، شكراً!</h2><p class="idc-txt">منتأكّد من الاسم بأقرب وقت، وبعدها صورة الهوية بتنحذف لحالها.</p><button class="btn btn-red idc-send" type="button" data-idc-ok>كمّل تسوّق</button>`;
+        w.querySelector("[data-idc-ok]").onclick = idClose;
+      } catch { btn.disabled = false; btn.textContent = "إرسال"; toast("ما في نت؟ جرّب كمان مرة"); }
+    });
+  }
 
   // ---------- games ----------
   const gamesOn = () => !!(S.design.games && S.design.games.on);
