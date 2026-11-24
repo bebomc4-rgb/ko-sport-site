@@ -2019,7 +2019,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=458" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=460" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -2045,8 +2045,14 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=458"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=460"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
+  // قسم التمرين الجديد (gym.js): المجسّم، التنين الأسود، آخر الدراسات، التغذية
+  function gymLoad() {
+    if (window.KOGym) return Promise.resolve();
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=460"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+  }
+  const gymH = () => ({ toast, auth: socAuth, sheet: openSheet, closeSheet });
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
   const EXL_MORD = ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Forearms", "Waist", "Glutes", "Hips", "Quadriceps", "Hamstrings", "Calves", "Neck", "Boxing", "Cardio", "Upper Arms", "Thighs", "Full Body", "Plyometrics", "Stretching", "Weightlifting", "Yoga", "Other"];
@@ -2148,6 +2154,7 @@
     if (hm === "my") return exlMyPage();
     if (hm === "women") return exlWomenPage();
     if (hm === "review") return exlReviewPage();
+    if (hm === "studies" || hm === "nutri") { app.innerHTML = '<div class="loading">جاري التحميل…</div>'; return gymLoad().then(() => { if (window.KOGym && curRoute().indexOf("/exlib/" + hm) === 0) window.KOGym[hm](app, gymH()); }); }
     exl.m = hm && exl.L.some((x) => exlMIs(x, hm)) ? hm : "";
     exl.e = exl.m && he && (he === "*" || exl.L.some((x) => exlMIs(x, exl.m) && x.e === he)) ? he : "";
     exl.q = ""; exl.n = (exl.nm && exl.nm[curRoute()]) || exlPerN();
@@ -2162,6 +2169,7 @@
       <div data-exl-body></div>
       </div>`;
     exlBody();
+    gymLoad().then(() => { if (!window.KOGym || curRoute().indexOf("/exlib") !== 0) return; const sl = app.querySelector("[data-kg-slot]"); if (sl && !sl.firstChild) sl.innerHTML = window.KOGym.map(EXL_M); window.KOGym.dragon(exl.m ? exlMG(exl.m) : "_", !!exl.m); });
     const qi = app.querySelector(".exl-q"); let qt;
     qi.oninput = () => { clearTimeout(qt); qt = setTimeout(() => { const was = !!exl.q; exl.q = qi.value.trim(); exl.n = exlPerN(); if (exl.q && !was) ovOpen("exq", () => { exl.q = ""; qi.value = ""; exl.n = 24; exlBody(); }); else if (!exl.q && was) ovShut("exq"); exlBody(); }, 200); };
     app.onchange = null;
@@ -2169,6 +2177,7 @@
       if (ev.target.closest("[data-sel-on]")) { exl.selOn = !exl.selOn; if (!exl.selOn) exl.sel = new Set(); else exl.sel = exl.sel || new Set(); exlBody(); exlSelBar(); return; }
       if (ev.target.closest("[data-sel-all]")) { exlList().forEach((y) => exl.sel.add(y.i)); app.querySelectorAll(".exl-card").forEach((b) => b.classList.add("sel")); exlSelBar(); return; }
       if (exl.selOn) { const cd = ev.target.closest(".exl-card[data-exl-id]"); if (cd) { const id = cd.dataset.exlId; if (exl.sel.has(id)) exl.sel.delete(id); else exl.sel.add(id); cd.classList.toggle("sel", exl.sel.has(id)); exlSelBar(); return; } }
+      const mk = ev.target.closest("[data-mk]"); if (mk) { location.hash = exlH(mk.dataset.mk); return; }
       const qn = ev.target.closest("[data-q-nm]"); if (qn) { exlOpen(qn.dataset.qNm); setTimeout(() => { const b = document.querySelector("[data-own-nm]"); if (b) b.click(); }, 80); return; }
       const qm = ev.target.closest("[data-q-mv]"); if (qm) { exlOpen(qm.dataset.qMv); setTimeout(() => { const b = document.querySelector("[data-own-mv]"); if (b) b.click(); }, 80); return; }
       const qd = ev.target.closest("[data-q-del]"); if (qd) {
@@ -2521,7 +2530,7 @@
     if (step === 1) {
       const cm = {}; exl.L.forEach((x) => { const g = exlMG(x.m); cm[g] = (cm[g] || 0) + 1; });
       const ks = EXL_MORD.filter((k) => cm[k]).concat(Object.keys(cm).filter((k) => EXL_MORD.indexOf(k) < 0));
-      body.innerHTML = `<a class="exl-prog-bn" href="#/build"><span>🏋️</span><b>اعمل برنامجك</b><small>جاوب عالأسئلة وبيطلعلك برنامج تمرين وتغذية على قدّك بصور وفيديوهات التمارين</small></a><a class="exl-prog-bn" href="#/exlib/programs"><span>📋</span><b>برامج التمرين</b><small>برامج جاهزة بأيامها وتمارينها، والتمارين مربوطة بالفيديوهات</small></a><h2 class="exl-h">اختار العضلة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(exlH(k), exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
+      body.innerHTML = `<a class="exl-prog-bn" href="#/build"><span>🏋️</span><b>اعمل برنامجك</b><small>جاوب عالأسئلة وبيطلعلك برنامج تمرين وتغذية على قدّك بصور وفيديوهات التمارين</small></a><a class="exl-prog-bn" href="#/exlib/programs"><span>📋</span><b>برامج التمرين</b><small>برامج جاهزة بأيامها وتمارينها، والتمارين مربوطة بالفيديوهات</small></a><div class="exl-duo"><a class="exl-prog-bn" href="#/exlib/nutri"><span>🍽️</span><b>التغذية</b><small>سعراتك وبروتينك وأكلك ووزنك، بالأكل السوري</small></a><a class="exl-prog-bn" href="#/exlib/studies"><span>📰</span><b>آخر الدراسات</b><small>أحدث الأبحاث بالرياضة والتغذية، ملخّصة بالعربي</small></a></div><h2 class="exl-h">كبّس على العضلة بالمجسّم</h2><div data-kg-slot></div><h2 class="exl-h">أو اختار من القائمة</h2><div class="exl-tiles" style="grid-template-columns:repeat(${exlN(c.mCols, 1, 6, 3)},1fr)">${ks.map((k) => exlTile(exlH(k), exlI("m", k), EXL_M[k] || k, cm[k], c)).join("")}</div>`;
     } else if (step === 2 && EXL_SUBS[exl.m]) {
       // العضلة: الشرح، وبعدين اختار الجزء، وبعدها الأداة
       const cp = {}; exl.L.forEach((x) => { cp[x.m] = (cp[x.m] || 0) + 1; }); const tot = exl.L.filter((x) => exlMIs(x, exl.m)).length, ic = exlI("m", exl.m === "Glutes" ? "Hips" : exl.m);
@@ -2603,7 +2612,7 @@
     }
     bar.querySelector("[data-sel-n]").textContent = n ? `${n} محدد` : "كبّس عالتمارين لتحددها";
   }
-  window.addEventListener("hashchange", () => { if (curRoute().indexOf("/exlib") !== 0) { exl.selOn = false; exl.sel = new Set(); exlSelBar(); } });
+  window.addEventListener("hashchange", () => { if (curRoute().indexOf("/exlib") !== 0) { exl.selOn = false; exl.sel = new Set(); exlSelBar(); if (window.KOGym) window.KOGym.dragonHide(); } });
   function exlCardHtml(x, auto, en) {
       const ar = x.a || "";
       const main = ar || x.n; // إذا ما في ترجمة بعد، الاسم الإنكليزي هو الأساسي
