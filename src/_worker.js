@@ -5495,6 +5495,19 @@ async function exlibApi(request, env, path, m) {
     return json({ ok: true, n: o.n, a: ar[id] ? exlArFix(ar[id], o) : "" }, 200, nos);
   }
   // حذف تمرين من حساب صاحب المتجر (صفحة صور النساء): بيخبّيه بكل مكان (exlib:edits h=1)، الملفات ما بتنمسح وبيرجع من لوحة التحكم ← «المخفية بس»
+  // نقل تمرين لعضلة/جزء وأداة تانية (زر «نقل» بحساب صاحب المتجر 24/11/2026): بيتحفظ بـ exlib:edits (m و e)، وبيربح على التوزيع التلقائي EXL_SUB
+  if (path === "/api/exlib/omove" && m === "POST") {
+    if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
+    let b = {}; try { b = await request.json(); } catch {}
+    const id = String(b.i || ""); if (!/^[a-f0-9]{10}$/.test(id)) return json({ error: "رقم التمرين غلط" }, 400, nos);
+    const mm = String(b.m || "").trim(), ee = String(b.e || "").trim();
+    if (!/^[A-Za-z][A-Za-z ]{1,30}(:[A-Za-z]{2,12})?$/.test(mm)) return json({ error: "اختار العضلة" }, 400, nos);
+    if (!/^[A-Za-z][A-Za-z .-]{1,40}$/.test(ee)) return json({ error: "اختار الأداة" }, 400, nos);
+    const { L, ed } = await exlibAll(env), base = L.find((x) => x.i === id); if (!base) return json({ error: "التمرين مو موجود" }, 404, nos);
+    const e2 = { ...(ed[id] || {}) }; e2.m = mm; if (ee !== base.e) e2.e = ee; else delete e2.e;
+    ed[id] = e2; await env.STORE.put("exlib:edits", JSON.stringify(ed));
+    return json({ ok: true, m: mm, e: ee }, 200, nos);
+  }
   if (path === "/api/exlib/ohide" && m === "POST") {
     if (!(await exlibOwner(request, env))) return json({ error: "forbidden" }, 403, nos);
     let b = {}; try { b = await request.json(); } catch {}

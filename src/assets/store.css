@@ -2207,6 +2207,12 @@ html[data-theme=dark] .exl-t-gold{--xc-bg:#2a2416;--xc-fg:#f4efe2;--xc-mut:#d8c6
 .exl-list .exl-tx{padding:8px 0}
 
 .exl-h{font-size:17px;margin:8px 0 12px}
+.exl-own{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.exl-own-b{display:flex;gap:8px;flex-wrap:wrap}
+.exl-own-b .btn{flex:1}
+.exl-own-f{display:grid;gap:10px;margin-top:12px}
+.exl-own-f label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.exl-own-f select{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--c-card-bg,var(--card));color:inherit;font:inherit}
 .exl-desc{margin:0 0 14px;padding:10px 14px;border-radius:12px;background:var(--c-card-bg,var(--card));border:1px solid var(--line);font-size:14px;line-height:1.8;color:var(--muted)}
 .exl-rvs{display:grid;gap:8px;margin-bottom:18px}
 .exl-rv{display:grid;gap:2px;text-align:start;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--c-card-bg,var(--card));color:inherit;font:inherit;cursor:pointer}

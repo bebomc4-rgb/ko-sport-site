@@ -2019,7 +2019,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=453" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=454" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -2045,7 +2045,7 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=453"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=454"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
   const exlArq = (s) => String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
@@ -2612,6 +2612,23 @@
         const dd = exlMyGet(), cnt = exlMyCount();
         bx.insertAdjacentHTML("beforeend", `<div class="exl-add"><select data-my-day aria-label="اليوم">${EXMY_WD.map((d, k) => `<option value="${d}"${d === exlMyLast() ? " selected" : ""}>${d}</option>`).join("")}</select><button type="button" class="btn btn-dark" data-my-add>➕ أضف لبرنامجي</button><a class="exl-add-lk" href="#/exlib/my">${cnt ? "افتح برنامجي (" + cnt + ")" : "افتح برنامجي"}</a></div>`);
         bx.querySelector("[data-my-add]").onclick = () => { exlMyAdd(x.i, bx.querySelector("[data-my-day]").value); toast("انضاف لبرنامجك ✓"); };
+      }
+      // صاحب المتجر (24/11/2026): «نقل» التمرين الغلط لعضلتو وأداتو الصح، و«حذف» إذا مكرر
+      if (bx && koOwn()) {
+        const mains = EXL_MORD.filter((k) => k !== "Upper Arms" && k !== "Thighs" && k !== "Other");
+        const opts = mains.map((k) => EXL_SUBS[k] ? `<optgroup label="${esc(EXL_M[k] || k)}">${EXL_SUBS[k].filter((s, j, a) => a.indexOf(s) === j && exlMG(s) === k).map((s) => `<option value="${s}"${s === x.m ? " selected" : ""}>${esc(EXL_M[s] || s)}</option>`).join("")}</optgroup>` : `<option value="${k}"${k === x.m ? " selected" : ""}>${esc(EXL_M[k] || k)}</option>`).join("");
+        const eqs = [...new Set(exl.L.map((y) => y.e))].sort((a, b) => String(EXL_E[a] || a).localeCompare(String(EXL_E[b] || b), "ar"));
+        bx.insertAdjacentHTML("beforeend", `<div class="exl-own"><div class="exl-own-b"><button type="button" class="btn btn-dark" data-own-mv>↔️ نقل التمرين</button><button type="button" class="btn btn-ghost" data-own-del>🗑 حذف (مكرر)</button></div>
+          <div class="exl-own-f" data-own-f hidden><label>العضلة والجزء<select data-own-m>${opts}</select></label><label>الأداة<select data-own-e>${eqs.map((e) => `<option value="${esc(e)}"${e === x.e ? " selected" : ""}>${esc(EXL_E[e] || e)}</option>`).join("")}</select></label><button type="button" class="btn btn-red" data-own-save>انقل ✓</button></div></div>`);
+        const post = async (u, body) => { const r = await fetch(u, { method: "POST", headers: Object.assign({ "content-type": "application/json" }, socAuth()), credentials: "same-origin", body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "ما زبط"); return j; };
+        const done = () => { try { localStorage.removeItem(EXLC); } catch (e) {} exl.prog = null; closeSheet(); if (curRoute().indexOf("/exlib/review") === 0) exlReviewPage(); else if (app.querySelector("[data-exl-body]")) exlBody(); };
+        bx.querySelector("[data-own-mv]").onclick = () => { const f = bx.querySelector("[data-own-f]"); f.hidden = !f.hidden; };
+        bx.querySelector("[data-own-save]").onclick = async (ev) => { const b = ev.currentTarget, m2 = bx.querySelector("[data-own-m]").value, e2 = bx.querySelector("[data-own-e]").value; b.disabled = true;
+          try { await post("/api/exlib/omove", { i: x.i, m: m2, e: e2 }); [exl.L, exl.LA].forEach((L) => (L || []).forEach((y) => { if (y.i === x.i) { y.m = m2; y.e = e2; } })); toast("✓ انتقل لـ " + (EXL_M[m2] || m2)); done(); } catch (e) { b.disabled = false; toast(esc(e.message)); } };
+        bx.querySelector("[data-own-del]").onclick = async (ev) => { const b = ev.currentTarget;
+          if (!b.dataset.ok) { b.dataset.ok = "1"; b.textContent = "اكبس كمان مرة للحذف"; setTimeout(() => { if (b.isConnected) { delete b.dataset.ok; b.textContent = "🗑 حذف (مكرر)"; } }, 4000); return; }
+          b.disabled = true;
+          try { await post("/api/exlib/ohide", { i: x.i }); exl.L = exl.L.filter((y) => y.i !== x.i); if (exl.LA) exl.LA = exl.LA.filter((y) => y.i !== x.i); toast("✓ انحذف (بيرجع من لوحة التحكم ← المخفية)"); done(); } catch (e) { b.disabled = false; toast(esc(e.message)); } };
       }
     });
   }
