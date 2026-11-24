@@ -912,6 +912,8 @@
       let qT = 0; v.addEventListener("input", (e) => { if (e.target.matches("[data-exl-q]")) { clearTimeout(qT); qT = setTimeout(() => { exlShown = 40; renderExlib(); }, 250); } });
       v.addEventListener("change", (e) => { if (e.target.matches("[data-exl-m],[data-exl-e],[data-exl-s]")) { exlShown = 40; renderExlib(); } });
       $("[data-exl-more]").addEventListener("click", () => { exlShown += 40; renderExlib(); });
+      // (24/11/2026) صاحب المتجر: بلا زر «عرض المزيد»، لما ينزل لتحت بيحمّل الباقي لحالو
+      { const mo = $("[data-exl-more]"); if (mo && "IntersectionObserver" in window) new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting) && !mo.hidden) { exlShown += 40; renderExlib(); } }, { rootMargin: "600px 0px" }).observe(mo); }
       $("[data-exl-refresh]").addEventListener("click", loadExlib);
     } }
   // ---- برامج التمرين: رفع حزمة ko-programs.json (البيانات + الأغلفة pcNNN.webp) ----
