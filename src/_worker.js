@@ -5432,7 +5432,15 @@ Return ONLY JSON: {"t":"Arabic headline, max 90 chars, says the finding","s":"Ar
     let o = null;
     const gm = await exlGemini(env, GEM_TR_SHORT, system, user, 1500, Date.now());
     if (gm.text) o = exlAiMap(gm.text);
-    if ((!o || !o.t) && env.AI && Date.now() - t0 < 18000) { try { o = exlAiMap(exlAiText(await exlRace(env.AI.run(AI_TR_MODELS[0], { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 1200, temperature: 0.2 }), 12000))); } catch {} }
+    // بلا مفتاح Gemini: نماذج Workers AI بالدور (Llama 3.3 أول لأنو أثبت بالـ JSON)، كل واحد إلو 11 ثانية
+    for (const model of [AI_TR_MODELS[2], AI_TR_MODELS[0], AI_TR_MODELS[1]]) {
+      if ((o && o.t) || !env.AI || Date.now() - t0 > 19000) break;
+      try {
+        const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 1200, temperature: 0.2 }), 11000);
+        const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out);
+        o = typeof raw === "object" ? raw : exlAiMap(String(raw || ""));
+      } catch (e) { gm.err = (gm.err || "") + " | " + model.split("/").pop() + ": " + String((e && e.message) || e).slice(0, 60); }
+    }
     seen[a.id] = 1;
     const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[؀-ۿ]/g) || []).length > 40;
     if (!ok) { seen[a.id] = 0; await env.STORE.put("studies:err", "AI: " + String(gm.err || "") + " | " + JSON.stringify(o || {}).slice(0, 200)).catch(() => {}); continue; } // بنرجع نجرّبها المرة الجاية
