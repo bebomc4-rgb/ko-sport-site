@@ -5410,6 +5410,8 @@ function studyParse(x) {
     type: types.includes("Meta-Analysis") ? "تحليل تجميعي" : types.includes("Systematic Review") ? "مراجعة منهجية" : types.includes("Randomized Controlled Trial") ? "تجربة عشوائية" : "تجربة سريرية",
   };
 }
+// الملخّص لازم يكون عربي نضيف: بلا حروف لغات تانية (صار مرة «ي cải thiện»)، وبلا كلمات إنكليزية كتير
+const studyBad = (t) => /[\u00C0-\u024F\u1E00-\u1EFF\u0400-\u04FF\u0E00-\u0E7F\u3040-\u9FFF\uAC00-\uD7AF]/.test(t) || (String(t).match(/[A-Za-z]{3,}/g) || []).filter((w) => !/^(HIIT|RCT|BMI|VO2max|DOMS|ATP|EPA|DHA|BCAA|HMB|ACL|RPE|RM|PPL|MRI|EMS|CrossFit)$/i.test(w)).length > 3;
 async function studiesRefresh(env, n) {
   const t0 = Date.now(), now = new Date().toISOString();
   await env.STORE.put("studies:at", now);
@@ -5418,13 +5420,16 @@ async function studiesRefresh(env, n) {
   const rt = await r.text(); let ids = []; try { ids = (JSON.parse(rt).esearchresult || {}).idlist || []; } catch { throw new Error("esearch " + r.status + " " + rt.slice(0, 120)); }
   if (!ids.length) throw new Error("esearch: 0 ids " + rt.slice(0, 160));
   let seen = {}; try { seen = (await env.STORE.get("studies:seen", "json")) || {}; } catch {}
-  const todo = ids.filter((i) => !seen[i]).slice(0, n || 2);
+  const todo = ids.filter((i) => !seen[i]).slice(0, 15); // منجيب 15 وبنختار من مجلات مختلفة
   if (!todo.length) return { added: 0 };
   const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${todo.join(",")}${tool}`, { signal: AbortSignal.timeout(10000) })).text();
-  const arts = xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id && a.title && a.abs.length > 200);
+  let arts = xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id && a.title && a.abs.length > 200);
   let list = []; try { list = (await env.STORE.get("studies:list", "json")) || []; } catch {}
+  list = list.filter((x) => !studyBad(x.t + " " + x.s + " " + x.k));
+  { const last = {}; list.slice(0, 12).forEach((x) => { last[x.ja] = (last[x.ja] || 0) + 1; }); const used = {}; // تنويع: المجلة يلي إلها أقل منشورات بالآخر أول
+    arts = arts.sort((p, q) => (last[p.ja] || 0) - (last[q.ja] || 0)).filter((a) => { used[a.ja] = (used[a.ja] || 0) + 1; return used[a.ja] <= 1; }).slice(0, n || 2); }
   let added = 0;
-  const system = `You are a Syrian Arabic sports-science writer for a gym community page. Summarize ONE research abstract into clear, accurate Arabic that a gym-goer understands (simple Syrian-friendly Arabic, correct spelling, no slang that hurts clarity). Write in your own words; never copy sentences. Keep every number that matters (participants, doses, durations, % changes) exactly. Never exaggerate or add claims not in the abstract; say clearly when results are small, mixed, or only in a specific group.
+  const system = `You are a Syrian Arabic sports-science writer for a gym community page. Summarize ONE research abstract into clear, accurate Arabic that a gym-goer understands (simple Syrian-friendly Arabic, correct spelling, no slang that hurts clarity). Write in your own words; never copy sentences. Keep every number that matters (participants, doses, durations, % changes) exactly. Never exaggerate or add claims not in the abstract; say clearly when results are small, mixed, or only in a specific group. Write ONLY in Arabic script (digits and standard abbreviations like VO2max are fine); never mix in English, Vietnamese or any other language. The headline must state the finding modestly (e.g. «ممكن يحسّن», «تحسّن بسيط») when the effect is small or uncertain.
 Return ONLY JSON: {"t":"Arabic headline, max 90 chars, says the finding","s":"Arabic summary 3-5 short sentences: who was studied, what was done, what was found","k":"one Arabic sentence: the practical takeaway for training or nutrition, cautious","c":"nutrition|medicine|training","tags":["2-3 short Arabic tags"]}`;
   for (const a of arts) {
     if (Date.now() - t0 > 22000) break;
@@ -5443,7 +5448,7 @@ Return ONLY JSON: {"t":"Arabic headline, max 90 chars, says the finding","s":"Ar
       } catch (e) { gm.err = (gm.err || "") + " | " + model.split("/").pop() + ": " + String((e && e.message) || e).slice(0, 60); }
     }
     seen[a.id] = 1;
-    const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[؀-ۿ]/g) || []).length > 40;
+    const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[\u0600-\u06FF]/g) || []).length > 40 && !studyBad(o.t + " " + o.s + " " + (o.k || ""));
     if (!ok) { seen[a.id] = 0; await env.STORE.put("studies:err", "AI: " + String(gm.err || "") + " | " + JSON.stringify(o || {}).slice(0, 200)).catch(() => {}); continue; } // بنرجع نجرّبها المرة الجاية
     list.unshift({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c: ["nutrition", "medicine", "training"].includes(o.c) ? o.c : "training", tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, at: now });
     added++;
