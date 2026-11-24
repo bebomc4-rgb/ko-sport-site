@@ -8,10 +8,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for ua in "Mozilla/5.0 (Linux; Android 14; 23113RKC6G)" "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"; do
-            echo "== $ua"; curl -sS -m 20 -A "$ua" -D - "https://ko-sport.online/app?t=$(date +%s)" | grep -oE "HTTP/[0-9.]+ [0-9]+|location: .*|href=\"[^\"]+\"|تطبيق KO SPORT" | head -8
-          done
-          for hl in en ar; do code=$(curl -sS -m 20 -o /tmp/p.html -w "%{http_code}" "https://play.google.com/store/apps/details?id=com.kosport.app&hl=$hl&gl=US"); echo "PLAY $hl: HTTP $code"; grep -oE "<title[^>]*>[^<]*</title>|itemprop=\"name\"[^<]*<[^>]*>[^<]*|We.re sorry|not found|غير متوفّر|not available[^<]{0,60}" /tmp/p.html | head -4; grep -oE "\"(KO[^\"]{0,40})\"" /tmp/p.html | head -3; done
-          curl -sS -m 20 "https://ko-sport.online/assets/store.js?v=163" | grep -oE "KO_PLAY ?= ?\"[^\"]+\"" | head -2
-          curl -sS -m 20 "https://ko-sport.online/admin" | grep -oE "admin\.js\?v=[0-9]+|thumbs-hint" | sort -u
-          curl -sS -m 20 "https://ko-sport.online/assets/admin.js?v=166" | grep -oE "pointerdown|saveProducts\(isNew" | sort -u
+          S=https://ko-sport.online
+          echo "== sw:"; curl -sS -m 20 "$S/sw.js?x=$(date +%s)" | grep -oE 'ko-v[0-9]+' | head -1
+          echo "== store.js:"; curl -sS -m 20 "$S/assets/store.js?v=448" | grep -oE 'waBeacon|gateRetry|data-vreg-off' | sort -u | tr '\n' ' '; echo
+          echo "== me (no login):"; curl -sS -m 20 "$S/api/acct/me"; echo
+          N=probe$(date +%s)xxxxxxxxxxxx; T=$(head -c 64 /dev/urandom | tr -dc 'A-HJ-NP-Z2-9' | head -c 6)
+          echo "== wa-start (login) $T:"; curl -sS -m 20 -H 'content-type: text/plain' -d "{\"login\":true,\"t\":\"$T\",\"n\":\"$N\"}" "$S/api/acct/wa-start"; echo
+          echo "== wa-start again:"; curl -sS -m 20 -H 'content-type: application/json' -d "{\"login\":true,\"t\":\"$T\",\"n\":\"$N\"}" "$S/api/acct/wa-start"; echo
+          echo "== wa-check:"; curl -sS -m 20 -H 'content-type: application/json' -d "{\"t\":\"$T\",\"n\":\"$N\"}" "$S/api/acct/wa-check"; echo
+          echo "== wa-check other device:"; curl -sS -m 20 -H 'content-type: application/json' -d "{\"t\":\"$T\",\"n\":\"otherdevicexxxxxxxxxx\"}" "$S/api/acct/wa-check"; echo
+          echo "== wa-done unknown:"; curl -sS -m 20 -H 'content-type: application/json' -d '{"t":"ZZZZZ9"}' "https://ko-sport.pages.dev/api/acct/wa-done"; echo
+          echo "== diag auth:"; curl -sS -m 30 "$S/api/diag" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({"build": d.get("build"), "auth": d.get("auth"), "authError": d.get("authError")}, ensure_ascii=False))'
