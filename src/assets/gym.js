@@ -149,8 +149,9 @@
   function post(s) {
     var c = CAT[s.c] || CAT.training, link = s.doi ? "https://doi.org/" + encodeURI(s.doi) : "https://pubmed.ncbi.nlm.nih.gov/" + encodeURIComponent(s.id) + "/";
     return '<article class="ks-post"><header class="ks-h"><span class="ks-av ks-' + esc(s.c) + '">' + c[0] + '</span><div><b dir="ltr">' + esc(s.j || s.ja) + "</b><small>" + esc(dAr(s.d)) + " · " + esc(c[1]) + "</small></div></header>" +
-      '<h3 class="ks-t">' + esc(s.t) + "</h3>" + banner(s) + '<p class="ks-s">' + esc(s.s) + "</p>" +
-      (s.k ? '<div class="ks-k"><b>💡 الخلاصة</b>' + esc(s.k) + "</div>" : "") +
+      // فوق: العنوان والنتيجة سوا (بيعرف شو الدراسة وشو طلع معها بنظرة)، وتحت: التفاصيل لمين بدو
+      '<div class="ks-top"><h3 class="ks-t">' + esc(s.t) + "</h3>" + (s.k ? '<p class="ks-k"><b>💡 النتيجة:</b> ' + esc(s.k) + "</p>" : "") + "</div>" +
+      banner(s) + '<div class="ks-d"><b>📄 تفاصيل الدراسة</b><p class="ks-s">' + esc(s.s) + "</p></div>" +
       '<footer class="ks-f"><span class="ks-tags">' + (s.tags || []).map(function (t) { return "<i>#" + esc(String(t).replace(/\s+/g, "_")) + "</i>"; }).join("") + '</span><a href="' + esc(link) + '" target="_blank" rel="noopener">المصدر ↗</a></footer></article>';
   }
   // كل دراسات 2026 لليوم وكل الجديد: 20 بكل صفحة، وكل ما تنزل لتحت بيحمّل لحالو
