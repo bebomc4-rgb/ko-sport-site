@@ -805,17 +805,19 @@
   function glide(el, to, ms, done) {
     if (el._glide) cancelAnimationFrame(el._glide.raf);
     const from = el.scrollLeft, d = to - from; if (Math.abs(d) < 1) { if (done) done(); return; }
-    const snap = el.style.scrollSnapType; el.style.scrollSnapType = "none"; el.style.scrollBehavior = "auto";
+    el.style.scrollSnapType = "none"; el.style.scrollBehavior = "auto";
     const t0 = performance.now(), ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
     const g = (el._glide = { raf: 0 });
     const step = (now) => {
       const t = Math.min(1, (now - t0) / ms); el.scrollLeft = from + d * ease(t);
       if (t < 1 && el._glide === g) g.raf = requestAnimationFrame(step);
-      else if (el._glide === g) { el._glide = null; el.style.scrollSnapType = snap; if (done) done(); }
+      else if (el._glide === g) { el._glide = null; el.style.scrollSnapType = ""; if (done) done(); }
     };
     g.raf = requestAnimationFrame(step);
   }
-  const stopGlide = (el) => { if (el._glide) { cancelAnimationFrame(el._glide.raf); el._glide = null; el.style.scrollSnapType = ""; } };
+  // keepOff: الإصبع وقّف الحركة بالنص → منخلّي المغناطيس (snap) طافي لحد ما يترك، وبعدين منكمّل بنعومة للكرت الأقرب
+  // (لو رجّعناه فوراً كان المتصفح ينطّ لأقرب كرت وهو تحت الإصبع → رجفة وتعليق)
+  const stopGlide = (el, keepOff) => { if (el._glide) { cancelAnimationFrame(el._glide.raf); el._glide = null; if (!keepOff) el.style.scrollSnapType = ""; } };
   // product rows that slide sideways by themselves at a steady rhythm (they rest only while a finger is on them)
   let rowTimers = [];
   let tkTimers = [];
@@ -850,12 +852,25 @@
       const every = (+row.dataset.auto || 4) * 1000;
       const io2 = "IntersectionObserver" in window && new IntersectionObserver(([en]) => { seen = en.isIntersecting; }, { threshold: 0.3 });
       if (io2) io2.observe(row); else seen = true;
-      const press = () => { touching = true; stopGlide(row); };
-      const lift = () => { touching = false; t0 = performance.now(); };
-      row.addEventListener("pointerdown", press, { passive: true }); row.addEventListener("touchstart", press, { passive: true });
-      ["pointerup", "pointercancel", "touchend", "touchcancel"].forEach((ev) => row.addEventListener(ev, lift, { passive: true }));
+      let stepPx = 0, settleT = 0;
+      const press = () => { touching = true; clearTimeout(settleT); stopGlide(row, true); };
+      // بعد ما يترك الإصبع وتخلص رمية التمرير: إذا المغناطيس طافي (وقّفنا حركة تلقائية بالنص) منكمّل لأقرب كرت بنعومة
+      const settle = () => {
+        if (touching || row._glide || row.style.scrollSnapType !== "none") return;
+        const max = row.scrollWidth - row.clientWidth; if (max <= 4) { row.style.scrollSnapType = ""; return; }
+        if (!stepPx) { const f = row.firstElementChild, g = parseFloat(getComputedStyle(row).columnGap) || 0; stepPx = (f ? f.getBoundingClientRect().width : row.clientWidth / 2) + g; }
+        const sgn = getComputedStyle(row).direction === "rtl" ? -1 : 1, pos = Math.abs(row.scrollLeft);
+        glide(row, sgn * Math.min(max, Math.round(pos / stepPx) * stepPx), 320);
+      };
+      const lift = () => { touching = false; t0 = performance.now(); clearTimeout(settleT); settleT = setTimeout(settle, 160); };
+      // باللمس المتصفح بيبعت pointercancel أول ما يبلّش يمرّر، والإصبع لسّا عالشاشة: ما منعتبرها «ترك» (كانت الحركة التلقائية
+      // تبلّش وهو عم يسحب وتتعارك معو). الترك الحقيقي: touchend، أو pointerup للماوس.
+      row.addEventListener("pointerdown", (e) => { if (e.pointerType !== "touch") press(); }, { passive: true }); row.addEventListener("touchstart", press, { passive: true });
+      row.addEventListener("pointerup", (e) => { if (e.pointerType !== "touch") lift(); }, { passive: true });
+      ["touchend", "touchcancel"].forEach((ev) => row.addEventListener(ev, (e) => { if (!e.touches || !e.touches.length) lift(); }, { passive: true }));
+      // طول ما هو عم يتحرّك بإيد الزبون (سحب أو رمية): الحركة التلقائية بتستنى، وبعد ما يوقف منكمّل للكرت الأقرب
+      row.addEventListener("scroll", () => { if (row._glide) return; t0 = performance.now(); if (!touching) { clearTimeout(settleT); settleT = setTimeout(settle, 160); } }, { passive: true });
       row.addEventListener("wheel", () => { t0 = performance.now(); }, { passive: true });
-      let stepPx = 0;
       const next = () => {
         const max = row.scrollWidth - row.clientWidth; if (max <= 4) return;
         if (!stepPx) { const f = row.firstElementChild, g = parseFloat(getComputedStyle(row).columnGap) || 0; stepPx = (f ? f.getBoundingClientRect().width : row.clientWidth / 2) + g; }
@@ -875,7 +890,7 @@
       };
       raf = requestAnimationFrame(tick);
       const ro = "ResizeObserver" in window && new ResizeObserver(() => { stepPx = 0; }); if (ro) ro.observe(row);
-      rowTimers.push(() => { dead = true; cancelAnimationFrame(raf); stopGlide(row); if (io2) io2.disconnect(); if (ro) ro.disconnect(); });
+      rowTimers.push(() => { dead = true; cancelAnimationFrame(raf); clearTimeout(settleT); stopGlide(row); if (io2) io2.disconnect(); if (ro) ro.disconnect(); });
     });
   }
   // main slider: fade (default, right → left) or sideways; a thin progress bar shows when the next slide comes
@@ -1097,22 +1112,22 @@
       tr.addEventListener("pointerdown", (e) => {
         if (e.button > 0 || e.target.closest(".car-nav,.car-dots")) return;
         stopAnim(); if (!step) measure();
-        drag = { x: e.clientX, y: e.clientY, p0: pos, axis: null, id: e.pointerId, v: 0, lx: e.clientX, lt: performance.now(), a: e.target.closest("a[href]"), t: performance.now() };
+        drag = { x: e.clientX, y: e.clientY, p0: pos, axis: null, id: e.pointerId, v: 0, sm: [[e.clientX, e.timeStamp || performance.now()]], a: e.target.closest("a[href]"), t: performance.now() };
         hold = performance.now() + 1200;
       });
       tr.addEventListener("pointermove", (e) => {
         if (!drag || e.pointerId !== drag.id) return;
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (!drag.axis) {
-          const th = e.pointerType === "touch" ? 14 : 6; if (Math.abs(dx) < th && Math.abs(dy) < th) return;
-          drag.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+          // باللمس: الاتجاه بيتقرّر بـ touchmove (تحت) بنفس اللحظة يلي منمنع فيها المتصفح يحرّك الصفحة
+          if (e.pointerType === "touch") { if (!tax) return; drag.axis = tax; }
+          else { if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; drag.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y"; }
           if (drag.axis === "y") { drag = null; return; }
           drag.x = e.clientX; drag.p0 = pos; car.classList.add("dragging"); try { tr.setPointerCapture(e.pointerId); } catch {}
           t0 = performance.now();
         }
-        const nt = performance.now(), dt = nt - drag.lt;
-        if (dt > 0) drag.v = drag.v * 0.4 + ((e.clientX - drag.lx) / dt) * 0.6;
-        drag.lx = e.clientX; drag.lt = nt;
+        // السرعة من آخر 90ms من حركة الإصبع (بتوقيت الحدث نفسو، مو وقت ما وصلنا) → الرمية ما بتطلع عشوائية
+        const nt = e.timeStamp || performance.now(); drag.sm.push([e.clientX, nt]); while (drag.sm.length > 2 && nt - drag.sm[0][1] > 90) drag.sm.shift();
         let p = drag.p0 - (vs * (e.clientX - drag.x)) / step;
         if (!loop) { if (p < 0) p *= 0.35; else if (p > n - 1) p = n - 1 + (p - (n - 1)) * 0.35; }
         pos = p; wrap(); queue(); hold = performance.now() + 1200; t0 = performance.now();
@@ -1129,10 +1144,14 @@
         }
         if (d.axis !== "x") return;
         dragged = Date.now();
-        const vItems = (-vs * d.v * 1) / step * 1000;            // items per second, in "next" direction
-        let target = Math.round(pos + Math.max(-3, Math.min(3, vItems * 0.18)));
+        const s0 = d.sm[0], s1 = d.sm[d.sm.length - 1], st = (e && e.timeStamp) || performance.now();
+        const vpx = s1 && s0 && s1[1] > s0[1] && st - s1[1] < 80 ? (s1[0] - s0[0]) / (s1[1] - s0[1]) : 0; // px/ms (إذا وقف الإصبع قبل ما يترك = صفر)
+        const vItems = (-vs * vpx) / step * 1000;            // items per second, in "next" direction
+        let target = Math.round(pos + Math.max(-3, Math.min(3, vItems * 0.16)));
         if (target === Math.round(d.p0) && Math.abs(pos - d.p0) > 0.12) target += pos > d.p0 ? 1 : -1; // a short decisive swipe still moves one
-        animTo(target, Math.min(520, Math.max(260, Math.abs(target - pos) * 260)));
+        // المدة بتطلع من سرعة الإصبع: الحركة بتكمّل بنفس السرعة يلي تركها فيها وبتهدى، بلا قفزة ولا وقفة
+        const dist = Math.abs(target - pos) * step, sp = Math.abs(vpx);
+        animTo(target, Math.min(650, Math.max(240, sp > 0.05 ? (3 * dist) / sp : 260 + dist * 0.6)));
         hold = performance.now() + 1200; t0 = performance.now();
       };
       tr.addEventListener("pointerup", end); tr.addEventListener("pointercancel", end);
@@ -1140,6 +1159,16 @@
       tr.addEventListener("lostpointercapture", (e) => { if (e.target === tr) end(e); });
       tr.addEventListener("click", (e) => { if (Date.now() - dragged < 350 || Date.now() - tapped < 800) { e.preventDefault(); e.stopPropagation(); } }, true);
       tr.addEventListener("dragstart", (e) => e.preventDefault());
+      // اللمس: منقرّر الاتجاه من أول 5px، وإذا كان عرضي منمنع الصفحة تتحرّك لفوق وتحت (هاد كان سبب الرجفة،
+      // والمتصفح كان ياخد الحركة ويقطع السحب فيعلق السلايد بالنص)
+      let tsx = 0, tsy = 0, tax = null;
+      tr.addEventListener("touchstart", (e) => { const t = e.touches[0]; if (!t) return; tsx = t.clientX; tsy = t.clientY; tax = null; }, { passive: true });
+      tr.addEventListener("touchmove", (e) => {
+        if (e.touches.length > 1) return;
+        const t = e.touches[0], dx = Math.abs(t.clientX - tsx), dy = Math.abs(t.clientY - tsy);
+        if (!tax && (dx > 5 || dy > 5)) tax = dx >= dy * 0.8 ? "x" : "y";
+        if (tax === "x" && e.cancelable) e.preventDefault();
+      }, { passive: false });
       // trackpad / mouse wheel sideways
       let wheelT = 0;
       tr.addEventListener("wheel", (e) => {
@@ -2019,7 +2048,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=461" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=462" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -2045,12 +2074,12 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=461"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=462"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   // قسم التمرين الجديد (gym.js): المجسّم، التنين الأسود، آخر الدراسات، التغذية
   function gymLoad() {
     if (window.KOGym) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=461"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=462"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const gymH = () => ({ toast, auth: socAuth, sheet: openSheet, closeSheet });
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");

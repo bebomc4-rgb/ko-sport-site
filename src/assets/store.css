@@ -572,7 +572,7 @@ body{overflow-x:clip}
   .slist.grid[data-pd]{grid-template-columns:repeat(var(--pd),minmax(0,1fr))}
   .slist.row[data-pd]{grid-auto-columns:calc((100% - (var(--pd) - 1) * 12px) / var(--pd))}
 }
-.slist.row{scroll-behavior:smooth}
+.slist.row{scroll-behavior:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
 @media (max-width:640px){
   .slist.grid[data-pm]{grid-template-columns:repeat(var(--pm),minmax(0,1fr))}
   .slist.row[data-pm]{grid-auto-columns:calc((100% - (var(--pm) - 1) * 10px - 28px) / var(--pm))}
