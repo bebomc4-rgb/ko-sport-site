@@ -5458,21 +5458,23 @@ async function studiesTick(env, budget) {
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let bad = {}; try { bad = (await env.STORE.get("studies:bad", "json")) || {}; } catch {}
   const have = new Set(idx.map((x) => x[0]));
-  const todo = ids.filter((i) => !have.has(i) && (bad[i] || 0) < 3).slice(0, 6);
-  if (!todo.length) return { added: 0, total: idx.length, queue: ids.length };
+  const todo = ids.filter((i) => !have.has(i) && (bad[i] || 0) < 3).slice(0, 12);
+  if (!todo.length) return { done: 1, added: 0, total: idx.length, queue: ids.length };
   const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${todo.join(",")}${tool}`, { signal: AbortSignal.timeout(12000) })).text();
-  const arts = xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id);
-  let added = 0, lastErr = "";
-  for (const a of arts) {
-    if (!a.title || a.abs.length < 200) { bad[a.id] = 9; continue; } // بلا ملخّص كافي: ما منلخّصها
-    if (Date.now() - t0 > budget - 9000) break;
+  const arts = xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id).filter((a) => { if (!a.title || a.abs.length < 200) { bad[a.id] = 9; return false; } return true; }); // بلا ملخّص كافي: ما منلخّصها
+  let added = 0, lastErr = "", stop = false;
+  const one = async (a) => {
     const r = await studySum(env, a, t0, budget), o = r.o;
-    if (r.quota) { await env.STORE.put("studies:wait", String(Date.now() + (/day|Daily/i.test(r.err) ? 3600e3 : 120e3))); lastErr = r.err; break; }
-    const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[؀-ۿ]/g) || []).length > 40 && !studyBad(o.t + " " + o.s + " " + (o.k || ""));
-    if (!ok) { bad[a.id] = (bad[a.id] || 0) + 1; lastErr = "AI: " + r.err + " | " + JSON.stringify(o || {}).slice(0, 160); continue; }
+    if (r.quota) { stop = true; await env.STORE.put("studies:wait", String(Date.now() + (/day|Daily/i.test(r.err) ? 3600e3 : 90e3))); lastErr = r.err; return; }
+    const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[\u0600-\u06FF]/g) || []).length > 40 && !studyBad(o.t + " " + o.s + " " + (o.k || ""));
+    if (!ok) { bad[a.id] = (bad[a.id] || 0) + 1; lastErr = "AI: " + r.err + " | " + JSON.stringify(o || {}).slice(0, 160); return; }
     const c = ["nutrition", "medicine", "training"].includes(o.c) ? o.c : "training";
     await env.STORE.put("study:" + a.id, JSON.stringify({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c, tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, m: r.model, at: now }));
     idx.push([a.id, a.d, c]); have.add(a.id); delete bad[a.id]; added++;
+  };
+  for (let i = 0; i < arts.length && !stop; i += 2) { // اتنين سوا (حد Gemini بالدقيقة)
+    if (Date.now() - t0 > budget - 9000) break;
+    await Promise.all(arts.slice(i, i + 2).map(one));
   }
   // لازم نقرا الفهرس من جديد قبل الكتابة (إذا اشتغلت دفعتين سوا ما منضيّع شي)
   if (added) { let cur = []; try { cur = (await env.STORE.get("studies:idx", "json")) || []; } catch {} const m = new Map(); for (const x of cur.concat(idx)) m.set(x[0], x); idx = [...m.values()].sort((p, q) => String(q[1]).localeCompare(String(p[1])) || +q[0] - +p[0]); await env.STORE.put("studies:idx", JSON.stringify(idx)); }
