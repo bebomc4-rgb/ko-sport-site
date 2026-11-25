@@ -5623,18 +5623,20 @@ const STUDY_LOGO_OK = new Set(Object.values(STUDY_LOGO));
 async function studyLogo(request, env, ctx) {
   const d = new URL(request.url).searchParams.get("d") || "";
   if (!STUDY_LOGO_OK.has(d)) return new Response("Not found", { status: 404 });
-  const cache = typeof caches !== "undefined" ? caches.default : null, ck = new Request(new URL("/api/studies/logo?d=" + d, request.url).href);
+  const cache = typeof caches !== "undefined" ? caches.default : null, ck = new Request(new URL("/api/studies/logo?d=" + d + "&v=3", request.url).href);
   const hit = cache && (await cache.match(ck)); if (hit) return hit;
   // بنجرّب كذا مصدر وبناخد أكبر صورة (أوضح لوغو)، مرة وحدة بس، وبتنحفظ بـ KV
-  let { value, metadata } = await env.STORE.getWithMetadata("jlogo2:" + d, "arrayBuffer");
+  let { value, metadata } = await env.STORE.getWithMetadata("jlogo3:" + d, "arrayBuffer");
   if (!value) {
-    const bad = await env.STORE.get("jlogo2:x:" + d); if (bad) return new Response("Not found", { status: 404, headers: { "cache-control": "public, max-age=3600" } });
+    const bad = await env.STORE.get("jlogo3:x:" + d); if (bad) return new Response("Not found", { status: 404, headers: { "cache-control": "public, max-age=3600" } });
     const got = await Promise.all([`https://${d}/apple-touch-icon.png`, `https://${d}/apple-touch-icon-precomposed.png`, `https://www.google.com/s2/favicons?domain=${d}&sz=128`, `https://icons.duckduckgo.com/ip3/${d}.ico`].map(async (u) => {
       try { const r = await fetch(u, { signal: AbortSignal.timeout(6000), headers: { "user-agent": "Mozilla/5.0 (KO SPORT logo)" } }), t = r.headers.get("content-type") || ""; const b = r.ok && /^image\//.test(t) ? await r.arrayBuffer() : null; return b && b.byteLength > 200 ? { b, t: t.split(";")[0] } : null; } catch { return null; }
     }));
-    const best = got.filter(Boolean).sort((p, q) => q.b.byteLength - p.b.byteLength)[0];
-    if (!best) { await env.STORE.put("jlogo2:x:" + d, "1", { expirationTtl: 86400 }); return new Response("Not found", { status: 404 }); }
-    value = best.b; metadata = { type: best.t }; await env.STORE.put("jlogo2:" + d, best.b, { metadata });
+    // العرض الحقيقي للصورة (PNG من رأسها، ICO من فهرسها) لنختار الأوضح، مو الأتقل
+    const wOf = (buf) => { const u = new Uint8Array(buf); if (u[0] === 0x89 && u[1] === 0x50) return (u[16] << 24 | u[17] << 16 | u[18] << 8 | u[19]) >>> 0; if (u[0] === 0 && u[2] === 1) { let w = 0; for (let i = 0; i < (u[4] | u[5] << 8) && 6 + i * 16 < u.length; i++) w = Math.max(w, u[6 + i * 16] || 256); return w; } return 64; };
+    const best = got.filter(Boolean).map((g) => ({ ...g, w: wOf(g.b) })).sort((p, q) => q.w - p.w || q.b.byteLength - p.b.byteLength)[0];
+    if (!best) { await env.STORE.put("jlogo3:x:" + d, "1", { expirationTtl: 86400 }); return new Response("Not found", { status: 404 }); }
+    value = best.b; metadata = { type: best.t }; await env.STORE.put("jlogo3:" + d, best.b, { metadata });
   }
   const res = new Response(value, { headers: { "content-type": (metadata && metadata.type) || "image/png", "cache-control": "public, max-age=604800" } });
   if (cache) ctx.waitUntil(cache.put(ck, res.clone()));
