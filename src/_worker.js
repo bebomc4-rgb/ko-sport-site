@@ -5526,14 +5526,16 @@ async function studySummaries(env, t0, budget, now, E, tool) {
 // الموقع التاني). وصف الصورة وفحصها بـ Gemini (مجاني بمفاتيحو)، فالصورة الوحدة بتاخد من Cloudflare بس الرسم (~50 neuron) → ~140 صورة باليوم.
 // إذا Gemini ما ردّ، الاحتياط Llama/LLaVA (بياخدو neuron كمان) وبيتحسبو. الحساب التقريبي بـ studies:neur:<تاريخ>.
 const STUDY_NEUR_DAY = 7000, NEUR = { draw: 55, llama: 25, llava: 40 };
+// نسخة الصور: كل ما تغيّرت طريقة الرسم منغيّر الحرف، لأنو الصورة القديمة محفوظة سنة بكاش Cloudflare والموبايلات (v1 = s، v2 = t)
+const STUDY_IMGV = "t", STUDY_IMGS = "studies:imgs3";
 // v2 (صاحب المتجر: «الصليبي لازم رياضي عازم عالركبة أو صورة ركبة، والعلكة بالكافيين الصورة بعيدة، حط رياضيين رجال معلش»):
 // صورة قريبة ودقيقة عن موضوع الدراسة نفسو، ورياضي رجّال إذا بيوضّح الفكرة
 const STUDY_IMG_SYS = `You write ONE English prompt for a realistic CLOSE-UP photo that shows exactly what a sports-science study is about, for a gym community page.
 - Be specific to THIS study, not generic: the exact body part, injury, supplement form, food, drink, exercise or sport in the title.
-- Use a male athlete when it makes the topic clearer (most studies): e.g. ACL / knee injury → close-up of a male athlete's knee wearing a knee brace, or a physiotherapist's hands on a male athlete's knee; hamstring → a male sprinter holding the back of his thigh; caffeine gum → close-up of a male athlete chewing gum, pieces of gum in his hand; creatine → a scoop of white creatine powder being added to a shaker by a man's hand; swimming → a male swimmer mid-stroke in a pool (swim cap, goggles); squat or strength → a man squatting with a barbell; running → a male runner's legs on a track.
+- DEFAULT: put a male athlete in the frame doing the sport of the study, together with the studied thing (people: "man"). Use "none" ONLY when the study is purely about a food or supplement and the product alone says it all. Examples: ACL / knee injury → close-up of a male athlete's knee wearing a knee brace, or a physiotherapist's hands on a male athlete's knee; hamstring → a male sprinter holding the back of his thigh; caffeine gum (in volleyball) → close-up of a male volleyball player in his jersey putting a piece of chewing gum in his mouth, court blurred behind; creatine → a scoop of white creatine powder being added to a shaker by a man's hand; swimming → a male swimmer mid-stroke in a pool (swim cap, goggles); squat or strength → a man squatting with a barbell; running → a male runner's legs on a track.
 - Food or supplement alone is fine when the study is only about it (close-up, filling the frame).
 - People: only adult MEN (one or two), in sportswear. NEVER women, girls, children, babies, nudity, underwear.
-- Close-up or medium close-up, the subject fills the frame, sharp focus, gym/field/clinic setting. No text, numbers, logos, brand names or labels. No surgery, blood or needles.
+- Close-up or medium close-up: the subject fills most of the frame. NEVER a tiny object alone in a big empty room or court. Sharp focus, gym/field/court/pool/clinic setting. No text, numbers, logos, brand names or labels. No surgery, blood or needles.
 Return ONLY JSON: {"p":"the photo description, max 45 words","people":"none|man"}`;
 const aiImgBytes = async (out) => {
   if (!out) return null;
@@ -5615,7 +5617,7 @@ async function studyImageOne(env, id, titleEn, st, t0, budget, cost) {
     const d = await studyDraw(env, prompt);
     if (!d.b) return { err: "draw " + d.err };
     const chk = await studyImgCheck(env, d.b, cost);
-    if (chk === "ok" || (chk === "na" && objOnly)) { await env.STORE.put("img:s" + id, d.b, { metadata: { type: imgType(d.b) } }); return { ok: 1 }; }
+    if (chk === "ok" || (chk === "na" && objOnly)) { await env.STORE.put("img:" + STUDY_IMGV + id, d.b, { metadata: { type: imgType(d.b) } }); return { ok: 1 }; }
     err = "check " + chk;
   }
   return { err, final: true };
@@ -5625,7 +5627,7 @@ async function studyImages(env, t0, budget, E, tool, first) {
   const dk = "studies:neur:" + new Date().toISOString().slice(0, 10);
   let used = +((await env.STORE.get(dk)) || 0); if (used >= STUDY_NEUR_DAY - NEUR.draw * 2) return { cap: used };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
-  let dm = {}; try { dm = (await env.STORE.get("studies:imgs2", "json")) || {}; } catch {} // id → 1 (إلها صورة) أو -1 (ما زبطت)
+  let dm = {}; try { dm = (await env.STORE.get(STUDY_IMGS, "json")) || {}; } catch {} // id → 1 (إلها صورة) أو -1 (ما زبطت)
   // من أحدث 10 ناقصين منختار 2 عشوائي، ومنحجزهن (simg:c:<id>) لحتى إذا اشتغلت دفعتين سوا ما يرسموا نفس الصورة مرتين (مصاري عالفاضي)
   const okP = (x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV, fs = new Set(String(first || "").split(",").filter((v) => /^\d{5,10}$/.test(v)).slice(0, 4));
   // ?first=id,id: هدول أول (مثلاً لنشوف صورة دراسة معيّنة بسرعة). بعدين من أحدث 10 ناقصين عشوائي
@@ -5642,11 +5644,11 @@ async function studyImages(env, t0, budget, E, tool, first) {
     if (used >= STUDY_NEUR_DAY - NEUR.draw * 2) break;
     const cost = { n: 0 }, r = await studyImageOne(env, x[0], (arts.get(x[0]) || {}).title || "", st, t0, budget, cost);
     used += cost.n;
-    if (r.ok) { made++; done[x[0]] = 1; st.im = "s" + x[0]; await env.STORE.put("study:" + x[0], JSON.stringify(st)); }
+    if (r.ok) { made++; done[x[0]] = 1; st.im = STUDY_IMGV + x[0]; await env.STORE.put("study:" + x[0], JSON.stringify(st)); }
     else { err = r.err || ""; if (r.final) done[x[0]] = -1; }
   }
   await env.STORE.put(dk, String(used), { expirationTtl: 3 * 86400 });
-  if (Object.keys(done).length) { let cur = {}; try { cur = (await env.STORE.get("studies:imgs2", "json")) || {}; } catch {} Object.assign(cur, done); dm = cur; await env.STORE.put("studies:imgs2", JSON.stringify(cur)); }
+  if (Object.keys(done).length) { let cur = {}; try { cur = (await env.STORE.get(STUDY_IMGS, "json")) || {}; } catch {} Object.assign(cur, done); dm = cur; await env.STORE.put(STUDY_IMGS, JSON.stringify(cur)); }
   return { made, left: idx.filter((x) => !dm[x[0]]).length, neur: used, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
 

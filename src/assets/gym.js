@@ -145,7 +145,7 @@
   // صورة الدراسة: إذا إلها صورة (عن موضوعها، بتنعمل لحالها بالسيرفر) منحطها، وإلا الشكل الملوّن مع الإيموجي
   function banner(s) {
     var c = CAT[s.c] || CAT.training, k = (s.id | 0) % 4;
-    var ph = /^s\d+$/.test(s.im || "") ? '<img class="ks-ph" src="/imgs/720/' + s.im + '" srcset="/imgs/480/' + s.im + ' 480w, /imgs/720/' + s.im + ' 720w, /imgs/1080/' + s.im + ' 1080w" sizes="(max-width:640px) 100vw, 640px" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : "";
+    var ph = /^[a-z]\d+$/.test(s.im || "") ? '<img class="ks-ph" src="/imgs/720/' + s.im + '" srcset="/imgs/480/' + s.im + ' 480w, /imgs/720/' + s.im + ' 720w, /imgs/1080/' + s.im + ' 1080w" sizes="(max-width:640px) 100vw, 640px" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : "";
     return '<div class="ks-img ks-' + esc(s.c) + ' ks-v' + k + (ph ? " has-ph" : "") + '">' + ph + '<span class="ks-emo">' + c[0] + '</span><span class="ks-bt">' + esc(s.type || "") + "</span><b>" + esc((s.tags || [])[0] || c[1]) + "</b></div>";
   }
   // الدائرة جنب اسم المجلة: لوغو المجلة (إذا ما تحمّل، بيضل الإيموجي)
