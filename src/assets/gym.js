@@ -147,10 +147,9 @@
     var c = CAT[s.c] || CAT.training, k = (s.id | 0) % 4;
     var ph = /^p\d+$/.test(s.im || "") ? '<img class="ks-ph" src="/imgs/720/' + s.im + '" srcset="/imgs/480/' + s.im + ' 480w, /imgs/720/' + s.im + ' 720w, /imgs/1080/' + s.im + ' 1080w" sizes="(max-width:640px) 100vw, 640px" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : "";
     var u = s.ph && s.ph.u;
-    if (u && /^https:\/\/images\.unsplash\.com\//.test(u)) { // صورة حقيقية من Unsplash: من رابطهم (متل ما بيطلبو)، واسم المصوّر تحتها
+    if (u && /^https:\/\/images\.unsplash\.com\//.test(u)) { // صورة حقيقية من Unsplash (من رابطهم). اسم المصوّر انشال بطلب صاحب المتجر (25/11/2026) وهو عارف إنو Unsplash ممكن يوقّف المفتاح
       var q = u + (u.indexOf("?") < 0 ? "?" : "&") + "fit=crop&crop=entropy&auto=format&q=70&ar=16:7&w=", ut = "?utm_source=ko_sport&utm_medium=referral";
-      ph = '<img class="ks-ph" src="' + esc(q) + '720" srcset="' + esc(q) + "480 480w, " + esc(q) + "720 720w, " + esc(q) + '1080 1080w" sizes="(max-width:640px) 100vw, 640px" alt="" loading="lazy" decoding="async" onerror="var p=this.parentNode;p.classList.remove(\'has-ph\');p.querySelector(\'.ks-cr\')&&p.querySelector(\'.ks-cr\').remove();this.remove()">' +
-        '<span class="ks-cr" dir="ltr">📷 <a href="' + esc(String(s.ph.p || "https://unsplash.com/") + ut) + '" target="_blank" rel="noopener nofollow">' + esc(s.ph.n || "Unsplash") + '</a> · <a href="https://unsplash.com/' + ut + '" target="_blank" rel="noopener nofollow">Unsplash</a></span>';
+      ph = '<img class="ks-ph" src="' + esc(q) + '720" srcset="' + esc(q) + "480 480w, " + esc(q) + "720 720w, " + esc(q) + '1080 1080w" sizes="(max-width:640px) 100vw, 640px" alt="" loading="lazy" decoding="async" onerror="var p=this.parentNode;p.classList.remove(\'has-ph\');this.remove()">' ;
     }
     return '<div class="ks-img ks-' + esc(s.c) + ' ks-v' + k + (ph ? " has-ph" : "") + '">' + ph + '<span class="ks-emo">' + c[0] + '</span><span class="ks-bt">' + esc(s.type || "") + "</span><b>" + esc((s.tags || [])[0] || c[1]) + "</b></div>";
   }
