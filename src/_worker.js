@@ -5428,7 +5428,7 @@ const studyBad = (t) => /[\u00C0-\u024F\u1E00-\u1EFF\u0400-\u04FF\u0E00-\u0E7F\u
 // studies:q = أرقام PubMed من 2026 لليوم (بيتجدّد كل ساعة)، studies:bad = {id: محاولات فاشلة} (بعد 3 بنتركها)،
 // studies:wait = إذا Gemini قال خلص الحد (429) منستنى وبنكمّل بعدين لحالنا. ممنوع تدوير مفاتيح أو حسابات.
 const STUDY_FROM = "2026/01/01";
-const STUDY_PV = 2; // نسخة طريقة الكتابة: 2 = العنوان جملة «إذا عملت هيك بيصير هيك» (25/11/2026). الأقدم بينعاد تلخيصو بعد ما يخلص الناقص
+const STUDY_PV = 3; // نسخة طريقة الكتابة: 2 = العنوان جملة «إذا عملت هيك بيصير هيك» (25/11/2026). الأقدم بينعاد تلخيصو بعد ما يخلص الناقص
 const STUDY_GEM = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
 async function studyQueue(env, E, tool) {
   let q = null; try { q = await env.STORE.get("studies:q", "json"); } catch {}
@@ -5440,7 +5440,12 @@ async function studyQueue(env, E, tool) {
   return ids;
 }
 const STUDY_SYS = `You are a Syrian Arabic sports-science writer for a gym community page. Summarize ONE research abstract into clear, accurate Arabic that a gym-goer understands (simple Syrian-friendly Arabic, correct spelling, no slang that hurts clarity). Write in your own words; never copy sentences. Keep every number that matters (participants, doses, durations, % changes) exactly. Never exaggerate or add claims not in the abstract; say clearly when results are small, mixed, or only in a specific group. Write ONLY in Arabic script (digits and standard abbreviations like VO2max are fine); never mix in English, Vietnamese or any other language. The headline must state the finding modestly (e.g. «ممكن يحسّن», «تحسّن بسيط») when the effect is small or uncertain.
-Return ONLY JSON: {"t":"Arabic headline 50-110 chars written as a plain cause → effect sentence a gym-goer understands instantly without reading more: what people did or took, and what happened to them. Use «إذا ... بـ ...» or a direct statement. Examples: «إذا أخدت كرياتين مع تمارين المقاومة، قوتك وعضلاتك بيزيدوا شوي أكتر»، «التنشيط الصبح بالأوزان ممكن يسرّعك بتمرين بعد الظهر»، «حبس الدم مع نقص الأكسجين ما بيحسّن السبرينت». Use «ممكن» when the evidence is weak or the effect small; if nothing changed, say so clearly. Never a vague or academic headline","s":"Arabic summary 3-5 short sentences: who was studied, what was done, what was found","k":"one Arabic sentence: the practical takeaway for training or nutrition, cautious","c":"nutrition|medicine|training","tags":["2-3 short Arabic tags"]}`;
+STRICT LANGUAGE RULES (the owner complained about meaningless words and literal translations):
+- Never translate a technical term word-for-word. Say what it means in plain words a gym-goer knows; if you keep a term, explain it once in brackets. Correct renderings:
+  blood flow restriction (BFR) = «تمرين مع حزام بيخفّف وصول الدم للعضلة» (never «حبس الدم» alone, never «تصرّفت بحبس الدم»); hypoxia = «نقص الأكسجين (متل التمرين بالمرتفعات)»; velocity loss = «نزول سرعة الرفعة خلال المجموعة»; post-activation potentiation / priming = «تمرين تنشيط قبل الأداء»; repeated sprints = «سبرينتات ورا بعض»; gait = «طريقة المشي»; kinematics = «حركة» (مثلاً «حركة الركبة»); eccentric = «مرحلة النزول البطيء بالحركة»; isometric = «ثبات بلا حركة»; plyometrics = «تمارين قفز»; resistance training = «تمارين الأوزان»; concurrent training = «تمرين أوزان وكارديو بنفس الفترة»; muscle protein synthesis = «بناء العضل»; DOMS = «وجع العضل بعد التمرين»; RPE = «قديش حاسس حالك تعبان»; VO2max = «VO2max (أقصى أكسجين بيقدر الجسم يستعملو)»; meta-analysis / systematic review = «مراجعة لكذا دراسة»; randomized controlled trial = «تجربة»; placebo = «دوا وهمي»; nitrate = «نترات (متل يلي بعصير الشمندر)»; warm-up = «تسخين»; recovery = «استشفاء».
+- Every sentence must be complete, meaningful and in natural Syrian word order (not English order). No invented or odd verbs (e.g. never «تصرّفت»، «تبقى مشاكل»). Who did what → what happened.
+- Perfect spelling: همزات، ة/ه، ى/ي، no repeated or missing letters. Re-read every sentence before answering and fix anything a Syrian reader would find strange.
+Return ONLY JSON: {"t":"Arabic headline 50-110 chars written as a plain cause → effect sentence a gym-goer understands instantly without reading more: what people did or took, and what happened to them. Use «إذا ... بـ ...» or a direct statement. Examples: «إذا أخدت كرياتين مع تمارين المقاومة، قوتك وعضلاتك بيزيدوا شوي أكتر»، «التنشيط الصبح بالأوزان ممكن يسرّعك بتمرين بعد الظهر»، «التمرين مع حزام بيخفّف الدم عن العضلة ما بيحسّن السبرينت». Use «ممكن» when the evidence is weak or the effect small; if nothing changed, say so clearly. Never a vague or academic headline","s":"Arabic summary 3-5 short sentences: who was studied, what was done, what was found","k":"one Arabic sentence: the practical takeaway for training or nutrition, cautious","c":"nutrition|medicine|training","tags":["2-3 short Arabic tags"]}`;
 async function studySum(env, a, t0, budget) {
   const user = `Journal: ${a.j}\nType: ${a.type}\nTitle: ${a.title}\nAbstract:\n${a.abs}`;
   let o = null, err = "", quota = false, model = "";
@@ -5464,6 +5469,29 @@ async function studySum(env, a, t0, budget) {
     } catch (e) { err += " | " + m.split("/").pop() + ": " + String((e && e.message) || e).slice(0, 60); }
   }
   return { o, err, quota, model };
+}
+// مراجعة تانية (25/11/2026، صاحب المتجر: «في كلمات ما إلها تفسير وترجمة غلط... بدي الجمل صح مية بالمية»): محرّر صارم بيصلّح الترجمة
+// الحرفية والإملاء وترتيب الكلمات قبل ما تنحفظ الدراسة. إذا ما لحقت المراجعة، الدراسة ما بتنحفظ وبترجع بالدفعة الجاية.
+const STUDY_REV = `You are a strict native Syrian Arabic editor for a gym community page. You get the English title/abstract of a sports-science study and an Arabic summary JSON written from it.
+Fix in the Arabic: literal or wrong translations of sports-science terms (replace with plain words a gym-goer understands, explaining the term once in brackets if kept), meaningless or strange words and verbs, unnatural word order, grammar, and every spelling mistake (همزات، ة/ه، ى/ي). Every sentence must be complete and clear. The headline must be one clear cause → effect sentence.
+Keep the meaning, every number and the cautious tone; do not add claims. Keep the same keys and values for "c" and "tags" (fix tags' wording only).
+STRICT LANGUAGE RULES (the owner complained about meaningless words and literal translations):
+- Never translate a technical term word-for-word. Say what it means in plain words a gym-goer knows; if you keep a term, explain it once in brackets. Correct renderings:
+  blood flow restriction (BFR) = «تمرين مع حزام بيخفّف وصول الدم للعضلة» (never «حبس الدم» alone, never «تصرّفت بحبس الدم»); hypoxia = «نقص الأكسجين (متل التمرين بالمرتفعات)»; velocity loss = «نزول سرعة الرفعة خلال المجموعة»; post-activation potentiation / priming = «تمرين تنشيط قبل الأداء»; repeated sprints = «سبرينتات ورا بعض»; gait = «طريقة المشي»; kinematics = «حركة» (مثلاً «حركة الركبة»); eccentric = «مرحلة النزول البطيء بالحركة»; isometric = «ثبات بلا حركة»; plyometrics = «تمارين قفز»; resistance training = «تمارين الأوزان»; concurrent training = «تمرين أوزان وكارديو بنفس الفترة»; muscle protein synthesis = «بناء العضل»; DOMS = «وجع العضل بعد التمرين»; RPE = «قديش حاسس حالك تعبان»; VO2max = «VO2max (أقصى أكسجين بيقدر الجسم يستعملو)»; meta-analysis / systematic review = «مراجعة لكذا دراسة»; randomized controlled trial = «تجربة»; placebo = «دوا وهمي»; nitrate = «نترات (متل يلي بعصير الشمندر)»; warm-up = «تسخين»; recovery = «استشفاء».
+- Every sentence must be complete, meaningful and in natural Syrian word order (not English order). No invented or odd verbs (e.g. never «تصرّفت»، «تبقى مشاكل»). Who did what → what happened.
+- Perfect spelling: همزات، ة/ه، ى/ي، no repeated or missing letters. Re-read every sentence before answering and fix anything a Syrian reader would find strange.
+
+Return ONLY the corrected JSON {"t","s","k","c","tags"}.`;
+async function studyReview(env, a, o, t0, budget) {
+  const user = `English title: ${a.title}\nAbstract (for meaning only):\n${String(a.abs).slice(0, 2500)}\n\nArabic JSON to fix:\n${JSON.stringify({ t: o.t, s: o.s, k: o.k, c: o.c, tags: o.tags })}`;
+  let err = "";
+  for (const gmM of STUDY_GEM) {
+    const left = budget - (Date.now() - t0); if (left < 9000) return { err: err + " | ما ضل وقت" };
+    const gm = await exlGemini(env, [gmM], STUDY_REV, user, 1500, Date.now() - (EXL_TR_BUDGET - left));
+    if (gm.text) { const r = exlAiMap(gm.text); if (r && typeof r.t === "string" && typeof r.s === "string") return { o: { ...o, ...r, c: o.c, tags: Array.isArray(r.tags) ? r.tags : o.tags } }; err += " | rev: bad json"; continue; }
+    err += " | " + String(gm.err || "").replace(/\s+/g, " ").slice(0, 110);
+  }
+  return { err };
 }
 // الفهرس: [id، تاريخ، قسم، نسخة الكتابة]. الدمج بياخد النسخة الأحدث لكل دراسة
 const studyIdxMerge = (a, b) => {
@@ -5502,7 +5530,12 @@ async function studySummaries(env, t0, budget, now, E, tool) {
     .sort((a, b) => (pos.has(a.id) ? pos.get(a.id) : 99) - (pos.has(b.id) ? pos.get(b.id) : 99)); // نفس ترتيب التناوب
   let added = 0, lastErr = "", stop = false;
   const one = async (a) => {
-    const r = await studySum(env, a, t0, budget), o = r.o;
+    const r = await studySum(env, a, t0, budget); let o = r.o;
+    if (o && typeof o.t === "string" && typeof o.s === "string" && gemKeys(env).length) { // المراجعة التانية (لازمة)
+      const rv = await studyReview(env, a, o, t0, budget);
+      if (!rv.o) { stop = true; lastErr = "review" + rv.err; return; } // ما بتنحفظ بلا مراجعة؛ بالدفعة الجاية
+      o = rv.o;
+    }
     if (r.quota) { // حد Gemini: منستنى شوي. بس إذا خلص وقت الدفعة (مو حد)، منكمّل بالدفعة الجاية بلا انتظار
       stop = true; lastErr = r.err;
       if (!/ما ضل وقت|aborted|timeout|\b503\b|UNAVAILABLE|high demand|overload/i.test(r.err)) await env.STORE.put("studies:wait", String(Date.now() + (/day|Daily/i.test(r.err) ? 3600e3 : 90e3)));
