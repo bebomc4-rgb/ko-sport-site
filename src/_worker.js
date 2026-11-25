@@ -5689,7 +5689,7 @@ async function studiesApi(request, env, ctx) {
   }
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
-  if (Date.now() - at > 6 * 60e3 && ctx && ctx.waitUntil) ctx.waitUntil(studiesTick(env, 24000).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
+  if (Date.now() - at > 2 * 60e3 && ctx && ctx.waitUntil) ctx.waitUntil(studiesTick(env, 24000).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
   const f = c ? idx.filter((x) => x[2] === c) : idx, page = f.slice(p * per, p * per + per);
   const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean).map((x) => ({ ...x, t: String(x.t || "").replace(/^[\s«"“']+|[\s»"”']+$/g, ""), ...(STUDY_LOGO[x.ja] ? { lg: STUDY_LOGO[x.ja] } : {}) })); // بلا أقواس حوالين العنوان
   const err = idx.length ? "" : (await env.STORE.get("studies:err")) || ""; // سبب آخر فشل (للفحص، بلا أسرار)
@@ -6115,9 +6115,9 @@ const koMain = {
       if (path === "/api/admin/settings" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getSettings(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/admin/products" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getProducts(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/settings") {
-        // كل زيارة للموقع بتتأكّد إنو «آخر الدراسات» ماشية (إذا مرّ 6 دقايق بلا دفعة، بتشغّل وحدة بالخلفية). قبل كانت معتمدة
+        // كل زيارة للموقع بتتأكّد إنو «آخر الدراسات» ماشية (إذا مرّ دقيقتين بلا دفعة، بتشغّل وحدة بالخلفية). قبل كانت معتمدة
         // على مؤقّت GitHub بس، ولما ما اشتغل ساعة ونص وقفت الدراسات (25/11/2026)
-        if (m === "GET") { if (ctx && ctx.waitUntil) { ctx.waitUntil(predTick(env).catch(() => {})); ctx.waitUntil((async () => { const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0; if (Date.now() - at > 6 * 60e3) await studiesTick(env, 22000); })().catch(() => {})); } return settingsGet(request, env, ctx); }
+        if (m === "GET") { if (ctx && ctx.waitUntil) { ctx.waitUntil(predTick(env).catch(() => {})); ctx.waitUntil((async () => { const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0; if (Date.now() - at > 2 * 60e3) await studiesTick(env, 22000); })().catch(() => {})); } return settingsGet(request, env, ctx); }
         if (m === "PUT") return settingsPut(request, env);
         return json({ error: "Method not allowed" }, 405);
       }
