@@ -5534,7 +5534,7 @@ async function studySummaries(env, t0, budget, now, E, tool) {
 // الموقع التاني). وصف الصورة وفحصها بـ Gemini (مجاني بمفاتيحو)، فالصورة الوحدة بتاخد من Cloudflare بس الرسم (~50 neuron) → ~140 صورة باليوم.
 // إذا Gemini ما ردّ، الاحتياط Llama/LLaVA (بياخدو neuron كمان) وبيتحسبو. الحساب التقريبي بـ studies:neur:<تاريخ>.
 // تقدير من فوق (أسعار Cloudflare): Gemma 4 بوصف الصورة ≤ 11، Llama 3.3 70B ≤ 58، الرسم 52، schnell ~58
-const STUDY_NEUR_DAY = 7000, NEUR = { draw: 55, schnell: 60, gemma: 15, llama: 60, llava: 40 };
+const STUDY_NEUR_DAY = 7000, NEUR = { draw: 80, schnell: 80, gemma: 15, llama: 60, llava: 40 }; // الرسم: 80 من فوق لحد ما نتأكد من لوحة Cloudflare
 // الدفعة المدفوعة لمرة وحدة: 80,000 neuron × $0.011/1000 = $0.88 بالأكتر (FLUX.2 klein: 26.05 neuron لكل مربع 512×512،
 // والصورة 1024×448 = مربعين ≈ 52، ومنعدّها 55 لنضل تحت). لو بدك دفعة تانية، غيّر اسم المفتاح (boost2) بعد موافقة صاحب المتجر
 const STUDY_NEUR_BOOST = 80000, STUDY_BOOST_K = "studies:neur:boost1";
@@ -5564,12 +5564,13 @@ async function studyDraw(env, prompt, cost, dl) {
   try { // FLUX.2 klein: صورة عريضة على قد مكانها (16:7)
     const form = new FormData(); form.append("prompt", prompt); form.append("width", "1024"); form.append("height", "448");
     const fr = new Response(form);
+    if (cost) cost.d = (cost.d || 0) + 1;
     const out = await exlRace(env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", { multipart: { body: fr.body, contentType: fr.headers.get("content-type") } }), Math.max(3000, Math.min(25000, dl - Date.now() - 6000)));
     const b = await aiImgBytes(out); if (b && b.length > 3000) return { b }; err = "klein: empty";
   } catch (e) { err = "klein: " + String((e && e.message) || e).slice(0, 80); }
   if (dl - Date.now() < 10000) return { err: err + " | ما ضل وقت" };
   try {
-    if (cost) cost.n += NEUR.schnell; // الاحتياط كمان بيتحسب (1024×1024، 4 خطوات ≈ 58 neuron)
+    if (cost) { cost.n += NEUR.schnell; cost.s = (cost.s || 0) + 1; } // الاحتياط كمان بيتحسب (1024×1024، 4 خطوات ≈ 58 neuron)
     const out = await exlRace(env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4 }), Math.max(3000, Math.min(20000, dl - Date.now() - 6000)));
     const b = await aiImgBytes(out); if (b && b.length > 3000) return { b }; err += " | schnell: empty";
   } catch (e) { err += " | schnell: " + String((e && e.message) || e).slice(0, 80); }
@@ -5606,7 +5607,7 @@ async function studyImgCheck(env, bytes, cost, dl) {
   }
   return "na";
 }
-async function studyImageOne(env, id, titleEn, st, t0, budget, cost, dl) {
+async function studyImageOne(env, id, titleEn, st, t0, budget, cost, dl, noPaid) {
   dl = dl || t0 + budget + 4000;
   const user = `Study title: ${titleEn || "-"}\nArabic headline: ${st.t || ""}\nTags: ${(st.tags || []).join(", ")}\nTopic area: ${st.c || "training"}`;
   let pr = null, err = "";
@@ -5614,6 +5615,7 @@ async function studyImageOne(env, id, titleEn, st, t0, budget, cost, dl) {
     const left = dl - Date.now(); // لازم يخلص قبل ما يضل 13 ث (للرسم والفحص)
     if (left >= 19000) { const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], STUDY_IMG_SYS, user, 300, Date.now() - (EXL_TR_BUDGET - Math.min(left - 11000, 9000))); if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o.p === "string" && o.p.length > 8) pr = o; } else err = String(gm.err || "").slice(0, 80); }
   }
+  if (!pr && noPaid) return { err: "prompt (بالدفعة الجاية) " + err };
   if (!pr) for (const model of [AI_TR_MODELS[2], AI_TR_MODELS[0]]) { // احتياط (بياخد neuron): Llama 70B أول (سريع)، Gemma 4 بيفكّر وبيطوّل
     const lf = dl - Date.now(); if (lf < 18000) return { err: "time" + (err ? " " + err : "") }; // ما منصرف عالوصف إذا ما في وقت نرسم
     cost.n += model === AI_TR_MODELS[0] ? NEUR.gemma : NEUR.llama;
@@ -5666,12 +5668,12 @@ async function studyImages(env, t0, budget, E, tool, first) {
   if (!pend.length) return null;
   let arts = new Map();
   try { const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${pend.map((x) => x[0]).join(",")}${tool}`, { signal: AbortSignal.timeout(8000) })).text(); arts = new Map(xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id).map((a) => [a.id, a])); } catch {}
-  const done = {}, tried = new Set(); let made = 0, err = "", qi = 0;
+  const done = {}, tried = new Set(); let made = 0, err = "", qi = 0, drew = 0, sch = 0;
   const one = async (x) => {
     let st = null; try { st = await env.STORE.get("study:" + x[0], "json"); } catch {}
     if (!st) { done[x[0]] = -1; return; }
-    const cost = { n: 0 }, r = await studyImageOne(env, x[0], (arts.get(x[0]) || {}).title || "", st, t0, budget, cost, t0 + budget + 4000);
-    used += cost.n;
+    const cost = { n: 0 }, r = await studyImageOne(env, x[0], (arts.get(x[0]) || {}).title || "", st, t0, budget, cost, t0 + budget + 4000, sumBusy);
+    used += cost.n; drew += cost.d || 0; sch += cost.s || 0;
     if (r.ok) { made++; done[x[0]] = 1; st.im = STUDY_IMGV + x[0]; await env.STORE.put("study:" + x[0], JSON.stringify(st)); }
     else { err = r.err || ""; if (r.final) done[x[0]] = -1; }
   };
@@ -5682,11 +5684,14 @@ async function studyImages(env, t0, budget, E, tool, first) {
     }
   }));
   await env.STORE.put(dk, String(used - off), { expirationTtl: 3 * 86400 });
+  // كم رسمة انعملت اليوم (klein/schnell): لنقارن مع لوحة Cloudflare ونعرف السعر الحقيقي للرسمة
+  const drk = "studies:drw:" + day; let drw = [0, 0]; try { drw = JSON.parse((await env.STORE.get(drk)) || "[0,0]"); } catch {}
+  if (drew || sch) { drw = [drw[0] + drew, drw[1] + sch]; await env.STORE.put(drk, JSON.stringify(drw), { expirationTtl: 3 * 86400 }); }
   const over = Math.max(0, used - Math.max(STUDY_NEUR_DAY, used0)); // يلي انصرف هالمرة فوق حصّة اليوم المجانية
   if (over) await env.STORE.put(STUDY_BOOST_K, String(boostUsed + over));
   for (const x of pend) if (!(x[0] in done)) await env.STORE.delete("simg:c:" + x[0]).catch(() => {}); // يلي ما خلص: بيرجع ينجرّب بالدفعة الجاية
   if (Object.keys(done).length) { let cur = {}; try { cur = (await env.STORE.get(STUDY_IMGS, "json")) || {}; } catch {} Object.assign(cur, done); dm = cur; await env.STORE.put(STUDY_IMGS, JSON.stringify(cur)); }
-  return { made, left: idx.filter((x) => !dm[x[0]]).length, neur: used, boost: boostUsed + over, ...(err ? { err: err.slice(0, 160) } : {}) };
+  return { made, left: idx.filter((x) => !dm[x[0]]).length, neur: used, boost: boostUsed + over, drw, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
 
 // ---------- لوغو المجلة بالدائرة جنب اسمها ----------
