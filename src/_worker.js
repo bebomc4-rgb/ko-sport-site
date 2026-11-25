@@ -5612,10 +5612,10 @@ async function studyDraw(env, prompt, cost, dl) {
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل
 const b64Of = (u) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل. cost.n = neuron انصرفت من Cloudflare
-async function studyImgCheck(env, bytes, cost, dl, noPaid, subject) {
+async function studyImgCheck(env, bytes, cost, dl, noPaid, subject, noGem) {
   dl = dl || Date.now() + 30000;
   const keys = gemKeys(env), q = 'Look carefully at this photo. Answer ONLY JSON: {"women":true|false,"children":true|false,"nudity":true|false' + (subject ? ',"match":true|false' : "") + '}. women = any woman or girl, even small, partial or in the background. children = anyone under 18.' + (subject ? " match = the photo clearly and mainly shows: " + String(subject).slice(0, 80) + "." : "");
-  if (keys.length) {
+  if (keys.length && !noGem) {
     const data = b64Of(bytes), mime = imgType(bytes);
     for (const model of ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash"]) keyLoop: for (let ki = 0; ki < keys.length; ki++) {
       const tag = model + "|" + ki; if ((GEM_OUT.get(tag) || 0) > Date.now()) continue;
@@ -5822,11 +5822,13 @@ async function studyPhotos(env, t0, budget) {
   const left = budget - (Date.now() - t0);
   if (!sts.length || left < 14000) return null;
   // شو لازم يبين بالصورة (pq) بينحفظ بالدراسة، فمنسأل مرة وحدة بس لكل دراسة
+  // إذا Gemini خالص حدّو (الملخّصات واقفة بـ studies:wait)، ما منضيّع وقت الدفعة بـ 20 محاولة 429: Workers AI على طول
+  const noGem = Date.now() < +((await env.STORE.get("studies:wait")) || 0);
   const map = {}; for (const s of sts) if (s.pq && s.pq.q) map[s.id] = s.pq;
   const need = sts.filter((s) => !map[s.id]), got = () => need.every((s) => map[s.id]);
   let gm = { err: "" }, wErr = "";
   if (need.length) {
-  gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], UPS_SYS, need.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n"), 600, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000)));
+  if (!noGem) gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], UPS_SYS, need.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n"), 600, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000)));
   if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o === "object") Object.assign(map, o); }
   // صاحب المتجر: «حط الصور، والكتابة لحالها بتتغيّر» → إذا Gemini خلص حدّو، Llama (Workers AI، رخيص كتير) بيختار شو يبين بالصورة
   if (!got() && env.AI) for (const m of [AI_TR_MODELS[2], AI_TR_MODELS[1]]) { // Llama، وبعدو GLM
@@ -5868,10 +5870,10 @@ async function studyPhotos(env, t0, budget) {
       const c = await cands(q, round === 1); if (!c) return null;
       const free = c.items.filter((x) => !used[x.id] && bad[x.id] !== -1 && !c.no.includes(x.id));
       for (const x of free.slice(0, 3)) {
-        if (dl - Date.now() < 9000 || rem <= 4 || waitSet) { na = true; return null; } // ما ضل وقت: بالدفعة الجاية (مو فشل)
+        if (dl - Date.now() < 9000 || rem <= 4 || waitSet) { na = true; err = err || (dl - Date.now() < 9000 ? "time" : "rate"); return null; } // ما ضل وقت: بالدفعة الجاية (مو فشل)
         const b = await fetch(x.s, { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
         if (!b) continue;
-        const cc = { n: 0 }, chk = await studyImgCheck(env, new Uint8Array(b), cc, dl, false, subj || q); // Gemini، وإذا خلص حدّو Gemma 4 (بيرفض النساء والولاد كمان)
+        const cc = { n: 0 }, chk = await studyImgCheck(env, new Uint8Array(b), cc, dl, false, subj || q, noGem); // Gemini، وإذا خلص حدّو Gemma 4 (بيرفض النساء والولاد كمان)
         if (chk === "na") err = err || ("check " + (cc.e || "na"));
         if (chk === "ok") return x;
         if (chk === "bad") { bad[x.id] = -1; ch = true; }
