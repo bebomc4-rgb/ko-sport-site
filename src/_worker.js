@@ -5749,17 +5749,25 @@ const UPS_SYS = `For each sports-science study line "<id>: <Arabic headline> | <
 - People only adult men. 1-3 simple English words that a photo site understands.
 q = the exact thing, q2 = a slightly broader fallback, s = short description of what must be visible (for checking).
 Return ONLY JSON like {"12345":{"q":"blackberries","q2":"berries","s":"blackberries"}}.`;
+// كذا مفتاح Unsplash بالدور (أمر صاحب المتجر 25/11/2026، وهو عارف إنو Unsplash ممكن يوقّف الحسابات): UNSPLASH_ACCESS_KEY،
+// UNSPLASH_ACCESS_KEY2 … 10. كل مفتاح إلو حدّو (studies:ups:rl2) وانتظارو؛ لما واحد يخلص منكمّل بيلي بعدو.
+const upsKeys = (env) => ["", 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => env["UNSPLASH_ACCESS_KEY" + i]).filter(Boolean);
 async function studyPhotos(env, t0, budget) {
-  const key = env.UNSPLASH_ACCESS_KEY;
-  if (!key) return null;
-  const wait = +((await env.STORE.get("studies:ups:wait")) || 0);
-  if (Date.now() < wait) return { wait: new Date(wait).toISOString() };
-  let rl = null; try { rl = JSON.parse((await env.STORE.get("studies:ups:rl")) || "null"); } catch {}
-  let rem = rl && Date.now() - rl.at < 3600e3 ? rl.rem : 50, waitSet = 0, err = "";
+  const keys = upsKeys(env);
+  if (!keys.length) return null;
+  let st = []; try { st = JSON.parse((await env.STORE.get("studies:ups:rl2")) || "[]"); } catch {}
+  const K = keys.map((_, i) => { const o = st[i] || {}; return { rem: o.at && Date.now() - o.at < 3600e3 ? o.rem : 50, at: o.at || 0, wait: o.wait || 0 }; });
+  const live = () => K.findIndex((k) => k.wait < Date.now() && k.rem > 4);
+  if (live() < 0) return { wait: new Date(Math.min(...K.map((k) => Math.max(k.wait, k.at + 3600e3)))).toISOString() };
+  let waitSet = 0, err = "";
+  const remOf = () => K.reduce((a, k) => a + (k.wait < Date.now() ? Math.max(0, k.rem - 4) : 0), 0);
+  let rem = remOf() + 4;
   const ups = async (url) => {
-    const r = await fetch(url, { headers: { authorization: "Client-ID " + key, "accept-version": "v1" }, signal: AbortSignal.timeout(8000) });
-    const h = r.headers.get("x-ratelimit-remaining"); if (h != null && h !== "") rem = +h; else rem--;
-    if (r.status === 401) waitSet = Date.now() + 3600e3; else if (r.status === 403 || r.status === 429) waitSet = Date.now() + 15 * 60e3;
+    const i = live(); if (i < 0) { waitSet = 1; return new Response("", { status: 429 }); }
+    const k = K[i], r = await fetch(url, { headers: { authorization: "Client-ID " + keys[i], "accept-version": "v1" }, signal: AbortSignal.timeout(8000) });
+    const h = r.headers.get("x-ratelimit-remaining"); k.rem = h != null && h !== "" ? +h : k.rem - 1; k.at = Date.now();
+    if (r.status === 401) k.wait = Date.now() + 3600e3; else if (r.status === 403 || r.status === 429) k.wait = Date.now() + 15 * 60e3;
+    rem = remOf() + 4; if (live() < 0) waitSet = 1;
     return r;
   };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
@@ -5824,9 +5832,8 @@ async function studyPhotos(env, t0, budget) {
     dm[s.id] = 1; made++;
   }
   if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
-  await env.STORE.put("studies:ups:rl", JSON.stringify({ rem, at: Date.now() }));
-  if (waitSet) await env.STORE.put("studies:ups:wait", String(waitSet));
-  return { made, left: idx.filter((x) => !(dm[x[0]] > 0)).length, rem, ...(err ? { err: err.slice(0, 160) } : {}) };
+  await env.STORE.put("studies:ups:rl2", JSON.stringify(K));
+  return { made, left: idx.filter((x) => !(dm[x[0]] > 0)).length, rem, keys: keys.length, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
 
 // ---------- لوغو المجلة بالدائرة جنب اسمها ----------
