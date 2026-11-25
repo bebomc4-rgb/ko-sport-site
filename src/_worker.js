@@ -5633,10 +5633,11 @@ async function studyImgCheck(env, bytes, cost, dl, noPaid, subject) {
   if (!noPaid && dl - Date.now() >= 6000 && env.AI) {
     try {
       cost.n += NEUR.gemma;
-      const out = await exlRace(env.AI.run(AI_TR_MODELS[0], { messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: "data:" + imgType(bytes) + ";base64," + b64Of(bytes) } }, { type: "text", text: q }] }], max_tokens: 600, temperature: 0 }), Math.min(15000, dl - Date.now() - 1000));
-      const tx = exlAiText(out), o = exlAiMap(tx);
+      const out = await exlRace(env.AI.run(AI_TR_MODELS[0], { messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: "data:" + imgType(bytes) + ";base64," + b64Of(bytes) } }, { type: "text", text: q }] }], max_tokens: 1500, temperature: 0 }), Math.min(15000, dl - Date.now() - 1000));
+      const ch = out && out.choices && out.choices[0] && out.choices[0].message; // Gemma بيرجّع شكل OpenAI (choices)
+      const tx = (ch && (ch.content || "")) || exlAiText(out), o = exlAiMap(tx);
       if (o && typeof o.women === "boolean") return o.women || o.children || o.nudity ? "bad" : subject && o.match === false ? "nomatch" : "ok";
-      cost.e = "gemma: " + String(tx || JSON.stringify(out || "")).slice(0, 120);
+      cost.e = "gemma: " + String(tx || (ch && ch.reasoning_content ? "only thinking" : JSON.stringify(out || ""))).slice(0, 120);
     } catch (e) { cost.e = "gemma: " + String((e && e.message) || e).slice(0, 120); }
   }
   for (const model of ["@cf/llava-hf/llava-1.5-7b-hf"]) { // احتياط بس (بياخد neuron)
