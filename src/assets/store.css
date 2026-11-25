@@ -2397,6 +2397,8 @@ video{pointer-events:none}
 @media (prefers-reduced-motion:reduce){.kg-drg,.kg-drg *{animation:none!important}}
 .ks{max-width:640px;margin:0 auto}
 .ks-lead,.kn-lead{color:var(--muted);line-height:1.8}
+.ks-more{min-height:40px;text-align:center;padding:8px 0}
+.ks-end{color:var(--muted);text-align:center;font-size:.9em}
 .ks-chips{display:flex;gap:8px;overflow-x:auto;margin:6px 0 14px;padding-bottom:4px}
 .ks-chips button{flex:none;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--c-card-bg,var(--card));color:inherit;font:inherit;cursor:pointer}
 .ks-chips button.on{background:var(--c-btn2-bg,var(--ink));color:var(--c-btn2-fg,#fff);border-color:transparent}

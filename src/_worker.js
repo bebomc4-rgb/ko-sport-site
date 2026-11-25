@@ -5392,7 +5392,6 @@ async function exlTranslationRun(env) {
 // المصدر PubMed (مجاني ورسمي): أحدث التجارب والمراجعات بمجلات الرياضة والتغذية الرياضية والطب الرياضي.
 // كل دراسة بتتلخّص بالعربي بالذكاء (Gemini، وإذا ما زبط Workers AI): عنوان، ملخّص واضح، الخلاصة العملية، والقسم.
 // التحديث بالخلفية: كل ما حدا فتح القسم وصار إلو أكتر من ساعة (أو ربع ساعة إذا القائمة لسا قليلة)، ودفعتين كل مرة. وكمان GitHub Actions بيدق كل ساعة.
-// KV: studies:list (لحد 80، الأحدث أول)، studies:seen (أرقام PubMed يلي انقرت)، studies:at (آخر تحديث)
 const STUDY_JOURNALS = ["Br J Sports Med", "Sports Med", "Med Sci Sports Exerc", "J Int Soc Sports Nutr", "J Strength Cond Res", "Am J Sports Med", "Int J Sport Nutr Exerc Metab", "Scand J Med Sci Sports", "Eur J Appl Physiol", "J Appl Physiol (1985)", "Nutrients", "Eur J Sport Sci", "J Sports Sci", "Int J Sports Physiol Perform", "Clin J Sport Med", "J Sci Med Sport", "Orthop J Sports Med", "Sports Health"];
 const STUDY_TERM = "(" + STUDY_JOURNALS.map((j) => `"${j}"[ta]`).join(" OR ") + ") AND (randomized controlled trial[pt] OR meta-analysis[pt] OR systematic review[pt] OR clinical trial[pt]) AND hasabstract";
 const xmlTxt = (s) => String(s || "").replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
@@ -5412,60 +5411,90 @@ function studyParse(x) {
 }
 // الملخّص لازم يكون عربي نضيف: بلا حروف لغات تانية (صار مرة «ي cải thiện»)، وبلا كلمات إنكليزية كتير
 const studyBad = (t) => /[\u00C0-\u024F\u1E00-\u1EFF\u0400-\u04FF\u0E00-\u0E7F\u3040-\u9FFF\uAC00-\uD7AF]/.test(t) || (String(t).match(/[A-Za-z]{3,}/g) || []).filter((w) => !/^(HIIT|RCT|BMI|VO2max|DOMS|ATP|EPA|DHA|BCAA|HMB|ACL|RPE|RM|PPL|MRI|EMS|CrossFit)$/i.test(w)).length > 3;
-async function studiesRefresh(env, n) {
-  const t0 = Date.now(), now = new Date().toISOString();
-  await env.STORE.put("studies:at", now);
-  const E = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/", tool = "&tool=kosport&email=info%40ko-sport.online";
-  const r = await fetch(`${E}esearch.fcgi?db=pubmed&retmode=json&sort=pub_date&retmax=40&reldate=60&datetype=edat&term=${encodeURIComponent(STUDY_TERM)}${tool}`, { signal: AbortSignal.timeout(8000) });
-  const rt = await r.text(); let ids = []; try { ids = (JSON.parse(rt).esearchresult || {}).idlist || []; } catch { throw new Error("esearch " + r.status + " " + rt.slice(0, 120)); }
-  if (!ids.length) throw new Error("esearch: 0 ids " + rt.slice(0, 160));
-  let seen = {}; try { seen = (await env.STORE.get("studies:seen", "json")) || {}; } catch {}
-  const todo = ids.filter((i) => !seen[i]).slice(0, 15); // منجيب 15 وبنختار من مجلات مختلفة
-  if (!todo.length) return { added: 0 };
-  const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${todo.join(",")}${tool}`, { signal: AbortSignal.timeout(10000) })).text();
-  let arts = xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id && a.title && a.abs.length > 200);
-  let list = []; try { list = (await env.STORE.get("studies:list", "json")) || []; } catch {}
-  list = list.filter((x) => !studyBad(x.t + " " + x.s + " " + x.k));
-  { const last = {}; list.slice(0, 12).forEach((x) => { last[x.ja] = (last[x.ja] || 0) + 1; }); const used = {}; // تنويع: المجلة يلي إلها أقل منشورات بالآخر أول
-    arts = arts.sort((p, q) => (last[p.ja] || 0) - (last[q.ja] || 0)).filter((a) => { used[a.ja] = (used[a.ja] || 0) + 1; return used[a.ja] <= 1; }).slice(0, n || 2); }
-  let added = 0;
-  const system = `You are a Syrian Arabic sports-science writer for a gym community page. Summarize ONE research abstract into clear, accurate Arabic that a gym-goer understands (simple Syrian-friendly Arabic, correct spelling, no slang that hurts clarity). Write in your own words; never copy sentences. Keep every number that matters (participants, doses, durations, % changes) exactly. Never exaggerate or add claims not in the abstract; say clearly when results are small, mixed, or only in a specific group. Write ONLY in Arabic script (digits and standard abbreviations like VO2max are fine); never mix in English, Vietnamese or any other language. The headline must state the finding modestly (e.g. «ممكن يحسّن», «تحسّن بسيط») when the effect is small or uncertain.
+// v461 (طلب صاحب المتجر 25/11/2026): كل دراسات 2026 من أول السنة لليوم + كل شي جديد، وكلها ملخّصة بـ Gemini.
+// كل دراسة بمفتاح لحالها study:<id>، والفهرس studies:idx = [[id, تاريخ, قسم], ...] الأحدث أول (صغير، بينقرا بسرعة).
+// studies:q = أرقام PubMed من 2026 لليوم (بيتجدّد كل ساعة)، studies:bad = {id: محاولات فاشلة} (بعد 3 بنتركها)،
+// studies:wait = إذا Gemini قال خلص الحد (429) منستنى وبنكمّل بعدين لحالنا. ممنوع تدوير مفاتيح أو حسابات.
+const STUDY_FROM = "2026/01/01";
+async function studyQueue(env, E, tool) {
+  let q = null; try { q = await env.STORE.get("studies:q", "json"); } catch {}
+  if (q && q.ids && Date.now() - (q.at || 0) < 3600e3) return q.ids;
+  const r = await fetch(`${E}esearch.fcgi?db=pubmed&retmode=json&sort=pub_date&retmax=9999&datetype=pdat&mindate=${STUDY_FROM}&maxdate=${new Date().getUTCFullYear()}/12/31&term=${encodeURIComponent(STUDY_TERM)}${tool}`, { signal: AbortSignal.timeout(15000) });
+  const rt = await r.text(); let ids = []; try { ids = (JSON.parse(rt).esearchresult || {}).idlist || []; } catch { if (q && q.ids) return q.ids; throw new Error("esearch " + r.status + " " + rt.slice(0, 120)); }
+  if (!ids.length) { if (q && q.ids) return q.ids; throw new Error("esearch: 0 ids"); }
+  await env.STORE.put("studies:q", JSON.stringify({ at: Date.now(), ids }));
+  return ids;
+}
+const STUDY_SYS = `You are a Syrian Arabic sports-science writer for a gym community page. Summarize ONE research abstract into clear, accurate Arabic that a gym-goer understands (simple Syrian-friendly Arabic, correct spelling, no slang that hurts clarity). Write in your own words; never copy sentences. Keep every number that matters (participants, doses, durations, % changes) exactly. Never exaggerate or add claims not in the abstract; say clearly when results are small, mixed, or only in a specific group. Write ONLY in Arabic script (digits and standard abbreviations like VO2max are fine); never mix in English, Vietnamese or any other language. The headline must state the finding modestly (e.g. «ممكن يحسّن», «تحسّن بسيط») when the effect is small or uncertain.
 Return ONLY JSON: {"t":"Arabic headline 45-90 chars that names WHAT was tested and WHAT happened, e.g. «مكمّل النترات بيحسّن أداء الرياضات الجماعية شوي» (never a vague headline like «تحسّن بسيط في الأداء»)","s":"Arabic summary 3-5 short sentences: who was studied, what was done, what was found","k":"one Arabic sentence: the practical takeaway for training or nutrition, cautious","c":"nutrition|medicine|training","tags":["2-3 short Arabic tags"]}`;
-  for (const a of arts) {
-    if (Date.now() - t0 > 22000) break;
-    const user = `Journal: ${a.j}\nType: ${a.type}\nTitle: ${a.title}\nAbstract:\n${a.abs}`;
-    let o = null;
-    const gm = await exlGemini(env, GEM_TR_SHORT, system, user, 1500, Date.now());
-    if (gm.text) o = exlAiMap(gm.text);
-    // بلا مفتاح Gemini: نماذج Workers AI بالدور (Llama 3.3 أول لأنو أثبت بالـ JSON)، كل واحد إلو 11 ثانية
-    for (const model of [AI_TR_MODELS[2], AI_TR_MODELS[0], AI_TR_MODELS[1]]) {
-      if ((o && o.t) || !env.AI || Date.now() - t0 > 19000) break;
-      try {
-        const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 1200, temperature: 0.2 }), 11000);
-        const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out);
-        o = typeof raw === "object" ? raw : exlAiMap(String(raw || ""));
-        if (!o || !o.t) gm.err = (gm.err || "") + " | " + model.split("/").pop() + " raw: " + JSON.stringify(out).slice(0, 160);
-      } catch (e) { gm.err = (gm.err || "") + " | " + model.split("/").pop() + ": " + String((e && e.message) || e).slice(0, 60); }
-    }
-    seen[a.id] = 1;
-    const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[\u0600-\u06FF]/g) || []).length > 40 && !studyBad(o.t + " " + o.s + " " + (o.k || ""));
-    if (!ok) { seen[a.id] = 0; await env.STORE.put("studies:err", "AI: " + String(gm.err || "") + " | " + JSON.stringify(o || {}).slice(0, 200)).catch(() => {}); continue; } // بنرجع نجرّبها المرة الجاية
-    list.unshift({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c: ["nutrition", "medicine", "training"].includes(o.c) ? o.c : "training", tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, at: now });
-    added++;
+async function studySum(env, a, t0, budget) {
+  const user = `Journal: ${a.j}\nType: ${a.type}\nTitle: ${a.title}\nAbstract:\n${a.abs}`;
+  let o = null, err = "", quota = false, model = "";
+  if (String(env.GEMINI_API_KEY || "").trim()) {
+    // exlGemini بيحسب الوقت من EXL_TR_BUDGET، فمنعطيه t0 بحيث يضل ضمن وقت هالدفعة
+    const gm = await exlGemini(env, GEM_TR_SHORT, STUDY_SYS, user, 1500, Date.now() - (EXL_TR_BUDGET - Math.max(9000, budget - (Date.now() - t0))));
+    if (gm.text) { o = exlAiMap(gm.text); model = gm.model; } else { err = String(gm.err || ""); quota = true; } // أي فشل من Gemini (حد، ضغط، شبكة): منستنى ومنرجع نجرّب نفس الدراسة، ما منحسبها فاشلة
+    return { o, err, quota, model }; // في مفتاح: Gemini بس (الجودة أهم)، وإذا خلص الحد منستنى
   }
-  for (const k of Object.keys(seen)) if (!seen[k]) delete seen[k];
-  const ks = Object.keys(seen); if (ks.length > 2000) for (const k of ks.slice(0, ks.length - 2000)) delete seen[k];
-  list = list.filter((x, i, A) => A.findIndex((y) => y.id === x.id) === i).sort((p, q) => String(q.d).localeCompare(String(p.d)) || String(q.at).localeCompare(String(p.at))).slice(0, 80);
-  await env.STORE.put("studies:list", JSON.stringify(list));
-  await env.STORE.put("studies:seen", JSON.stringify(seen));
-  return { added, total: list.length };
+  for (const m of [AI_TR_MODELS[2], AI_TR_MODELS[0], AI_TR_MODELS[1]]) { // بلا مفتاح: Workers AI بالدور
+    if ((o && o.t) || !env.AI || Date.now() - t0 > budget - 6000) break;
+    try {
+      const out = await exlRace(env.AI.run(m, { messages: [{ role: "system", content: STUDY_SYS }, { role: "user", content: user }], max_tokens: 1200, temperature: 0.2 }), 11000);
+      const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out);
+      o = typeof raw === "object" ? raw : exlAiMap(String(raw || "")); model = m.split("/").pop();
+    } catch (e) { err += " | " + m.split("/").pop() + ": " + String((e && e.message) || e).slice(0, 60); }
+  }
+  return { o, err, quota, model };
+}
+async function studiesTick(env, budget) {
+  const t0 = Date.now(), now = new Date().toISOString();
+  budget = budget || 24000;
+  await env.STORE.put("studies:at", now);
+  const wait = +((await env.STORE.get("studies:wait")) || 0);
+  if (Date.now() < wait) return { wait: new Date(wait).toISOString() };
+  if (await env.STORE.get("studies:list")) { await env.STORE.delete("studies:list"); await env.STORE.delete("studies:seen"); } // القديم (قبل Gemini) انمسح، وبيرجع ينعمل
+  const E = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/", tool = "&tool=kosport&email=info%40ko-sport.online";
+  const ids = await studyQueue(env, E, tool);
+  let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
+  let bad = {}; try { bad = (await env.STORE.get("studies:bad", "json")) || {}; } catch {}
+  const have = new Set(idx.map((x) => x[0]));
+  const todo = ids.filter((i) => !have.has(i) && (bad[i] || 0) < 3).slice(0, 6);
+  if (!todo.length) return { added: 0, total: idx.length, queue: ids.length };
+  const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${todo.join(",")}${tool}`, { signal: AbortSignal.timeout(12000) })).text();
+  const arts = xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id);
+  let added = 0, lastErr = "";
+  for (const a of arts) {
+    if (!a.title || a.abs.length < 200) { bad[a.id] = 9; continue; } // بلا ملخّص كافي: ما منلخّصها
+    if (Date.now() - t0 > budget - 9000) break;
+    const r = await studySum(env, a, t0, budget), o = r.o;
+    if (r.quota) { await env.STORE.put("studies:wait", String(Date.now() + (/day|Daily/i.test(r.err) ? 3600e3 : 120e3))); lastErr = r.err; break; }
+    const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[؀-ۿ]/g) || []).length > 40 && !studyBad(o.t + " " + o.s + " " + (o.k || ""));
+    if (!ok) { bad[a.id] = (bad[a.id] || 0) + 1; lastErr = "AI: " + r.err + " | " + JSON.stringify(o || {}).slice(0, 160); continue; }
+    const c = ["nutrition", "medicine", "training"].includes(o.c) ? o.c : "training";
+    await env.STORE.put("study:" + a.id, JSON.stringify({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c, tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, m: r.model, at: now }));
+    idx.push([a.id, a.d, c]); have.add(a.id); delete bad[a.id]; added++;
+  }
+  // لازم نقرا الفهرس من جديد قبل الكتابة (إذا اشتغلت دفعتين سوا ما منضيّع شي)
+  if (added) { let cur = []; try { cur = (await env.STORE.get("studies:idx", "json")) || []; } catch {} const m = new Map(); for (const x of cur.concat(idx)) m.set(x[0], x); idx = [...m.values()].sort((p, q) => String(q[1]).localeCompare(String(p[1])) || +q[0] - +p[0]); await env.STORE.put("studies:idx", JSON.stringify(idx)); }
+  await env.STORE.put("studies:bad", JSON.stringify(bad));
+  if (lastErr) await env.STORE.put("studies:err", lastErr.slice(0, 400)).catch(() => {});
+  return { added, total: idx.length, queue: ids.length, ...(lastErr ? { err: lastErr.slice(0, 200) } : {}) };
 }
 async function studiesApi(request, env, ctx) {
-  let list = []; try { list = (await env.STORE.get("studies:list", "json")) || []; } catch {}
-  const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0, gap = new URL(request.url).searchParams.get("seed") && list.length < 40 ? 50e3 : list.length < 12 ? 10 * 60e3 : 60 * 60e3; // seed: أول تعبئة (كل 50 ثانية لحد 40 دراسة)
-  if (Date.now() - at > gap && ctx && ctx.waitUntil) ctx.waitUntil(studiesRefresh(env, list.length < 12 ? 3 : 2).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
-  const err = list.length ? "" : (await env.STORE.get("studies:err")) || ""; // سبب آخر فشل (للفحص، بلا أسرار)
-  return new Response(JSON.stringify({ list, at: at ? new Date(at).toISOString() : "", ...(err ? { err } : {}) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=120" } });
+  const u = new URL(request.url), p = Math.max(0, +u.searchParams.get("p") || 0), c = u.searchParams.get("c") || "", per = 20;
+  if (u.pathname === "/api/studies/tick") { // GitHub Actions بيدق هون كل شوي لحد ما تخلص كل دراسات السنة
+    const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
+    if (Date.now() - at < 15000) return json({ busy: 1 }, 200, { "cache-control": "no-store" });
+    let r; try { r = await studiesTick(env, 24000); } catch (e) { r = { error: String((e && e.message) || e).slice(0, 200) }; }
+    return json(r, 200, { "cache-control": "no-store" });
+  }
+  let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
+  const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
+  if (Date.now() - at > 10 * 60e3 && ctx && ctx.waitUntil) ctx.waitUntil(studiesTick(env, 24000).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
+  const f = c ? idx.filter((x) => x[2] === c) : idx, page = f.slice(p * per, p * per + per);
+  const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
+  const err = idx.length ? "" : (await env.STORE.get("studies:err")) || ""; // سبب آخر فشل (للفحص، بلا أسرار)
+  return new Response(JSON.stringify({ list, total: f.length, all: idx.length, more: p * per + per < f.length, at: at ? new Date(at).toISOString() : "", ...(err ? { err } : {}) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=120" } });
 }
 async function exlibApi(request, env, path, m) {
   const nos = { "cache-control": "no-store" };
@@ -5893,7 +5922,7 @@ const koMain = {
       }
       if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
       if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m, ctx);
-      if (path === "/api/studies" && m === "GET") {
+      if ((path === "/api/studies" || path === "/api/studies/tick") && m === "GET") {
         // إشعار لصاحب المتجر لما يخلص شغل الليلة (طلبو 24/11/2026): مرة وحدة، أول ما ينفتح القسم بعد الرفع
         if (ctx && ctx.waitUntil && new URL(request.url).searchParams.get("done") === "459") ctx.waitUntil((async () => { if (await env.STORE.get("note:v459")) return; await env.STORE.put("note:v459", "1"); await ownerNotify(env, request, "🐉 خلص شغل الليلة بقسم التمرين:\n1. مجسّم العضلات (قدّام وورا): كبسة عالعضلة بتفتح تمارينها\n2. التنين الأسود: مدرّبك الصارم بنصايح وتحفيز\n3. آخر الدراسات: منشورات ملخّصة بالعربي وبتتحدّث كل ساعة\n4. التغذية: سعرات وماكروز وأكل سوري ووزن ومصروفك الحقيقي\nفوت على حسابك ← مكتبة التمارين 💪"); })().catch(() => {}));
         return studiesApi(request, env, ctx);

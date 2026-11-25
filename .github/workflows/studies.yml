@@ -1,11 +1,20 @@
 name: studies (hourly)
-# «آخر الدراسات» بمكتبة التمارين: كل ساعة منفتح القسم مرة، فالموقع بيدوّر على دراسات جديدة بـ PubMed وبيلخّصها بالعربي
+# «آخر الدراسات»: كل دراسات 2026 لليوم + الجديد. كل ساعة بيشتغل 55 دقيقة وبيدق /api/studies/tick كل 20 ثانية:
+# كل دقة بتلخّص كم دراسة بـ Gemini. إذا Gemini قال خلص الحد، الموقع بيستنى لحالو. لما تخلص كل الدراسات، الدقة بترجع فاضية.
 on:
   schedule:
     - cron: "17 * * * *"
   workflow_dispatch:
+concurrency: { group: studies, cancel-in-progress: false }
 jobs:
-  ping:
+  tick:
     runs-on: ubuntu-latest
+    timeout-minutes: 58
     steps:
-      - run: curl -fsS -m 30 "https://ko-sport.online/api/studies?t=$(date +%s)" | head -c 300; echo
+      - run: |
+          end=$(( $(date +%s) + 55*60 ))
+          while [ $(date +%s) -lt $end ]; do
+            r=$(curl -sS -m 40 "https://ko-sport.online/api/studies/tick?t=$(date +%s)" || true)
+            echo "$(date +%H:%M:%S) $r" | head -c 300; echo
+            case "$r" in *'"added":0,'*'"queue"'*) sleep 300;; *wait*) sleep 120;; *) sleep 20;; esac
+          done

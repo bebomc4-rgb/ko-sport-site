@@ -153,17 +153,28 @@
       (s.k ? '<div class="ks-k"><b>💡 الخلاصة</b>' + esc(s.k) + "</div>" : "") +
       '<footer class="ks-f"><span class="ks-tags">' + (s.tags || []).map(function (t) { return "<i>#" + esc(String(t).replace(/\s+/g, "_")) + "</i>"; }).join("") + '</span><a href="' + esc(link) + '" target="_blank" rel="noopener">المصدر ↗</a></footer></article>';
   }
+  // كل دراسات 2026 لليوم وكل الجديد: 20 بكل صفحة، وكل ما تنزل لتحت بيحمّل لحالو
   async function studies(app, H) {
-    app.innerHTML = '<div class="ks"><div class="crumbs"><a href="#/exlib">المكتبة</a></div><h1 class="page-title">📰 آخر الدراسات</h1><p class="ks-lead">أحدث الأبحاث بالتغذية الرياضية والطب الرياضي والتدريب، من مجلات علمية محكّمة، ملخّصة بالعربي. بتتحدّث لحالها كل ساعة.</p><div class="ks-chips" data-ks-chips><button class="on" data-c="">الكل</button><button data-c="nutrition">🥗 تغذية</button><button data-c="medicine">🩺 طب رياضي</button><button data-c="training">🏋️ تدريب</button></div><div data-ks-list><div class="loading">جاري التحميل…</div></div></div>';
-    var L = [], f = "";
-    var draw = function () {
-      var box = app.querySelector("[data-ks-list]"); if (!box) return;
-      var a = L.filter(function (x) { return !f || x.c === f; });
-      box.innerHTML = a.length ? a.map(post).join("") : '<div class="empty"><b>عم نجهّز أول الدراسات</b>الذكاء الاصطناعي عم يقرا ويلخّص هلق. ارجع بعد شوي.</div>';
-    };
-    app.querySelector("[data-ks-chips]").onclick = function (e) { var b = e.target.closest("button"); if (!b) return; f = b.dataset.c; app.querySelectorAll("[data-ks-chips] button").forEach(function (x) { x.classList.toggle("on", x === b); }); draw(); };
-    try { var r = await fetch("/api/studies", { cache: "no-store" }); var j = await r.json(); L = j.list || []; } catch (e) { L = []; }
-    draw(); dragon("_studies", true);
+    app.innerHTML = '<div class="ks"><div class="crumbs"><a href="#/exlib">المكتبة</a></div><h1 class="page-title">📰 آخر الدراسات</h1><p class="ks-lead">كل الأبحاث من أول 2026 لليوم، وكل جديد أول بأول، بالتغذية الرياضية والطب الرياضي والتدريب، من مجلات علمية محكّمة، ملخّصة بالعربي. <b data-ks-n></b></p><div class="ks-chips" data-ks-chips><button class="on" data-c="">الكل</button><button data-c="nutrition">🥗 تغذية</button><button data-c="medicine">🩺 طب رياضي</button><button data-c="training">🏋️ تدريب</button></div><div data-ks-list><div class="loading">جاري التحميل…</div></div><div class="ks-more" data-ks-more></div></div>';
+    var f = "", p = 0, more = true, busy = false, gen = 0, n = 0;
+    var box = app.querySelector("[data-ks-list]"), tail = app.querySelector("[data-ks-more]");
+    async function next() {
+      if (busy || !more) return; busy = true; var g = gen;
+      tail.innerHTML = p ? '<div class="loading">جاري التحميل…</div>' : "";
+      var j = null; try { var r = await fetch("/api/studies?p=" + p + (f ? "&c=" + f : ""), { cache: "no-store" }); j = await r.json(); } catch (e) { j = null; }
+      if (g !== gen) return; busy = false;
+      if (!j) { tail.innerHTML = '<button class="btn" data-ks-retry>صار خطأ، جرّب كمان مرة</button>'; return; }
+      var L = j.list || [];
+      if (!p) { box.innerHTML = L.length ? "" : '<div class="empty"><b>عم نجهّز الدراسات</b>الذكاء الاصطناعي عم يقرا ويلخّص هلق. ارجع بعد شوي.</div>'; var nb = app.querySelector("[data-ks-n]"); if (nb) nb.textContent = j.total ? "(" + j.total + " دراسة لهلق)" : ""; }
+      box.insertAdjacentHTML("beforeend", L.map(post).join("")); n += L.length;
+      p++; more = !!j.more; tail.innerHTML = more ? "" : (n ? '<p class="ks-end">هيك خلصت الدراسات الملخّصة لهلق، وكل يوم في جديد 👌</p>' : "");
+      if (more && tail.getBoundingClientRect().top < innerHeight + 600) next();
+    }
+    tail.onclick = function (e) { if (e.target.closest("[data-ks-retry]")) next(); };
+    var io = "IntersectionObserver" in window ? new IntersectionObserver(function (es) { if (!document.body.contains(tail)) { io.disconnect(); return; } if (es[0].isIntersecting) next(); }, { rootMargin: "600px" }) : null;
+    if (io) io.observe(tail);
+    app.querySelector("[data-ks-chips]").onclick = function (e) { var b = e.target.closest("button"); if (!b) return; f = b.dataset.c; app.querySelectorAll("[data-ks-chips] button").forEach(function (x) { x.classList.toggle("on", x === b); }); gen++; p = 0; n = 0; more = true; busy = false; box.innerHTML = '<div class="loading">جاري التحميل…</div>'; next(); };
+    await next(); dragon("_studies", true);
   }
 
   // ---------- التغذية: متل التطبيقات العالمية وأحسن ----------
