@@ -5629,6 +5629,15 @@ async function studyImgCheck(env, bytes, cost, dl, noPaid, subject) {
       } catch { break keyLoop; } // بطيء/انقطع: الموديل يلي بعدو
     }
   }
+  // احتياط: Gemma 4 بيشوف الصور (Workers AI، رخيص كتير). LLaVA انشال من Cloudflare (20/11/2026) فصار آخر شي
+  if (!noPaid && dl - Date.now() >= 6000 && env.AI) {
+    try {
+      cost.n += NEUR.gemma;
+      const out = await exlRace(env.AI.run(AI_TR_MODELS[0], { messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: "data:" + imgType(bytes) + ";base64," + b64Of(bytes) } }, { type: "text", text: q }] }], max_tokens: 600, temperature: 0 }), Math.min(15000, dl - Date.now() - 1000));
+      const o = exlAiMap(exlAiText(out));
+      if (o && typeof o.women === "boolean") return o.women || o.children || o.nudity ? "bad" : subject && o.match === false ? "nomatch" : "ok";
+    } catch {}
+  }
   for (const model of ["@cf/llava-hf/llava-1.5-7b-hf"]) { // احتياط بس (بياخد neuron)
     if (noPaid || dl - Date.now() < 5000) return "na"; // صور Unsplash: Gemini بس (ببلاش)
     try {
@@ -5804,8 +5813,8 @@ async function studyPhotos(env, t0, budget) {
     return r;
   };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
-  let dm = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; } catch {} // id → 1 (إلها صورة)، رقم سالب = محاولات فاشلة
-  const todo = idx.filter((x) => !(dm[x[0]] > 0) && !(dm[x[0]] <= -3) && (x[3] || 1) >= 2).slice(0, 5); // أي دراسة انكتبت (مو لازم تستنى إعادة الكتابة، موضوعها ما بيتغيّر)
+  let dm = {}, fl = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; fl = (await env.STORE.get("studies:ups2:fail", "json")) || {}; } catch {} // dm: id → 1 (إلها صورة)؛ fl: كم مرة ما لقينا صورة
+  const todo = idx.filter((x) => !(dm[x[0]] > 0) && !((fl[x[0]] || 0) >= 3) && (x[3] || 1) >= 2).slice(0, 5); // أي دراسة انكتبت (مو لازم تستنى إعادة الكتابة، موضوعها ما بيتغيّر)
   if (!todo.length) return null;
   const sts = (await Promise.all(todo.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
   const left = budget - (Date.now() - t0);
@@ -5817,7 +5826,7 @@ async function studyPhotos(env, t0, budget) {
   if (!Object.keys(map).length) return { err: "subjects " + String(gm.err || "").slice(0, 120) };
   let used = {}, bad = {}; try { used = (await env.STORE.get("studies:ups2:used", "json")) || {}; bad = (await env.STORE.get("studies:ups:ok", "json")) || {}; } catch {}
   const dl = t0 + budget + 2000, norm = (q) => String(q || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 50);
-  let made = 0, ch = false;
+  let made = 0, ch = false, na = false;
   const cands = async (q, more) => { // نتايج التفتيش (محفوظة)، ومنجيب الصفحة يلي بعدها إذا خلصو
     const ck = "studies:ups2:q:" + q; let c = null; try { c = await env.STORE.get(ck, "json"); } catch {}
     if (c && !more) return c;
@@ -5846,18 +5855,18 @@ async function studyPhotos(env, t0, budget) {
         if (chk === "ok") return x;
         if (chk === "bad") { bad[x.id] = -1; ch = true; }
         else if (chk === "nomatch") { c.no.push(x.id); await env.STORE.put("studies:ups2:q:" + q, JSON.stringify(c), { expirationTtl: 60 * 86400 }); }
-        else return null; // الفحص ما اشتغل: بالدفعة الجاية
+        else { na = true; return null; } // الفحص ما اشتغل: بالدفعة الجاية
       }
-      if (free.length > 3) return null; // لسّا في صور بالنتايج: منكمّل بالدفعة الجاية
+      if (free.length > 3) { na = true; return null; } // لسّا في صور بالنتايج: منكمّل بالدفعة الجاية
     }
     return null;
   };
   for (const s of sts) {
     if (Date.now() - t0 > budget - 6000 || waitSet) break;
     const m = map[s.id] && typeof map[s.id] === "object" ? map[s.id] : { q: map[s.id] };
-    let x = await tryQ(m.q, m.s);
+    na = false; let x = await tryQ(m.q, m.s);
     if (!x && m.q2 && Date.now() - t0 < budget - 8000) x = await tryQ(m.q2, m.s);
-    if (!x) { if (!err) { dm[s.id] = (dm[s.id] < 0 ? dm[s.id] : 0) - 1; ch = true; } continue; } // 3 مرات بلا صورة: بتضل بالشكل الملوّن
+    if (!x) { if (!err && !na) { fl[s.id] = (fl[s.id] || 0) + 1; ch = true; } continue; } // 3 مرات ما في ولا صورة بتنفع: بتضل بالشكل الملوّن
     if (x.dl) { const r = await ups(x.dl).catch(() => null); if (!r || !r.ok) { err = "download " + (r ? r.status : "x"); continue; } } // «download» (شرط Unsplash)
     used[x.id] = s.id; ch = true;
     let cur = null; try { cur = await env.STORE.get("study:" + s.id, "json"); } catch {}
@@ -5866,7 +5875,7 @@ async function studyPhotos(env, t0, budget) {
     await env.STORE.put("study:" + s.id, JSON.stringify(cur));
     dm[s.id] = 1; made++;
   }
-  if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
+  if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:fail", JSON.stringify(fl)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
   await env.STORE.put("studies:ups:rl2", JSON.stringify(K));
   return { made, left: idx.filter((x) => !(dm[x[0]] > 0)).length, rem, keys: keys.length, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
