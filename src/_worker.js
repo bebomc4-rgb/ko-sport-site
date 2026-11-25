@@ -5587,7 +5587,7 @@ async function studyImgCheck(env, bytes, cost, dl) {
       const tag = model + "|" + ki; if ((GEM_OUT.get(tag) || 0) > Date.now()) continue;
       const left = dl - Date.now(); if (left < 2500) return "na"; // ما ضل وقت بالدفعة
       try {
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { signal: AbortSignal.timeout(Math.min(8000, left - 500)), method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": keys[ki] }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data } }, { text: q }] }], generationConfig: { temperature: 0, maxOutputTokens: 120, responseMimeType: "application/json" } }) });
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { signal: AbortSignal.timeout(Math.min(5000, left - 500)), method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": keys[ki] }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data } }, { text: q }] }], generationConfig: { temperature: 0, maxOutputTokens: 120, responseMimeType: "application/json" } }) });
         const t = await r.text();
         if (!r.ok) { if (r.status === 429 || r.status === 401 || r.status === 403) { GEM_OUT.set(tag, Date.now() + (/PerDay|per day/i.test(t) ? 3600e3 : 60e3)); continue; } break keyLoop; } // 503/404...: الموديل يلي بعدو
         const j = JSON.parse(t), txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map((x) => x.text || "").join("");
@@ -5596,10 +5596,10 @@ async function studyImgCheck(env, bytes, cost, dl) {
     }
   }
   for (const model of ["@cf/llava-hf/llava-1.5-7b-hf"]) { // احتياط بس (بياخد neuron)
-    if (dl - Date.now() < 6000) return "na";
+    if (dl - Date.now() < 5000) return "na";
     try {
       cost.n += NEUR.llava;
-      const out = await exlRace(env.AI.run(model, { image: [...bytes], prompt: "Who is in this photo? For every person say man, woman, boy or girl and what they wear. If there is no person, answer exactly: no people.", max_tokens: 80 }), Math.min(15000, dl - Date.now() - 1000));
+      const out = await exlRace(env.AI.run(model, { image: [...bytes], prompt: "Who is in this photo? For every person say man, woman, boy or girl and what they wear. If there is no person, answer exactly: no people.", max_tokens: 80 }), Math.min(12000, dl - Date.now() - 1000));
       const d = String((out && (out.description || out.response)) || "").trim();
       if (d) return /\b(wom[ae]n|girls?|female|feminine|lad(y|ies)|bikini|swimsuit|bra|lingerie|nude|naked|topless|breasts?|child(ren)?|kids?|boys?|bab(y|ies)|toddlers?|teen(ager)?s?)\b/i.test(d) ? "bad" : "ok";
     } catch {}
@@ -5614,7 +5614,7 @@ async function studyImageOne(env, id, titleEn, st, t0, budget, cost, dl) {
     const left = dl - Date.now(); // لازم يخلص قبل ما يضل 13 ث (للرسم والفحص)
     if (left >= 19000) { const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], STUDY_IMG_SYS, user, 300, Date.now() - (EXL_TR_BUDGET - Math.min(left - 11000, 9000))); if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o.p === "string" && o.p.length > 8) pr = o; } else err = String(gm.err || "").slice(0, 80); }
   }
-  if (!pr) for (const model of [AI_TR_MODELS[0], AI_TR_MODELS[2]]) { // احتياط (بياخد neuron): Gemma 4 أول لأنو أرخص بكتير، بعدين Llama
+  if (!pr) for (const model of [AI_TR_MODELS[2], AI_TR_MODELS[0]]) { // احتياط (بياخد neuron): Llama 70B أول (سريع)، Gemma 4 بيفكّر وبيطوّل
     const lf = dl - Date.now(); if (lf < 18000) return { err: "time" + (err ? " " + err : "") }; // ما منصرف عالوصف إذا ما في وقت نرسم
     cost.n += model === AI_TR_MODELS[0] ? NEUR.gemma : NEUR.llama;
     try {
