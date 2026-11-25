@@ -1094,7 +1094,7 @@
       // السلاسة (25/11/2026): كل كتابة بتغيّر «بنية» الطبقات (عنصر جديد، شفافية بتنشال وبترجع، ترتيب z) بتخلّي المتصفح
       // يعيد بناء طبقات الصفحة كلها بنص الحركة (هاد كان التعليق). فـ: طبقات التعتيم بتنعمل كلها من الأول، الشفافية دايماً رقم،
       // وترتيب z بس للتأثيرات يلي الكروت فيها فوق بعض (stack/cover) وبس لما يتغيّر الكرت يلي بالنص.
-      const useDim = fx === "scale" || fx === "cover" || fx === "stack" || fx === "rise", useOp = fx === "fade" || fx === "stack", useZ = fx === "stack" || fx === "cover";
+      const useDim = fx === "scale" || fx === "cover" || fx === "stack" || fx === "rise", useOp = fx === "fade" || fx === "stack";
       if (useDim) for (let k = 0; k < its.length; k++) dimOf(k);
       const ops = new Array(its.length), dms = new Array(its.length), zs = new Array(its.length);
       const look = (vd, ad) => {
@@ -1131,11 +1131,13 @@
           ks.transform = L.tf;
           if (useOp) { const o = L.op.toFixed(3); if (ops[k] !== o) { ops[k] = o; ks.opacity = o; } }
           if (useDim) { const m = L.dm.toFixed(3); if (dms[k] !== m) { dms[k] = m; dims[k].style.opacity = m; } }
+          // مين فوق مين: متل ما كان من الأول (الأقرب للنص فوق)، بس منكتبو لما يتغيّر
+          const z = 20 - Math.round(ad * 2); if (zs[k] !== z) { zs[k] = z; its[k].style.zIndex = String(z); }
         }
-        if (useZ) for (let k = 0; k < its.length; k++) { const z = 20 - Math.min(12, Math.abs(k - c)); if (zs[k] !== z) { zs[k] = z; its[k].style.zIndex = String(z); } }
         for (let k = 0; k < its.length; k++) { const f = Math.abs(k - pos) > farLim; if (farS[k] !== f) { farS[k] = f; its[k].classList.toggle("far", f); } }
         const best = Math.max(0, Math.min(its.length - 1, c));
         if (best !== cur) {
+          prep(pos);
           if (its[cur]) its[cur].classList.remove("on");
           its[best].classList.add("on"); cur = best;
           const ci = +its[best].dataset.ci; dots.forEach((dd, k) => { dd.classList.toggle("on", k === ci); });
@@ -1165,10 +1167,22 @@
       const freeze = () => { if (frozen) return; frozen = true; left = Math.max(0, due - performance.now()); clearTimeout(timer); timer = 0; if (fa) fa.pause(); };
       const thaw = () => { if (!frozen || document.hidden || (!seen && !always)) return; frozen = false; due = performance.now() + left; if (fa && fa.playState === "paused") fa.play(); arm(); };
       const ease = (t) => 1 - Math.pow(1 - t, 3);
+      // صور الكروت الجاية: منحمّلها ومنفكّها قبل ما توصل للشاشة. الصورة «lazy» جوّا السلايد ما كانت تبلّش تتحمّل إلا لما
+      // تفوت عالشاشة (السلايد بيقصّ الأطراف)، فكان طرف الكرت يبيّن أبيض وبعدين تطلع الصورة فجأة. بس للسلايد الظاهر.
+      const preped = new Array(its.length);
+      const prep = (at) => {
+        if (!seen && !always) return;
+        const r = Math.ceil(farLim) + 2, a = Math.max(0, Math.floor(at) - r), b = Math.min(its.length - 1, Math.ceil(at) + r);
+        for (let k = a; k <= b; k++) {
+          if (preped[k]) continue; preped[k] = 1;
+          its[k].querySelectorAll("img").forEach((im) => { if (im.loading === "lazy") im.loading = "eager"; if (im.decode) im.decode().catch(() => {}); });
+        }
+      };
       const animTo = (target, ms) => {
         if (!loop) target = Math.max(0, Math.min(n - 1, target));
         if (reduce) { pos = target; wrap(); queue(); return; }
         anim = { from: pos, to: target, t: performance.now(), ms: ms || Math.min(650, 320 + Math.abs(target - pos) * 140) };
+        prep(target);
         const run = (now) => {
           if (!anim || dead) return;
           const k = Math.min(1, (now - anim.t) / anim.ms); pos = anim.from + (anim.to - anim.from) * ease(k); wrap(); paint();
@@ -1189,11 +1203,12 @@
         if (!drag || e.pointerId !== drag.id) return;
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (!drag.axis) {
-          // باللمس: الاتجاه بيتقرّر بـ touchmove (تحت)
-          if (e.pointerType === "touch") { if (!tax) return; drag.axis = tax; }
-          else { if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; drag.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y"; }
+          // الاتجاه من أول 6px (عرضي إذا مو عامودي بوضوح). الكرت بيلحق الإصبع من هاللحظة بلا ما يضيّع حركتو الأولى:
+          // قبل كان يرجّع نقطة البداية لمطرح الإصبع، فالإصبع يمشي 10-15px والكرت واقف (إحساس تقيل)
+          if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+          drag.axis = Math.abs(dx) >= Math.abs(dy) * 0.8 ? "x" : "y";
           if (drag.axis === "y") { drag = null; restart(); return; }
-          drag.x = e.clientX; drag.p0 = pos; car.classList.add("dragging"); try { tr.setPointerCapture(e.pointerId); } catch {}
+          drag.x += Math.sign(dx) * 6; drag.p0 = pos; car.classList.add("dragging"); try { tr.setPointerCapture(e.pointerId); } catch {}
           if (fa) fa.pause();
         }
         // السرعة من آخر 90ms من حركة الإصبع (بتوقيت الحدث نفسو، مو وقت ما وصلنا) → الرمية ما بتطلع عشوائية
@@ -1220,24 +1235,17 @@
         const vItems = (-vs * vpx) / step * 1000;            // items per second, in "next" direction
         let target = Math.round(pos + Math.max(-3, Math.min(3, vItems * 0.16)));
         if (target === Math.round(d.p0) && Math.abs(pos - d.p0) > 0.12) target += pos > d.p0 ? 1 : -1; // a short decisive swipe still moves one
-        // المدة بتطلع من سرعة الإصبع: الحركة بتكمّل بنفس السرعة يلي تركها فيها وبتهدى، بلا قفزة ولا وقفة
-        const dist = Math.abs(target - pos) * step, sp = Math.abs(vpx);
-        animTo(target, Math.min(650, Math.max(240, sp > 0.05 ? (3 * dist) / sp : 260 + dist * 0.6)));
+        // بعد ما يترك: بيكمّل لمكانو بسرعة وبنعومة. رمية سريعة = بنفس سرعة الإصبع (بلا قفزة)، سحبة بطيئة = بيلقط مكانو بأقل من ثلث ثانية
+        // (قبل كانت السحبة البطيئة تخلّيه يزحف لحد 0.65 ثانية، فالاستجابة تبيّن تقيلة)
+        const dn = Math.abs(target - pos), dist = dn * step, sp = Math.abs(vpx);
+        const base = Math.min(520, Math.max(260, dn * 260));
+        animTo(target, sp > 0.05 ? Math.max(180, Math.min(base, (3 * dist) / sp)) : base);
       };
       tr.addEventListener("pointerup", end); tr.addEventListener("pointercancel", end);
       // phones hand the touch to the picture under the finger first; moving it to the track fires a "lost capture" on that picture — ignore those
       tr.addEventListener("lostpointercapture", (e) => { if (e.target === tr) end(e); });
       tr.addEventListener("click", (e) => { if (Date.now() - dragged < 350 || Date.now() - tapped < 800) { e.preventDefault(); e.stopPropagation(); } }, true);
       tr.addEventListener("dragstart", (e) => e.preventDefault());
-      // اللمس: الاتجاه بيتقرّر من أول 5px. المسار عليه touch-action:pan-y، فالمتصفح ما بيحرّك الصفحة بسحبة عرضية لحالو؛
-      // المستمعين passive لحتى تمرير الصفحة لفوق وتحت فوق السلايد ما يستنى الجافاسكربت أبداً
-      let tsx = 0, tsy = 0, tax = null;
-      tr.addEventListener("touchstart", (e) => { const t = e.touches[0]; if (!t) return; tsx = t.clientX; tsy = t.clientY; tax = null; }, { passive: true });
-      tr.addEventListener("touchmove", (e) => {
-        if (tax || e.touches.length > 1) return;
-        const t = e.touches[0], dx = Math.abs(t.clientX - tsx), dy = Math.abs(t.clientY - tsy);
-        if (dx > 5 || dy > 5) tax = dx >= dy * 0.8 ? "x" : "y";
-      }, { passive: true });
       // trackpad / mouse wheel sideways
       let wheelT = 0;
       tr.addEventListener("wheel", (e) => {
@@ -1251,7 +1259,7 @@
       if (next) next.onclick = () => { hold = performance.now() + 2500; go(1); };
       dots.forEach((d, k) => (d.onclick = () => { hold = performance.now() + 2500; go(0, loop ? K + k : k); }));
       measure(); paint();
-      const io = "IntersectionObserver" in window && new IntersectionObserver(([en]) => { seen = en.isIntersecting; if (seen || always) thaw(); else freeze(); }, { threshold: 0.35 });
+      const io = "IntersectionObserver" in window && new IntersectionObserver(([en]) => { seen = en.isIntersecting; if (seen || always) { thaw(); prep(pos); } else freeze(); }, { threshold: 0.35 });
       if (io) io.observe(car);
       const ro = "ResizeObserver" in window && new ResizeObserver(() => { step = 0; dv.fill(undefined); queue(); });
       if (ro) ro.observe(tr);
@@ -2108,7 +2116,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=466" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=467" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -2134,12 +2142,12 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=466"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=467"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   // قسم التمرين الجديد (gym.js): المجسّم، التنين الأسود، آخر الدراسات، التغذية
   function gymLoad() {
     if (window.KOGym) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=466"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=467"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const gymH = () => ({ toast, auth: socAuth, sheet: openSheet, closeSheet });
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
