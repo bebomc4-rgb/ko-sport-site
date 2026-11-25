@@ -5491,15 +5491,23 @@ async function studySummaries(env, t0, budget, now, E, tool) {
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let bad = {}; try { bad = (await env.STORE.get("studies:bad", "json")) || {}; } catch {}
   const have = new Set(idx.map((x) => x[0]));
-  // أول شي منعيد كتابة الملخّصة بالطريقة القديمة (قلال، وظاهرين فوق)، وبعدين الناقص
-  const todo = idx.filter((x) => (x[3] || 1) < STUDY_PV && (bad[x[0]] || 0) < 3).map((x) => x[0]).concat(ids.filter((i) => !have.has(i) && (bad[i] || 0) < 3)).slice(0, 12);
+  // بالتناوب (25/11/2026، صاحب المتجر: «باقي الدراسات ليش ماظهرت»): وحدة ناقصة ووحدة منعيد كتابتها بالطريقة الجديدة،
+  // لحتى العدد يضل يطلع، وبنفس الوقت القديمة (يلي ظاهرة فوق) تتصلّح
+  const redo = idx.filter((x) => (x[3] || 1) < STUDY_PV && (bad[x[0]] || 0) < 3).map((x) => x[0]), fresh = ids.filter((i) => !have.has(i) && (bad[i] || 0) < 3), todo = [];
+  for (let i = 0; todo.length < 12 && (i < fresh.length || i < redo.length); i++) { if (i < fresh.length) todo.push(fresh[i]); if (i < redo.length && todo.length < 12) todo.push(redo[i]); }
   if (!todo.length) return { done: 1, added: 0, total: idx.length, queue: ids.length };
   const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${todo.join(",")}${tool}`, { signal: AbortSignal.timeout(12000) })).text();
-  const arts = xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id).filter((a) => { if (!a.title || a.abs.length < 200) { bad[a.id] = 9; return false; } return true; }); // بلا ملخّص كافي: ما منلخّصها
+  const pos = new Map(todo.map((id, i) => [id, i]));
+  const arts = xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id).filter((a) => { if (!a.title || a.abs.length < 200) { bad[a.id] = 9; return false; } return true; }) // بلا ملخّص كافي: ما منلخّصها
+    .sort((a, b) => (pos.has(a.id) ? pos.get(a.id) : 99) - (pos.has(b.id) ? pos.get(b.id) : 99)); // نفس ترتيب التناوب
   let added = 0, lastErr = "", stop = false;
   const one = async (a) => {
     const r = await studySum(env, a, t0, budget), o = r.o;
-    if (r.quota) { stop = true; await env.STORE.put("studies:wait", String(Date.now() + (/day|Daily/i.test(r.err) ? 3600e3 : 90e3))); lastErr = r.err; return; }
+    if (r.quota) { // حد Gemini: منستنى شوي. بس إذا خلص وقت الدفعة (مو حد)، منكمّل بالدفعة الجاية بلا انتظار
+      stop = true; lastErr = r.err;
+      if (!/ما ضل وقت|aborted|timeout/i.test(r.err)) await env.STORE.put("studies:wait", String(Date.now() + (/day|Daily/i.test(r.err) ? 3600e3 : 90e3)));
+      return;
+    }
     const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[؀-ۿ]/g) || []).length > 40 && !studyBad(o.t + " " + o.s + " " + (o.k || ""));
     if (!ok) { bad[a.id] = (bad[a.id] || 0) + 1; lastErr = "AI: " + r.err + " | " + JSON.stringify(o || {}).slice(0, 160); return; }
     const c = ["nutrition", "medicine", "training"].includes(o.c) ? o.c : "training";
