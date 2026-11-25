@@ -5471,7 +5471,7 @@ const studyIdxMerge = (a, b) => {
   for (const x of a.concat(b)) { const o = m.get(x[0]); if (!o || (x[3] || 1) >= (o[3] || 1)) m.set(x[0], x.slice(0, 4)); }
   return [...m.values()].sort((p, q) => String(q[1]).localeCompare(String(p[1])) || +q[0] - +p[0]);
 };
-async function studiesTick(env, budget) {
+async function studiesTick(env, budget, first) {
   const t0 = Date.now(), now = new Date().toISOString();
   budget = budget || 24000;
   await env.STORE.put("studies:at", now);
@@ -5481,7 +5481,7 @@ async function studiesTick(env, budget) {
   // الملخّصات (Gemini) والصور (Workers AI) سوا بنفس الوقت: كل وحدة عند شركة، فما بتأخّر وحدة التانية
   const [res, im] = await Promise.all([
     Date.now() < wait ? (async () => ({ wait: new Date(wait).toISOString(), err: String((await env.STORE.get("studies:err")) || "").slice(0, 300) }))() : studySummaries(env, t0, budget, now, E, tool),
-    studyImages(env, t0, budget, E, tool).catch((e) => ({ err: String((e && e.message) || e).slice(0, 160) })),
+    studyImages(env, t0, budget, E, tool, first).catch((e) => ({ err: String((e && e.message) || e).slice(0, 160) })),
   ]);
   if (im) res.img = im;
   return res;
@@ -5620,14 +5620,16 @@ async function studyImageOne(env, id, titleEn, st, t0, budget, cost) {
   }
   return { err, final: true };
 }
-async function studyImages(env, t0, budget, E, tool) {
+async function studyImages(env, t0, budget, E, tool, first) {
   if (!env.AI) return null;
   const dk = "studies:neur:" + new Date().toISOString().slice(0, 10);
   let used = +((await env.STORE.get(dk)) || 0); if (used >= STUDY_NEUR_DAY - NEUR.draw * 2) return { cap: used };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let dm = {}; try { dm = (await env.STORE.get("studies:imgs2", "json")) || {}; } catch {} // id → 1 (إلها صورة) أو -1 (ما زبطت)
   // من أحدث 10 ناقصين منختار 2 عشوائي، ومنحجزهن (simg:c:<id>) لحتى إذا اشتغلت دفعتين سوا ما يرسموا نفس الصورة مرتين (مصاري عالفاضي)
-  const top = idx.filter((x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV).slice(0, 10).sort(() => Math.random() - 0.5), pend = [];
+  const okP = (x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV, fs = new Set(String(first || "").split(",").filter((v) => /^\d{5,10}$/.test(v)).slice(0, 4));
+  // ?first=id,id: هدول أول (مثلاً لنشوف صورة دراسة معيّنة بسرعة). بعدين من أحدث 10 ناقصين عشوائي
+  const top = idx.filter((x) => okP(x) && fs.has(x[0])).concat(idx.filter((x) => okP(x) && !fs.has(x[0])).slice(0, 10).sort(() => Math.random() - 0.5)), pend = [];
   for (const x of top) { if (pend.length >= 2) break; if (await env.STORE.get("simg:c:" + x[0])) continue; await env.STORE.put("simg:c:" + x[0], "1", { expirationTtl: 300 }); pend.push(x); }
   if (!pend.length) return null;
   let arts = new Map();
@@ -5679,7 +5681,7 @@ async function studiesApi(request, env, ctx) {
   if (u.pathname === "/api/studies/tick") { // GitHub Actions بيدق هون كل شوي لحد ما تخلص كل دراسات السنة
     const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
     if (Date.now() - at < 15000) return json({ busy: 1 }, 200, { "cache-control": "no-store" });
-    let r; try { r = await studiesTick(env, 24000); } catch (e) { r = { error: String((e && e.message) || e).slice(0, 200) }; }
+    let r; try { r = await studiesTick(env, 24000, u.searchParams.get("first")); } catch (e) { r = { error: String((e && e.message) || e).slice(0, 200) }; }
     return json(r, 200, { "cache-control": "no-store" });
   }
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
