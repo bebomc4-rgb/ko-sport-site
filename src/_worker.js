@@ -5817,7 +5817,8 @@ async function studyPhotos(env, t0, budget) {
   };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let dm = {}, fl = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; fl = (await env.STORE.get("studies:ups2:fail2", "json")) || {}; } catch {} // dm: id → 1 (إلها صورة)؛ fl: كم مرة ما لقينا صورة
-  const todo = idx.filter((x) => !(dm[x[0]] > 0) && !((fl[x[0]] || 0) >= 3) && (x[3] || 1) >= 2).slice(0, 5); // أي دراسة انكتبت (مو لازم تستنى إعادة الكتابة، موضوعها ما بيتغيّر)
+  // من أحدث 20 ناقصين منختار 6 عشوائي، لحتى دراسة صعبة (ما لقينالها صورة بعد) ما تسدّ الدور كل مرة
+  const todo = idx.filter((x) => !(dm[x[0]] > 0) && !((fl[x[0]] || 0) >= 3) && (x[3] || 1) >= 2).slice(0, 20).sort(() => Math.random() - 0.5).slice(0, 6); // أي دراسة انكتبت (مو لازم تستنى إعادة الكتابة، موضوعها ما بيتغيّر)
   if (!todo.length) return null;
   const sts = (await Promise.all(todo.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
   const left = budget - (Date.now() - t0);
@@ -5865,13 +5866,13 @@ async function studyPhotos(env, t0, budget) {
     await env.STORE.put(ck, JSON.stringify(c), { expirationTtl: 60 * 86400 });
     return c;
   };
-  const tryQ = async (q, subj) => {
+  const tryQ = async (q, subj, st) => {
     q = norm(q); if (!q) return null;
     for (let round = 0; round < 2; round++) {
       const c = await cands(q, round === 1); if (!c) return null;
       const free = c.items.filter((x) => !used[x.id] && bad[x.id] !== -1 && !c.no.includes(x.id));
       for (const x of free.slice(0, 3)) {
-        if (dl - Date.now() < 9000 || rem <= 4 || waitSet) { na = true; err = err || (dl - Date.now() < 9000 ? "time" : "rate"); return null; } // ما ضل وقت: بالدفعة الجاية (مو فشل)
+        if (dl - Date.now() < 9000 || rem <= 4 || waitSet) { st.na = true; err = err || (dl - Date.now() < 9000 ? "time" : "rate"); return null; } // ما ضل وقت: بالدفعة الجاية (مو فشل)
         const b = await fetch(x.s, { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
         if (!b) continue;
         const cc = { n: 0 }, chk = await studyImgCheck(env, new Uint8Array(b), cc, dl, false, subj || q, noGem); // Gemini، وإذا خلص حدّو Gemma 4 (بيرفض النساء والولاد كمان)
@@ -5879,29 +5880,34 @@ async function studyPhotos(env, t0, budget) {
         if (chk === "ok") return x;
         if (chk === "bad") { bad[x.id] = -1; ch = true; }
         else if (chk === "nomatch") { c.no.push(x.id); await env.STORE.put("studies:ups2:q:" + q, JSON.stringify(c), { expirationTtl: 60 * 86400 }); }
-        else { na = true; return null; } // الفحص ما اشتغل: بالدفعة الجاية
+        else { st.na = true; return null; } // الفحص ما اشتغل: بالدفعة الجاية
       }
-      if (free.length > 3) { na = true; return null; } // لسّا في صور بالنتايج: منكمّل بالدفعة الجاية
+      if (free.length > 3) { st.na = true; return null; } // لسّا في صور بالنتايج: منكمّل بالدفعة الجاية
     }
     return null;
   };
   const dbg = [["subj", Date.now() - t0, need.length, noGem ? 1 : 0]]; // للفحص: وين راح الوقت
-  for (const s of sts) {
-    if (Date.now() - t0 > budget - 6000 || waitSet) { dbg.push(["stop", Date.now() - t0]); break; }
-    if (!map[s.id]) { dbg.push([s.id, "no subject"]); continue; }
+  let qi = 0;
+  const one = async (s) => {
+    if (Date.now() - t0 > budget - 6000 || waitSet) { dbg.push(["stop", Date.now() - t0]); return false; }
+    if (!map[s.id]) { dbg.push([s.id, "no subject"]); return true; }
     const m = map[s.id] && typeof map[s.id] === "object" ? map[s.id] : { q: map[s.id] };
-    na = false; let x = await tryQ(m.q, m.s);
-    if (!x && m.q2 && Date.now() - t0 < budget - 8000) x = await tryQ(m.q2, m.s);
-    dbg.push([s.id, String(m.q || "").slice(0, 24), x ? "ok" : na ? "na" : "miss", Date.now() - t0]);
-    if (!x) { if (!err && !na) { fl[s.id] = (fl[s.id] || 0) + 1; ch = true; } continue; } // 3 مرات ما في ولا صورة بتنفع: بتضل بالشكل الملوّن
-    if (x.dl) { const r = await ups(x.dl).catch(() => null); if (!r || !r.ok) { err = "download " + (r ? r.status : "x"); continue; } } // «download» (شرط Unsplash)
+    const st = { na: false }; let x = await tryQ(m.q, m.s, st);
+    if (!x && m.q2 && Date.now() - t0 < budget - 8000) x = await tryQ(m.q2, m.s, st);
+    dbg.push([s.id, String(m.q || "").slice(0, 24), x ? "ok" : st.na ? "na" : "miss", Date.now() - t0]);
+    if (!x) { if (!st.na) { fl[s.id] = (fl[s.id] || 0) + 1; ch = true; } return true; } // 3 مرات ما في ولا صورة بتنفع: بتضل بالشكل الملوّن
+    if (x.dl) { const r = await ups(x.dl).catch(() => null); if (!r || !r.ok) { err = "download " + (r ? r.status : "x"); return true; } } // «download» (شرط Unsplash)
+    if (used[x.id]) return true; // خط تاني أخدها هلق: بالدفعة الجاية
     used[x.id] = s.id; ch = true;
     let cur = null; try { cur = await env.STORE.get("study:" + s.id, "json"); } catch {}
-    if (!cur) continue;
+    if (!cur) return true;
     cur.ph = { u: x.u, n: x.n, p: x.p, l: x.l, v: 2 };
     await env.STORE.put("study:" + s.id, JSON.stringify(cur));
     dm[s.id] = 1; made++;
-  }
+    return true;
+  };
+  // 3 خطوط سوا (الفحص بياخد كم ثانية لكل صورة)
+  await Promise.all([0, 1, 2].map(async () => { while (qi < sts.length) { const s = sts[qi++]; if (!(await one(s))) break; } }));
   if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:fail2", JSON.stringify(fl)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
   await env.STORE.put("studies:ups:rl2", JSON.stringify(K));
   return { made, left: idx.filter((x) => !(dm[x[0]] > 0)).length, rem, keys: keys.length, dbg, ...(err ? { err: err.slice(0, 160) } : {}) };
