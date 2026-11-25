@@ -5505,7 +5505,7 @@ async function studySummaries(env, t0, budget, now, E, tool) {
     const r = await studySum(env, a, t0, budget), o = r.o;
     if (r.quota) { // حد Gemini: منستنى شوي. بس إذا خلص وقت الدفعة (مو حد)، منكمّل بالدفعة الجاية بلا انتظار
       stop = true; lastErr = r.err;
-      if (!/ما ضل وقت|aborted|timeout/i.test(r.err)) await env.STORE.put("studies:wait", String(Date.now() + (/day|Daily/i.test(r.err) ? 3600e3 : 90e3)));
+      if (!/ما ضل وقت|aborted|timeout|\b503\b|UNAVAILABLE|high demand|overload/i.test(r.err)) await env.STORE.put("studies:wait", String(Date.now() + (/day|Daily/i.test(r.err) ? 3600e3 : 90e3)));
       return;
     }
     const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[؀-ۿ]/g) || []).length > 40 && !studyBad(o.t + " " + o.s + " " + (o.k || ""));
@@ -5533,7 +5533,8 @@ async function studySummaries(env, t0, budget, now, E, tool) {
 // بلا مصاري زيادة (طلب صاحب المتجر): Cloudflare بيعطي 10,000 neuron ببلاش كل يوم، ومنخلّي الصور تاخد منهن 7,000 بس (الباقي لشغل
 // الموقع التاني). وصف الصورة وفحصها بـ Gemini (مجاني بمفاتيحو)، فالصورة الوحدة بتاخد من Cloudflare بس الرسم (~50 neuron) → ~140 صورة باليوم.
 // إذا Gemini ما ردّ، الاحتياط Llama/LLaVA (بياخدو neuron كمان) وبيتحسبو. الحساب التقريبي بـ studies:neur:<تاريخ>.
-const STUDY_NEUR_DAY = 7000, NEUR = { draw: 55, llama: 25, llava: 40 };
+// تقدير من فوق (أسعار Cloudflare): Gemma 4 بوصف الصورة ≤ 11، Llama 3.3 70B ≤ 58، الرسم 52، schnell ~58
+const STUDY_NEUR_DAY = 7000, NEUR = { draw: 55, schnell: 60, gemma: 15, llama: 60, llava: 40 };
 // الدفعة المدفوعة لمرة وحدة: 80,000 neuron × $0.011/1000 = $0.88 بالأكتر (FLUX.2 klein: 26.05 neuron لكل مربع 512×512،
 // والصورة 1024×448 = مربعين ≈ 52، ومنعدّها 55 لنضل تحت). لو بدك دفعة تانية، غيّر اسم المفتاح (boost2) بعد موافقة صاحب المتجر
 const STUDY_NEUR_BOOST = 80000, STUDY_BOOST_K = "studies:neur:boost1";
@@ -5558,16 +5559,18 @@ const aiImgBytes = async (out) => {
   return null;
 };
 const imgType = (u) => u[0] === 0xff && u[1] === 0xd8 ? "image/jpeg" : u[0] === 0x89 && u[1] === 0x50 ? "image/png" : u[0] === 0x52 && u[1] === 0x49 ? "image/webp" : "image/jpeg";
-async function studyDraw(env, prompt) {
-  let err = "";
+async function studyDraw(env, prompt, cost, dl) {
+  let err = ""; dl = dl || Date.now() + 30000;
   try { // FLUX.2 klein: صورة عريضة على قد مكانها (16:7)
     const form = new FormData(); form.append("prompt", prompt); form.append("width", "1024"); form.append("height", "448");
     const fr = new Response(form);
-    const out = await exlRace(env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", { multipart: { body: fr.body, contentType: fr.headers.get("content-type") } }), 25000);
+    const out = await exlRace(env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", { multipart: { body: fr.body, contentType: fr.headers.get("content-type") } }), Math.max(3000, Math.min(25000, dl - Date.now() - 6000)));
     const b = await aiImgBytes(out); if (b && b.length > 3000) return { b }; err = "klein: empty";
   } catch (e) { err = "klein: " + String((e && e.message) || e).slice(0, 80); }
+  if (dl - Date.now() < 10000) return { err: err + " | ما ضل وقت" };
   try {
-    const out = await exlRace(env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4 }), 20000);
+    if (cost) cost.n += NEUR.schnell; // الاحتياط كمان بيتحسب (1024×1024، 4 خطوات ≈ 58 neuron)
+    const out = await exlRace(env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4 }), Math.max(3000, Math.min(20000, dl - Date.now() - 6000)));
     const b = await aiImgBytes(out); if (b && b.length > 3000) return { b }; err += " | schnell: empty";
   } catch (e) { err += " | schnell: " + String((e && e.message) || e).slice(0, 80); }
   return { err };
@@ -5575,43 +5578,47 @@ async function studyDraw(env, prompt) {
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل
 const b64Of = (u) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل. cost.n = neuron انصرفت من Cloudflare
-async function studyImgCheck(env, bytes, cost) {
+async function studyImgCheck(env, bytes, cost, dl) {
+  dl = dl || Date.now() + 30000;
   const keys = gemKeys(env), q = 'Look carefully at this photo. Answer ONLY JSON: {"women":true|false,"children":true|false,"nudity":true|false}. women = any woman or girl, even small, partial or in the background. children = anyone under 18.';
   if (keys.length) {
     const data = b64Of(bytes), mime = imgType(bytes);
-    for (const model of ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash"]) for (let ki = 0; ki < keys.length; ki++) {
+    for (const model of ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash"]) keyLoop: for (let ki = 0; ki < keys.length; ki++) {
       const tag = model + "|" + ki; if ((GEM_OUT.get(tag) || 0) > Date.now()) continue;
+      const left = dl - Date.now(); if (left < 2500) return "na"; // ما ضل وقت بالدفعة
       try {
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { signal: AbortSignal.timeout(12000), method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": keys[ki] }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data } }, { text: q }] }], generationConfig: { temperature: 0, maxOutputTokens: 120, responseMimeType: "application/json" } }) });
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { signal: AbortSignal.timeout(Math.min(8000, left - 500)), method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": keys[ki] }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data } }, { text: q }] }], generationConfig: { temperature: 0, maxOutputTokens: 120, responseMimeType: "application/json" } }) });
         const t = await r.text();
-        if (!r.ok) { if (r.status === 429 || r.status === 401 || r.status === 403) GEM_OUT.set(tag, Date.now() + (/PerDay|per day/i.test(t) ? 3600e3 : 60e3)); if (r.status === 404) break; continue; }
+        if (!r.ok) { if (r.status === 429 || r.status === 401 || r.status === 403) { GEM_OUT.set(tag, Date.now() + (/PerDay|per day/i.test(t) ? 3600e3 : 60e3)); continue; } break keyLoop; } // 503/404...: الموديل يلي بعدو
         const j = JSON.parse(t), txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map((x) => x.text || "").join("");
         const o = exlAiMap(txt); if (o && typeof o.women === "boolean") return o.women || o.children || o.nudity ? "bad" : "ok";
-      } catch {}
+      } catch { break keyLoop; } // بطيء/انقطع: الموديل يلي بعدو
     }
   }
   for (const model of ["@cf/llava-hf/llava-1.5-7b-hf"]) { // احتياط بس (بياخد neuron)
+    if (dl - Date.now() < 6000) return "na";
     try {
       cost.n += NEUR.llava;
-      const out = await exlRace(env.AI.run(model, { image: [...bytes], prompt: "Who is in this photo? For every person say man, woman, boy or girl and what they wear. If there is no person, answer exactly: no people.", max_tokens: 80 }), 15000);
+      const out = await exlRace(env.AI.run(model, { image: [...bytes], prompt: "Who is in this photo? For every person say man, woman, boy or girl and what they wear. If there is no person, answer exactly: no people.", max_tokens: 80 }), Math.min(15000, dl - Date.now() - 1000));
       const d = String((out && (out.description || out.response)) || "").trim();
       if (d) return /\b(wom[ae]n|girls?|female|feminine|lad(y|ies)|bikini|swimsuit|bra|lingerie|nude|naked|topless|breasts?|child(ren)?|kids?|boys?|bab(y|ies)|toddlers?|teen(ager)?s?)\b/i.test(d) ? "bad" : "ok";
     } catch {}
   }
   return "na";
 }
-async function studyImageOne(env, id, titleEn, st, t0, budget, cost) {
+async function studyImageOne(env, id, titleEn, st, t0, budget, cost, dl) {
+  dl = dl || t0 + budget + 4000;
   const user = `Study title: ${titleEn || "-"}\nArabic headline: ${st.t || ""}\nTags: ${(st.tags || []).join(", ")}\nTopic area: ${st.c || "training"}`;
   let pr = null, err = "";
   if (gemKeys(env).length) { // Gemini (مجاني)
-    const left = budget - (Date.now() - t0);
-    if (left > 14000) { const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], STUDY_IMG_SYS, user, 300, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000))); if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o.p === "string" && o.p.length > 8) pr = o; } else err = String(gm.err || "").slice(0, 80); }
+    const left = dl - Date.now(); // لازم يخلص قبل ما يضل 13 ث (للرسم والفحص)
+    if (left >= 19000) { const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], STUDY_IMG_SYS, user, 300, Date.now() - (EXL_TR_BUDGET - Math.min(left - 11000, 9000))); if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o.p === "string" && o.p.length > 8) pr = o; } else err = String(gm.err || "").slice(0, 80); }
   }
-  if (!pr) for (const model of [AI_TR_MODELS[2], AI_TR_MODELS[0]]) { // احتياط Llama (بياخد neuron)
-    cost.n += NEUR.llama;
-    if (Date.now() - t0 > budget - 7000) return { err: "time" };
+  if (!pr) for (const model of [AI_TR_MODELS[0], AI_TR_MODELS[2]]) { // احتياط (بياخد neuron): Gemma 4 أول لأنو أرخص بكتير، بعدين Llama
+    const lf = dl - Date.now(); if (lf < 18000) return { err: "time" + (err ? " " + err : "") }; // ما منصرف عالوصف إذا ما في وقت نرسم
+    cost.n += model === AI_TR_MODELS[0] ? NEUR.gemma : NEUR.llama;
     try {
-      const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: STUDY_IMG_SYS }, { role: "user", content: user }], max_tokens: 220, temperature: 0.4 }), 9000);
+      const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: STUDY_IMG_SYS }, { role: "user", content: user }], max_tokens: 220, temperature: 0.4 }), Math.min(9000, lf - 12000));
       const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out);
       pr = typeof raw === "object" ? raw : exlAiMap(String(raw || ""));
       if (pr && typeof pr.p === "string" && pr.p.length > 8) break;
@@ -5621,13 +5628,13 @@ async function studyImageOne(env, id, titleEn, st, t0, budget, cost) {
   if (!pr) return { err: "prompt " + err };
   const clean = String(pr.p).replace(/\b(wom[ae]n|girls?|female|lady|ladies|child(ren)?|kids?|boys?)\b/gi, "").slice(0, 300);
   for (let k = 0; k < 2; k++) {
-    if (Date.now() - t0 > budget - 6000) return { err: "time" };
+    if (dl - Date.now() < 12000) return { err: "time" }; // الرسم (~4 ث) والفحص لازم يلحقو قبل آخر الدفعة
     const objOnly = k === 1 && pr.people !== "none" ? true : pr.people === "none";
     const prompt = `${clean}${objOnly ? ". Objects only, absolutely no people" : ""}. Realistic professional sports photograph, close-up, subject fills the frame, sharp focus, shallow depth of field, natural light, no text, no logos, no women, no girls, no children.`;
     cost.n += NEUR.draw;
-    const d = await studyDraw(env, prompt);
+    const d = await studyDraw(env, prompt, cost, dl);
     if (!d.b) return { err: "draw " + d.err };
-    const chk = await studyImgCheck(env, d.b, cost);
+    const chk = await studyImgCheck(env, d.b, cost, dl);
     if (chk === "ok" || (chk === "na" && objOnly)) { await env.STORE.put("img:" + STUDY_IMGV + id, d.b, { metadata: { type: imgType(d.b) } }); return { ok: 1 }; }
     err = "check " + chk;
   }
@@ -5647,7 +5654,11 @@ async function studyImages(env, t0, budget, E, tool, first) {
   let dm = {}; try { dm = (await env.STORE.get(STUDY_IMGS, "json")) || {}; } catch {} // id → 1 (إلها صورة) أو -1 (ما زبطت)
   // من أحدث الناقصين منختار عشوائي، ومنحجزهن (simg:c:<id>) لحتى إذا اشتغلت دفعتين سوا ما يرسموا نفس الصورة مرتين (مصاري عالفاضي)
   // وقت الدفعة المدفوعة: خطّين سوا (4 صور بالدفعة بدل 2)
-  const lanes = boostLeft > 0 ? 2 : 1, per = lanes * 2;
+  // بس لما تخلص الملخّصات (هي أهم، وكلن عم ياخدو من نفس Gemini)؛ قبلها خط واحد
+  let q = null, bad = {}; try { q = await env.STORE.get("studies:q", "json"); bad = (await env.STORE.get("studies:bad", "json")) || {}; } catch {}
+  const have = new Set(idx.map((x) => x[0]));
+  const sumBusy = idx.some((x) => (x[3] || 1) < STUDY_PV && (bad[x[0]] || 0) < 3) || ((q && q.ids) || []).some((i) => !have.has(i) && (bad[i] || 0) < 3);
+  const lanes = boostLeft > 0 && !sumBusy ? 2 : 1, per = lanes * 2;
   const okP = (x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV, fs = new Set(String(first || "").split(",").filter((v) => /^\d{5,10}$/.test(v)).slice(0, 4));
   // ?first=id,id: هدول أول (مثلاً لنشوف صورة دراسة معيّنة بسرعة). بعدين من أحدث الناقصين عشوائي
   const top = idx.filter((x) => okP(x) && fs.has(x[0])).concat(idx.filter((x) => okP(x) && !fs.has(x[0])).slice(0, per * 4).sort(() => Math.random() - 0.5)), pend = [];
@@ -5659,14 +5670,14 @@ async function studyImages(env, t0, budget, E, tool, first) {
   const one = async (x) => {
     let st = null; try { st = await env.STORE.get("study:" + x[0], "json"); } catch {}
     if (!st) { done[x[0]] = -1; return; }
-    const cost = { n: 0 }, r = await studyImageOne(env, x[0], (arts.get(x[0]) || {}).title || "", st, t0, budget, cost);
+    const cost = { n: 0 }, r = await studyImageOne(env, x[0], (arts.get(x[0]) || {}).title || "", st, t0, budget, cost, t0 + budget + 4000);
     used += cost.n;
     if (r.ok) { made++; done[x[0]] = 1; st.im = STUDY_IMGV + x[0]; await env.STORE.put("study:" + x[0], JSON.stringify(st)); }
     else { err = r.err || ""; if (r.final) done[x[0]] = -1; }
   };
   await Promise.all(Array.from({ length: lanes }, async () => {
     while (qi < pend.length) {
-      if (Date.now() - t0 > budget - 8000 || used >= cap - NEUR.draw * 2) break;
+      if (t0 + budget + 4000 - Date.now() < 18000 || used >= cap - NEUR.draw * 3) break; // ما في وقت لصورة كاملة، أو قرّبنا عالحد
       const x = pend[qi++]; tried.add(x[0]); await one(x);
     }
   }));
