@@ -5416,6 +5416,7 @@ const studyBad = (t) => /[\u00C0-\u024F\u1E00-\u1EFF\u0400-\u04FF\u0E00-\u0E7F\u
 // studies:q = أرقام PubMed من 2026 لليوم (بيتجدّد كل ساعة)، studies:bad = {id: محاولات فاشلة} (بعد 3 بنتركها)،
 // studies:wait = إذا Gemini قال خلص الحد (429) منستنى وبنكمّل بعدين لحالنا. ممنوع تدوير مفاتيح أو حسابات.
 const STUDY_FROM = "2026/01/01";
+const STUDY_PV = 2; // نسخة طريقة الكتابة: 2 = العنوان جملة «إذا عملت هيك بيصير هيك» (25/11/2026). الأقدم بينعاد تلخيصو بعد ما يخلص الناقص
 const STUDY_GEM = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
 async function studyQueue(env, E, tool) {
   let q = null; try { q = await env.STORE.get("studies:q", "json"); } catch {}
@@ -5427,7 +5428,7 @@ async function studyQueue(env, E, tool) {
   return ids;
 }
 const STUDY_SYS = `You are a Syrian Arabic sports-science writer for a gym community page. Summarize ONE research abstract into clear, accurate Arabic that a gym-goer understands (simple Syrian-friendly Arabic, correct spelling, no slang that hurts clarity). Write in your own words; never copy sentences. Keep every number that matters (participants, doses, durations, % changes) exactly. Never exaggerate or add claims not in the abstract; say clearly when results are small, mixed, or only in a specific group. Write ONLY in Arabic script (digits and standard abbreviations like VO2max are fine); never mix in English, Vietnamese or any other language. The headline must state the finding modestly (e.g. «ممكن يحسّن», «تحسّن بسيط») when the effect is small or uncertain.
-Return ONLY JSON: {"t":"Arabic headline 45-90 chars that names WHAT was tested and WHAT happened, e.g. «مكمّل النترات بيحسّن أداء الرياضات الجماعية شوي» (never a vague headline like «تحسّن بسيط في الأداء»)","s":"Arabic summary 3-5 short sentences: who was studied, what was done, what was found","k":"one Arabic sentence: the practical takeaway for training or nutrition, cautious","c":"nutrition|medicine|training","tags":["2-3 short Arabic tags"]}`;
+Return ONLY JSON: {"t":"Arabic headline 50-110 chars written as a plain cause → effect sentence a gym-goer understands instantly without reading more: what people did or took, and what happened to them. Use «إذا ... بـ ...» or a direct statement. Examples: «إذا أخدت كرياتين مع تمارين المقاومة، قوتك وعضلاتك بيزيدوا شوي أكتر»، «التنشيط الصبح بالأوزان ممكن يسرّعك بتمرين بعد الظهر»، «حبس الدم مع نقص الأكسجين ما بيحسّن السبرينت». Use «ممكن» when the evidence is weak or the effect small; if nothing changed, say so clearly. Never a vague or academic headline","s":"Arabic summary 3-5 short sentences: who was studied, what was done, what was found","k":"one Arabic sentence: the practical takeaway for training or nutrition, cautious","c":"nutrition|medicine|training","tags":["2-3 short Arabic tags"]}`;
 async function studySum(env, a, t0, budget) {
   const user = `Journal: ${a.j}\nType: ${a.type}\nTitle: ${a.title}\nAbstract:\n${a.abs}`;
   let o = null, err = "", quota = false, model = "";
@@ -5464,7 +5465,8 @@ async function studiesTick(env, budget) {
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let bad = {}; try { bad = (await env.STORE.get("studies:bad", "json")) || {}; } catch {}
   const have = new Set(idx.map((x) => x[0]));
-  const todo = ids.filter((i) => !have.has(i) && (bad[i] || 0) < 3).slice(0, 12);
+  // أول شي منعيد كتابة الملخّصة بالطريقة القديمة (قلال، وظاهرين فوق)، وبعدين الناقص
+  const todo = idx.filter((x) => (x[3] || 1) < STUDY_PV && (bad[x[0]] || 0) < 3).map((x) => x[0]).concat(ids.filter((i) => !have.has(i) && (bad[i] || 0) < 3)).slice(0, 12);
   if (!todo.length) return { done: 1, added: 0, total: idx.length, queue: ids.length };
   const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${todo.join(",")}${tool}`, { signal: AbortSignal.timeout(12000) })).text();
   const arts = xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id).filter((a) => { if (!a.title || a.abs.length < 200) { bad[a.id] = 9; return false; } return true; }); // بلا ملخّص كافي: ما منلخّصها
@@ -5476,14 +5478,14 @@ async function studiesTick(env, budget) {
     if (!ok) { bad[a.id] = (bad[a.id] || 0) + 1; lastErr = "AI: " + r.err + " | " + JSON.stringify(o || {}).slice(0, 160); return; }
     const c = ["nutrition", "medicine", "training"].includes(o.c) ? o.c : "training";
     await env.STORE.put("study:" + a.id, JSON.stringify({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c, tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, m: r.model, at: now }));
-    idx.push([a.id, a.d, c]); have.add(a.id); delete bad[a.id]; added++;
+    idx = idx.filter((x) => x[0] !== a.id); idx.push([a.id, a.d, c, STUDY_PV]); have.add(a.id); delete bad[a.id]; added++;
   };
   for (let i = 0; i < arts.length && !stop; i += 2) { // اتنين سوا (حد Gemini بالدقيقة)
     if (Date.now() - t0 > budget - 9000) break;
     await Promise.all(arts.slice(i, i + 2).map(one));
   }
   // لازم نقرا الفهرس من جديد قبل الكتابة (إذا اشتغلت دفعتين سوا ما منضيّع شي)
-  if (added) { let cur = []; try { cur = (await env.STORE.get("studies:idx", "json")) || []; } catch {} const m = new Map(); for (const x of cur.concat(idx)) m.set(x[0], x); idx = [...m.values()].sort((p, q) => String(q[1]).localeCompare(String(p[1])) || +q[0] - +p[0]); await env.STORE.put("studies:idx", JSON.stringify(idx)); }
+  if (added) { let cur = []; try { cur = (await env.STORE.get("studies:idx", "json")) || []; } catch {} const m = new Map(); for (const x of cur.concat(idx)) { const o = m.get(x[0]); if (!o || (x[3] || 1) >= (o[3] || 1)) m.set(x[0], x); } idx = [...m.values()].sort((p, q) => String(q[1]).localeCompare(String(p[1])) || +q[0] - +p[0]); await env.STORE.put("studies:idx", JSON.stringify(idx)); }
   await env.STORE.put("studies:bad", JSON.stringify(bad));
   if (lastErr) await env.STORE.put("studies:err", lastErr.slice(0, 400)).catch(() => {});
   return { added, total: idx.length, queue: ids.length, ...(lastErr ? { err: lastErr.slice(0, 200) } : {}) };
