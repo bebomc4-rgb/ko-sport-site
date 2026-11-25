@@ -5634,9 +5634,10 @@ async function studyImgCheck(env, bytes, cost, dl, noPaid, subject) {
     try {
       cost.n += NEUR.gemma;
       const out = await exlRace(env.AI.run(AI_TR_MODELS[0], { messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: "data:" + imgType(bytes) + ";base64," + b64Of(bytes) } }, { type: "text", text: q }] }], max_tokens: 600, temperature: 0 }), Math.min(15000, dl - Date.now() - 1000));
-      const o = exlAiMap(exlAiText(out));
+      const tx = exlAiText(out), o = exlAiMap(tx);
       if (o && typeof o.women === "boolean") return o.women || o.children || o.nudity ? "bad" : subject && o.match === false ? "nomatch" : "ok";
-    } catch {}
+      cost.e = "gemma: " + String(tx || JSON.stringify(out || "")).slice(0, 120);
+    } catch (e) { cost.e = "gemma: " + String((e && e.message) || e).slice(0, 120); }
   }
   for (const model of ["@cf/llava-hf/llava-1.5-7b-hf"]) { // احتياط بس (بياخد neuron)
     if (noPaid || dl - Date.now() < 5000) return "na"; // صور Unsplash: Gemini بس (ببلاش)
@@ -5863,7 +5864,8 @@ async function studyPhotos(env, t0, budget) {
         if (dl - Date.now() < 9000 || rem <= 4 || waitSet) return null;
         const b = await fetch(x.s, { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
         if (!b) continue;
-        const chk = await studyImgCheck(env, new Uint8Array(b), { n: 0 }, dl, false, subj || q); // Gemini، وإذا خلص حدّو LLaVA (بيرفض النساء والولاد كمان)
+        const cc = { n: 0 }, chk = await studyImgCheck(env, new Uint8Array(b), cc, dl, false, subj || q); // Gemini، وإذا خلص حدّو Gemma 4 (بيرفض النساء والولاد كمان)
+        if (chk === "na") err = err || ("check " + (cc.e || "na"));
         if (chk === "ok") return x;
         if (chk === "bad") { bad[x.id] = -1; ch = true; }
         else if (chk === "nomatch") { c.no.push(x.id); await env.STORE.put("studies:ups2:q:" + q, JSON.stringify(c), { expirationTtl: 60 * 86400 }); }
