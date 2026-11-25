@@ -1,20 +1,20 @@
-name: studies (hourly)
-# «آخر الدراسات»: كل دراسات 2026 لليوم + الجديد. كل ساعة بيشتغل 55 دقيقة وبيدق /api/studies/tick كل 20 ثانية:
-# كل دقة بتلخّص كم دراسة بـ Gemini. إذا Gemini قال خلص الحد، الموقع بيستنى لحالو. لما تخلص كل الدراسات، الدقة بترجع فاضية.
+name: studies (every 10 min)
+# «آخر الدراسات»: كل دراسات 2026 لليوم + الجديد + صورة لكل دراسة. كل 10 دقايق بيشتغل 9 دقايق وبيدق /api/studies/tick كل 20 ثانية.
+# (قبل كان كل ساعة، ومؤقّت GitHub أحياناً ما بيشتغل، فوقفت الدراسات ساعة ونص. هلق كمان كل زيارة للموقع بتحرّكها.)
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch:
 concurrency: { group: studies, cancel-in-progress: false }
 jobs:
   tick:
     runs-on: ubuntu-latest
-    timeout-minutes: 58
+    timeout-minutes: 11
     steps:
       - run: |
-          end=$(( $(date +%s) + 55*60 ))
+          end=$(( $(date +%s) + 9*60 ))
           while [ $(date +%s) -lt $end ]; do
             r=$(curl -sS -m 40 "https://ko-sport.online/api/studies/tick?t=$(date +%s)" || true)
-            echo "$(date +%H:%M:%S) $r" | head -c 300; echo
-            case "$r" in *'"done":1'*) sleep 300;; *wait*) sleep 60;; *) sleep 15;; esac
+            echo "$(date +%H:%M:%S) $r" | head -c 400; echo
+            case "$r" in *'"done":1'*'"img":{"cap"'*|*'"done":1'*) case "$r" in *'"made"'*) sleep 15;; *) sleep 120;; esac;; *busy*) sleep 10;; *) sleep 15;; esac
           done

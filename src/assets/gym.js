@@ -142,13 +142,19 @@
   var CAT = { nutrition: ["🥗", "تغذية رياضية"], medicine: ["🩺", "طب رياضي"], training: ["🏋️", "تدريب وأداء"] };
   var MON = ["كانون التاني", "شباط", "آذار", "نيسان", "أيار", "حزيران", "تموز", "آب", "أيلول", "تشرين الأول", "تشرين التاني", "كانون الأول"];
   function dAr(d) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ""); return m ? (+m[3] + " " + MON[+m[2] - 1] + " " + m[1]) : ""; }
+  // صورة الدراسة: إذا إلها صورة (عن موضوعها، بتنعمل لحالها بالسيرفر) منحطها، وإلا الشكل الملوّن مع الإيموجي
   function banner(s) {
     var c = CAT[s.c] || CAT.training, k = (s.id | 0) % 4;
-    return '<div class="ks-img ks-' + esc(s.c) + ' ks-v' + k + '"><span class="ks-emo">' + c[0] + '</span><span class="ks-bt">' + esc(s.type || "") + "</span><b>" + esc((s.tags || [])[0] || c[1]) + "</b></div>";
+    var ph = /^s\d+$/.test(s.im || "") ? '<img class="ks-ph" src="/imgs/720/' + s.im + '" srcset="/imgs/480/' + s.im + ' 480w, /imgs/720/' + s.im + ' 720w, /imgs/1080/' + s.im + ' 1080w" sizes="(max-width:640px) 100vw, 640px" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : "";
+    return '<div class="ks-img ks-' + esc(s.c) + ' ks-v' + k + (ph ? " has-ph" : "") + '">' + ph + '<span class="ks-emo">' + c[0] + '</span><span class="ks-bt">' + esc(s.type || "") + "</span><b>" + esc((s.tags || [])[0] || c[1]) + "</b></div>";
+  }
+  // الدائرة جنب اسم المجلة: لوغو المجلة (إذا ما تحمّل، بيضل الإيموجي)
+  function avatar(s, c) {
+    return '<span class="ks-av ks-' + esc(s.c) + '">' + c[0] + (s.lg ? '<img src="/api/studies/logo?d=' + encodeURIComponent(s.lg) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "</span>";
   }
   function post(s) {
     var c = CAT[s.c] || CAT.training, link = s.doi ? "https://doi.org/" + encodeURI(s.doi) : "https://pubmed.ncbi.nlm.nih.gov/" + encodeURIComponent(s.id) + "/";
-    return '<article class="ks-post"><header class="ks-h"><span class="ks-av ks-' + esc(s.c) + '">' + c[0] + '</span><div><b dir="ltr">' + esc(s.j || s.ja) + "</b><small>" + esc(dAr(s.d)) + " · " + esc(c[1]) + "</small></div></header>" +
+    return '<article class="ks-post"><header class="ks-h">' + avatar(s, c) + '<div><b dir="ltr">' + esc(s.j || s.ja) + "</b><small>" + esc(dAr(s.d)) + " · " + esc(c[1]) + "</small></div></header>" +
       '<h3 class="ks-t">' + esc(s.t) + "</h3>" + banner(s) + '<p class="ks-s">' + esc(s.s) + "</p>" +
       (s.k ? '<div class="ks-k"><b>💡 الخلاصة</b>' + esc(s.k) + "</div>" : "") +
       '<footer class="ks-f"><span class="ks-tags">' + (s.tags || []).map(function (t) { return "<i>#" + esc(String(t).replace(/\s+/g, "_")) + "</i>"; }).join("") + '</span><a href="' + esc(link) + '" target="_blank" rel="noopener">المصدر ↗</a></footer></article>';

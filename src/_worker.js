@@ -5465,14 +5465,31 @@ async function studySum(env, a, t0, budget) {
   }
   return { o, err, quota, model };
 }
+// الفهرس: [id، تاريخ، قسم، نسخة الكتابة، صورة (1 = إلها صورة، -1 = ما زبطت)]. الدمج بياخد الأحدث من كل حقل
+const studyIdxMerge = (a, b) => {
+  const m = new Map();
+  for (const x of a.concat(b)) {
+    const o = m.get(x[0]); if (!o) { m.set(x[0], x.slice()); continue; }
+    const pv = Math.max(o[3] || 1, x[3] || 1), im = x[4] || o[4] || 0, base = (x[3] || 1) >= (o[3] || 1) ? x.slice() : o.slice();
+    base[3] = pv; base[4] = im; m.set(x[0], base);
+  }
+  return [...m.values()].sort((p, q) => String(q[1]).localeCompare(String(p[1])) || +q[0] - +p[0]);
+};
 async function studiesTick(env, budget) {
   const t0 = Date.now(), now = new Date().toISOString();
   budget = budget || 24000;
   await env.STORE.put("studies:at", now);
-  const wait = +((await env.STORE.get("studies:wait")) || 0);
-  if (Date.now() < wait) return { wait: new Date(wait).toISOString(), err: String((await env.STORE.get("studies:err")) || "").slice(0, 300) };
   if (await env.STORE.get("studies:list")) { await env.STORE.delete("studies:list"); await env.STORE.delete("studies:seen"); } // القديم (قبل Gemini) انمسح، وبيرجع ينعمل
   const E = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/", tool = "&tool=kosport&email=info%40ko-sport.online";
+  const wait = +((await env.STORE.get("studies:wait")) || 0);
+  let res;
+  if (Date.now() < wait) res = { wait: new Date(wait).toISOString(), err: String((await env.STORE.get("studies:err")) || "").slice(0, 300) };
+  else res = await studySummaries(env, t0, budget, now, E, tool);
+  // صور الدراسات بالوقت يلي ضل (ومنها كل الوقت لما Gemini عم يستنى حدّو)
+  if (Date.now() - t0 < budget - 9000) { try { const im = await studyImages(env, t0, budget, E, tool); if (im) res.img = im; } catch (e) { res.img = { err: String((e && e.message) || e).slice(0, 160) }; } }
+  return res;
+}
+async function studySummaries(env, t0, budget, now, E, tool) {
   const ids = await studyQueue(env, E, tool);
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let bad = {}; try { bad = (await env.STORE.get("studies:bad", "json")) || {}; } catch {}
@@ -5486,24 +5503,154 @@ async function studiesTick(env, budget) {
   const one = async (a) => {
     const r = await studySum(env, a, t0, budget), o = r.o;
     if (r.quota) { stop = true; await env.STORE.put("studies:wait", String(Date.now() + (/day|Daily/i.test(r.err) ? 3600e3 : 90e3))); lastErr = r.err; return; }
-    const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[\u0600-\u06FF]/g) || []).length > 40 && !studyBad(o.t + " " + o.s + " " + (o.k || ""));
+    const ok = o && typeof o.t === "string" && typeof o.s === "string" && (o.s.match(/[؀-ۿ]/g) || []).length > 40 && !studyBad(o.t + " " + o.s + " " + (o.k || ""));
     if (!ok) { bad[a.id] = (bad[a.id] || 0) + 1; lastErr = "AI: " + r.err + " | " + JSON.stringify(o || {}).slice(0, 160); return; }
     const c = ["nutrition", "medicine", "training"].includes(o.c) ? o.c : "training";
-    await env.STORE.put("study:" + a.id, JSON.stringify({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c, tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, m: r.model, at: now }));
-    idx = idx.filter((x) => x[0] !== a.id); idx.push([a.id, a.d, c, STUDY_PV]); have.add(a.id); delete bad[a.id]; added++;
+    let prev = null; try { prev = await env.STORE.get("study:" + a.id, "json"); } catch {}
+    await env.STORE.put("study:" + a.id, JSON.stringify({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c, tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, m: r.model, at: now, ...(prev && prev.im ? { im: prev.im } : {}) }));
+    const old = idx.find((x) => x[0] === a.id);
+    idx = idx.filter((x) => x[0] !== a.id); idx.push([a.id, a.d, c, STUDY_PV, old ? old[4] || 0 : 0]); have.add(a.id); delete bad[a.id]; added++;
   };
   for (let i = 0; i < arts.length && !stop; i += 2) { // اتنين سوا (حد Gemini بالدقيقة)
     if (Date.now() - t0 > budget - 9000) break;
     await Promise.all(arts.slice(i, i + 2).map(one));
   }
   // لازم نقرا الفهرس من جديد قبل الكتابة (إذا اشتغلت دفعتين سوا ما منضيّع شي)
-  if (added) { let cur = []; try { cur = (await env.STORE.get("studies:idx", "json")) || []; } catch {} const m = new Map(); for (const x of cur.concat(idx)) { const o = m.get(x[0]); if (!o || (x[3] || 1) >= (o[3] || 1)) m.set(x[0], x); } idx = [...m.values()].sort((p, q) => String(q[1]).localeCompare(String(p[1])) || +q[0] - +p[0]); await env.STORE.put("studies:idx", JSON.stringify(idx)); }
+  if (added) { let cur = []; try { cur = (await env.STORE.get("studies:idx", "json")) || []; } catch {} idx = studyIdxMerge(cur, idx); await env.STORE.put("studies:idx", JSON.stringify(idx)); }
   await env.STORE.put("studies:bad", JSON.stringify(bad));
   if (lastErr) await env.STORE.put("studies:err", lastErr.slice(0, 400)).catch(() => {});
   return { added, total: idx.length, queue: ids.length, ...(lastErr ? { err: lastErr.slice(0, 200) } : {}) };
 }
+
+// ---------- صورة لكل دراسة (طلب صاحب المتجر 25/11/2026) ----------
+// كرياتين → صورة كرياتين، شوكولا → شوكولا، سباحة → سبّاح. Llama بيكتب وصف الصورة بالإنكليزي من عنوان الدراسة، FLUX بيرسمها،
+// وLLaVA بيفحصها: إذا فيها امرأة أو بنت أو ولد أو عُري، بنعيد الرسم بلا ناس، وإذا لسّا، الدراسة بتضل بلا صورة (الشكل القديم).
+// الصورة بـ KV `img:s<id>` متل صور المنتجات (وبتتصغّر بـ /imgs/<عرض>/s<id>). حد يومي لحتى ما تطلع مصاري زيادة (Workers AI).
+const STUDY_IMG_DAY = 600;
+const STUDY_IMG_SYS = `You write ONE short English prompt for a realistic photo that illustrates a sports-science study on a gym community page.
+- Show the concrete subject of the study: the supplement, food, drink, equipment, exercise or sport (for example: creatine powder in a scoop on a gym bench; dark chocolate pieces; an indoor swimming pool with lane ropes; a barbell on a squat rack; running shoes on a track).
+- Prefer objects, food, equipment and places WITHOUT people.
+- Only if a person is truly needed to show the sport, show exactly ONE adult MAN in sportswear (a swimmer wears swim trunks, cap and goggles), seen from the side or behind, face not in focus.
+- NEVER women, girls, children, babies, nudity, underwear, hospitals, surgery, blood, needles, pills close-up, text, numbers, logos, brand names or labels.
+Return ONLY JSON: {"p":"the photo description, max 40 words","people":"none|man"}`;
+const aiImgBytes = async (out) => {
+  if (!out) return null;
+  const b64 = typeof out === "string" ? out : typeof out.image === "string" ? out.image : (out.result && typeof out.result.image === "string" ? out.result.image : "");
+  if (b64) { const t = atob(b64.replace(/^data:[^,]+,/, "")); const u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; }
+  if (typeof ReadableStream !== "undefined" && out instanceof ReadableStream) return new Uint8Array(await new Response(out).arrayBuffer());
+  if (out instanceof ArrayBuffer) return new Uint8Array(out);
+  if (out instanceof Uint8Array) return out;
+  return null;
+};
+const imgType = (u) => u[0] === 0xff && u[1] === 0xd8 ? "image/jpeg" : u[0] === 0x89 && u[1] === 0x50 ? "image/png" : u[0] === 0x52 && u[1] === 0x49 ? "image/webp" : "image/jpeg";
+async function studyDraw(env, prompt) {
+  let err = "";
+  try { // FLUX.2 klein: صورة عريضة على قد مكانها (16:7)
+    const form = new FormData(); form.append("prompt", prompt); form.append("width", "1024"); form.append("height", "448");
+    const fr = new Response(form);
+    const out = await exlRace(env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", { multipart: { body: fr.body, contentType: fr.headers.get("content-type") } }), 25000);
+    const b = await aiImgBytes(out); if (b && b.length > 3000) return { b }; err = "klein: empty";
+  } catch (e) { err = "klein: " + String((e && e.message) || e).slice(0, 80); }
+  try {
+    const out = await exlRace(env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4 }), 20000);
+    const b = await aiImgBytes(out); if (b && b.length > 3000) return { b }; err += " | schnell: empty";
+  } catch (e) { err += " | schnell: " + String((e && e.message) || e).slice(0, 80); }
+  return { err };
+}
+// "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل
+async function studyImgCheck(env, bytes) {
+  for (const model of ["@cf/llava-hf/llava-1.5-7b-hf", "@cf/unum/uform-gen2-qwen-500m"]) {
+    try {
+      const out = await exlRace(env.AI.run(model, { image: [...bytes], prompt: "Who is in this photo? For every person say man, woman, boy or girl and what they wear. If there is no person, answer exactly: no people.", max_tokens: 80 }), 15000);
+      const d = String((out && (out.description || out.response)) || "").trim();
+      if (!d) continue;
+      return /\b(wom[ae]n|girls?|female|feminine|lad(y|ies)|bikini|swimsuit|bra|lingerie|nude|naked|topless|breasts?|child(ren)?|kids?|boys?|bab(y|ies)|toddlers?|teen(ager)?s?)\b/i.test(d) ? "bad" : "ok";
+    } catch {}
+  }
+  return "na";
+}
+async function studyImageOne(env, id, titleEn, st, t0, budget) {
+  const user = `Study title: ${titleEn || "-"}\nArabic headline: ${st.t || ""}\nTags: ${(st.tags || []).join(", ")}\nTopic area: ${st.c || "training"}`;
+  let pr = null, err = "";
+  for (const model of [AI_TR_MODELS[2], AI_TR_MODELS[0]]) {
+    if (Date.now() - t0 > budget - 7000) return { err: "time" };
+    try {
+      const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: STUDY_IMG_SYS }, { role: "user", content: user }], max_tokens: 220, temperature: 0.4 }), 9000);
+      const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out);
+      pr = typeof raw === "object" ? raw : exlAiMap(String(raw || ""));
+      if (pr && typeof pr.p === "string" && pr.p.length > 8) break;
+      pr = null;
+    } catch (e) { err = String((e && e.message) || e).slice(0, 80); }
+  }
+  if (!pr) return { err: "prompt " + err };
+  const clean = String(pr.p).replace(/\b(wom[ae]n|girls?|female|lady|ladies|child(ren)?|kids?|boys?)\b/gi, "").slice(0, 300);
+  for (let k = 0; k < 2; k++) {
+    if (Date.now() - t0 > budget - 6000) return { err: "time" };
+    const objOnly = k === 1 || pr.people === "none";
+    const prompt = `${clean}${objOnly ? ". Objects and place only, absolutely no people" : ""}. Realistic professional photograph, wide shot, subject centered, natural light, clean uncluttered background, no text, no logos, no women, no girls, no children.`;
+    const d = await studyDraw(env, prompt);
+    if (!d.b) return { err: "draw " + d.err };
+    const chk = await studyImgCheck(env, d.b);
+    if (chk === "ok" || (chk === "na" && objOnly)) { await env.STORE.put("img:s" + id, d.b, { metadata: { type: imgType(d.b) } }); return { ok: 1 }; }
+    err = "check " + chk;
+  }
+  return { err, final: true };
+}
+async function studyImages(env, t0, budget, E, tool) {
+  if (!env.AI) return null;
+  const dk = "studies:imgday:" + new Date().toISOString().slice(0, 10);
+  let used = +((await env.STORE.get(dk)) || 0); if (used >= STUDY_IMG_DAY) return { cap: used };
+  let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
+  const pend = idx.filter((x) => !x[4]).slice(0, 2); // الأحدث أول
+  if (!pend.length) return null;
+  let arts = new Map();
+  try { const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${pend.map((x) => x[0]).join(",")}${tool}`, { signal: AbortSignal.timeout(8000) })).text(); arts = new Map(xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id).map((a) => [a.id, a])); } catch {}
+  const done = {}; let made = 0, err = "";
+  for (const x of pend) {
+    if (Date.now() - t0 > budget - 8000) break;
+    let st = null; try { st = await env.STORE.get("study:" + x[0], "json"); } catch {}
+    if (!st) { done[x[0]] = -1; continue; }
+    const r = await studyImageOne(env, x[0], (arts.get(x[0]) || {}).title || "", st, t0, budget);
+    used++;
+    if (r.ok) { made++; done[x[0]] = 1; st.im = "s" + x[0]; await env.STORE.put("study:" + x[0], JSON.stringify(st)); }
+    else { err = r.err || ""; if (r.final) done[x[0]] = -1; }
+  }
+  await env.STORE.put(dk, String(used), { expirationTtl: 3 * 86400 });
+  if (Object.keys(done).length) {
+    let cur = []; try { cur = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
+    for (const y of cur) if (done[y[0]] != null) y[4] = done[y[0]];
+    await env.STORE.put("studies:idx", JSON.stringify(cur));
+  }
+  return { made, left: idx.filter((x) => !x[4]).length - Object.keys(done).length, ...(err ? { err: err.slice(0, 160) } : {}) };
+}
+
+// ---------- لوغو المجلة بالدائرة جنب اسمها ----------
+const STUDY_LOGO = { "Br J Sports Med": "bjsm.bmj.com", "Sports Med": "link.springer.com", "Med Sci Sports Exerc": "acsm.org", "J Int Soc Sports Nutr": "sportsnutritionsociety.org", "J Strength Cond Res": "nsca.com", "Am J Sports Med": "sportsmed.org", "Int J Sport Nutr Exerc Metab": "journals.humankinetics.com", "Scand J Med Sci Sports": "onlinelibrary.wiley.com", "Eur J Appl Physiol": "link.springer.com", "J Appl Physiol (1985)": "journals.physiology.org", "Nutrients": "mdpi.com", "Eur J Sport Sci": "sport-science.org", "J Sports Sci": "tandfonline.com", "Int J Sports Physiol Perform": "journals.humankinetics.com", "Clin J Sport Med": "journals.lww.com", "J Sci Med Sport": "jsams.org", "Orthop J Sports Med": "journals.sagepub.com", "Sports Health": "journals.sagepub.com" };
+const STUDY_LOGO_OK = new Set(Object.values(STUDY_LOGO));
+async function studyLogo(request, env, ctx) {
+  const d = new URL(request.url).searchParams.get("d") || "";
+  if (!STUDY_LOGO_OK.has(d)) return new Response("Not found", { status: 404 });
+  const cache = typeof caches !== "undefined" ? caches.default : null, ck = new Request(new URL("/api/studies/logo?d=" + d, request.url).href);
+  const hit = cache && (await cache.match(ck)); if (hit) return hit;
+  let { value, metadata } = await env.STORE.getWithMetadata("jlogo:" + d, "arrayBuffer");
+  if (!value) {
+    const bad = await env.STORE.get("jlogo:x:" + d); if (bad) return new Response("Not found", { status: 404, headers: { "cache-control": "public, max-age=3600" } });
+    for (const u of [`https://${d}/apple-touch-icon.png`, `https://www.google.com/s2/favicons?domain=${d}&sz=128`]) {
+      try {
+        const r = await fetch(u, { signal: AbortSignal.timeout(6000), headers: { "user-agent": "Mozilla/5.0 (KO SPORT logo)" } }), t = r.headers.get("content-type") || "";
+        const b = r.ok && /^image\//.test(t) ? await r.arrayBuffer() : null;
+        if (b && b.byteLength > 300) { value = b; metadata = { type: t.split(";")[0] }; await env.STORE.put("jlogo:" + d, b, { metadata }); break; }
+      } catch {}
+    }
+    if (!value) { await env.STORE.put("jlogo:x:" + d, "1", { expirationTtl: 86400 }); return new Response("Not found", { status: 404 }); }
+  }
+  const res = new Response(value, { headers: { "content-type": (metadata && metadata.type) || "image/png", "cache-control": "public, max-age=604800" } });
+  if (cache) ctx.waitUntil(cache.put(ck, res.clone()));
+  return res;
+}
 async function studiesApi(request, env, ctx) {
   const u = new URL(request.url), p = Math.max(0, +u.searchParams.get("p") || 0), c = u.searchParams.get("c") || "", per = 20;
+  if (u.pathname === "/api/studies/logo") return studyLogo(request, env, ctx);
   if (u.pathname === "/api/studies/tick") { // GitHub Actions بيدق هون كل شوي لحد ما تخلص كل دراسات السنة
     const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
     if (Date.now() - at < 15000) return json({ busy: 1 }, 200, { "cache-control": "no-store" });
@@ -5512,9 +5659,9 @@ async function studiesApi(request, env, ctx) {
   }
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
-  if (Date.now() - at > 10 * 60e3 && ctx && ctx.waitUntil) ctx.waitUntil(studiesTick(env, 24000).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
+  if (Date.now() - at > 3 * 60e3 && ctx && ctx.waitUntil) ctx.waitUntil(studiesTick(env, 24000).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
   const f = c ? idx.filter((x) => x[2] === c) : idx, page = f.slice(p * per, p * per + per);
-  const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean).map((x) => ({ ...x, t: String(x.t || "").replace(/^[\s«"“']+|[\s»"”']+$/g, "") })); // بلا أقواس حوالين العنوان
+  const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean).map((x) => ({ ...x, t: String(x.t || "").replace(/^[\s«"“']+|[\s»"”']+$/g, ""), ...(STUDY_LOGO[x.ja] ? { lg: STUDY_LOGO[x.ja] } : {}) })); // بلا أقواس حوالين العنوان
   const err = idx.length ? "" : (await env.STORE.get("studies:err")) || ""; // سبب آخر فشل (للفحص، بلا أسرار)
   return new Response(JSON.stringify({ list, total: f.length, all: idx.length, more: p * per + per < f.length, at: at ? new Date(at).toISOString() : "", ...(err ? { err } : {}) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=120" } });
 }
@@ -5938,13 +6085,15 @@ const koMain = {
       if (path === "/api/admin/settings" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getSettings(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/admin/products" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getProducts(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/settings") {
-        if (m === "GET") { if (ctx && ctx.waitUntil) ctx.waitUntil(predTick(env).catch(() => {})); return settingsGet(request, env, ctx); }
+        // كل زيارة للموقع بتتأكّد إنو «آخر الدراسات» ماشية (إذا مرّ 4 دقايق بلا دفعة، بتشغّل وحدة بالخلفية). قبل كانت معتمدة
+        // على مؤقّت GitHub بس، ولما ما اشتغل ساعة ونص وقفت الدراسات (25/11/2026)
+        if (m === "GET") { if (ctx && ctx.waitUntil) { ctx.waitUntil(predTick(env).catch(() => {})); ctx.waitUntil((async () => { const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0; if (Date.now() - at > 4 * 60e3) await studiesTick(env, 22000); })().catch(() => {})); } return settingsGet(request, env, ctx); }
         if (m === "PUT") return settingsPut(request, env);
         return json({ error: "Method not allowed" }, 405);
       }
       if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
       if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m, ctx);
-      if ((path === "/api/studies" || path === "/api/studies/tick") && m === "GET") {
+      if ((path === "/api/studies" || path === "/api/studies/tick" || path === "/api/studies/logo") && m === "GET") {
         // إشعار لصاحب المتجر لما يخلص شغل الليلة (طلبو 24/11/2026): مرة وحدة، أول ما ينفتح القسم بعد الرفع
         if (ctx && ctx.waitUntil && new URL(request.url).searchParams.get("done") === "459") ctx.waitUntil((async () => { if (await env.STORE.get("note:v459")) return; await env.STORE.put("note:v459", "1"); await ownerNotify(env, request, "🐉 خلص شغل الليلة بقسم التمرين:\n1. مجسّم العضلات (قدّام وورا): كبسة عالعضلة بتفتح تمارينها\n2. التنين الأسود: مدرّبك الصارم بنصايح وتحفيز\n3. آخر الدراسات: منشورات ملخّصة بالعربي وبتتحدّث كل ساعة\n4. التغذية: سعرات وماكروز وأكل سوري ووزن ومصروفك الحقيقي\nفوت على حسابك ← مكتبة التمارين 💪"); })().catch(() => {}));
         return studiesApi(request, env, ctx);
