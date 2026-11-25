@@ -5812,6 +5812,8 @@ async function studyPhotos(env, t0, budget) {
   if (!sts.length || left < 14000) return null;
   const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], UPS_SYS, sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n"), 600, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000)));
   let map = {}; if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o === "object") map = o; }
+  // صاحب المتجر: «حط الصور، والكتابة لحالها بتتغيّر» → إذا Gemini خلص حدّو، Llama (Workers AI، رخيص كتير) بيختار شو يبين بالصورة
+  if (!Object.keys(map).length && env.AI) { try { const out = await exlRace(env.AI.run(AI_TR_MODELS[2], { messages: [{ role: "system", content: UPS_SYS }, { role: "user", content: sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n") }], max_tokens: 500, temperature: 0.2 }), 9000); const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out); const o = typeof raw === "object" ? raw : exlAiMap(String(raw || "")); if (o && typeof o === "object") map = o; } catch {} }
   if (!Object.keys(map).length) return { err: "subjects " + String(gm.err || "").slice(0, 120) };
   let used = {}, bad = {}; try { used = (await env.STORE.get("studies:ups2:used", "json")) || {}; bad = (await env.STORE.get("studies:ups:ok", "json")) || {}; } catch {}
   const dl = t0 + budget + 2000, norm = (q) => String(q || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 50);
@@ -5840,7 +5842,7 @@ async function studyPhotos(env, t0, budget) {
         if (dl - Date.now() < 9000 || rem <= 4 || waitSet) return null;
         const b = await fetch(x.s, { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
         if (!b) continue;
-        const chk = await studyImgCheck(env, new Uint8Array(b), { n: 0 }, dl, true, subj || q);
+        const chk = await studyImgCheck(env, new Uint8Array(b), { n: 0 }, dl, false, subj || q); // Gemini، وإذا خلص حدّو LLaVA (بيرفض النساء والولاد كمان)
         if (chk === "ok") return x;
         if (chk === "bad") { bad[x.id] = -1; ch = true; }
         else if (chk === "nomatch") { c.no.push(x.id); await env.STORE.put("studies:ups2:q:" + q, JSON.stringify(c), { expirationTtl: 60 * 86400 }); }
