@@ -2542,7 +2542,7 @@ async function statusApi(request, env) {
   // which Telegram settings this running copy can see (never the values themselves)
   const tok = String(env.TELEGRAM_BOT_TOKEN || "").trim(), chat = String(env.TELEGRAM_CHAT_ID || "").trim();
   const tg = { token: !!tok, chat: !!chat, tokenOk: /^\d{5,}:[\w-]{25,}$/.test(tok), chatOk: /^-?\d{4,}$|^@\w{4,}$/.test(chat) };
-  return json({ telegram: !!(tok && chat), tg, ai: !!env.AI, gemini: !!String(env.GEMINI_API_KEY || "").trim(), email: !!env.RESEND_API_KEY, host: new URL(request.url).host, role: env.__role });
+  return json({ telegram: !!(tok && chat), tg, ai: !!env.AI, gemini: gemKeys(env).length, email: !!env.RESEND_API_KEY, host: new URL(request.url).host, role: env.__role });
 }
 
 // «ابعت رسالة تجربة»: tells the owner in plain words why Telegram refuses (bad token, chat not found, …)
@@ -5028,31 +5028,43 @@ const GEM_TR_LONG = ["gemini-2.5-flash", "gemini-3.5-flash"];
 const EXL_TR_BUDGET = 25000; // waitUntil بيعطي حوالي 30 ثانية بعد الرد
 const exlLeft = (t0) => EXL_TR_BUDGET - (Date.now() - t0);
 const exlRace = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("طوّل كتير")), Math.max(1000, ms)))]);
+// مفاتيح Gemini: GEMINI_API_KEY ثم GEMINI_API_KEY2..9 (طلب صاحب المتجر 25/11/2026: حساباتو المدفوعة، بدّل بيناتهن).
+// إذا مفتاح قال خلص حدّو (429) أو مرفوض (401/403) منروح عالي بعدو بنفس الموديل، ومنتذكّرو شوي لحتى ما نضيّع وقت عليه.
+const gemKeys = (env) => ["", "2", "3", "4", "5", "6", "7", "8", "9"].map((n) => String(env["GEMINI_API_KEY" + n] || "").trim()).filter((k, i, A) => k && A.indexOf(k) === i);
+const GEM_OUT = new Map(); // "موديل|رقم المفتاح" → لوقتيش منتركو
 async function exlGemini(env, models, system, user, maxTokens, t0) {
-  const key = String(env.GEMINI_API_KEY || "").trim();
-  if (!key) return { err: "no-key" };
+  const keys = gemKeys(env);
+  if (!keys.length) return { err: "no-key" };
   t0 = t0 || Date.now();
   let err = "";
   for (const model of models) {
-    if (exlLeft(t0) < 8000) { err = err || "ما ضل وقت"; break; }
     const think = /^gemini-2\./.test(model) ? { thinkingBudget: 0 } : { thinkingLevel: "low" };
-    for (const withThink of [true, false]) {
-      try {
-        const gc = { temperature: 0.3, maxOutputTokens: maxTokens, responseMimeType: "application/json" };
-        if (withThink) gc.thinkingConfig = think;
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-          signal: AbortSignal.timeout(Math.max(4000, exlLeft(t0) - 2000)),
-          method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": key },
-          body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: user }] }], generationConfig: gc }),
-        });
-        const t = await r.text();
-        if (!r.ok) { err = model + ": " + r.status + " " + t.slice(0, 160); if (r.status === 400 && withThink && /think/i.test(t)) continue; break; }
-        let j = null; try { j = JSON.parse(t); } catch {}
-        const parts = (j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
-        const txt = parts.filter((x) => !x.thought && typeof x.text === "string").map((x) => x.text).join("");
-        if (txt) return { text: txt, model };
-        err = model + ": رد فاضي"; break;
-      } catch (e) { err = model + ": " + String(e && e.message || e); break; }
+    keyLoop: for (let ki = 0; ki < keys.length; ki++) {
+      const tag = model + "|" + ki; if ((GEM_OUT.get(tag) || 0) > Date.now()) { err = err || model + ": 429 (كل المفاتيح)"; continue; }
+      if (exlLeft(t0) < 8000) { err = err || "ما ضل وقت"; return { err }; }
+      for (const withThink of [true, false]) {
+        try {
+          const gc = { temperature: 0.3, maxOutputTokens: maxTokens, responseMimeType: "application/json" };
+          if (withThink) gc.thinkingConfig = think;
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            signal: AbortSignal.timeout(Math.max(4000, exlLeft(t0) - 2000)),
+            method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": keys[ki] },
+            body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: user }] }], generationConfig: gc }),
+          });
+          const t = await r.text();
+          if (!r.ok) {
+            err = model + " #" + (ki + 1) + ": " + r.status + " " + t.slice(0, 160);
+            if (r.status === 400 && withThink && /think/i.test(t)) continue;
+            if (r.status === 429 || r.status === 401 || r.status === 403) { GEM_OUT.set(tag, Date.now() + (/PerDay|per day/i.test(t) ? 3600e3 : r.status === 429 ? 60e3 : 600e3)); continue keyLoop; } // المفتاح يلي بعدو
+            break keyLoop; // غلط بالموديل نفسو (404...): الموديل يلي بعدو
+          }
+          let j = null; try { j = JSON.parse(t); } catch {}
+          const parts = (j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+          const txt = parts.filter((x) => !x.thought && typeof x.text === "string").map((x) => x.text).join("");
+          if (txt) return { text: txt, model };
+          err = model + ": رد فاضي"; break keyLoop;
+        } catch (e) { err = model + ": " + String(e && e.message || e); break keyLoop; }
+      }
     }
   }
   return { err };
@@ -5432,7 +5444,7 @@ Return ONLY JSON: {"t":"Arabic headline 50-110 chars written as a plain cause �
 async function studySum(env, a, t0, budget) {
   const user = `Journal: ${a.j}\nType: ${a.type}\nTitle: ${a.title}\nAbstract:\n${a.abs}`;
   let o = null, err = "", quota = false, model = "";
-  if (String(env.GEMINI_API_KEY || "").trim()) {
+  if (gemKeys(env).length) {
     // كل موديل لحالو (ولكل واحد حدّو اليومي)، والأقوى أول؛ exlGemini بيحسب الوقت من EXL_TR_BUDGET فمنعطيه t0 ضمن وقت الدفعة
     for (const gmM of STUDY_GEM) {
       const left = budget - (Date.now() - t0); if (left < 9000) { err += " | ما ضل وقت"; break; }
