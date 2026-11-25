@@ -5522,7 +5522,8 @@ async function studySummaries(env, t0, budget, now, E, tool) {
 // كرياتين → صورة كرياتين، شوكولا → شوكولا، سباحة → سبّاح. Llama بيكتب وصف الصورة بالإنكليزي من عنوان الدراسة، FLUX بيرسمها،
 // وLLaVA بيفحصها: إذا فيها امرأة أو بنت أو ولد أو عُري، بنعيد الرسم بلا ناس، وإذا لسّا، الدراسة بتضل بلا صورة (الشكل القديم).
 // الصورة بـ KV `img:s<id>` متل صور المنتجات (وبتتصغّر بـ /imgs/<عرض>/s<id>). حد يومي لحتى ما تطلع مصاري زيادة (Workers AI).
-const STUDY_IMG_DAY = 600;
+// 60 صورة باليوم: هيك كل شغل الذكاء الاصطناعي بالموقع بيضل ضمن الـ 10,000 neuron المجانية يلي بيعطيها Cloudflare كل يوم (بلا مصاري)
+const STUDY_IMG_DAY = 60;
 const STUDY_IMG_SYS = `You write ONE short English prompt for a realistic photo that illustrates a sports-science study on a gym community page.
 - Show the concrete subject of the study: the supplement, food, drink, equipment, exercise or sport (for example: creatine powder in a scoop on a gym bench; dark chocolate pieces; an indoor swimming pool with lane ropes; a barbell on a squat rack; running shoes on a track).
 - Prefer objects, food, equipment and places WITHOUT people.
@@ -5598,7 +5599,9 @@ async function studyImages(env, t0, budget, E, tool) {
   let used = +((await env.STORE.get(dk)) || 0); if (used >= STUDY_IMG_DAY) return { cap: used };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let dm = {}; try { dm = (await env.STORE.get("studies:imgs", "json")) || {}; } catch {} // id → 1 (إلها صورة) أو -1 (ما زبطت)
-  const pend = idx.filter((x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV).slice(0, 2); // الأحدث أول (ويلي عم ينعاد تلخيصها بتستنى لحتى ما يتعاركوا عالسجل)
+  // من أحدث 10 ناقصين منختار 2 عشوائي، ومنحجزهن (simg:c:<id>) لحتى إذا اشتغلت دفعتين سوا ما يرسموا نفس الصورة مرتين (مصاري عالفاضي)
+  const top = idx.filter((x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV).slice(0, 10).sort(() => Math.random() - 0.5), pend = [];
+  for (const x of top) { if (pend.length >= 2) break; if (await env.STORE.get("simg:c:" + x[0])) continue; await env.STORE.put("simg:c:" + x[0], "1", { expirationTtl: 300 }); pend.push(x); }
   if (!pend.length) return null;
   let arts = new Map();
   try { const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${pend.map((x) => x[0]).join(",")}${tool}`, { signal: AbortSignal.timeout(8000) })).text(); arts = new Map(xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id).map((a) => [a.id, a])); } catch {}
@@ -5653,7 +5656,7 @@ async function studiesApi(request, env, ctx) {
   }
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
-  if (Date.now() - at > 3 * 60e3 && ctx && ctx.waitUntil) ctx.waitUntil(studiesTick(env, 24000).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
+  if (Date.now() - at > 6 * 60e3 && ctx && ctx.waitUntil) ctx.waitUntil(studiesTick(env, 24000).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
   const f = c ? idx.filter((x) => x[2] === c) : idx, page = f.slice(p * per, p * per + per);
   const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean).map((x) => ({ ...x, t: String(x.t || "").replace(/^[\s«"“']+|[\s»"”']+$/g, ""), ...(STUDY_LOGO[x.ja] ? { lg: STUDY_LOGO[x.ja] } : {}) })); // بلا أقواس حوالين العنوان
   const err = idx.length ? "" : (await env.STORE.get("studies:err")) || ""; // سبب آخر فشل (للفحص، بلا أسرار)
@@ -6079,9 +6082,9 @@ const koMain = {
       if (path === "/api/admin/settings" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getSettings(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/admin/products" && m === "GET") { if (!isAdmin(request, env)) return denied(); const r = json(await getProducts(env, request)); r.headers.set("cache-control", "no-store"); return r; }
       if (path === "/api/settings") {
-        // كل زيارة للموقع بتتأكّد إنو «آخر الدراسات» ماشية (إذا مرّ 4 دقايق بلا دفعة، بتشغّل وحدة بالخلفية). قبل كانت معتمدة
+        // كل زيارة للموقع بتتأكّد إنو «آخر الدراسات» ماشية (إذا مرّ 6 دقايق بلا دفعة، بتشغّل وحدة بالخلفية). قبل كانت معتمدة
         // على مؤقّت GitHub بس، ولما ما اشتغل ساعة ونص وقفت الدراسات (25/11/2026)
-        if (m === "GET") { if (ctx && ctx.waitUntil) { ctx.waitUntil(predTick(env).catch(() => {})); ctx.waitUntil((async () => { const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0; if (Date.now() - at > 4 * 60e3) await studiesTick(env, 22000); })().catch(() => {})); } return settingsGet(request, env, ctx); }
+        if (m === "GET") { if (ctx && ctx.waitUntil) { ctx.waitUntil(predTick(env).catch(() => {})); ctx.waitUntil((async () => { const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0; if (Date.now() - at > 6 * 60e3) await studiesTick(env, 22000); })().catch(() => {})); } return settingsGet(request, env, ctx); }
         if (m === "PUT") return settingsPut(request, env);
         return json({ error: "Method not allowed" }, 405);
       }
