@@ -5624,8 +5624,9 @@ async function studyImageOne(env, id, titleEn, st, t0, budget, cost) {
 }
 async function studyImages(env, t0, budget, E, tool, first) {
   if (!env.AI) return null;
-  const dk = "studies:neur:" + new Date().toISOString().slice(0, 10);
-  let used = +((await env.STORE.get(dk)) || 0); if (used >= STUDY_NEUR_DAY - NEUR.draw * 2) return { cap: used };
+  const day = new Date().toISOString().slice(0, 10), dk = "studies:neur:" + day;
+  // 25/11/2026 انصرف قبل هالحساب حوالي 5,000 (صور النسخة الأولى)، فمنحسبهم لحتى ما نطلع عن المجاني اليوم
+  let used = +((await env.STORE.get(dk)) || 0) + (day === "2026-11-25" ? 5000 : 0); if (used >= STUDY_NEUR_DAY - NEUR.draw * 2) return { cap: used };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let dm = {}; try { dm = (await env.STORE.get(STUDY_IMGS, "json")) || {}; } catch {} // id → 1 (إلها صورة) أو -1 (ما زبطت)
   // من أحدث 10 ناقصين منختار 2 عشوائي، ومنحجزهن (simg:c:<id>) لحتى إذا اشتغلت دفعتين سوا ما يرسموا نفس الصورة مرتين (مصاري عالفاضي)
@@ -5647,7 +5648,7 @@ async function studyImages(env, t0, budget, E, tool, first) {
     if (r.ok) { made++; done[x[0]] = 1; st.im = STUDY_IMGV + x[0]; await env.STORE.put("study:" + x[0], JSON.stringify(st)); }
     else { err = r.err || ""; if (r.final) done[x[0]] = -1; }
   }
-  await env.STORE.put(dk, String(used), { expirationTtl: 3 * 86400 });
+  await env.STORE.put(dk, String(used - (day === "2026-11-25" ? 5000 : 0)), { expirationTtl: 3 * 86400 });
   if (Object.keys(done).length) { let cur = {}; try { cur = (await env.STORE.get(STUDY_IMGS, "json")) || {}; } catch {} Object.assign(cur, done); dm = cur; await env.STORE.put(STUDY_IMGS, JSON.stringify(cur)); }
   return { made, left: idx.filter((x) => !dm[x[0]]).length, neur: used, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
