@@ -5534,6 +5534,9 @@ async function studySummaries(env, t0, budget, now, E, tool) {
 // الموقع التاني). وصف الصورة وفحصها بـ Gemini (مجاني بمفاتيحو)، فالصورة الوحدة بتاخد من Cloudflare بس الرسم (~50 neuron) → ~140 صورة باليوم.
 // إذا Gemini ما ردّ، الاحتياط Llama/LLaVA (بياخدو neuron كمان) وبيتحسبو. الحساب التقريبي بـ studies:neur:<تاريخ>.
 const STUDY_NEUR_DAY = 7000, NEUR = { draw: 55, llama: 25, llava: 40 };
+// الدفعة المدفوعة لمرة وحدة: 80,000 neuron × $0.011/1000 = $0.88 بالأكتر (FLUX.2 klein: 26.05 neuron لكل مربع 512×512،
+// والصورة 1024×448 = مربعين ≈ 52، ومنعدّها 55 لنضل تحت). لو بدك دفعة تانية، غيّر اسم المفتاح (boost2) بعد موافقة صاحب المتجر
+const STUDY_NEUR_BOOST = 80000, STUDY_BOOST_K = "studies:neur:boost1";
 // نسخة الصور: كل ما تغيّرت طريقة الرسم منغيّر الحرف، لأنو الصورة القديمة محفوظة سنة بكاش Cloudflare والموبايلات (v1 = s، v2 = t)
 const STUDY_IMGV = "t", STUDY_IMGS = "studies:imgs3";
 // v2 (صاحب المتجر: «الصليبي لازم رياضي عازم عالركبة أو صورة ركبة، والعلكة بالكافيين الصورة بعيدة، حط رياضيين رجال معلش»):
@@ -5634,31 +5637,45 @@ async function studyImages(env, t0, budget, E, tool, first) {
   if (!env.AI) return null;
   const day = new Date().toISOString().slice(0, 10), dk = "studies:neur:" + day;
   // 25/11/2026 انصرف قبل هالحساب حوالي 5,000 (صور النسخة الأولى)، فمنحسبهم لحتى ما نطلع عن المجاني اليوم
-  let used = +((await env.STORE.get(dk)) || 0) + (day === "2026-11-25" ? 5000 : 0); if (used >= STUDY_NEUR_DAY - NEUR.draw * 2) return { cap: used };
+  const off = day === "2026-11-25" ? 5000 : 0;
+  let used = +((await env.STORE.get(dk)) || 0) + off; const used0 = used;
+  // دفعة وحدة مدفوعة (صاحب المتجر 25/11/2026: «إذا أقل من دولار اعملها»): فوق حصّة اليوم المجانية بنصرف لحد STUDY_NEUR_BOOST
+  // بالمجموع (مو باليوم)، ومنعدّ يلي انصرف بـ studies:neur:boost1. لما يخلص بيرجع لحالو للمجاني (حوالي 120 صورة باليوم)
+  const boostUsed = +((await env.STORE.get(STUDY_BOOST_K)) || 0), boostLeft = Math.max(0, STUDY_NEUR_BOOST - boostUsed), cap = STUDY_NEUR_DAY + boostLeft;
+  if (used >= cap - NEUR.draw * 2) return { cap: used, boostUsed };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let dm = {}; try { dm = (await env.STORE.get(STUDY_IMGS, "json")) || {}; } catch {} // id → 1 (إلها صورة) أو -1 (ما زبطت)
-  // من أحدث 10 ناقصين منختار 2 عشوائي، ومنحجزهن (simg:c:<id>) لحتى إذا اشتغلت دفعتين سوا ما يرسموا نفس الصورة مرتين (مصاري عالفاضي)
+  // من أحدث الناقصين منختار عشوائي، ومنحجزهن (simg:c:<id>) لحتى إذا اشتغلت دفعتين سوا ما يرسموا نفس الصورة مرتين (مصاري عالفاضي)
+  // وقت الدفعة المدفوعة: خطّين سوا (4 صور بالدفعة بدل 2)
+  const lanes = boostLeft > 0 ? 2 : 1, per = lanes * 2;
   const okP = (x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV, fs = new Set(String(first || "").split(",").filter((v) => /^\d{5,10}$/.test(v)).slice(0, 4));
-  // ?first=id,id: هدول أول (مثلاً لنشوف صورة دراسة معيّنة بسرعة). بعدين من أحدث 10 ناقصين عشوائي
-  const top = idx.filter((x) => okP(x) && fs.has(x[0])).concat(idx.filter((x) => okP(x) && !fs.has(x[0])).slice(0, 10).sort(() => Math.random() - 0.5)), pend = [];
-  for (const x of top) { if (pend.length >= 2) break; if (await env.STORE.get("simg:c:" + x[0])) continue; await env.STORE.put("simg:c:" + x[0], "1", { expirationTtl: 300 }); pend.push(x); }
+  // ?first=id,id: هدول أول (مثلاً لنشوف صورة دراسة معيّنة بسرعة). بعدين من أحدث الناقصين عشوائي
+  const top = idx.filter((x) => okP(x) && fs.has(x[0])).concat(idx.filter((x) => okP(x) && !fs.has(x[0])).slice(0, per * 4).sort(() => Math.random() - 0.5)), pend = [];
+  for (const x of top) { if (pend.length >= per) break; if (await env.STORE.get("simg:c:" + x[0])) continue; await env.STORE.put("simg:c:" + x[0], "1", { expirationTtl: 300 }); pend.push(x); }
   if (!pend.length) return null;
   let arts = new Map();
   try { const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${pend.map((x) => x[0]).join(",")}${tool}`, { signal: AbortSignal.timeout(8000) })).text(); arts = new Map(xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id).map((a) => [a.id, a])); } catch {}
-  const done = {}; let made = 0, err = "";
-  for (const x of pend) {
-    if (Date.now() - t0 > budget - 8000) break;
+  const done = {}, tried = new Set(); let made = 0, err = "", qi = 0;
+  const one = async (x) => {
     let st = null; try { st = await env.STORE.get("study:" + x[0], "json"); } catch {}
-    if (!st) { done[x[0]] = -1; continue; }
-    if (used >= STUDY_NEUR_DAY - NEUR.draw * 2) break;
+    if (!st) { done[x[0]] = -1; return; }
     const cost = { n: 0 }, r = await studyImageOne(env, x[0], (arts.get(x[0]) || {}).title || "", st, t0, budget, cost);
     used += cost.n;
     if (r.ok) { made++; done[x[0]] = 1; st.im = STUDY_IMGV + x[0]; await env.STORE.put("study:" + x[0], JSON.stringify(st)); }
     else { err = r.err || ""; if (r.final) done[x[0]] = -1; }
-  }
-  await env.STORE.put(dk, String(used - (day === "2026-11-25" ? 5000 : 0)), { expirationTtl: 3 * 86400 });
+  };
+  await Promise.all(Array.from({ length: lanes }, async () => {
+    while (qi < pend.length) {
+      if (Date.now() - t0 > budget - 8000 || used >= cap - NEUR.draw * 2) break;
+      const x = pend[qi++]; tried.add(x[0]); await one(x);
+    }
+  }));
+  await env.STORE.put(dk, String(used - off), { expirationTtl: 3 * 86400 });
+  const over = Math.max(0, used - Math.max(STUDY_NEUR_DAY, used0)); // يلي انصرف هالمرة فوق حصّة اليوم المجانية
+  if (over) await env.STORE.put(STUDY_BOOST_K, String(boostUsed + over));
+  for (const x of pend) if (!(x[0] in done)) await env.STORE.delete("simg:c:" + x[0]).catch(() => {}); // يلي ما خلص: بيرجع ينجرّب بالدفعة الجاية
   if (Object.keys(done).length) { let cur = {}; try { cur = (await env.STORE.get(STUDY_IMGS, "json")) || {}; } catch {} Object.assign(cur, done); dm = cur; await env.STORE.put(STUDY_IMGS, JSON.stringify(cur)); }
-  return { made, left: idx.filter((x) => !dm[x[0]]).length, neur: used, ...(err ? { err: err.slice(0, 160) } : {}) };
+  return { made, left: idx.filter((x) => !dm[x[0]]).length, neur: used, boost: boostUsed + over, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
 
 // ---------- لوغو المجلة بالدائرة جنب اسمها ----------
