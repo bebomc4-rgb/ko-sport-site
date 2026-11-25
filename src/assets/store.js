@@ -2142,12 +2142,12 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=471"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=472"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   // قسم التمرين الجديد (gym.js): المجسّم، التنين الأسود، آخر الدراسات، التغذية
   function gymLoad() {
     if (window.KOGym) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=471"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=472"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const gymH = () => ({ toast, auth: socAuth, sheet: openSheet, closeSheet });
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");

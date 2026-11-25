@@ -120,7 +120,9 @@
     drg.el.classList.add("talk");
     clearTimeout(drg.t); drg.t = setTimeout(function () { if (drg.el) drg.el.classList.remove("talk"); }, 9000);
   }
+  // 25/11/2026 صاحب المتجر: «احذف شخصية التنين» → ما عاد يطلع (الدالة بتضل لحتى ما ينكسر شي بيناديها)
   function dragon(ctx, greet) {
+    return;
     drg.ctx = ctx || "_";
     if (!drg.el) {
       var d = document.createElement("div");
