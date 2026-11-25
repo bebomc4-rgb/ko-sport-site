@@ -5822,8 +5822,17 @@ async function studyPhotos(env, t0, budget) {
   const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], UPS_SYS, sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n"), 600, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000)));
   let map = {}; if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o === "object") map = o; }
   // صاحب المتجر: «حط الصور، والكتابة لحالها بتتغيّر» → إذا Gemini خلص حدّو، Llama (Workers AI، رخيص كتير) بيختار شو يبين بالصورة
-  if (!Object.keys(map).length && env.AI) { try { const out = await exlRace(env.AI.run(AI_TR_MODELS[2], { messages: [{ role: "system", content: UPS_SYS }, { role: "user", content: sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n") }], max_tokens: 500, temperature: 0.2 }), 9000); const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out); const o = typeof raw === "object" ? raw : exlAiMap(String(raw || "")); if (o && typeof o === "object") map = o; } catch {} }
-  if (!Object.keys(map).length) return { err: "subjects " + String(gm.err || "").slice(0, 120) };
+  let wErr = "";
+  if (!Object.keys(map).length && env.AI) for (const m of [AI_TR_MODELS[2], AI_TR_MODELS[1]]) { // Llama، وبعدو GLM
+    if (Object.keys(map).length || Date.now() - t0 > budget - 9000) break;
+    try {
+      const out = await exlRace(env.AI.run(m, { messages: [{ role: "system", content: UPS_SYS }, { role: "user", content: sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n") }], max_tokens: 700, temperature: 0.2 }), 12000);
+      const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out);
+      const o = typeof raw === "object" ? raw : exlAiMap(String(raw || ""));
+      if (o && typeof o === "object" && !Array.isArray(o) && Object.keys(o).length) map = o; else wErr += ` | ${m.split("/").pop()}: ${String(typeof raw === "object" ? JSON.stringify(raw) : raw || "").slice(0, 90)}`;
+    } catch (e) { wErr += ` | ${m.split("/").pop()}: ${String((e && e.message) || e).slice(0, 90)}`; }
+  }
+  if (!Object.keys(map).length) return { err: ("subjects " + String(gm.err || "").slice(0, 60) + wErr).slice(0, 300) };
   let used = {}, bad = {}; try { used = (await env.STORE.get("studies:ups2:used", "json")) || {}; bad = (await env.STORE.get("studies:ups:ok", "json")) || {}; } catch {}
   const dl = t0 + budget + 2000, norm = (q) => String(q || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 50);
   let made = 0, ch = false, na = false;
