@@ -5451,7 +5451,7 @@ async function studiesTick(env, budget) {
   budget = budget || 24000;
   await env.STORE.put("studies:at", now);
   const wait = +((await env.STORE.get("studies:wait")) || 0);
-  if (Date.now() < wait) return { wait: new Date(wait).toISOString() };
+  if (Date.now() < wait) return { wait: new Date(wait).toISOString(), err: String((await env.STORE.get("studies:err")) || "").slice(0, 300) };
   if (await env.STORE.get("studies:list")) { await env.STORE.delete("studies:list"); await env.STORE.delete("studies:seen"); } // القديم (قبل Gemini) انمسح، وبيرجع ينعمل
   const E = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/", tool = "&tool=kosport&email=info%40ko-sport.online";
   const ids = await studyQueue(env, E, tool);
