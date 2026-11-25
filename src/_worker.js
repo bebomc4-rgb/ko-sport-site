@@ -5633,7 +5633,7 @@ async function studyImgCheck(env, bytes, cost, dl, noPaid, subject) {
   if (!noPaid && dl - Date.now() >= 6000 && env.AI) {
     try {
       cost.n += NEUR.gemma;
-      const out = await exlRace(env.AI.run(AI_TR_MODELS[0], { messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: "data:" + imgType(bytes) + ";base64," + b64Of(bytes) } }, { type: "text", text: q }] }], max_tokens: 1500, temperature: 0 }), Math.min(15000, dl - Date.now() - 1000));
+      const out = await exlRace(env.AI.run(AI_TR_MODELS[0], { messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: "data:" + imgType(bytes) + ";base64," + b64Of(bytes) } }, { type: "text", text: q }] }], max_tokens: 200, temperature: 0, chat_template_kwargs: { enable_thinking: false } }), Math.min(15000, dl - Date.now() - 1000)); // بلا تفكير: أسرع بكتير
       const ch = out && out.choices && out.choices[0] && out.choices[0].message; // Gemma بيرجّع شكل OpenAI (choices)
       const tx = (ch && (ch.content || "")) || exlAiText(out), o = exlAiMap(tx);
       if (o && typeof o.women === "boolean") return o.women || o.children || o.nudity ? "bad" : subject && o.match === false ? "nomatch" : "ok";
