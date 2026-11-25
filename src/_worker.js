@@ -5515,21 +5515,26 @@ async function studySummaries(env, t0, budget, now, E, tool) {
   if (added) { let cur = []; try { cur = (await env.STORE.get("studies:idx", "json")) || []; } catch {} idx = studyIdxMerge(cur, idx); await env.STORE.put("studies:idx", JSON.stringify(idx)); }
   await env.STORE.put("studies:bad", JSON.stringify(bad));
   if (lastErr) await env.STORE.put("studies:err", lastErr.slice(0, 400)).catch(() => {});
-  return { added, total: idx.length, queue: ids.length, ...(lastErr ? { err: lastErr.slice(0, 200) } : {}) };
+  return { added, total: idx.length, queue: ids.length, redo: idx.filter((x) => (x[3] || 1) < STUDY_PV).length, ...(lastErr ? { err: lastErr.slice(0, 200) } : {}) };
 }
 
 // ---------- صورة لكل دراسة (طلب صاحب المتجر 25/11/2026) ----------
 // كرياتين → صورة كرياتين، شوكولا → شوكولا، سباحة → سبّاح. Llama بيكتب وصف الصورة بالإنكليزي من عنوان الدراسة، FLUX بيرسمها،
 // وLLaVA بيفحصها: إذا فيها امرأة أو بنت أو ولد أو عُري، بنعيد الرسم بلا ناس، وإذا لسّا، الدراسة بتضل بلا صورة (الشكل القديم).
 // الصورة بـ KV `img:s<id>` متل صور المنتجات (وبتتصغّر بـ /imgs/<عرض>/s<id>). حد يومي لحتى ما تطلع مصاري زيادة (Workers AI).
-// 60 صورة باليوم: هيك كل شغل الذكاء الاصطناعي بالموقع بيضل ضمن الـ 10,000 neuron المجانية يلي بيعطيها Cloudflare كل يوم (بلا مصاري)
-const STUDY_IMG_DAY = 60;
-const STUDY_IMG_SYS = `You write ONE short English prompt for a realistic photo that illustrates a sports-science study on a gym community page.
-- Show the concrete subject of the study: the supplement, food, drink, equipment, exercise or sport (for example: creatine powder in a scoop on a gym bench; dark chocolate pieces; an indoor swimming pool with lane ropes; a barbell on a squat rack; running shoes on a track).
-- Prefer objects, food, equipment and places WITHOUT people.
-- Only if a person is truly needed to show the sport, show exactly ONE adult MAN in sportswear (a swimmer wears swim trunks, cap and goggles), seen from the side or behind, face not in focus.
-- NEVER women, girls, children, babies, nudity, underwear, hospitals, surgery, blood, needles, pills close-up, text, numbers, logos, brand names or labels.
-Return ONLY JSON: {"p":"the photo description, max 40 words","people":"none|man"}`;
+// بلا مصاري زيادة (طلب صاحب المتجر): Cloudflare بيعطي 10,000 neuron ببلاش كل يوم، ومنخلّي الصور تاخد منهن 7,000 بس (الباقي لشغل
+// الموقع التاني). وصف الصورة وفحصها بـ Gemini (مجاني بمفاتيحو)، فالصورة الوحدة بتاخد من Cloudflare بس الرسم (~50 neuron) → ~140 صورة باليوم.
+// إذا Gemini ما ردّ، الاحتياط Llama/LLaVA (بياخدو neuron كمان) وبيتحسبو. الحساب التقريبي بـ studies:neur:<تاريخ>.
+const STUDY_NEUR_DAY = 7000, NEUR = { draw: 55, llama: 25, llava: 40 };
+// v2 (صاحب المتجر: «الصليبي لازم رياضي عازم عالركبة أو صورة ركبة، والعلكة بالكافيين الصورة بعيدة، حط رياضيين رجال معلش»):
+// صورة قريبة ودقيقة عن موضوع الدراسة نفسو، ورياضي رجّال إذا بيوضّح الفكرة
+const STUDY_IMG_SYS = `You write ONE English prompt for a realistic CLOSE-UP photo that shows exactly what a sports-science study is about, for a gym community page.
+- Be specific to THIS study, not generic: the exact body part, injury, supplement form, food, drink, exercise or sport in the title.
+- Use a male athlete when it makes the topic clearer (most studies): e.g. ACL / knee injury → close-up of a male athlete's knee wearing a knee brace, or a physiotherapist's hands on a male athlete's knee; hamstring → a male sprinter holding the back of his thigh; caffeine gum → close-up of a male athlete chewing gum, pieces of gum in his hand; creatine → a scoop of white creatine powder being added to a shaker by a man's hand; swimming → a male swimmer mid-stroke in a pool (swim cap, goggles); squat or strength → a man squatting with a barbell; running → a male runner's legs on a track.
+- Food or supplement alone is fine when the study is only about it (close-up, filling the frame).
+- People: only adult MEN (one or two), in sportswear. NEVER women, girls, children, babies, nudity, underwear.
+- Close-up or medium close-up, the subject fills the frame, sharp focus, gym/field/clinic setting. No text, numbers, logos, brand names or labels. No surgery, blood or needles.
+Return ONLY JSON: {"p":"the photo description, max 45 words","people":"none|man"}`;
 const aiImgBytes = async (out) => {
   if (!out) return null;
   const b64 = typeof out === "string" ? out : typeof out.image === "string" ? out.image : (out.result && typeof out.result.image === "string" ? out.result.image : "");
@@ -5555,21 +5560,42 @@ async function studyDraw(env, prompt) {
   return { err };
 }
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل
-async function studyImgCheck(env, bytes) {
-  for (const model of ["@cf/llava-hf/llava-1.5-7b-hf", "@cf/unum/uform-gen2-qwen-500m"]) {
+const b64Of = (u) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+// "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل. cost.n = neuron انصرفت من Cloudflare
+async function studyImgCheck(env, bytes, cost) {
+  const keys = gemKeys(env), q = 'Look carefully at this photo. Answer ONLY JSON: {"women":true|false,"children":true|false,"nudity":true|false}. women = any woman or girl, even small, partial or in the background. children = anyone under 18.';
+  if (keys.length) {
+    const data = b64Of(bytes), mime = imgType(bytes);
+    for (const model of ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash"]) for (let ki = 0; ki < keys.length; ki++) {
+      const tag = model + "|" + ki; if ((GEM_OUT.get(tag) || 0) > Date.now()) continue;
+      try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { signal: AbortSignal.timeout(12000), method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": keys[ki] }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data } }, { text: q }] }], generationConfig: { temperature: 0, maxOutputTokens: 120, responseMimeType: "application/json" } }) });
+        const t = await r.text();
+        if (!r.ok) { if (r.status === 429 || r.status === 401 || r.status === 403) GEM_OUT.set(tag, Date.now() + (/PerDay|per day/i.test(t) ? 3600e3 : 60e3)); if (r.status === 404) break; continue; }
+        const j = JSON.parse(t), txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map((x) => x.text || "").join("");
+        const o = exlAiMap(txt); if (o && typeof o.women === "boolean") return o.women || o.children || o.nudity ? "bad" : "ok";
+      } catch {}
+    }
+  }
+  for (const model of ["@cf/llava-hf/llava-1.5-7b-hf"]) { // احتياط بس (بياخد neuron)
     try {
+      cost.n += NEUR.llava;
       const out = await exlRace(env.AI.run(model, { image: [...bytes], prompt: "Who is in this photo? For every person say man, woman, boy or girl and what they wear. If there is no person, answer exactly: no people.", max_tokens: 80 }), 15000);
       const d = String((out && (out.description || out.response)) || "").trim();
-      if (!d) continue;
-      return /\b(wom[ae]n|girls?|female|feminine|lad(y|ies)|bikini|swimsuit|bra|lingerie|nude|naked|topless|breasts?|child(ren)?|kids?|boys?|bab(y|ies)|toddlers?|teen(ager)?s?)\b/i.test(d) ? "bad" : "ok";
+      if (d) return /\b(wom[ae]n|girls?|female|feminine|lad(y|ies)|bikini|swimsuit|bra|lingerie|nude|naked|topless|breasts?|child(ren)?|kids?|boys?|bab(y|ies)|toddlers?|teen(ager)?s?)\b/i.test(d) ? "bad" : "ok";
     } catch {}
   }
   return "na";
 }
-async function studyImageOne(env, id, titleEn, st, t0, budget) {
+async function studyImageOne(env, id, titleEn, st, t0, budget, cost) {
   const user = `Study title: ${titleEn || "-"}\nArabic headline: ${st.t || ""}\nTags: ${(st.tags || []).join(", ")}\nTopic area: ${st.c || "training"}`;
   let pr = null, err = "";
-  for (const model of [AI_TR_MODELS[2], AI_TR_MODELS[0]]) {
+  if (gemKeys(env).length) { // Gemini (مجاني)
+    const left = budget - (Date.now() - t0);
+    if (left > 14000) { const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], STUDY_IMG_SYS, user, 300, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000))); if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o.p === "string" && o.p.length > 8) pr = o; } else err = String(gm.err || "").slice(0, 80); }
+  }
+  if (!pr) for (const model of [AI_TR_MODELS[2], AI_TR_MODELS[0]]) { // احتياط Llama (بياخد neuron)
+    cost.n += NEUR.llama;
     if (Date.now() - t0 > budget - 7000) return { err: "time" };
     try {
       const out = await exlRace(env.AI.run(model, { messages: [{ role: "system", content: STUDY_IMG_SYS }, { role: "user", content: user }], max_tokens: 220, temperature: 0.4 }), 9000);
@@ -5583,11 +5609,12 @@ async function studyImageOne(env, id, titleEn, st, t0, budget) {
   const clean = String(pr.p).replace(/\b(wom[ae]n|girls?|female|lady|ladies|child(ren)?|kids?|boys?)\b/gi, "").slice(0, 300);
   for (let k = 0; k < 2; k++) {
     if (Date.now() - t0 > budget - 6000) return { err: "time" };
-    const objOnly = k === 1 || pr.people === "none";
-    const prompt = `${clean}${objOnly ? ". Objects and place only, absolutely no people" : ""}. Realistic professional photograph, wide shot, subject centered, natural light, clean uncluttered background, no text, no logos, no women, no girls, no children.`;
+    const objOnly = k === 1 && pr.people !== "none" ? true : pr.people === "none";
+    const prompt = `${clean}${objOnly ? ". Objects only, absolutely no people" : ""}. Realistic professional sports photograph, close-up, subject fills the frame, sharp focus, shallow depth of field, natural light, no text, no logos, no women, no girls, no children.`;
+    cost.n += NEUR.draw;
     const d = await studyDraw(env, prompt);
     if (!d.b) return { err: "draw " + d.err };
-    const chk = await studyImgCheck(env, d.b);
+    const chk = await studyImgCheck(env, d.b, cost);
     if (chk === "ok" || (chk === "na" && objOnly)) { await env.STORE.put("img:s" + id, d.b, { metadata: { type: imgType(d.b) } }); return { ok: 1 }; }
     err = "check " + chk;
   }
@@ -5595,10 +5622,10 @@ async function studyImageOne(env, id, titleEn, st, t0, budget) {
 }
 async function studyImages(env, t0, budget, E, tool) {
   if (!env.AI) return null;
-  const dk = "studies:imgday:" + new Date().toISOString().slice(0, 10);
-  let used = +((await env.STORE.get(dk)) || 0); if (used >= STUDY_IMG_DAY) return { cap: used };
+  const dk = "studies:neur:" + new Date().toISOString().slice(0, 10);
+  let used = +((await env.STORE.get(dk)) || 0); if (used >= STUDY_NEUR_DAY - NEUR.draw * 2) return { cap: used };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
-  let dm = {}; try { dm = (await env.STORE.get("studies:imgs", "json")) || {}; } catch {} // id → 1 (إلها صورة) أو -1 (ما زبطت)
+  let dm = {}; try { dm = (await env.STORE.get("studies:imgs2", "json")) || {}; } catch {} // id → 1 (إلها صورة) أو -1 (ما زبطت)
   // من أحدث 10 ناقصين منختار 2 عشوائي، ومنحجزهن (simg:c:<id>) لحتى إذا اشتغلت دفعتين سوا ما يرسموا نفس الصورة مرتين (مصاري عالفاضي)
   const top = idx.filter((x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV).slice(0, 10).sort(() => Math.random() - 0.5), pend = [];
   for (const x of top) { if (pend.length >= 2) break; if (await env.STORE.get("simg:c:" + x[0])) continue; await env.STORE.put("simg:c:" + x[0], "1", { expirationTtl: 300 }); pend.push(x); }
@@ -5610,14 +5637,15 @@ async function studyImages(env, t0, budget, E, tool) {
     if (Date.now() - t0 > budget - 8000) break;
     let st = null; try { st = await env.STORE.get("study:" + x[0], "json"); } catch {}
     if (!st) { done[x[0]] = -1; continue; }
-    const r = await studyImageOne(env, x[0], (arts.get(x[0]) || {}).title || "", st, t0, budget);
-    used++;
+    if (used >= STUDY_NEUR_DAY - NEUR.draw * 2) break;
+    const cost = { n: 0 }, r = await studyImageOne(env, x[0], (arts.get(x[0]) || {}).title || "", st, t0, budget, cost);
+    used += cost.n;
     if (r.ok) { made++; done[x[0]] = 1; st.im = "s" + x[0]; await env.STORE.put("study:" + x[0], JSON.stringify(st)); }
     else { err = r.err || ""; if (r.final) done[x[0]] = -1; }
   }
   await env.STORE.put(dk, String(used), { expirationTtl: 3 * 86400 });
-  if (Object.keys(done).length) { let cur = {}; try { cur = (await env.STORE.get("studies:imgs", "json")) || {}; } catch {} Object.assign(cur, done); dm = cur; await env.STORE.put("studies:imgs", JSON.stringify(cur)); }
-  return { made, left: idx.filter((x) => !dm[x[0]]).length, ...(err ? { err: err.slice(0, 160) } : {}) };
+  if (Object.keys(done).length) { let cur = {}; try { cur = (await env.STORE.get("studies:imgs2", "json")) || {}; } catch {} Object.assign(cur, done); dm = cur; await env.STORE.put("studies:imgs2", JSON.stringify(cur)); }
+  return { made, left: idx.filter((x) => !dm[x[0]]).length, neur: used, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
 
 // ---------- لوغو المجلة بالدائرة جنب اسمها ----------
