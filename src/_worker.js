@@ -5537,7 +5537,7 @@ async function studySummaries(env, t0, budget, now, E, tool) {
 const STUDY_NEUR_DAY = 7000, NEUR = { draw: 80, schnell: 80, gemma: 15, llama: 60, llava: 40 }; // الرسم: 80 من فوق لحد ما نتأكد من لوحة Cloudflare
 // الدفعة المدفوعة لمرة وحدة: 80,000 neuron × $0.011/1000 = $0.88 بالأكتر (FLUX.2 klein: 26.05 neuron لكل مربع 512×512،
 // والصورة 1024×448 = مربعين ≈ 52، ومنعدّها 55 لنضل تحت). لو بدك دفعة تانية، غيّر اسم المفتاح (boost2) بعد موافقة صاحب المتجر
-const STUDY_NEUR_BOOST = 80000, STUDY_BOOST_K = "studies:neur:boost1";
+const STUDY_NEUR_BOOST = 80000, STUDY_BOOST_K = "studies:neur:boost1", STUDY_IMG_AI = false;
 // نسخة الصور: كل ما تغيّرت طريقة الرسم منغيّر الحرف، لأنو الصورة القديمة محفوظة سنة بكاش Cloudflare والموبايلات (v1 = s، v2 = t)
 const STUDY_IMGV = "t", STUDY_IMGS = "studies:imgs3";
 // v2 (صاحب المتجر: «الصليبي لازم رياضي عازم عالركبة أو صورة ركبة، والعلكة بالكافيين الصورة بعيدة، حط رياضيين رجال معلش»):
@@ -5643,7 +5643,9 @@ async function studyImageOne(env, id, titleEn, st, t0, budget, cost, dl, noPaid)
   return { err, final: true };
 }
 async function studyImages(env, t0, budget, E, tool, first) {
-  if (!env.AI) return null;
+  // 25/11/2026 صاحب المتجر: «في صور فيها أخطاء باليدين والأصابع، مابدي أخطاء نهائياً، جيبها جاهزة من الإنترنت».
+  // وقّفنا الرسم بالذكاء الاصطناعي (وما عاد في مصاري عالصور)، والصور الحقيقية بتجي من Pexels (studyPhotos)
+  if (!STUDY_IMG_AI || !env.AI) return null;
   const day = new Date().toISOString().slice(0, 10), dk = "studies:neur:" + day;
   // 25/11/2026 انصرف قبل هالحساب حوالي 5,000 (صور النسخة الأولى)، فمنحسبهم لحتى ما نطلع عن المجاني اليوم
   const off = day === "2026-11-25" ? 5000 : 0;
@@ -5732,7 +5734,7 @@ async function studiesApi(request, env, ctx) {
   const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
   if (Date.now() - at > 2 * 60e3 && ctx && ctx.waitUntil) ctx.waitUntil(studiesTick(env, 24000).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
   const f = c ? idx.filter((x) => x[2] === c) : idx, page = f.slice(p * per, p * per + per);
-  const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean).map((x) => ({ ...x, t: String(x.t || "").replace(/^[\s«"“']+|[\s»"”']+$/g, ""), ...(STUDY_LOGO[x.ja] ? { lg: STUDY_LOGO[x.ja] } : {}) })); // بلا أقواس حوالين العنوان
+  const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean).map((x) => ({ ...x, t: String(x.t || "").replace(/^[\s«"“']+|[\s»"”']+$/g, ""), im: /^p\d+$/.test(x.im || "") ? x.im : undefined, ...(STUDY_LOGO[x.ja] ? { lg: STUDY_LOGO[x.ja] } : {}) })); // صور حقيقية بس (p)، المرسومة (s/t) مخفية // بلا أقواس حوالين العنوان
   const err = idx.length ? "" : (await env.STORE.get("studies:err")) || ""; // سبب آخر فشل (للفحص، بلا أسرار)
   return new Response(JSON.stringify({ list, total: f.length, all: idx.length, more: p * per + per < f.length, at: at ? new Date(at).toISOString() : "", ...(err ? { err } : {}) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=120" } });
 }
