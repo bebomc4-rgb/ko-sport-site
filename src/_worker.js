@@ -5828,7 +5828,10 @@ async function studyPhotos(env, t0, budget) {
     try {
       const out = await exlRace(env.AI.run(m, { messages: [{ role: "system", content: UPS_SYS }, { role: "user", content: sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n") }], max_tokens: 700, temperature: 0.2 }), 12000);
       const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out);
-      const o = typeof raw === "object" ? raw : exlAiMap(String(raw || ""));
+      let o = typeof raw === "object" ? raw : exlAiMap(String(raw || ""));
+      if (!o || typeof o !== "object" || Array.isArray(o) || !Object.keys(o).length) { // Llama بيكتب كل دراسة بسطر لحالو {"id":{...}},{"id":{...}}: منلمّهن
+        o = {}; for (const mm of String(typeof raw === "object" ? JSON.stringify(raw) : raw || "").matchAll(/"(\d{5,10})"\s*:\s*(\{[^{}]*\})/g)) { try { o[mm[1]] = JSON.parse(mm[2]); } catch {} }
+      }
       if (o && typeof o === "object" && !Array.isArray(o) && Object.keys(o).length) map = o; else wErr += ` | ${m.split("/").pop()}: ${String(typeof raw === "object" ? JSON.stringify(raw) : raw || "").slice(0, 90)}`;
     } catch (e) { wErr += ` | ${m.split("/").pop()}: ${String((e && e.message) || e).slice(0, 90)}`; }
   }
