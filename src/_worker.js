@@ -5481,7 +5481,7 @@ async function studiesTick(env, budget, first) {
   // الملخّصات (Gemini) والصور (Workers AI) سوا بنفس الوقت: كل وحدة عند شركة، فما بتأخّر وحدة التانية
   const [res, im] = await Promise.all([
     Date.now() < wait ? (async () => ({ wait: new Date(wait).toISOString(), err: String((await env.STORE.get("studies:err")) || "").slice(0, 300) }))() : studySummaries(env, t0, budget, now, E, tool),
-    studyImages(env, t0, budget, E, tool, first).catch((e) => ({ err: String((e && e.message) || e).slice(0, 160) })),
+    (env.UNSPLASH_ACCESS_KEY ? studyPhotos(env, t0, budget) : studyImages(env, t0, budget, E, tool, first)).catch((e) => ({ err: String((e && e.message) || e).slice(0, 160) })), // صور حقيقية (Unsplash)
   ]);
   if (im) res.img = im;
   return res;
@@ -5512,7 +5512,7 @@ async function studySummaries(env, t0, budget, now, E, tool) {
     if (!ok) { bad[a.id] = (bad[a.id] || 0) + 1; lastErr = "AI: " + r.err + " | " + JSON.stringify(o || {}).slice(0, 160); return; }
     const c = ["nutrition", "medicine", "training"].includes(o.c) ? o.c : "training";
     let prev = null; try { prev = await env.STORE.get("study:" + a.id, "json"); } catch {}
-    await env.STORE.put("study:" + a.id, JSON.stringify({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c, tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, m: r.model, at: now, ...(prev && prev.im ? { im: prev.im } : {}) }));
+    await env.STORE.put("study:" + a.id, JSON.stringify({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c, tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, m: r.model, at: now, ...(prev && prev.im ? { im: prev.im } : {}), ...(prev && prev.ph ? { ph: prev.ph } : {}) }));
     idx = idx.filter((x) => x[0] !== a.id); idx.push([a.id, a.d, c, STUDY_PV]); have.add(a.id); delete bad[a.id]; added++;
   };
   for (let i = 0; i < arts.length && !stop; i += 2) { // اتنين سوا (حد Gemini بالدقيقة)
@@ -5579,7 +5579,7 @@ async function studyDraw(env, prompt, cost, dl) {
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل
 const b64Of = (u) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل. cost.n = neuron انصرفت من Cloudflare
-async function studyImgCheck(env, bytes, cost, dl) {
+async function studyImgCheck(env, bytes, cost, dl, noPaid) {
   dl = dl || Date.now() + 30000;
   const keys = gemKeys(env), q = 'Look carefully at this photo. Answer ONLY JSON: {"women":true|false,"children":true|false,"nudity":true|false}. women = any woman or girl, even small, partial or in the background. children = anyone under 18.';
   if (keys.length) {
@@ -5597,7 +5597,7 @@ async function studyImgCheck(env, bytes, cost, dl) {
     }
   }
   for (const model of ["@cf/llava-hf/llava-1.5-7b-hf"]) { // احتياط بس (بياخد neuron)
-    if (dl - Date.now() < 5000) return "na";
+    if (noPaid || dl - Date.now() < 5000) return "na"; // صور Unsplash: Gemini بس (ببلاش)
     try {
       cost.n += NEUR.llava;
       const out = await exlRace(env.AI.run(model, { image: [...bytes], prompt: "Who is in this photo? For every person say man, woman, boy or girl and what they wear. If there is no person, answer exactly: no people.", max_tokens: 80 }), Math.min(12000, dl - Date.now() - 1000));
@@ -5694,6 +5694,133 @@ async function studyImages(env, t0, budget, E, tool, first) {
   for (const x of pend) if (!(x[0] in done)) await env.STORE.delete("simg:c:" + x[0]).catch(() => {}); // يلي ما خلص: بيرجع ينجرّب بالدفعة الجاية
   if (Object.keys(done).length) { let cur = {}; try { cur = (await env.STORE.get(STUDY_IMGS, "json")) || {}; } catch {} Object.assign(cur, done); dm = cur; await env.STORE.put(STUDY_IMGS, JSON.stringify(cur)); }
   return { made, left: idx.filter((x) => !dm[x[0]]).length, neur: used, boost: boostUsed + over, drw, ...(err ? { err: err.slice(0, 160) } : {}) };
+}
+
+// ---------- صور حقيقية من Unsplash (25/11/2026، صاحب المتجر: «في صور فيها أخطاء باليدين والأصابع، جيبها جاهزة من الإنترنت») ----------
+// ببلاش، وما في أخطاء رسم لأنها صور حقيقية. شروط Unsplash: الصورة بتنعرض من رابطهم (hotlink)، أول مرة منستعمل صورة منبعتلهم
+// «download»، واسم المصوّر ورابط Unsplash تحت الصورة. المفتاح: UNSPLASH_ACCESS_KEY (Secret بكلاود فلير، صاحب المتجر بيحطّو بإيدو).
+// حد المفتاح التجريبي 50 طلب بالساعة: كل موضوع منفتّش عليه مرة وحدة (لحد 8 صور، محفوظين 30 يوم)، والدراسات يلي إلها نفس الموضوع
+// بيتقاسمو صورو. كل صورة بتنفحص مرة وحدة بـ Gemini (ببلاش): إذا فيها امرأة أو بنت أو ولد أو عُري، ما منستعملها أبداً.
+const UPS_TOPICS = {
+  running: "man running road", sprint: "sprinter starting blocks", marathon: "marathon runners men", trail_running: "trail running man",
+  treadmill: "man treadmill running", cycling: "road cyclist man", indoor_cycling: "man stationary bike", swimming: "male swimmer pool",
+  triathlon: "triathlon athlete", football: "soccer player ball", basketball: "basketball player", volleyball: "volleyball spike",
+  tennis: "tennis player man", rugby: "rugby player", american_football: "american football player", baseball: "baseball pitcher",
+  handball: "handball player", ice_hockey: "ice hockey player", boxing: "boxer punching bag", mma: "mma fighter", wrestling: "wrestling match",
+  judo: "judo", karate: "karate", rowing: "rowing boat", climbing: "rock climbing man", skiing: "skiing", golf: "golf swing",
+  gymnastics: "gymnast rings", athletics: "athletics track", high_jump: "high jump", throwing: "shot put", weightlifting: "olympic weightlifting",
+  powerlifting: "powerlifting", squat: "barbell squat", deadlift: "deadlift barbell", bench_press: "bench press", dumbbells: "dumbbell curl",
+  kettlebell: "kettlebell swing", gym: "gym workout man", gym_machine: "gym machine workout", bodyweight: "push ups man", pull_ups: "pull up bar",
+  calisthenics: "calisthenics", hiit: "hiit workout", crossfit: "crossfit", plyometrics: "box jump", agility: "agility ladder drill",
+  speed: "sprint training", endurance: "endurance running", stretching: "stretching legs man", foam_roller: "foam roller",
+  yoga: "yoga man", walking: "man walking", hiking: "hiking man", seniors: "senior man exercise", warm_up: "warm up exercise",
+  coach: "coach athlete", team: "sports team huddle", stadium: "stadium", referee: "referee", esports: "gaming setup", military: "military training",
+  knee: "knee pain", acl_brace: "knee brace", ankle: "ankle sprain", feet: "running feet", running_shoes: "running shoes",
+  shoulder: "shoulder pain", elbow: "elbow pain", wrist: "wrist wrap", lower_back: "lower back pain", neck: "neck pain",
+  hamstring: "hamstring stretch", calf: "calf muscle", achilles: "achilles tendon", hip: "hip stretch", physio: "physiotherapy",
+  sports_injury: "sports injury", head_impact: "football helmet", kinesio_tape: "kinesiology tape", ice_pack: "ice pack",
+  massage: "sports massage", ice_bath: "ice bath", sauna: "sauna", sleep: "man sleeping", rest: "athlete resting", recovery: "post workout recovery",
+  heart_rate: "heart rate monitor", ecg: "ecg", blood_pressure: "blood pressure monitor", blood_test: "blood test", glucose: "glucose meter",
+  breathing: "breathing exercise", lungs: "lungs", altitude: "mountain summit", heat: "sweating athlete", cold: "winter running man",
+  brain: "brain", meditation: "meditation man", stress: "stress", focus: "focused athlete", muscle: "muscular back", body_fat: "body fat caliper",
+  waist: "measuring tape waist", scale: "weight scale", bones: "x-ray", sunlight: "sunlight", smartwatch: "smartwatch fitness",
+  lab: "sports science lab", pills: "pills",
+  protein_shake: "protein shake", protein_powder: "protein powder scoop", creatine: "creatine powder", coffee_beans: "coffee beans",
+  espresso: "espresso", energy_drink: "energy drink", chewing_gum: "chewing gum", supplements: "supplement capsules", vitamins: "vitamins",
+  spinach: "spinach", fish_oil: "fish oil capsules", yogurt: "yogurt", collagen: "collagen powder", dark_chocolate: "dark chocolate",
+  cocoa: "cocoa", beetroot: "beetroot juice", cherries: "cherries", berries: "blueberries", fruit: "fruit bowl", oranges: "oranges",
+  bananas: "bananas", vegetables: "vegetables", salad: "salad", lentils: "lentils", steak: "grilled steak", chicken: "grilled chicken",
+  salmon: "salmon fillet", eggs: "eggs", milk: "milk", cheese: "cheese", rice: "rice", pasta: "pasta", oatmeal: "oatmeal", bread: "bread",
+  potatoes: "potatoes", nuts: "nuts", olive_oil: "olive oil", honey: "honey", sugar: "sugar cubes", salt: "salt", water: "water bottle",
+  sports_drink: "sports drink", juice: "fruit juice", green_tea: "green tea", spices: "herbs spices", ginger: "ginger", garlic: "garlic",
+  beer: "beer", cigarette: "cigarette", fast_food: "fast food", empty_plate: "empty plate", avocado: "avocado", plant_food: "plant based food",
+  meal_prep: "meal prep", breakfast: "healthy breakfast", healthy_meal: "healthy meal", protein_bar: "protein bar",
+};
+const UPS_FALL = { nutrition: "healthy_meal", medicine: "physio", training: "gym" };
+const UPS_BAD = /\b(wom[ae]n|girls?|female|feminine|lad(y|ies)|mother|mom|bride|bikini|child(ren)?|kids?|boys?|bab(y|ies)|toddlers?|teen(ager)?s?|daughter|family|couple)\b/i;
+const UPS_SYS = `You pick a stock-photo topic for sports-science studies. Each line is "<id>: <Arabic headline> | <tags> | <area>".
+For each study choose the ONE topic key from this list that best shows what the study is about: the exact sport, exercise, body part, injury, food, drink or supplement. If nothing specific fits, pick the closest general one.
+Keys: ${Object.keys(UPS_TOPICS).join(", ")}
+Return ONLY JSON like {"12345":"creatine","67890":"knee"}.`;
+async function studyPhotos(env, t0, budget) {
+  const key = env.UNSPLASH_ACCESS_KEY;
+  if (!key) return null;
+  const wait = +((await env.STORE.get("studies:ups:wait")) || 0);
+  if (Date.now() < wait) return { wait: new Date(wait).toISOString() };
+  let rl = null; try { rl = JSON.parse((await env.STORE.get("studies:ups:rl")) || "null"); } catch {}
+  let rem = rl && Date.now() - rl.at < 3600e3 ? rl.rem : 50, waitSet = 0, err = "";
+  const ups = async (url) => { // طلب لـ Unsplash (بيتحسب من حد الساعة)
+    const r = await fetch(url, { headers: { authorization: "Client-ID " + key, "accept-version": "v1" }, signal: AbortSignal.timeout(8000) });
+    const h = r.headers.get("x-ratelimit-remaining"); if (h != null && h !== "") rem = +h; else rem--;
+    if (r.status === 401) waitSet = Date.now() + 3600e3; // المفتاح غلط
+    else if (r.status === 403 || r.status === 429) waitSet = Date.now() + 15 * 60e3; // خلص حد الساعة
+    return r;
+  };
+  let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
+  let dm = {}; try { dm = (await env.STORE.get("studies:imgs5", "json")) || {}; } catch {}
+  const todo = idx.filter((x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV).slice(0, 6); // الأحدث أول (يلي فوق بالصفحة)
+  if (!todo.length) return null;
+  const sts = (await Promise.all(todo.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
+  if (!sts.length) return null;
+  const left = budget - (Date.now() - t0);
+  if (left < 14000) return null;
+  const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], UPS_SYS, sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 140)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n"), 400, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000)));
+  let map = {}; if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o === "object") map = o; }
+  if (!Object.keys(map).length) return { err: "topics " + String(gm.err || "").slice(0, 120) };
+  let use = {}, ok = {}; try { use = (await env.STORE.get("studies:ups:use", "json")) || {}; ok = (await env.STORE.get("studies:ups:ok", "json")) || {}; } catch {}
+  const qc = {}, dl = t0 + budget + 2000;
+  let made = 0, okCh = false, useCh = false;
+  const cands = async (k) => { // صور الموضوع (من الكاش، أو تفتيش واحد)
+    if (qc[k]) return qc[k];
+    let c = null; try { c = await env.STORE.get("studies:ups:q:" + k, "json"); } catch {}
+    if (!c) {
+      if (rem <= 3 || waitSet) { err = err || "rate"; return null; }
+      const r = await ups(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(UPS_TOPICS[k])}&per_page=30&orientation=landscape&content_filter=high`);
+      if (!r.ok) { err = "search " + r.status; return null; }
+      const j = await r.json().catch(() => ({}));
+      c = (j.results || []).filter((x) => x && x.urls && x.user && !x.premium && !x.plus && !UPS_BAD.test([x.description, x.alt_description, ...((x.tags || []).map((t) => t && t.title))].join(" ")))
+        .slice(0, 8).map((x) => ({ id: x.id, u: x.urls.raw, s: x.urls.small, n: String(x.user.name || x.user.username || "").slice(0, 60), p: (x.user.links && x.user.links.html) || "https://unsplash.com/", l: (x.links && x.links.html) || "", dl: (x.links && x.links.download_location) || "" }));
+      await env.STORE.put("studies:ups:q:" + k, JSON.stringify(c), { expirationTtl: 30 * 86400 });
+    }
+    return (qc[k] = c);
+  };
+  const pickFor = async (k) => {
+    const c = await cands(k); if (!c || !c.length) return null;
+    const good = c.filter((x) => ok[x.id] === 1), fresh = good.filter((x) => !use[x.id]);
+    if (fresh.length && rem > 8) return fresh[0];
+    for (const x of c.filter((x) => ok[x.id] === undefined).slice(0, 2)) { // صورة ما انفحصت: منفحصها مرة وحدة
+      if (dl - Date.now() < 9000 || rem <= 8) break;
+      const b = await fetch(x.s, { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
+      if (!b) continue;
+      const chk = await studyImgCheck(env, new Uint8Array(b), { n: 0 }, dl, true);
+      if (chk === "ok") { ok[x.id] = 1; okCh = true; return x; }
+      if (chk === "bad") { ok[x.id] = -1; okCh = true; } else break; // الفحص ما اشتغل: بالدفعة الجاية
+    }
+    return good.length ? good.slice().sort((a, b) => (use[a.id] || 0) - (use[b.id] || 0))[0] : null; // منعيد استعمال صورة منيحة
+  };
+  for (const s of sts) {
+    if (Date.now() - t0 > budget - 6000 || waitSet) break;
+    let k = String(map[s.id] || "").trim(); if (!UPS_TOPICS[k]) k = UPS_FALL[s.c] || "gym";
+    let x = await pickFor(k);
+    if (!x && k !== (UPS_FALL[s.c] || "gym") && !waitSet) { const c = qc[k]; if (c && !c.some((y) => ok[y.id] === undefined)) x = await pickFor(UPS_FALL[s.c] || "gym"); } // كل صور الموضوع ما بتنفع
+    if (!x) continue;
+    if (!use[x.id] && x.dl) { // أول مرة منستعمل هالصورة: «download» (شرط Unsplash)
+      if (rem <= 3) { err = err || "rate"; break; }
+      const r = await ups(x.dl).catch(() => null); if (!r || !r.ok) { err = "download " + (r ? r.status : "x"); continue; }
+    }
+    use[x.id] = (use[x.id] || 0) + 1; useCh = true;
+    let cur = null; try { cur = await env.STORE.get("study:" + s.id, "json"); } catch {}
+    if (!cur) continue;
+    cur.ph = { u: x.u, n: x.n, p: x.p, l: x.l };
+    await env.STORE.put("study:" + s.id, JSON.stringify(cur));
+    dm[s.id] = 1; made++;
+  }
+  if (made) await env.STORE.put("studies:imgs5", JSON.stringify(dm));
+  if (useCh) await env.STORE.put("studies:ups:use", JSON.stringify(use));
+  if (okCh) await env.STORE.put("studies:ups:ok", JSON.stringify(ok));
+  await env.STORE.put("studies:ups:rl", JSON.stringify({ rem, at: Date.now() }));
+  if (waitSet) await env.STORE.put("studies:ups:wait", String(waitSet));
+  return { made, left: idx.filter((x) => !dm[x[0]]).length, rem, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
 
 // ---------- لوغو المجلة بالدائرة جنب اسمها ----------
