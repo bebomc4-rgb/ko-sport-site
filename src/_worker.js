@@ -5502,7 +5502,7 @@ async function studiesApi(request, env, ctx) {
   const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
   if (Date.now() - at > 10 * 60e3 && ctx && ctx.waitUntil) ctx.waitUntil(studiesTick(env, 24000).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
   const f = c ? idx.filter((x) => x[2] === c) : idx, page = f.slice(p * per, p * per + per);
-  const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
+  const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean).map((x) => ({ ...x, t: String(x.t || "").replace(/^[\s«"“']+|[\s»"”']+$/g, "") })); // بلا أقواس حوالين العنوان
   const err = idx.length ? "" : (await env.STORE.get("studies:err")) || ""; // سبب آخر فشل (للفحص، بلا أسرار)
   return new Response(JSON.stringify({ list, total: f.length, all: idx.length, more: p * per + per < f.length, at: at ? new Date(at).toISOString() : "", ...(err ? { err } : {}) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=120" } });
 }
