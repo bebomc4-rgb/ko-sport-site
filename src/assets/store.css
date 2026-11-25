@@ -576,12 +576,12 @@ body{overflow-x:clip}
 @media (max-width:640px){
   .slist.grid[data-pm]{grid-template-columns:repeat(var(--pm),minmax(0,1fr))}
   .slist.row[data-pm]{grid-auto-columns:calc((100% - (var(--pm) - 1) * 10px - 28px) / var(--pm))}
-  .slist.row[data-pm][style*="--pm:1"]{grid-auto-columns:84%}
-  .slist[data-pm][style*="--pm:3"] .card .body,.slist[data-pm][style*="--pm:4"] .card .body{padding:6px 7px 8px}
-  .slist[data-pm][style*="--pm:3"] .card .name,.slist[data-pm][style*="--pm:4"] .card .name{font-size:12px}
-  .slist[data-pm][style*="--pm:3"] .price,.slist[data-pm][style*="--pm:4"] .price{font-size:15px}
-  .slist[data-pm][style*="--pm:3"] .add,.slist[data-pm][style*="--pm:4"] .add,.slist[data-pm][style*="--pm:3"] .buy-now,.slist[data-pm][style*="--pm:4"] .buy-now{font-size:11px;padding:5px 4px}
-  .slist[data-pm][style*="--pm:4"] .foot-row{flex-direction:column;align-items:stretch;gap:4px}
+  .slist.row[data-pm="1"]{grid-auto-columns:84%}
+  .slist[data-pm="3"] .card .body,.slist[data-pm="4"] .card .body{padding:6px 7px 8px}
+  .slist[data-pm="3"] .card .name,.slist[data-pm="4"] .card .name{font-size:12px}
+  .slist[data-pm="3"] .price,.slist[data-pm="4"] .price{font-size:15px}
+  .slist[data-pm="3"] .add,.slist[data-pm="4"] .add,.slist[data-pm="3"] .buy-now,.slist[data-pm="4"] .buy-now{font-size:11px;padding:5px 4px}
+  .slist[data-pm="4"] .foot-row{flex-direction:column;align-items:stretch;gap:4px}
 }
 
 /* =====================================================================
@@ -817,7 +817,7 @@ html:not([data-logo-round=off])[data-l-hdr=app] .logo img{width:calc(var(--logo-
   #app .cat-tiles.cs-row[data-pm]{grid-auto-columns:calc((100% - (var(--pm) - 1) * 10px - 28px) / var(--pm));padding-inline:0;margin-inline:0}
 }
 .cat-tiles.no-names .cat-tile b,.cat-tiles.no-names .cat-tile span{display:none}
-.cat-tiles[style*="--cimg"] .cat-tile img{background:var(--cimg)}
+.cat-tiles[data-cimg] .cat-tile img{background:var(--cimg)}
 .cat-tiles.no-bg .cat-tile img{background:transparent}
 
 /* discounts, coupon, pages */
@@ -847,7 +847,7 @@ body.has-sticky .wa-float{display:none}
 .tiles.t-row>.tile{scroll-snap-align:start}
 .tile{min-width:0}
 .tiles .banner{margin:0}
-.tiles[style*="--cimg"] .video,.tiles[style*="--cimg"] .feature{background:var(--cimg)}
+.tiles[data-cimg] .video,.tiles[data-cimg] .feature{background:var(--cimg)}
 .tiles .video{aspect-ratio:16/9}
 .video iframe{width:100%;height:100%;border:0}
 .t-features.t-grid{grid-template-columns:repeat(var(--pd,4),minmax(0,1fr))}
@@ -856,7 +856,7 @@ body.has-sticky .wa-float{display:none}
   .t-features.t-grid{grid-template-columns:repeat(var(--pm,2),minmax(0,1fr))}
   .tiles.t-row{grid-auto-columns:calc((100% - (var(--pm,1) - 1) * 10px - 28px) / var(--pm,1))}
 }
-.slist[style*="--cimg"] .card .pic{background:var(--cimg)}
+.slist[data-cimg] .card .pic{background:var(--cimg)}
 
 /* ---------- home spacing (dashboard controlled) ---------- */
 .hsec{padding-top:var(--gt,var(--sec-gap,var(--sec-gap-d,28px)))}
@@ -888,7 +888,7 @@ body.has-sticky .wa-float{display:none}
 .spot-dots{position:absolute;bottom:4px;left:0;right:0;display:flex;justify-content:center;gap:6px}
 .spot-dots span{width:7px;height:7px;border-radius:9px;background:var(--line);cursor:pointer;transition:width .25s,background .25s}
 .spot-dots span.on{width:22px;background:var(--c-link)}
-.spot[style*="--cimg"] .card .pic,.spot[style*="--cimg"] .cat-tile img,.spot[style*="--cimg"] .video,.spot[style*="--cimg"] .feature{background:var(--cimg)}
+.spot[data-cimg] .card .pic,.spot[data-cimg] .cat-tile img,.spot[data-cimg] .video,.spot[data-cimg] .feature{background:var(--cimg)}
 .spot.no-names .cat-tile b,.spot.no-names .cat-tile span{display:none}
 .spot-cats .cat-tile{display:block}
 .spot-count{align-items:center;gap:10px;font-size:14px;color:var(--muted)}
@@ -940,10 +940,17 @@ body.has-sticky .wa-float{display:none}
 .car-i{flex:0 0 var(--cw);min-width:0;display:flex;position:relative;scroll-snap-align:center;scroll-snap-stop:normal;contain:layout style}
 .car-i *{scroll-snap-align:none!important}
 .car .car-i>*{flex:1 1 auto;width:100%;min-width:0;margin:0;position:relative;transform-origin:center;transition:box-shadow .3s,border-color .3s;backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform}
+/* السلاسة: السلايد بيحرّك الكرت بإيدو بكل فريم. إذا الكرت إلو انتقال (transition) على الحركة أو الشفافية من الثيم
+   (متل «luxe»: .45s)، كل فريم كان يبلّش انتقال جديد فالكرت يلحق الإصبع متأخر ويرجف. هون ممنوع، مهما كان الثيم */
+.car .car-i>*{transition-property:box-shadow,border-color!important}
+.car-fx-fade .car-i>*,.car-fx-stack .car-i>*{will-change:transform,opacity}
+/* كرت بعيد عن النص (برّا الشاشة): مخفي وبلا طبقة لحالو، لحتى السحب يضل خفيف (store.js بيحط .far) */
+.car .car-i.far{visibility:hidden}
+.car .car-i.far>*,.car .car-i.far .car-dim{will-change:auto}
 .car-dim{position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;background:var(--c-page-bg,var(--paper,#fff));opacity:0;will-change:opacity}
 .car-hero .car-dim{background:#000}
 .car{isolation:isolate}
-.car[style*="--cimg"] .card .pic,.car[style*="--cimg"] .cat-tile img,.car[style*="--cimg"] .video,.car[style*="--cimg"] .feature{background:var(--cimg)}
+.car[data-cimg] .card .pic,.car[data-cimg] .cat-tile img,.car[data-cimg] .video,.car[data-cimg] .feature{background:var(--cimg)}
 .car.no-names .cat-tile b,.car.no-names .cat-tile span{display:none}
 .car-cats .cat-tile{display:block}
 /* effects — driven by --d (distance from the middle, in items) that the script updates while it moves */
@@ -1133,6 +1140,9 @@ html[data-fx-card=none] .card:hover{box-shadow:none;transform:none}
 html[data-fx-btn=shine] .buy-now,html[data-fx-btn=shine] .add,html[data-fx-btn=shine] .btn-red,html[data-fx-btn=shine] .btn-primary{position:relative;overflow:hidden}
 html[data-fx-btn=shine] .buy-now::after,html[data-fx-btn=shine] .add::after,html[data-fx-btn=shine] .btn-red::after,html[data-fx-btn=shine] .btn-primary::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);transform:translateX(-130%);animation:fxShine 3.4s 1s infinite;pointer-events:none}
 @keyframes fxShine{to{transform:translateX(130%)}}
+/* بس الأزرار الظاهرة بتلمع (store.js بيحط .shn)، وبالسلايدات بس زر الكرت يلي بالنص */
+html[data-fx-btn=shine]:not(.shn-all) :is(.buy-now,.add,.btn-red,.btn-primary):not(.shn)::after{animation:none}
+html[data-fx-btn=shine] .car-i:not(.on) :is(.buy-now,.add)::after{animation:none}
 @keyframes fxPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--red) 55%,transparent)}70%,100%{box-shadow:0 0 0 14px transparent}}
 html[data-fx-btn=pulse] .buy-now,html[data-fx-btn=pulse] .btn-red,html[data-fx-btn=pulse] .btn-primary{animation:fxPulse 2.2s infinite}
 html[data-fx-btn=ripple] .btn,html[data-fx-btn=ripple] .add,html[data-fx-btn=ripple] .buy-now{position:relative;overflow:hidden}
@@ -1498,8 +1508,12 @@ html[data-theme=dark] .bnav .bn-dark .sun{display:block}html[data-theme=dark] .b
 @keyframes bnBounce{0%,60%,100%{transform:translateY(0)}20%{transform:translateY(-7px)}35%{transform:translateY(0)}45%{transform:translateY(-3px)}}
 [data-bn-fx=glow] .bnav .bn-fx::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-26px 0 0 -22px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--bn-ac,var(--red)) 55%,transparent) 0,transparent 70%);animation:bnGlow 1.8s ease-in-out infinite;z-index:0;pointer-events:none}
 @keyframes bnGlow{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1.25);opacity:1}}
+/* shine: the icon wiggles and a glow flashes behind it. Only transform/opacity are animated (the old drop-shadow filter
+   could not run on the graphics card, so the whole bottom bar was restyled and repainted every frame, forever) */
 [data-bn-fx=shine] .bnav .bn-fx svg{animation:bnShine 2.6s ease-in-out infinite}
-@keyframes bnShine{0%,70%,100%{filter:none;transform:rotate(0)}80%{filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 10px var(--bn-ac,var(--red)));transform:rotate(-12deg) scale(1.15)}90%{transform:rotate(10deg) scale(1.1)}}
+@keyframes bnShine{0%,70%,100%{transform:rotate(0)}80%{transform:rotate(-12deg) scale(1.15)}90%{transform:rotate(10deg) scale(1.1)}}
+[data-bn-fx=shine] .bnav .bn-fx::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-26px 0 0 -22px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.9) 0,color-mix(in srgb,var(--bi,var(--bn-ac,var(--red))) 42%,transparent) 40%,transparent 68%);opacity:0;animation:bnShineGlow 2.6s ease-in-out infinite;z-index:0;pointer-events:none}
+@keyframes bnShineGlow{0%,70%,100%{opacity:0;transform:scale(.6)}80%{opacity:1;transform:scale(1.12)}90%{opacity:.55;transform:scale(1)}}
 /* fire: a living flame behind the icon */
 [data-bn-fx=fire] .bnav .bn-fx svg{color:#fff;filter:drop-shadow(0 1px 2px rgba(120,20,0,.6));animation:bnFireIc 1.2s ease-in-out infinite}
 [data-bn-fx=fire] .bnav .bn-fx::before,[data-bn-fx=fire] .bnav .bn-fx::after{content:"";position:absolute;left:50%;top:50%;pointer-events:none;z-index:0;border-radius:50% 50% 45% 45%/62% 62% 38% 38%;transform-origin:50% 100%}
@@ -1803,7 +1817,7 @@ html[data-cd-hov=shine] #app .card .pic::after{content:"";position:absolute;inse
 #app .cst-luxe .ct-btn{margin:0 12px 12px;background:transparent;border:1px solid #c9a45c;color:#c9a45c}
 @media (max-width:640px){#app .cst-chip,#app .cst-btn{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}}
 /* bottom bar: per-button colour and button background */
-.bnav [style*="--bi"] svg,.bnav [style*="--bi"] span,html[data-theme=dark] .bnav [style*="--bi"] svg,html[data-theme=dark] .bnav [style*="--bi"] span{color:var(--bi)!important}
+.bnav [data-bi] svg,.bnav [data-bi] span,html[data-theme=dark] .bnav [data-bi] svg,html[data-theme=dark] .bnav [data-bi] span{color:var(--bi)!important}
 html[data-bn-btn=on] .bnav>a,html[data-bn-btn=on] .bnav>button{background:var(--bn-btn);border-radius:14px;margin:4px 2px}
 /* blur sections window follows dark mode */
 html[data-theme=dark] .kx-g:not(.kx-all),html[data-theme=dark] .kx-c{background:rgba(30,30,37,.95);color:#f2f2f5}
@@ -1831,7 +1845,7 @@ html[data-theme=dark][data-pri-dark] .br-gh a{color:#fff}
 html[data-bn-jump=on] body[data-page=home] .bnav .bn-fx{animation:bnJump 2.4s cubic-bezier(.3,1.4,.5,1) infinite}
 html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx svg{animation:none!important;filter:none!important;color:inherit}
 html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx::before,html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx::after{display:none!important}
-html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx[style*="--bi"] svg{color:var(--bi)!important}
+html[data-bn-fxhome=on] body:not([data-page=home]) .bnav .bn-fx[data-bi] svg{color:var(--bi)!important}
 @media (prefers-reduced-motion:reduce){html[data-bn-jump=on] body[data-page=home] .bnav .bn-fx{animation:none}}
 
 /* v91: moving carousels never use live blur (glass) — it forced a full repaint every frame */

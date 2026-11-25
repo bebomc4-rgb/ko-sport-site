@@ -636,7 +636,9 @@
     if (sec.layout === "car") return carousel(sec, items.map(card), "car-cards");
     const grid = sec.layout === "grid", pm = +sec.perMob, pd = +sec.perDesk;
     const bgc = sec.noBg ? "transparent" : /^#[0-9a-f]{6}$/i.test(sec.bg || "") ? sec.bg : "";
-    const attrs = (pm >= 1 && pm <= 4 ? ` data-pm style="--pm:${pm}` : ` style="`) + (bgc ? `;--cimg:${bgc}` : "") + (pd >= 1 && pd <= 6 ? `;--pd:${pd}" data-pd` : `"`);
+    // data-pm="N" / data-cimg بدل محددات [style*=...] بالـ CSS: هديك كانت تخلّي أي تغيير بستايل أي عنصر (متل حركة السلايد بكل فريم)
+    // يعيد حساب كل محتوى الكرت (الاسم، السعر، الزر، الصورة...) بدل الكرت لحالو
+    const attrs = (pm >= 1 && pm <= 4 ? ` data-pm="${pm}" style="--pm:${pm}` : ` style="`) + (bgc ? `;--cimg:${bgc}` : "") + (pd >= 1 && pd <= 6 ? `;--pd:${pd}" data-pd` : `"`) + (bgc ? " data-cimg" : "");
     const auto = !grid && sec.auto !== "off" ? ` data-auto="${Math.min(10, Math.max(2, +sec.speed || 4))}"` : "";
     return `<div class="${grid ? "grid" : "row"} slist"${attrs}${auto}>${items.map(card).join("")}</div>`;
   }
@@ -645,7 +647,7 @@
     if (sec.layout === "car") return carousel(sec, items, cls + " car-wide");
     const grid = sec.layout ? sec.layout === "grid" : !!defGrid, pm = +sec.perMob, pd = +sec.perDesk, bg = /^#[0-9a-f]{6}$/i.test(sec.bg || "") ? sec.bg : "";
     const st = [pm >= 1 && pm <= 4 ? `--pm:${pm}` : "", pd >= 1 && pd <= 6 ? `--pd:${pd}` : "", sec.noBg ? "--cimg:transparent" : bg ? `--cimg:${bg}` : ""].filter(Boolean).join(";");
-    return `<div class="tiles ${grid ? "t-grid" : "t-row"} ${cls}"${pm ? " data-pm" : ""}${pd ? " data-pd" : ""}${st ? ` style="${st}"` : ""}>${items.map((h) => `<div class="tile">${h}</div>`).join("")}</div>`;
+    return `<div class="tiles ${grid ? "t-grid" : "t-row"} ${cls}"${pm ? ` data-pm="${pm}"` : ""}${pd ? " data-pd" : ""}${sec.noBg || bg ? " data-cimg" : ""}${st ? ` style="${st}"` : ""}>${items.map((h) => `<div class="tile">${h}</div>`).join("")}</div>`;
   }
   function ytId(u) { const m = String(u || "").match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/); return m ? m[1] : ""; }
   const SECTIONS = {
@@ -679,7 +681,7 @@
       const pm = +sec.perMob, pd = +sec.perDesk, bg = /^#[0-9a-f]{6}$/i.test(sec.bg || "") ? sec.bg : "";
       const cls = ["cat-tiles", look, sec.layout === "grid" ? "cs-grid" : sec.layout === "row" ? "cs-row" : "", sec.showNames === false ? "no-names" : "", sec.noBg ? "no-bg" : ""].filter(Boolean).join(" ");
       const style = [pm >= 1 && pm <= 4 ? `--pm:${pm}` : "", pd >= 2 && pd <= 8 ? `--pd:${pd}` : "", !sec.noBg && bg ? `--cimg:${bg}` : ""].filter(Boolean).join(";");
-      return secHead(sec.showTitle === false ? "" : sec.title, "#/all") + `<div class="${cls}"${pm ? " data-pm" : ""}${pd ? " data-pd" : ""}${style ? ` style="${style}"` : ""}>${sorted.map(tileH).join("")}</div>`;
+      return secHead(sec.showTitle === false ? "" : sec.title, "#/all") + `<div class="${cls}"${pm ? ` data-pm="${pm}"` : ""}${pd ? " data-pd" : ""}${!sec.noBg && bg ? " data-cimg" : ""}${style ? ` style="${style}"` : ""}>${sorted.map(tileH).join("")}</div>`;
     },
     groups(sec) {
       sec = sec || {};
@@ -848,12 +850,21 @@
     rowTimers.forEach((f) => f()); rowTimers = [];
     if (document.documentElement.classList.contains("reduce")) return;
     app.querySelectorAll(".row[data-auto]").forEach((row) => {
-      let seen = false, touching = false, dead = false, raf = 0, t0 = performance.now(), last = t0;
+      // بمؤقّت (مو حلقة شغّالة بكل فريم): الصف الواقف ما بيكلّف المتصفح شي
+      let seen = !("IntersectionObserver" in window), touching = false, dead = false, rTimer = 0;
       const every = (+row.dataset.auto || 4) * 1000;
-      const io2 = "IntersectionObserver" in window && new IntersectionObserver(([en]) => { seen = en.isIntersecting; }, { threshold: 0.3 });
-      if (io2) io2.observe(row); else seen = true;
+      let due = performance.now() + every, left = every;
+      const can = () => !dead && seen && !touching && !document.hidden;
+      const arm = () => { clearTimeout(rTimer); rTimer = 0; if (can()) rTimer = setTimeout(fire, Math.max(16, due - performance.now())); };
+      const bump = () => { due = performance.now() + every; if (!rTimer) arm(); }; // الزبون حرّكو: الانتظار الكامل من جديد
+      const rest = () => { left = Math.max(0, due - performance.now()); clearTimeout(rTimer); rTimer = 0; };
+      const wake = () => { if (!can()) return; due = performance.now() + left; arm(); };
+      const io2 = "IntersectionObserver" in window && new IntersectionObserver(([en]) => { seen = en.isIntersecting; if (seen) wake(); else rest(); }, { threshold: 0.3 });
+      if (io2) io2.observe(row);
+      const vis = () => { if (document.hidden) rest(); else wake(); };
+      document.addEventListener("visibilitychange", vis);
       let stepPx = 0, settleT = 0;
-      const press = () => { touching = true; clearTimeout(settleT); stopGlide(row, true); };
+      const press = () => { touching = true; clearTimeout(settleT); stopGlide(row, true); clearTimeout(rTimer); rTimer = 0; };
       // بعد ما يترك الإصبع وتخلص رمية التمرير: إذا المغناطيس طافي (وقّفنا حركة تلقائية بالنص) منكمّل لأقرب كرت بنعومة
       const settle = () => {
         if (touching || row._glide || row.style.scrollSnapType !== "none") return;
@@ -862,15 +873,15 @@
         const sgn = getComputedStyle(row).direction === "rtl" ? -1 : 1, pos = Math.abs(row.scrollLeft);
         glide(row, sgn * Math.min(max, Math.round(pos / stepPx) * stepPx), 320);
       };
-      const lift = () => { touching = false; t0 = performance.now(); clearTimeout(settleT); settleT = setTimeout(settle, 160); };
+      const lift = () => { touching = false; bump(); clearTimeout(settleT); settleT = setTimeout(settle, 160); };
       // باللمس المتصفح بيبعت pointercancel أول ما يبلّش يمرّر، والإصبع لسّا عالشاشة: ما منعتبرها «ترك» (كانت الحركة التلقائية
       // تبلّش وهو عم يسحب وتتعارك معو). الترك الحقيقي: touchend، أو pointerup للماوس.
       row.addEventListener("pointerdown", (e) => { if (e.pointerType !== "touch") press(); }, { passive: true }); row.addEventListener("touchstart", press, { passive: true });
       row.addEventListener("pointerup", (e) => { if (e.pointerType !== "touch") lift(); }, { passive: true });
       ["touchend", "touchcancel"].forEach((ev) => row.addEventListener(ev, (e) => { if (!e.touches || !e.touches.length) lift(); }, { passive: true }));
       // طول ما هو عم يتحرّك بإيد الزبون (سحب أو رمية): الحركة التلقائية بتستنى، وبعد ما يوقف منكمّل للكرت الأقرب
-      row.addEventListener("scroll", () => { if (row._glide) return; t0 = performance.now(); if (!touching) { clearTimeout(settleT); settleT = setTimeout(settle, 160); } }, { passive: true });
-      row.addEventListener("wheel", () => { t0 = performance.now(); }, { passive: true });
+      row.addEventListener("scroll", () => { if (row._glide) return; due = performance.now() + every; if (!touching) { clearTimeout(settleT); settleT = setTimeout(settle, 160); } }, { passive: true });
+      row.addEventListener("wheel", bump, { passive: true });
       const next = () => {
         const max = row.scrollWidth - row.clientWidth; if (max <= 4) return;
         if (!stepPx) { const f = row.firstElementChild, g = parseFloat(getComputedStyle(row).columnGap) || 0; stepPx = (f ? f.getBoundingClientRect().width : row.clientWidth / 2) + g; }
@@ -881,32 +892,50 @@
         if (p > max - 6) p = max;
         glide(row, sgn * p, (fwd ? atEnd : atStart) ? 900 : 650);
       };
-      const tick = (now) => {
-        if (dead || !document.contains(row)) { if (io2) io2.disconnect(); return; }
-        const gap = now - last; last = now;
-        if (document.hidden || !seen || touching || gap > 400) t0 += gap;
-        else if (now - t0 >= every) { t0 = now; next(); }
-        raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
       const ro = "ResizeObserver" in window && new ResizeObserver(() => { stepPx = 0; }); if (ro) ro.observe(row);
-      rowTimers.push(() => { dead = true; cancelAnimationFrame(raf); clearTimeout(settleT); stopGlide(row); if (io2) io2.disconnect(); if (ro) ro.disconnect(); });
+      const stop = () => { dead = true; clearTimeout(rTimer); clearTimeout(settleT); stopGlide(row); if (io2) io2.disconnect(); if (ro) ro.disconnect(); document.removeEventListener("visibilitychange", vis); };
+      const fire = () => {
+        rTimer = 0; if (!document.contains(row)) return stop();
+        if (!can()) return;
+        if (performance.now() + 10 < due) return arm();
+        next(); due = performance.now() + every; arm();
+      };
+      arm();
+      rowTimers.push(stop);
     });
   }
   // main slider: fade (default, right → left) or sideways; a thin progress bar shows when the next slide comes
   const dirSign = () => (S && S.design && S.design.slideDir === "ltr" ? -1 : 1);
   // home rows / carousels of groups and products can move their own way (design.rowDir), otherwise like the main slider
   const rowSign = () => { const r = S && S.design && S.design.rowDir; return r === "ltr" ? -1 : r === "rtl" ? 1 : dirSign(); };   // 1 = new slides come from the right (Arabic default), −1 = from the left
-  let sliderTimer, sliderRaf;
+  let sliderStop = null;
   function startSlider() {
-    clearInterval(sliderTimer); cancelAnimationFrame(sliderRaf);
+    if (sliderStop) { sliderStop(); sliderStop = null; }
     const sl = app.querySelector("[data-slider]"); if (!sl) return;
     const tr = sl.querySelector(".sl-track"), slides = [...tr.children], n = slides.length; if (n < 2) return;
     const DIR = dirSign(), D = S.design, fade = sl.classList.contains("fx-fade"), wipe = sl.classList.contains("fx-wipe"), xfade = sl.classList.contains("fx-xfade"), outMs = xfade ? Math.round(Math.min(5, Math.max(0.3, +D.sliderXf || 1.6)) * 1000) + 150 : 1300, dur = Math.min(15, Math.max(2, +D.sliderSpeed || 5)) * 1000;
     const dots = sl.querySelectorAll(".sl-dots span"), bar = sl.querySelector("[data-sl-bar]"), fillDots = sl.querySelector(".sl-dots.fill");
     const fillOf = (k) => (fillDots && dots[k] ? dots[k].firstElementChild : null);
-    let cur = 0, t0 = performance.now(), last = t0;
+    // الوقت بمؤقّت (مو حلقة شغّالة بكل فريم): السلايدر الواقف ما بيكلّف المتصفح شي
+    let cur = 0, due = performance.now() + dur, left = dur, sTimer = 0, frozen = false;
     const setDots = (i) => dots.forEach((d, k) => d.classList.toggle("on", k === i));
+    // الخط يلي بيتعبّى (تحت الصورة أو بالنقطة): أنيميشن بيمشي لحالو على كرت الشاشة. قبل كانت الصفحة تكتب عرضو بكل فريم،
+    // فالمتصفح يعيد رسم وترتيب طبقات الصفحة كلها 60 مرة بالثانية حتى وانت نازل لتحت (تهنيج بكل الصفحة الرئيسية)
+    let fA = [];
+    const fillGo = () => {
+      fA.forEach((a) => a.cancel()); fA = [];
+      for (const el of [bar, fillOf(cur)]) if (el && el.animate) { const a = el.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { duration: dur, easing: "linear", fill: "forwards" }); a.currentTime = Math.max(0, performance.now() - (due - dur)); if (frozen) a.pause(); fA.push(a); }
+    };
+    const armS = () => { clearTimeout(sTimer); sTimer = 0; if (!frozen) sTimer = setTimeout(fireS, Math.max(16, due - performance.now())); };
+    const restartS = () => { due = performance.now() + dur; fillGo(); armS(); };
+    // ما بيتحرّك وهو مو ظاهر عالشاشة (الزبون نازل لتحت) أو التاب بالخلفية: بيوقف مطرحو وبيكمّل من نفس المكان لما يرجع
+    let seenS = !("IntersectionObserver" in window);
+    const freezeS = () => { if (frozen) return; frozen = true; left = Math.max(0, due - performance.now()); clearTimeout(sTimer); sTimer = 0; fA.forEach((a) => a.pause()); };
+    const thawS = () => { if (!frozen || document.hidden || !seenS) return; frozen = false; due = performance.now() + left; fA.forEach((a) => { if (a.playState === "paused") a.play(); }); armS(); };
+    const ioS = !seenS && new IntersectionObserver(([en]) => { seenS = en.isIntersecting; if (seenS) thawS(); else freezeS(); }, { threshold: 0.05 });
+    if (ioS) ioS.observe(sl);
+    const visS = () => { if (document.hidden) freezeS(); else thawS(); };
+    document.addEventListener("visibilitychange", visS);
     sl.style.setProperty("--kb", dur / 1000 + 1.5 + "s");
     // load + decode the other photos in the background so the first change never waits for the network
     setTimeout(() => slides.forEach((s, k) => { const im = s.querySelector("img"); if (im && k) { im.loading = "eager"; if (im.decode) im.decode().catch(() => {}); } }), 700);
@@ -923,10 +952,9 @@
         slides[i].classList.remove("out"); slides[i].classList.add("on");
         cur = i; setDots(i);
       } else tr.scrollTo({ left: i * tr.clientWidth, behavior: "smooth" });
-      t0 = performance.now(); if (bar) bar.style.transform = "scaleX(0)";
-      dots.forEach((d) => { if (d.firstElementChild) d.firstElementChild.style.transform = "scaleX(0)"; });
+      restartS();
     };
-    if (!fade) tr.addEventListener("scroll", () => { const c = Math.round(tr.scrollLeft / tr.clientWidth); if (c !== cur) { cur = c; setDots(c); t0 = performance.now(); } }, { passive: true });
+    if (!fade) tr.addEventListener("scroll", () => { const c = Math.round(tr.scrollLeft / tr.clientWidth); if (c !== cur) { cur = c; setDots(c); restartS(); } }, { passive: true });
     sl.querySelector(".sl-prev").onclick = () => go(cur - 1, -1);
     sl.querySelector(".sl-next").onclick = () => go(cur + 1, 1);
     dots.forEach((d, k) => (d.onclick = () => go(k, k > cur ? 1 : -1)));
@@ -967,19 +995,18 @@
       if (!drag.axis) {
         if (Math.abs(dx0) < 8 && Math.abs(dy) < 8) return;
         drag.axis = Math.abs(dx0) > Math.abs(dy) ? "x" : "y";
-        if (drag.axis === "x") { t0 = performance.now(); drag.W = sl.clientWidth || 1; drag.base = dx0 < 0 ? -8 : 8; sl.classList.add("dragging"); try { sl.setPointerCapture(e.pointerId); } catch {} }
+        if (drag.axis === "x") { restartS(); drag.W = sl.clientWidth || 1; drag.base = dx0 < 0 ? -8 : 8; sl.classList.add("dragging"); try { sl.setPointerCapture(e.pointerId); } catch {} }
       }
       if (drag.axis !== "x") return;
       drag.dx = dx0 - drag.base;                         // starts from 0, no jump when the drag begins
       { const nt = performance.now(), dt = nt - drag.lt; if (dt > 0) drag.vx = drag.vx * 0.5 + ((e.clientX - drag.lx) / dt) * 0.5; drag.lx = e.clientX; drag.lt = nt; }
-      t0 = performance.now();                            // moving the picture restarts the fill
       if (!drag.raf) drag.raf = requestAnimationFrame(paintDrag);
     });
     const endDrag = () => {
       if (!drag) return;
       const d = drag; drag = null; cancelAnimationFrame(d.raf);
       if (d.axis !== "x") return;                         // a plain tap never touches the fill
-      t0 = performance.now();
+      restartS();
       dragged = Date.now();
       const c = slides[cur], t = d.t != null ? slides[d.t] : null, commit = t && (Math.abs(d.dx) > d.W * 0.12 || (Math.abs(d.dx) > 22 && Math.abs(d.vx) > 0.3 && Math.sign(d.vx) === Math.sign(d.dx)));
       sl.classList.remove("dragging");
@@ -988,24 +1015,20 @@
     };
     sl.addEventListener("pointerup", endDrag); sl.addEventListener("pointercancel", endDrag);
     sl.addEventListener("click", (e) => { if (Date.now() - dragged < 350) { e.preventDefault(); e.stopPropagation(); } }, true);
-    // it NEVER stops: no pause on hover, click, touch, drag or scroll — the bottom fill keeps running and the slide flips on time.
-    // (if the timer runs out while a finger is still dragging, the drag is cancelled and the next slide comes in)
-    const tick = (now) => {
-      if (!document.contains(sl)) return;
-      const gap = now - last;
-      if (document.hidden || gap > 400) t0 += gap; // the tab was asleep: don't skip ahead
-      else {
-        const p = (now - t0) / dur, f = fillOf(cur);
-        if (bar) bar.style.transform = `scaleX(${Math.min(1, p)})`;
-        if (f) f.style.transform = `scaleX(${Math.min(1, p)})`;
-        if (p >= 1) {
-          if (drag && drag.axis === "x") { const d = drag; drag = null; sl.classList.remove("dragging"); clearDrag(slides[cur]); if (d.t != null) clearDrag(slides[d.t]); dragged = Date.now(); }
-          go(cur + (fade ? 1 : DIR), fade ? 1 : DIR);
-        }
-      }
-      last = now; sliderRaf = requestAnimationFrame(tick);
+    // it NEVER stops for a visitor: no pause on hover, click, touch, drag or scroll — the bottom fill keeps running and the slide flips on time.
+    // (if the timer runs out while a finger is still dragging, the drag is cancelled and the next slide comes in).
+    // It only rests while it is off the screen or the tab is in the background, and carries on from the same point.
+    const fireS = () => {
+      sTimer = 0;
+      if (!document.contains(sl)) { if (sliderStop) { sliderStop(); sliderStop = null; } return; }
+      if (frozen) return;
+      if (performance.now() + 10 < due) return armS();
+      if (drag && drag.axis === "x") { const d = drag; drag = null; cancelAnimationFrame(d.raf); sl.classList.remove("dragging"); clearDrag(slides[cur]); if (d.t != null) clearDrag(slides[d.t]); dragged = Date.now(); }
+      go(cur + (fade ? 1 : DIR), fade ? 1 : DIR);
+      if (!sTimer) restartS(); // go() returns early when nothing changes
     };
-    sliderRaf = requestAnimationFrame(tick);
+    sliderStop = () => { clearTimeout(sTimer); sTimer = 0; fA.forEach((a) => a.cancel()); fA = []; if (ioS) ioS.disconnect(); document.removeEventListener("visibilitychange", visS); };
+    restartS();
   }
   // «بالنص مع الجوانب»: one item centred on the screen, the one before and after peeking on both sides.
   // size, gap, side size, effect and shape all come from the dashboard; it loops forever and moves by itself.
@@ -1023,11 +1046,21 @@
     // endless loop: a few copies at each end are enough to fill both sides (full copies of every item tripled the page)
     const K = loop ? Math.min(n, 5) : 0;
     const all = loop ? [...items.slice(n - K).map((h, j) => it(h, n - K + j, 1)), ...real, ...items.slice(0, K).map((h, i) => it(h, i, 1))] : real;
-    return `<div class="car ${cls || ""} car-fx-${fx} car-sh-${shape}${sec.showNames === false ? " no-names" : ""}" data-car="${auto}"${loop ? ` data-loop="${K}"` : ""} style="--cs:${size};--cg:${gap}px;--side:${side / 100}${bg ? `;--cimg:${bg}` : ""}">` +
+    return `<div class="car ${cls || ""} car-fx-${fx} car-sh-${shape}${sec.showNames === false ? " no-names" : ""}" data-car="${auto}"${loop ? ` data-loop="${K}"` : ""}${bg ? " data-cimg" : ""} style="--cs:${size};--cg:${gap}px;--side:${side / 100}${bg ? `;--cimg:${bg}` : ""}">` +
       `<div class="car-track"><div class="car-rail">${all.join("")}</div></div>` +
       (n > 1 ? `<button type="button" class="car-nav car-prev" aria-label="السابق">›</button><button type="button" class="car-nav car-next" aria-label="التالي">‹</button>` : "") +
       (dots ? `<div class="car-dots${o.fill ? " fill" : ""}">${items.map((_, i) => `<span data-cd="${i}"><i></i></span>`).join("")}</div>` : "") + `</div>`;
   }
+  // «لمعة» الأزرار: بس الأزرار الظاهرة عالشاشة بتلمع. كل أنيميشن شغّال بيعيد المتصفح حسابو بكل فريم بيرسمو (سحب، تمرير)،
+  // فـ 40 زر عم يلمعوا مخبّايين جوّا السلايدات كانوا يتقّلوا كل سحبة وكل تمرير. الأزرار الجديدة بتنراقب لحالها.
+  (function shineWatch() {
+    if (!("IntersectionObserver" in window) || !("MutationObserver" in window) || !document.body) { document.documentElement.classList.add("shn-all"); return; }
+    const SEL = ".add,.buy-now,.btn-red,.btn-primary";
+    const io = new IntersectionObserver((es) => { for (const e of es) e.target.classList.toggle("shn", e.isIntersecting); });
+    const each = (nd, f) => { if (nd.nodeType !== 1) return; if (nd.matches(SEL)) f(nd); nd.querySelectorAll(SEL).forEach(f); };
+    each(document.body, (x) => io.observe(x));
+    new MutationObserver((ms) => { for (const m of ms) { m.removedNodes.forEach((nd) => each(nd, (x) => io.unobserve(x))); m.addedNodes.forEach((nd) => each(nd, (x) => io.observe(x))); } }).observe(document.body, { childList: true, subtree: true });
+  })();
   let carStops = [];
   // after a carousel tap opened a page, the phone still sends its «click» a moment later — on the NEW page, at the same spot
   // (it used to land on the product photo and open the zoom). Swallow that one ghost click.
@@ -1046,8 +1079,11 @@
       const dots = [...car.querySelectorAll(".car-dots span")], fill = !!car.querySelector(".car-dots.fill"), autoMs = (+car.dataset.car || 0) * 1000;
       const always = car.classList.contains("car-hero");
       const rtl = getComputedStyle(rail).direction === "rtl", vs = rtl ? -1 : 1; // visual sign of "next"
-      let step = 0, pos = loop ? K : 0, cur = -1, anim = null, drag = null, dragged = 0, tapped = 0, dead = false, loopRaf = 0, frame = 0;
-      let seen = !("IntersectionObserver" in window), hold = 0, t0 = performance.now(), last = t0;
+      let step = 0, pos = loop ? K : 0, cur = -1, anim = null, drag = null, dragged = 0, tapped = 0, dead = false, frame = 0;
+      let seen = !("IntersectionObserver" in window), hold = 0;
+      // التحريك التلقائي بمؤقّت، مو بحلقة requestAnimationFrame شغّالة طول الوقت: الحلقة الدايمة كانت تجبر المتصفح يعيد حساب
+      // كل الأنيميشنات وطبقات الصفحة 60 مرة بالثانية حتى والسلايد واقف (تهنيج بكل الصفحة). هلق لما ما في شي عم يتحرّك، ما في شغل.
+      let due = performance.now() + autoMs, left = autoMs, timer = 0, frozen = false;
       const dv = new Array(its.length);
       // the look of every item is computed here and written straight to its transform/opacity (GPU only).
       // No CSS variables per item → the browser never has to re-style the cards while they move.
@@ -1055,6 +1091,12 @@
       const kids = its.map((el) => el.firstElementChild || el);
       const dims = new Array(its.length);
       const dimOf = (k) => { let x = dims[k]; if (!x) { x = document.createElement("i"); x.className = "car-dim"; kids[k].appendChild(x); dims[k] = x; } return x; };
+      // السلاسة (25/11/2026): كل كتابة بتغيّر «بنية» الطبقات (عنصر جديد، شفافية بتنشال وبترجع، ترتيب z) بتخلّي المتصفح
+      // يعيد بناء طبقات الصفحة كلها بنص الحركة (هاد كان التعليق). فـ: طبقات التعتيم بتنعمل كلها من الأول، الشفافية دايماً رقم،
+      // وترتيب z بس للتأثيرات يلي الكروت فيها فوق بعض (stack/cover) وبس لما يتغيّر الكرت يلي بالنص.
+      const useDim = fx === "scale" || fx === "cover" || fx === "stack" || fx === "rise", useOp = fx === "fade" || fx === "stack", useZ = fx === "stack" || fx === "cover";
+      if (useDim) for (let k = 0; k < its.length; k++) dimOf(k);
+      const ops = new Array(its.length), dms = new Array(its.length), zs = new Array(its.length);
       const look = (vd, ad) => {
         const c1 = Math.min(ad, 1), dc = Math.max(-1, Math.min(1, vd));
         let tf = "", op = 1, dm = 0, s;
@@ -1066,7 +1108,11 @@
         else tf = "none";
         return { tf, op, dm };
       };
-      const measure = () => { step = its.length > 1 ? Math.abs(its[1].getBoundingClientRect().left - its[0].getBoundingClientRect().left) : its[0].getBoundingClientRect().width; if (!step) step = its[0].offsetWidth || 1; };
+      // الكروت البعيدة عن النص (برّا الشاشة) بتصير «far»: مخفية وبلا طبقة خاصة. قبل كان كل كرت بكل سلايد طبقة لحالها (~200 طبقة
+      // بالرئيسية)، والمتصفح لازم يرتّبهن ويبعتهن لكرت الشاشة بكل فريم من السحب، فكان السحب تقيل. هلق بس الكروت القريبة (~5).
+      let farLim = 3;
+      const measure = () => { step = its.length > 1 ? Math.abs(its[1].getBoundingClientRect().left - its[0].getBoundingClientRect().left) : its[0].getBoundingClientRect().width; if (!step) step = its[0].offsetWidth || 1; farLim = Math.max(2.2, (tr.clientWidth || step) / 2 / step + 1.4); };
+      const farS = new Array(its.length);
       const wrap = () => { // stay inside the middle copy; the copies are identical, so the jump is invisible
         if (!loop) return 0;
         let k = 0; if (pos < K - 0.5) k = n; else if (pos >= K + n - 0.5) k = -n;
@@ -1082,18 +1128,42 @@
           const d = k < from || k > to ? (k < c ? -3 : 3) : Math.max(-3, Math.min(3, k - pos));
           const q = Math.round(d * 500); if (dv[k] === q) continue; dv[k] = q;
           const vd = d * vs, ad = Math.abs(d), L = look(vd, ad), ks = kids[k].style;
-          ks.transform = L.tf; ks.opacity = L.op === 1 ? "" : L.op.toFixed(3);
-          if (L.dm > 0.005 || dims[k]) dimOf(k).style.opacity = L.dm.toFixed(3);
-          its[k].style.zIndex = String(20 - Math.round(ad * 2));
+          ks.transform = L.tf;
+          if (useOp) { const o = L.op.toFixed(3); if (ops[k] !== o) { ops[k] = o; ks.opacity = o; } }
+          if (useDim) { const m = L.dm.toFixed(3); if (dms[k] !== m) { dms[k] = m; dims[k].style.opacity = m; } }
         }
+        if (useZ) for (let k = 0; k < its.length; k++) { const z = 20 - Math.min(12, Math.abs(k - c)); if (zs[k] !== z) { zs[k] = z; its[k].style.zIndex = String(z); } }
+        for (let k = 0; k < its.length; k++) { const f = Math.abs(k - pos) > farLim; if (farS[k] !== f) { farS[k] = f; its[k].classList.toggle("far", f); } }
         const best = Math.max(0, Math.min(its.length - 1, c));
         if (best !== cur) {
           if (its[cur]) its[cur].classList.remove("on");
           its[best].classList.add("on"); cur = best;
-          const ci = +its[best].dataset.ci; dots.forEach((dd, k) => { dd.classList.toggle("on", k === ci); if (dd.firstElementChild) dd.firstElementChild.style.transform = "scaleX(0)"; });
+          const ci = +its[best].dataset.ci; dots.forEach((dd, k) => { dd.classList.toggle("on", k === ci); });
+          if (fill) fillGo();
         }
       };
       const queue = () => { if (!frame) frame = requestAnimationFrame(paint); };
+      // الخط يلي بيتعبّى تحت النقطة: أنيميشن بيمشي لحالو (مو كتابة ستايل بكل فريم، كانت تعيد رسم الصفحة 60 مرة بالثانية)
+      let fa = null;
+      const fillGo = () => {
+        if (fa) { fa.cancel(); fa = null; }
+        const f = cur >= 0 && dots[+its[cur].dataset.ci], el = f && f.firstElementChild; if (!el || !el.animate || !autoMs) return;
+        fa = el.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { duration: autoMs, easing: "linear", fill: "forwards" });
+        fa.currentTime = performance.now() - (due - autoMs); // سالب = لسّا ما بلّش (بعد لمسة بيستنى شوي)
+        if (frozen) fa.pause();
+      };
+      const auto = () => autoMs && !reduce && n > 1;
+      const arm = () => { clearTimeout(timer); timer = 0; if (dead || !auto() || frozen || drag) return; timer = setTimeout(fire, Math.max(16, due - performance.now())); };
+      const fire = () => {
+        timer = 0; if (dead || frozen || drag) return;
+        if (!document.contains(car)) { dead = true; return; }
+        if (performance.now() + 10 < due) return arm();
+        go(always ? dirSign() : rowSign());
+      };
+      // من جديد: الانتظار الكامل، بيبلّش بعد ما يخلص وقت اللمسة (hold)
+      const restart = () => { due = Math.max(performance.now(), always ? 0 : hold) + autoMs; if (fill) fillGo(); arm(); };
+      const freeze = () => { if (frozen) return; frozen = true; left = Math.max(0, due - performance.now()); clearTimeout(timer); timer = 0; if (fa) fa.pause(); };
+      const thaw = () => { if (!frozen || document.hidden || (!seen && !always)) return; frozen = false; due = performance.now() + left; if (fa && fa.playState === "paused") fa.play(); arm(); };
       const ease = (t) => 1 - Math.pow(1 - t, 3);
       const animTo = (target, ms) => {
         if (!loop) target = Math.max(0, Math.min(n - 1, target));
@@ -1107,34 +1177,35 @@
         anim.raf = requestAnimationFrame(run);
       };
       const stopAnim = () => { if (anim) { cancelAnimationFrame(anim.raf); anim = null; } };
-      const go = (dir, k) => { const base = anim ? anim.to : Math.round(pos); animTo(k != null ? k : base + dir); t0 = performance.now(); };
+      const go = (dir, k) => { const base = anim ? anim.to : Math.round(pos); animTo(k != null ? k : base + dir); restart(); };
       // finger / mouse
       tr.addEventListener("pointerdown", (e) => {
         if (e.button > 0 || e.target.closest(".car-nav,.car-dots")) return;
         stopAnim(); if (!step) measure();
         drag = { x: e.clientX, y: e.clientY, p0: pos, axis: null, id: e.pointerId, v: 0, sm: [[e.clientX, e.timeStamp || performance.now()]], a: e.target.closest("a[href]"), t: performance.now() };
-        hold = performance.now() + 1200;
+        hold = performance.now() + 1200; clearTimeout(timer); timer = 0;
       });
       tr.addEventListener("pointermove", (e) => {
         if (!drag || e.pointerId !== drag.id) return;
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (!drag.axis) {
-          // باللمس: الاتجاه بيتقرّر بـ touchmove (تحت) بنفس اللحظة يلي منمنع فيها المتصفح يحرّك الصفحة
+          // باللمس: الاتجاه بيتقرّر بـ touchmove (تحت)
           if (e.pointerType === "touch") { if (!tax) return; drag.axis = tax; }
           else { if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; drag.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y"; }
-          if (drag.axis === "y") { drag = null; return; }
+          if (drag.axis === "y") { drag = null; restart(); return; }
           drag.x = e.clientX; drag.p0 = pos; car.classList.add("dragging"); try { tr.setPointerCapture(e.pointerId); } catch {}
-          t0 = performance.now();
+          if (fa) fa.pause();
         }
         // السرعة من آخر 90ms من حركة الإصبع (بتوقيت الحدث نفسو، مو وقت ما وصلنا) → الرمية ما بتطلع عشوائية
         const nt = e.timeStamp || performance.now(); drag.sm.push([e.clientX, nt]); while (drag.sm.length > 2 && nt - drag.sm[0][1] > 90) drag.sm.shift();
         let p = drag.p0 - (vs * (e.clientX - drag.x)) / step;
         if (!loop) { if (p < 0) p *= 0.35; else if (p > n - 1) p = n - 1 + (p - (n - 1)) * 0.35; }
-        pos = p; wrap(); queue(); hold = performance.now() + 1200; t0 = performance.now();
+        pos = p; wrap(); queue(); hold = performance.now() + 1200;
       });
       const end = (e) => {
         if (!drag || (e && e.pointerId !== drag.id)) return;
         const d = drag; drag = null; car.classList.remove("dragging");
+        hold = performance.now() + 1200; restart();
         // a plain tap on a card: open it now, on the first tap (don't wait for a «click» that phones sometimes drop mid-animation)
         if (d.axis !== "x" && e && e.type === "pointerup" && d.a && !d.a.target && performance.now() - d.t < 700 && Math.abs(e.clientX - d.x) < 14 && Math.abs(e.clientY - d.y) < 14) {
           const href = d.a.getAttribute("href") || "";
@@ -1152,60 +1223,49 @@
         // المدة بتطلع من سرعة الإصبع: الحركة بتكمّل بنفس السرعة يلي تركها فيها وبتهدى، بلا قفزة ولا وقفة
         const dist = Math.abs(target - pos) * step, sp = Math.abs(vpx);
         animTo(target, Math.min(650, Math.max(240, sp > 0.05 ? (3 * dist) / sp : 260 + dist * 0.6)));
-        hold = performance.now() + 1200; t0 = performance.now();
       };
       tr.addEventListener("pointerup", end); tr.addEventListener("pointercancel", end);
       // phones hand the touch to the picture under the finger first; moving it to the track fires a "lost capture" on that picture — ignore those
       tr.addEventListener("lostpointercapture", (e) => { if (e.target === tr) end(e); });
       tr.addEventListener("click", (e) => { if (Date.now() - dragged < 350 || Date.now() - tapped < 800) { e.preventDefault(); e.stopPropagation(); } }, true);
       tr.addEventListener("dragstart", (e) => e.preventDefault());
-      // اللمس: منقرّر الاتجاه من أول 5px، وإذا كان عرضي منمنع الصفحة تتحرّك لفوق وتحت (هاد كان سبب الرجفة،
-      // والمتصفح كان ياخد الحركة ويقطع السحب فيعلق السلايد بالنص)
+      // اللمس: الاتجاه بيتقرّر من أول 5px. المسار عليه touch-action:pan-y، فالمتصفح ما بيحرّك الصفحة بسحبة عرضية لحالو؛
+      // المستمعين passive لحتى تمرير الصفحة لفوق وتحت فوق السلايد ما يستنى الجافاسكربت أبداً
       let tsx = 0, tsy = 0, tax = null;
       tr.addEventListener("touchstart", (e) => { const t = e.touches[0]; if (!t) return; tsx = t.clientX; tsy = t.clientY; tax = null; }, { passive: true });
       tr.addEventListener("touchmove", (e) => {
-        if (e.touches.length > 1) return;
+        if (tax || e.touches.length > 1) return;
         const t = e.touches[0], dx = Math.abs(t.clientX - tsx), dy = Math.abs(t.clientY - tsy);
-        if (!tax && (dx > 5 || dy > 5)) tax = dx >= dy * 0.8 ? "x" : "y";
-        if (tax === "x" && e.cancelable) e.preventDefault();
-      }, { passive: false });
+        if (dx > 5 || dy > 5) tax = dx >= dy * 0.8 ? "x" : "y";
+      }, { passive: true });
       // trackpad / mouse wheel sideways
       let wheelT = 0;
       tr.addEventListener("wheel", (e) => {
         if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
         e.preventDefault(); stopAnim(); if (!step) measure();
-        pos += (vs * e.deltaX) / step; wrap(); queue(); hold = performance.now() + 1500;
-        clearTimeout(wheelT); wheelT = setTimeout(() => animTo(Math.round(pos), 300), 120);
+        pos += (vs * e.deltaX) / step; wrap(); queue(); hold = performance.now() + 1500; clearTimeout(timer); timer = 0;
+        clearTimeout(wheelT); wheelT = setTimeout(() => { animTo(Math.round(pos), 300); restart(); }, 120);
       }, { passive: false });
       const prev = car.querySelector(".car-prev"), next = car.querySelector(".car-next");
-      if (prev) prev.onclick = () => { go(-1); hold = performance.now() + 2500; };
-      if (next) next.onclick = () => { go(1); hold = performance.now() + 2500; };
-      dots.forEach((d, k) => (d.onclick = () => { go(0, loop ? K + k : k); hold = performance.now() + 2500; }));
+      if (prev) prev.onclick = () => { hold = performance.now() + 2500; go(-1); };
+      if (next) next.onclick = () => { hold = performance.now() + 2500; go(1); };
+      dots.forEach((d, k) => (d.onclick = () => { hold = performance.now() + 2500; go(0, loop ? K + k : k); }));
       measure(); paint();
-      const io = "IntersectionObserver" in window && new IntersectionObserver(([en]) => { seen = en.isIntersecting; }, { threshold: 0.35 });
+      const io = "IntersectionObserver" in window && new IntersectionObserver(([en]) => { seen = en.isIntersecting; if (seen || always) thaw(); else freeze(); }, { threshold: 0.35 });
       if (io) io.observe(car);
       const ro = "ResizeObserver" in window && new ResizeObserver(() => { step = 0; dv.fill(undefined); queue(); });
       if (ro) ro.observe(tr);
-      const tick = (now) => {
-        if (dead || !document.contains(car)) return;
-        const gap = now - last;
-        if (document.hidden || (!seen && !always) || drag || (!always && now < hold) || gap > 400) t0 += gap;
-        else {
-          const p = (now - t0) / autoMs;
-          if (fill && cur >= 0) { const f = dots[+its[cur].dataset.ci]; if (f && f.firstElementChild) f.firstElementChild.style.transform = `scaleX(${Math.min(1, p)})`; }
-          if (p >= 1) go(always ? dirSign() : rowSign());
-        }
-        last = now; loopRaf = requestAnimationFrame(tick);
-      };
-      if (autoMs && !reduce && n > 1) loopRaf = requestAnimationFrame(tick);
-      carStops.push(() => { dead = true; stopAnim(); cancelAnimationFrame(loopRaf); cancelAnimationFrame(frame); if (io) io.disconnect(); if (ro) ro.disconnect(); });
+      const vis = () => { if (document.hidden) freeze(); else thaw(); };
+      document.addEventListener("visibilitychange", vis);
+      if (auto()) restart();
+      carStops.push(() => { dead = true; stopAnim(); clearTimeout(timer); clearTimeout(wheelT); cancelAnimationFrame(frame); if (fa) fa.cancel(); document.removeEventListener("visibilitychange", vis); if (io) io.disconnect(); if (ro) ro.disconnect(); });
     });
   }
   // «واحد بالنص»: one item in the middle, changing with a fade (right → left)
   function spot(sec, items, cls) {
     const sz = Math.min(100, Math.max(30, +sec.size || 70)), sp = Math.min(10, Math.max(2, +sec.speed || 4));
     const bg = sec.noBg ? "transparent" : /^#[0-9a-f]{6}$/i.test(sec.bg || "") ? sec.bg : "";
-    return `<div class="spot ${cls || ""}${sec.showNames === false ? " no-names" : ""}" data-spot="${sec.auto === "off" ? 0 : sp}" style="--sz:${sz}${bg ? `;--cimg:${bg}` : ""}">${items.map((h, i) => `<div class="spot-i${i ? "" : " on"}">${h}</div>`).join("")}
+    return `<div class="spot ${cls || ""}${sec.showNames === false ? " no-names" : ""}" data-spot="${sec.auto === "off" ? 0 : sp}"${bg ? " data-cimg" : ""} style="--sz:${sz}${bg ? `;--cimg:${bg}` : ""}">${items.map((h, i) => `<div class="spot-i${i ? "" : " on"}">${h}</div>`).join("")}
       ${items.length > 10 ? `<div class="spot-dots spot-count"><button type="button" data-sp-step="-1" aria-label="السابق">›</button><b data-sp-n>1</b> / ${items.length}<button type="button" data-sp-step="1" aria-label="التالي">‹</button></div>`
         : items.length > 1 ? `<div class="spot-dots">${items.map((_, i) => `<span data-sd="${i}" class="${i ? "" : "on"}"></span>`).join("")}</div>` : ""}</div>`;
   }
@@ -2048,7 +2108,7 @@
   // «اعمل برنامجك» جوّا المتجر نفسو (22/11/2026): نفس صفحة المولّد بإطار، بدل ما تفتح برابط خارجي
   function buildPage() {
     document.title = "اعمل برنامجك | " + (C.name || "");
-    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=465" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
+    app.innerHTML = `<iframe class="pb-fr" src="/program-builder.html?embed&v=466" title="اعمل برنامجك" loading="eager" allow="web-share"></iframe>`;
     const fr = app.querySelector(".pb-fr");
     // الطول من جوّا الإطار، و«طلوع لأول المولّد» بس إذا أولو مو ظاهر (كان السكرول ينط لتحت مع كل اختيار)
     window.onmessage = (e) => {
@@ -2074,12 +2134,12 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=465"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=466"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   // قسم التمرين الجديد (gym.js): المجسّم، التنين الأسود، آخر الدراسات، التغذية
   function gymLoad() {
     if (window.KOGym) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=465"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=466"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const gymH = () => ({ toast, auth: socAuth, sheet: openSheet, closeSheet });
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
@@ -4057,7 +4117,7 @@ ${trustH()}
     const fxIdx = (i, it) => fx !== "none" && (fxOn === "all" || (fxOn === "cart" ? it.link === "#/cart" : i === mainI));
     const allTaken = items.some((it) => it.link === "#/all" || it.link === "#/browse");
     nav.innerHTML = items.map((it, i) => {
-      const link = String(it.link || "") /* صاحب المتجر (16 تشرين التاني 2026): «متجر» بيفتح كل المنتجات فوراً، وشريط الأقسام فوقها */, path = BIC[it.icon] || BIC.star, label = esc(it.label || ""), fc = (fxIdx(i, it) ? ' class="bn-fx"' : "") + (HX.test(it.color || "") ? ` style="--bi:${it.color}"` : "");
+      const link = String(it.link || "") /* صاحب المتجر (16 تشرين التاني 2026): «متجر» بيفتح كل المنتجات فوراً، وشريط الأقسام فوقها */, path = BIC[it.icon] || BIC.star, label = esc(it.label || ""), fc = (fxIdx(i, it) ? ' class="bn-fx"' : "") + (HX.test(it.color || "") ? ` data-bi style="--bi:${it.color}"` : "");
       const svg = `<svg viewBox="0 0 24 24"><path d="${path}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
       const inner = svg + (label ? `<span>${label}</span>` : "") + (link === "#/cart" ? '<b class="cart-count" data-cart-count hidden>0</b>' : "");
       if (link === "menu" || link === "search" || link === "explore") return `<button type="button"${fc} data-action="${link}"${link === "menu" && toBrowse && !allTaken ? ' data-nav="all"' : ""} aria-label="${label}">${inner}</button>`;
