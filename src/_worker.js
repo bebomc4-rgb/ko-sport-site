@@ -5885,12 +5885,14 @@ async function studyPhotos(env, t0, budget) {
     }
     return null;
   };
+  const dbg = [["subj", Date.now() - t0, need.length, noGem ? 1 : 0]]; // للفحص: وين راح الوقت
   for (const s of sts) {
-    if (Date.now() - t0 > budget - 6000 || waitSet) break;
-    if (!map[s.id]) continue;
+    if (Date.now() - t0 > budget - 6000 || waitSet) { dbg.push(["stop", Date.now() - t0]); break; }
+    if (!map[s.id]) { dbg.push([s.id, "no subject"]); continue; }
     const m = map[s.id] && typeof map[s.id] === "object" ? map[s.id] : { q: map[s.id] };
     na = false; let x = await tryQ(m.q, m.s);
     if (!x && m.q2 && Date.now() - t0 < budget - 8000) x = await tryQ(m.q2, m.s);
+    dbg.push([s.id, String(m.q || "").slice(0, 24), x ? "ok" : na ? "na" : "miss", Date.now() - t0]);
     if (!x) { if (!err && !na) { fl[s.id] = (fl[s.id] || 0) + 1; ch = true; } continue; } // 3 مرات ما في ولا صورة بتنفع: بتضل بالشكل الملوّن
     if (x.dl) { const r = await ups(x.dl).catch(() => null); if (!r || !r.ok) { err = "download " + (r ? r.status : "x"); continue; } } // «download» (شرط Unsplash)
     used[x.id] = s.id; ch = true;
@@ -5902,7 +5904,7 @@ async function studyPhotos(env, t0, budget) {
   }
   if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:fail2", JSON.stringify(fl)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
   await env.STORE.put("studies:ups:rl2", JSON.stringify(K));
-  return { made, left: idx.filter((x) => !(dm[x[0]] > 0)).length, rem, keys: keys.length, ...(err ? { err: err.slice(0, 160) } : {}) };
+  return { made, left: idx.filter((x) => !(dm[x[0]] > 0)).length, rem, keys: keys.length, dbg, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
 
 // ---------- لوغو المجلة بالدائرة جنب اسمها ----------
