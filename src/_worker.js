@@ -5618,24 +5618,23 @@ async function studyImages(env, t0, budget, E, tool) {
 }
 
 // ---------- لوغو المجلة بالدائرة جنب اسمها ----------
-const STUDY_LOGO = { "Br J Sports Med": "bjsm.bmj.com", "Sports Med": "link.springer.com", "Med Sci Sports Exerc": "acsm.org", "J Int Soc Sports Nutr": "sportsnutritionsociety.org", "J Strength Cond Res": "nsca.com", "Am J Sports Med": "sportsmed.org", "Int J Sport Nutr Exerc Metab": "journals.humankinetics.com", "Scand J Med Sci Sports": "onlinelibrary.wiley.com", "Eur J Appl Physiol": "link.springer.com", "J Appl Physiol (1985)": "journals.physiology.org", "Nutrients": "mdpi.com", "Eur J Sport Sci": "sport-science.org", "J Sports Sci": "tandfonline.com", "Int J Sports Physiol Perform": "journals.humankinetics.com", "Clin J Sport Med": "journals.lww.com", "J Sci Med Sport": "jsams.org", "Orthop J Sports Med": "journals.sagepub.com", "Sports Health": "journals.sagepub.com" };
+const STUDY_LOGO = { "Br J Sports Med": "www.bmj.com", "Sports Med": "link.springer.com", "Med Sci Sports Exerc": "acsm.org", "J Int Soc Sports Nutr": "www.tandfonline.com", "J Strength Cond Res": "nsca.com", "Am J Sports Med": "sportsmed.org", "Int J Sport Nutr Exerc Metab": "journals.humankinetics.com", "Scand J Med Sci Sports": "onlinelibrary.wiley.com", "Eur J Appl Physiol": "link.springer.com", "J Appl Physiol (1985)": "www.physiology.org", "Nutrients": "mdpi.com", "Eur J Sport Sci": "sport-science.org", "J Sports Sci": "www.tandfonline.com", "Int J Sports Physiol Perform": "journals.humankinetics.com", "Clin J Sport Med": "journals.lww.com", "J Sci Med Sport": "www.sciencedirect.com", "Orthop J Sports Med": "journals.sagepub.com", "Sports Health": "journals.sagepub.com" };
 const STUDY_LOGO_OK = new Set(Object.values(STUDY_LOGO));
 async function studyLogo(request, env, ctx) {
   const d = new URL(request.url).searchParams.get("d") || "";
   if (!STUDY_LOGO_OK.has(d)) return new Response("Not found", { status: 404 });
   const cache = typeof caches !== "undefined" ? caches.default : null, ck = new Request(new URL("/api/studies/logo?d=" + d, request.url).href);
   const hit = cache && (await cache.match(ck)); if (hit) return hit;
-  let { value, metadata } = await env.STORE.getWithMetadata("jlogo:" + d, "arrayBuffer");
+  // بنجرّب كذا مصدر وبناخد أكبر صورة (أوضح لوغو)، مرة وحدة بس، وبتنحفظ بـ KV
+  let { value, metadata } = await env.STORE.getWithMetadata("jlogo2:" + d, "arrayBuffer");
   if (!value) {
-    const bad = await env.STORE.get("jlogo:x:" + d); if (bad) return new Response("Not found", { status: 404, headers: { "cache-control": "public, max-age=3600" } });
-    for (const u of [`https://${d}/apple-touch-icon.png`, `https://www.google.com/s2/favicons?domain=${d}&sz=128`]) {
-      try {
-        const r = await fetch(u, { signal: AbortSignal.timeout(6000), headers: { "user-agent": "Mozilla/5.0 (KO SPORT logo)" } }), t = r.headers.get("content-type") || "";
-        const b = r.ok && /^image\//.test(t) ? await r.arrayBuffer() : null;
-        if (b && b.byteLength > 300) { value = b; metadata = { type: t.split(";")[0] }; await env.STORE.put("jlogo:" + d, b, { metadata }); break; }
-      } catch {}
-    }
-    if (!value) { await env.STORE.put("jlogo:x:" + d, "1", { expirationTtl: 86400 }); return new Response("Not found", { status: 404 }); }
+    const bad = await env.STORE.get("jlogo2:x:" + d); if (bad) return new Response("Not found", { status: 404, headers: { "cache-control": "public, max-age=3600" } });
+    const got = await Promise.all([`https://${d}/apple-touch-icon.png`, `https://${d}/apple-touch-icon-precomposed.png`, `https://www.google.com/s2/favicons?domain=${d}&sz=128`, `https://icons.duckduckgo.com/ip3/${d}.ico`].map(async (u) => {
+      try { const r = await fetch(u, { signal: AbortSignal.timeout(6000), headers: { "user-agent": "Mozilla/5.0 (KO SPORT logo)" } }), t = r.headers.get("content-type") || ""; const b = r.ok && /^image\//.test(t) ? await r.arrayBuffer() : null; return b && b.byteLength > 200 ? { b, t: t.split(";")[0] } : null; } catch { return null; }
+    }));
+    const best = got.filter(Boolean).sort((p, q) => q.b.byteLength - p.b.byteLength)[0];
+    if (!best) { await env.STORE.put("jlogo2:x:" + d, "1", { expirationTtl: 86400 }); return new Response("Not found", { status: 404 }); }
+    value = best.b; metadata = { type: best.t }; await env.STORE.put("jlogo2:" + d, best.b, { metadata });
   }
   const res = new Response(value, { headers: { "content-type": (metadata && metadata.type) || "image/png", "cache-control": "public, max-age=604800" } });
   if (cache) ctx.waitUntil(cache.put(ck, res.clone()));
