@@ -5612,18 +5612,19 @@ async function studyDraw(env, prompt, cost, dl) {
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل
 const b64Of = (u) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل. cost.n = neuron انصرفت من Cloudflare
+let GEM_IMG_OUT = 0; // آخر مرة Gemini رجّع 429 بفحص الصور
 async function studyImgCheck(env, bytes, cost, dl, noPaid, subject, noGem) {
   dl = dl || Date.now() + 30000;
   const keys = gemKeys(env), q = 'Look carefully at this photo. Answer ONLY JSON: {"women":true|false,"children":true|false,"nudity":true|false' + (subject ? ',"match":true|false' : "") + '}. women = any woman or girl, even small, partial or in the background. children = anyone under 18.' + (subject ? " match = the photo clearly and mainly shows: " + String(subject).slice(0, 80) + "." : "");
-  if (keys.length && !noGem) {
+  if (keys.length && !noGem && GEM_IMG_OUT < Date.now()) {
     const data = b64Of(bytes), mime = imgType(bytes);
-    for (const model of ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash"]) keyLoop: for (let ki = 0; ki < keys.length; ki++) {
+    gemLoop: for (const model of ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"]) keyLoop: for (let ki = 0; ki < keys.length; ki++) {
       const tag = model + "|" + ki; if ((GEM_OUT.get(tag) || 0) > Date.now()) continue;
       const left = dl - Date.now(); if (left < 2500) return "na"; // ما ضل وقت بالدفعة
       try {
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { signal: AbortSignal.timeout(Math.min(5000, left - 500)), method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": keys[ki] }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data } }, { text: q }] }], generationConfig: { temperature: 0, maxOutputTokens: 120, responseMimeType: "application/json" } }) });
         const t = await r.text();
-        if (!r.ok) { if (r.status === 429 || r.status === 401 || r.status === 403) { GEM_OUT.set(tag, Date.now() + (/PerDay|per day/i.test(t) ? 3600e3 : 60e3)); continue; } break keyLoop; } // 503/404...: الموديل يلي بعدو
+        if (!r.ok) { if (r.status === 429 || r.status === 401 || r.status === 403) { GEM_OUT.set(tag, Date.now() + (/PerDay|per day/i.test(t) ? 3600e3 : 60e3)); if (r.status === 429) { GEM_IMG_OUT = Date.now() + 10 * 60e3; break gemLoop; } continue; } break keyLoop; } // 429: Gemini خالص، منروح على Gemma فوراً (10 دقايق) // 503/404...: الموديل يلي بعدو
         const j = JSON.parse(t), txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map((x) => x.text || "").join("");
         const o = exlAiMap(txt); if (o && typeof o.women === "boolean") return o.women || o.children || o.nudity ? "bad" : subject && o.match === false ? "nomatch" : "ok";
       } catch { break keyLoop; } // بطيء/انقطع: الموديل يلي بعدو
