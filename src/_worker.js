@@ -5465,14 +5465,10 @@ async function studySum(env, a, t0, budget) {
   }
   return { o, err, quota, model };
 }
-// الفهرس: [id، تاريخ، قسم، نسخة الكتابة، صورة (1 = إلها صورة، -1 = ما زبطت)]. الدمج بياخد الأحدث من كل حقل
+// الفهرس: [id، تاريخ، قسم، نسخة الكتابة]. الدمج بياخد النسخة الأحدث لكل دراسة
 const studyIdxMerge = (a, b) => {
   const m = new Map();
-  for (const x of a.concat(b)) {
-    const o = m.get(x[0]); if (!o) { m.set(x[0], x.slice()); continue; }
-    const pv = Math.max(o[3] || 1, x[3] || 1), im = x[4] || o[4] || 0, base = (x[3] || 1) >= (o[3] || 1) ? x.slice() : o.slice();
-    base[3] = pv; base[4] = im; m.set(x[0], base);
-  }
+  for (const x of a.concat(b)) { const o = m.get(x[0]); if (!o || (x[3] || 1) >= (o[3] || 1)) m.set(x[0], x.slice(0, 4)); }
   return [...m.values()].sort((p, q) => String(q[1]).localeCompare(String(p[1])) || +q[0] - +p[0]);
 };
 async function studiesTick(env, budget) {
@@ -5482,11 +5478,12 @@ async function studiesTick(env, budget) {
   if (await env.STORE.get("studies:list")) { await env.STORE.delete("studies:list"); await env.STORE.delete("studies:seen"); } // القديم (قبل Gemini) انمسح، وبيرجع ينعمل
   const E = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/", tool = "&tool=kosport&email=info%40ko-sport.online";
   const wait = +((await env.STORE.get("studies:wait")) || 0);
-  let res;
-  if (Date.now() < wait) res = { wait: new Date(wait).toISOString(), err: String((await env.STORE.get("studies:err")) || "").slice(0, 300) };
-  else res = await studySummaries(env, t0, budget, now, E, tool);
-  // صور الدراسات بالوقت يلي ضل (ومنها كل الوقت لما Gemini عم يستنى حدّو)
-  if (Date.now() - t0 < budget - 9000) { try { const im = await studyImages(env, t0, budget, E, tool); if (im) res.img = im; } catch (e) { res.img = { err: String((e && e.message) || e).slice(0, 160) }; } }
+  // الملخّصات (Gemini) والصور (Workers AI) سوا بنفس الوقت: كل وحدة عند شركة، فما بتأخّر وحدة التانية
+  const [res, im] = await Promise.all([
+    Date.now() < wait ? (async () => ({ wait: new Date(wait).toISOString(), err: String((await env.STORE.get("studies:err")) || "").slice(0, 300) }))() : studySummaries(env, t0, budget, now, E, tool),
+    studyImages(env, t0, budget, E, tool).catch((e) => ({ err: String((e && e.message) || e).slice(0, 160) })),
+  ]);
+  if (im) res.img = im;
   return res;
 }
 async function studySummaries(env, t0, budget, now, E, tool) {
@@ -5508,8 +5505,7 @@ async function studySummaries(env, t0, budget, now, E, tool) {
     const c = ["nutrition", "medicine", "training"].includes(o.c) ? o.c : "training";
     let prev = null; try { prev = await env.STORE.get("study:" + a.id, "json"); } catch {}
     await env.STORE.put("study:" + a.id, JSON.stringify({ id: a.id, t: o.t.slice(0, 140), s: o.s.slice(0, 1400), k: String(o.k || "").slice(0, 300), c, tags: Array.isArray(o.tags) ? o.tags.slice(0, 3).map((x) => String(x).slice(0, 30)) : [], j: a.j, ja: a.ja, d: a.d, type: a.type, doi: a.doi, m: r.model, at: now, ...(prev && prev.im ? { im: prev.im } : {}) }));
-    const old = idx.find((x) => x[0] === a.id);
-    idx = idx.filter((x) => x[0] !== a.id); idx.push([a.id, a.d, c, STUDY_PV, old ? old[4] || 0 : 0]); have.add(a.id); delete bad[a.id]; added++;
+    idx = idx.filter((x) => x[0] !== a.id); idx.push([a.id, a.d, c, STUDY_PV]); have.add(a.id); delete bad[a.id]; added++;
   };
   for (let i = 0; i < arts.length && !stop; i += 2) { // اتنين سوا (حد Gemini بالدقيقة)
     if (Date.now() - t0 > budget - 9000) break;
@@ -5601,7 +5597,8 @@ async function studyImages(env, t0, budget, E, tool) {
   const dk = "studies:imgday:" + new Date().toISOString().slice(0, 10);
   let used = +((await env.STORE.get(dk)) || 0); if (used >= STUDY_IMG_DAY) return { cap: used };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
-  const pend = idx.filter((x) => !x[4]).slice(0, 2); // الأحدث أول
+  let dm = {}; try { dm = (await env.STORE.get("studies:imgs", "json")) || {}; } catch {} // id → 1 (إلها صورة) أو -1 (ما زبطت)
+  const pend = idx.filter((x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV).slice(0, 2); // الأحدث أول (ويلي عم ينعاد تلخيصها بتستنى لحتى ما يتعاركوا عالسجل)
   if (!pend.length) return null;
   let arts = new Map();
   try { const xml = await (await fetch(`${E}efetch.fcgi?db=pubmed&retmode=xml&id=${pend.map((x) => x[0]).join(",")}${tool}`, { signal: AbortSignal.timeout(8000) })).text(); arts = new Map(xml.split(/<PubmedArticle>/).slice(1).map(studyParse).filter((a) => a.id).map((a) => [a.id, a])); } catch {}
@@ -5616,12 +5613,8 @@ async function studyImages(env, t0, budget, E, tool) {
     else { err = r.err || ""; if (r.final) done[x[0]] = -1; }
   }
   await env.STORE.put(dk, String(used), { expirationTtl: 3 * 86400 });
-  if (Object.keys(done).length) {
-    let cur = []; try { cur = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
-    for (const y of cur) if (done[y[0]] != null) y[4] = done[y[0]];
-    await env.STORE.put("studies:idx", JSON.stringify(cur));
-  }
-  return { made, left: idx.filter((x) => !x[4]).length - Object.keys(done).length, ...(err ? { err: err.slice(0, 160) } : {}) };
+  if (Object.keys(done).length) { let cur = {}; try { cur = (await env.STORE.get("studies:imgs", "json")) || {}; } catch {} Object.assign(cur, done); dm = cur; await env.STORE.put("studies:imgs", JSON.stringify(cur)); }
+  return { made, left: idx.filter((x) => !dm[x[0]]).length, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
 
 // ---------- لوغو المجلة بالدائرة جنب اسمها ----------
