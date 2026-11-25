@@ -5416,6 +5416,7 @@ const studyBad = (t) => /[\u00C0-\u024F\u1E00-\u1EFF\u0400-\u04FF\u0E00-\u0E7F\u
 // studies:q = أرقام PubMed من 2026 لليوم (بيتجدّد كل ساعة)، studies:bad = {id: محاولات فاشلة} (بعد 3 بنتركها)،
 // studies:wait = إذا Gemini قال خلص الحد (429) منستنى وبنكمّل بعدين لحالنا. ممنوع تدوير مفاتيح أو حسابات.
 const STUDY_FROM = "2026/01/01";
+const STUDY_GEM = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
 async function studyQueue(env, E, tool) {
   let q = null; try { q = await env.STORE.get("studies:q", "json"); } catch {}
   if (q && q.ids && Date.now() - (q.at || 0) < 3600e3) return q.ids;
@@ -5431,9 +5432,14 @@ async function studySum(env, a, t0, budget) {
   const user = `Journal: ${a.j}\nType: ${a.type}\nTitle: ${a.title}\nAbstract:\n${a.abs}`;
   let o = null, err = "", quota = false, model = "";
   if (String(env.GEMINI_API_KEY || "").trim()) {
-    // exlGemini بيحسب الوقت من EXL_TR_BUDGET، فمنعطيه t0 بحيث يضل ضمن وقت هالدفعة
-    const gm = await exlGemini(env, GEM_TR_SHORT, STUDY_SYS, user, 1500, Date.now() - (EXL_TR_BUDGET - Math.max(9000, budget - (Date.now() - t0))));
-    if (gm.text) { o = exlAiMap(gm.text); model = gm.model; } else { err = String(gm.err || ""); quota = true; } // أي فشل من Gemini (حد، ضغط، شبكة): منستنى ومنرجع نجرّب نفس الدراسة، ما منحسبها فاشلة
+    // كل موديل لحالو (ولكل واحد حدّو اليومي)، والأقوى أول؛ exlGemini بيحسب الوقت من EXL_TR_BUDGET فمنعطيه t0 ضمن وقت الدفعة
+    for (const gmM of STUDY_GEM) {
+      const left = budget - (Date.now() - t0); if (left < 9000) { err += " | ما ضل وقت"; break; }
+      const gm = await exlGemini(env, [gmM], STUDY_SYS, user, 1500, Date.now() - (EXL_TR_BUDGET - left));
+      if (gm.text) { o = exlAiMap(gm.text); model = gm.model; break; }
+      err += " | " + String(gm.err || "").replace(/\s+/g, " ").slice(0, 110);
+    }
+    quota = !o; // أي فشل من Gemini (حد، ضغط، شبكة): منستنى ومنرجع نجرّب نفس الدراسة، ما منحسبها فاشلة
     return { o, err, quota, model }; // في مفتاح: Gemini بس (الجودة أهم)، وإذا خلص الحد منستنى
   }
   for (const m of [AI_TR_MODELS[2], AI_TR_MODELS[0], AI_TR_MODELS[1]]) { // بلا مفتاح: Workers AI بالدور
