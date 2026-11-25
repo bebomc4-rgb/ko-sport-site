@@ -5814,27 +5814,33 @@ async function studyPhotos(env, t0, budget) {
     return r;
   };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
-  let dm = {}, fl = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; fl = (await env.STORE.get("studies:ups2:fail", "json")) || {}; } catch {} // dm: id → 1 (إلها صورة)؛ fl: كم مرة ما لقينا صورة
+  let dm = {}, fl = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; fl = (await env.STORE.get("studies:ups2:fail2", "json")) || {}; } catch {} // dm: id → 1 (إلها صورة)؛ fl: كم مرة ما لقينا صورة
   const todo = idx.filter((x) => !(dm[x[0]] > 0) && !((fl[x[0]] || 0) >= 3) && (x[3] || 1) >= 2).slice(0, 5); // أي دراسة انكتبت (مو لازم تستنى إعادة الكتابة، موضوعها ما بيتغيّر)
   if (!todo.length) return null;
   const sts = (await Promise.all(todo.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
   const left = budget - (Date.now() - t0);
   if (!sts.length || left < 14000) return null;
-  const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], UPS_SYS, sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n"), 600, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000)));
-  let map = {}; if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o === "object") map = o; }
+  // شو لازم يبين بالصورة (pq) بينحفظ بالدراسة، فمنسأل مرة وحدة بس لكل دراسة
+  const map = {}; for (const s of sts) if (s.pq && s.pq.q) map[s.id] = s.pq;
+  const need = sts.filter((s) => !map[s.id]), got = () => need.every((s) => map[s.id]);
+  let gm = { err: "" }, wErr = "";
+  if (need.length) {
+  gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], UPS_SYS, need.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n"), 600, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000)));
+  if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o === "object") Object.assign(map, o); }
   // صاحب المتجر: «حط الصور، والكتابة لحالها بتتغيّر» → إذا Gemini خلص حدّو، Llama (Workers AI، رخيص كتير) بيختار شو يبين بالصورة
-  let wErr = "";
-  if (!Object.keys(map).length && env.AI) for (const m of [AI_TR_MODELS[2], AI_TR_MODELS[1]]) { // Llama، وبعدو GLM
-    if (Object.keys(map).length || Date.now() - t0 > budget - 9000) break;
+  if (!got() && env.AI) for (const m of [AI_TR_MODELS[2], AI_TR_MODELS[1]]) { // Llama، وبعدو GLM
+    if (got() || Date.now() - t0 > budget - 9000) break;
     try {
-      const out = await exlRace(env.AI.run(m, { messages: [{ role: "system", content: UPS_SYS }, { role: "user", content: sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n") }], max_tokens: 700, temperature: 0.2 }), 12000);
+      const out = await exlRace(env.AI.run(m, { messages: [{ role: "system", content: UPS_SYS }, { role: "user", content: need.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n") }], max_tokens: 700, temperature: 0.2 }), 12000);
       const raw = out && typeof out.response === "object" && out.response ? out.response : exlAiText(out);
       let o = typeof raw === "object" ? raw : exlAiMap(String(raw || ""));
       if (!o || typeof o !== "object" || Array.isArray(o) || !Object.keys(o).length) { // Llama بيكتب كل دراسة بسطر لحالو {"id":{...}},{"id":{...}}: منلمّهن
         o = {}; for (const mm of String(typeof raw === "object" ? JSON.stringify(raw) : raw || "").matchAll(/"(\d{5,10})"\s*:\s*(\{[^{}]*\})/g)) { try { o[mm[1]] = JSON.parse(mm[2]); } catch {} }
       }
-      if (o && typeof o === "object" && !Array.isArray(o) && Object.keys(o).length) map = o; else wErr += ` | ${m.split("/").pop()}: ${String(typeof raw === "object" ? JSON.stringify(raw) : raw || "").slice(0, 90)}`;
+      if (o && typeof o === "object" && !Array.isArray(o) && Object.keys(o).length) Object.assign(map, o); else wErr += ` | ${m.split("/").pop()}: ${String(typeof raw === "object" ? JSON.stringify(raw) : raw || "").slice(0, 90)}`;
     } catch (e) { wErr += ` | ${m.split("/").pop()}: ${String((e && e.message) || e).slice(0, 90)}`; }
+  }
+    for (const s of need) { const v = map[s.id]; if (v && typeof v === "object" && v.q) { const cur = await env.STORE.get("study:" + s.id, "json").catch(() => null); if (cur) { cur.pq = { q: String(v.q).slice(0, 60), q2: String(v.q2 || "").slice(0, 60), s: String(v.s || "").slice(0, 80) }; await env.STORE.put("study:" + s.id, JSON.stringify(cur)); } } }
   }
   if (!Object.keys(map).length) return { err: ("subjects " + String(gm.err || "").slice(0, 60) + wErr).slice(0, 300) };
   let used = {}, bad = {}; try { used = (await env.STORE.get("studies:ups2:used", "json")) || {}; bad = (await env.STORE.get("studies:ups:ok", "json")) || {}; } catch {}
@@ -5861,7 +5867,7 @@ async function studyPhotos(env, t0, budget) {
       const c = await cands(q, round === 1); if (!c) return null;
       const free = c.items.filter((x) => !used[x.id] && bad[x.id] !== -1 && !c.no.includes(x.id));
       for (const x of free.slice(0, 3)) {
-        if (dl - Date.now() < 9000 || rem <= 4 || waitSet) return null;
+        if (dl - Date.now() < 9000 || rem <= 4 || waitSet) { na = true; return null; } // ما ضل وقت: بالدفعة الجاية (مو فشل)
         const b = await fetch(x.s, { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
         if (!b) continue;
         const cc = { n: 0 }, chk = await studyImgCheck(env, new Uint8Array(b), cc, dl, false, subj || q); // Gemini، وإذا خلص حدّو Gemma 4 (بيرفض النساء والولاد كمان)
@@ -5877,6 +5883,7 @@ async function studyPhotos(env, t0, budget) {
   };
   for (const s of sts) {
     if (Date.now() - t0 > budget - 6000 || waitSet) break;
+    if (!map[s.id]) continue;
     const m = map[s.id] && typeof map[s.id] === "object" ? map[s.id] : { q: map[s.id] };
     na = false; let x = await tryQ(m.q, m.s);
     if (!x && m.q2 && Date.now() - t0 < budget - 8000) x = await tryQ(m.q2, m.s);
@@ -5889,7 +5896,7 @@ async function studyPhotos(env, t0, budget) {
     await env.STORE.put("study:" + s.id, JSON.stringify(cur));
     dm[s.id] = 1; made++;
   }
-  if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:fail", JSON.stringify(fl)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
+  if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:fail2", JSON.stringify(fl)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
   await env.STORE.put("studies:ups:rl2", JSON.stringify(K));
   return { made, left: idx.filter((x) => !(dm[x[0]] > 0)).length, rem, keys: keys.length, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
