@@ -5912,6 +5912,12 @@ async function studiesApi(request, env, ctx) {
     const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
     if (Date.now() - at < 15000) return json({ busy: 1 }, 200, { "cache-control": "no-store" });
     let r; try { r = await studiesTick(env, 24000, u.searchParams.get("first")); } catch (e) { r = { error: String((e && e.message) || e).slice(0, 200) }; }
+    // صاحب المتجر (25/11/2026): «بس تخلص بعتلي عالواتس» → لما تخلص كل الدراسات والكتابة الجديدة والصور، رسالة وحدة عالواتس
+    if (r && r.done && r.img == null && ctx && ctx.waitUntil) ctx.waitUntil((async () => {
+      if (await env.STORE.get("note:studies-all")) return; await env.STORE.put("note:studies-all", "1");
+      let dm = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; } catch {}
+      await ownerNotify(env, request, `✅ خلص شغل «آخر الدراسات» كلّو:\n1. ${r.total} دراسة من 2026 نازلة.\n2. كلها انكتبت بالطريقة الجديدة المصحّحة (مع مراجعة تانية).\n3. ${Object.values(dm).filter((v) => v > 0).length} دراسة إلها صورة حقيقية، كل صورة لدراسة وحدة.\nالدراسات الجديدة بتنزل لحالها كل يوم.\n${SITE}/ar/exlib/studies`);
+    })());
     return json(r, 200, { "cache-control": "no-store" });
   }
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
@@ -6353,6 +6359,8 @@ const koMain = {
       if ((path === "/api/studies" || path === "/api/studies/tick" || path === "/api/studies/logo") && m === "GET") {
         // إشعار لصاحب المتجر لما يخلص شغل الليلة (طلبو 24/11/2026): مرة وحدة، أول ما ينفتح القسم بعد الرفع
         if (ctx && ctx.waitUntil && new URL(request.url).searchParams.get("done") === "459") ctx.waitUntil((async () => { if (await env.STORE.get("note:v459")) return; await env.STORE.put("note:v459", "1"); await ownerNotify(env, request, "🐉 خلص شغل الليلة بقسم التمرين:\n1. مجسّم العضلات (قدّام وورا): كبسة عالعضلة بتفتح تمارينها\n2. التنين الأسود: مدرّبك الصارم بنصايح وتحفيز\n3. آخر الدراسات: منشورات ملخّصة بالعربي وبتتحدّث كل ساعة\n4. التغذية: سعرات وماكروز وأكل سوري ووزن ومصروفك الحقيقي\nفوت على حسابك ← مكتبة التمارين 💪"); })().catch(() => {}));
+        // ملخّص شغل 25/11 عالواتس (طلبو صاحب المتجر)، مرة وحدة
+        if (ctx && ctx.waitUntil && new URL(request.url).searchParams.get("done") === "sum1125") ctx.waitUntil((async () => { if (await env.STORE.get("note:sum1125")) return; await env.STORE.put("note:sum1125", "1"); let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {} let dm = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; } catch {} await ownerNotify(env, request, `📋 ملخّص شغل اليوم بـ «آخر الدراسات»:\n1. الدراسات: ${idx.length} نازلة من 1349 دراسة لسنة 2026، والباقي عم ينزل لحالو.\n2. الكتابة: قواعد صارمة وقاموس مصطلحات ومراجعة تانية لكل دراسة، والقديمة عم تنعاد كتابتها.\n3. الصور: حقيقية من Unsplash، كل صورة لدراسة وحدة وعن موضوعها، بلا نساء أو ولاد، وبلا اسم المصوّر. صار في ${Object.values(dm).filter((v) => v > 0).length} صورة، و3 مفاتيح شغّالين.\n4. صور الذكاء الاصطناعي انشالت. يلي انصرف اليوم كلّو حوالي 8 سنت.\n5. التنين انحذف.\n6. حد Gemini المجاني خلص لليوم، فالشغل ماشي ببطء وبيسرع بكرا حوالي 11 الصبح.\nبس يخلص كلشي (دراسات + كتابة + صور) ببعتلك رسالة عالواتس.`); })());
         return studiesApi(request, env, ctx);
       }
       // التغذية (gym.js): بيانات الحساب {prof, days, wt, …} بـ KV nutri:<رقم>، لحد 400 ك.ب
