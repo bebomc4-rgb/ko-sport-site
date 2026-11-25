@@ -5579,9 +5579,9 @@ async function studyDraw(env, prompt, cost, dl) {
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل
 const b64Of = (u) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
 // "ok" = ما فيها امرأة/بنت/ولد/عُري، "bad" = فيها، "na" = الفحص ما اشتغل. cost.n = neuron انصرفت من Cloudflare
-async function studyImgCheck(env, bytes, cost, dl, noPaid) {
+async function studyImgCheck(env, bytes, cost, dl, noPaid, subject) {
   dl = dl || Date.now() + 30000;
-  const keys = gemKeys(env), q = 'Look carefully at this photo. Answer ONLY JSON: {"women":true|false,"children":true|false,"nudity":true|false}. women = any woman or girl, even small, partial or in the background. children = anyone under 18.';
+  const keys = gemKeys(env), q = 'Look carefully at this photo. Answer ONLY JSON: {"women":true|false,"children":true|false,"nudity":true|false' + (subject ? ',"match":true|false' : "") + '}. women = any woman or girl, even small, partial or in the background. children = anyone under 18.' + (subject ? " match = the photo clearly and mainly shows: " + String(subject).slice(0, 80) + "." : "");
   if (keys.length) {
     const data = b64Of(bytes), mime = imgType(bytes);
     for (const model of ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash"]) keyLoop: for (let ki = 0; ki < keys.length; ki++) {
@@ -5592,7 +5592,7 @@ async function studyImgCheck(env, bytes, cost, dl, noPaid) {
         const t = await r.text();
         if (!r.ok) { if (r.status === 429 || r.status === 401 || r.status === 403) { GEM_OUT.set(tag, Date.now() + (/PerDay|per day/i.test(t) ? 3600e3 : 60e3)); continue; } break keyLoop; } // 503/404...: الموديل يلي بعدو
         const j = JSON.parse(t), txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map((x) => x.text || "").join("");
-        const o = exlAiMap(txt); if (o && typeof o.women === "boolean") return o.women || o.children || o.nudity ? "bad" : "ok";
+        const o = exlAiMap(txt); if (o && typeof o.women === "boolean") return o.women || o.children || o.nudity ? "bad" : subject && o.match === false ? "nomatch" : "ok";
       } catch { break keyLoop; } // بطيء/انقطع: الموديل يلي بعدو
     }
   }
@@ -5738,10 +5738,17 @@ const UPS_TOPICS = {
 };
 const UPS_FALL = { nutrition: "healthy_meal", medicine: "physio", training: "gym" };
 const UPS_BAD = /\b(wom[ae]n|girls?|female|feminine|lad(y|ies)|mother|mom|bride|bikini|child(ren)?|kids?|boys?|bab(y|ies)|toddlers?|teen(ager)?s?|daughter|family|couple)\b/i;
-const UPS_SYS = `You pick a stock-photo topic for sports-science studies. Each line is "<id>: <Arabic headline> | <tags> | <area>".
-For each study choose the ONE topic key from this list that best shows what the study is about: the exact sport, exercise, body part, injury, food, drink or supplement. If nothing specific fits, pick the closest general one.
-Keys: ${Object.keys(UPS_TOPICS).join(", ")}
-Return ONLY JSON like {"12345":"creatine","67890":"knee"}.`;
+// v2 (صاحب المتجر: «مابدي نفس الصورة مكررة لكذا دراسة نهائياً، وإذا الدراسة عن أكلة أو مكمّل أو شرب أو تمرين أو إصابة حطها هي بالصورة»):
+// لكل دراسة Gemini بيكتب شو لازم يبين بالصورة بالزبط (q) وشي أعم منو (q2)، ومنفتّش Unsplash عليه. كل صورة بتنستعمل لدراسة وحدة بس
+// (studies:ups2:used)، والفحص بيتأكّد إنو الصورة فعلاً بتبيّن الشي (match) وما فيها نساء/ولاد/عُري. الصور القديمة (v1، مكررة) ما بتنعرض.
+const UPS_SYS = `For each sports-science study line "<id>: <Arabic headline> | <tags> | <area>", write what a stock photo must show.
+- If the study is about a food, drink, supplement or substance: that exact thing (e.g. "blackberries", "beetroot juice", "dark chocolate", "creatine powder", "coffee cup", "chewing gum", "fish oil capsules").
+- If about an exercise or training method: that exercise (e.g. "barbell squat", "nordic hamstring curl", "sprint start", "box jump", "static stretching").
+- If about an injury or body part: that (e.g. "knee brace", "ankle sprain", "shoulder pain", "hamstring stretch").
+- If about a sport: that sport in action (e.g. "swimmer pool", "soccer player", "cyclist road").
+- People only adult men. 1-3 simple English words that a photo site understands.
+q = the exact thing, q2 = a slightly broader fallback, s = short description of what must be visible (for checking).
+Return ONLY JSON like {"12345":{"q":"blackberries","q2":"berries","s":"blackberries"}}.`;
 async function studyPhotos(env, t0, budget) {
   const key = env.UNSPLASH_ACCESS_KEY;
   if (!key) return null;
@@ -5749,78 +5756,77 @@ async function studyPhotos(env, t0, budget) {
   if (Date.now() < wait) return { wait: new Date(wait).toISOString() };
   let rl = null; try { rl = JSON.parse((await env.STORE.get("studies:ups:rl")) || "null"); } catch {}
   let rem = rl && Date.now() - rl.at < 3600e3 ? rl.rem : 50, waitSet = 0, err = "";
-  const ups = async (url) => { // طلب لـ Unsplash (بيتحسب من حد الساعة)
+  const ups = async (url) => {
     const r = await fetch(url, { headers: { authorization: "Client-ID " + key, "accept-version": "v1" }, signal: AbortSignal.timeout(8000) });
     const h = r.headers.get("x-ratelimit-remaining"); if (h != null && h !== "") rem = +h; else rem--;
-    if (r.status === 401) waitSet = Date.now() + 3600e3; // المفتاح غلط
-    else if (r.status === 403 || r.status === 429) waitSet = Date.now() + 15 * 60e3; // خلص حد الساعة
+    if (r.status === 401) waitSet = Date.now() + 3600e3; else if (r.status === 403 || r.status === 429) waitSet = Date.now() + 15 * 60e3;
     return r;
   };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
-  let dm = {}; try { dm = (await env.STORE.get("studies:imgs5", "json")) || {}; } catch {}
-  const todo = idx.filter((x) => !dm[x[0]] && (x[3] || 1) >= STUDY_PV).slice(0, 6); // الأحدث أول (يلي فوق بالصفحة)
+  let dm = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; } catch {} // id → 1 (إلها صورة)، رقم سالب = محاولات فاشلة
+  const todo = idx.filter((x) => !(dm[x[0]] > 0) && !(dm[x[0]] <= -3) && (x[3] || 1) >= STUDY_PV).slice(0, 5);
   if (!todo.length) return null;
   const sts = (await Promise.all(todo.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
-  if (!sts.length) return null;
   const left = budget - (Date.now() - t0);
-  if (left < 14000) return null;
-  const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], UPS_SYS, sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 140)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n"), 400, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000)));
+  if (!sts.length || left < 14000) return null;
+  const gm = await exlGemini(env, ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"], UPS_SYS, sts.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n"), 600, Date.now() - (EXL_TR_BUDGET - Math.min(left - 10000, 9000)));
   let map = {}; if (gm.text) { const o = exlAiMap(gm.text); if (o && typeof o === "object") map = o; }
-  if (!Object.keys(map).length) return { err: "topics " + String(gm.err || "").slice(0, 120) };
-  let use = {}, ok = {}; try { use = (await env.STORE.get("studies:ups:use", "json")) || {}; ok = (await env.STORE.get("studies:ups:ok", "json")) || {}; } catch {}
-  const qc = {}, dl = t0 + budget + 2000;
-  let made = 0, okCh = false, useCh = false;
-  const cands = async (k) => { // صور الموضوع (من الكاش، أو تفتيش واحد)
-    if (qc[k]) return qc[k];
-    let c = null; try { c = await env.STORE.get("studies:ups:q:" + k, "json"); } catch {}
-    if (!c) {
-      if (rem <= 3 || waitSet) { err = err || "rate"; return null; }
-      const r = await ups(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(UPS_TOPICS[k])}&per_page=30&orientation=landscape&content_filter=high`);
-      if (!r.ok) { err = "search " + r.status; return null; }
-      const j = await r.json().catch(() => ({}));
-      c = (j.results || []).filter((x) => x && x.urls && x.user && !x.premium && !x.plus && !UPS_BAD.test([x.description, x.alt_description, ...((x.tags || []).map((t) => t && t.title))].join(" ")))
-        .slice(0, 8).map((x) => ({ id: x.id, u: x.urls.raw, s: x.urls.small, n: String(x.user.name || x.user.username || "").slice(0, 60), p: (x.user.links && x.user.links.html) || "https://unsplash.com/", l: (x.links && x.links.html) || "", dl: (x.links && x.links.download_location) || "" }));
-      await env.STORE.put("studies:ups:q:" + k, JSON.stringify(c), { expirationTtl: 30 * 86400 });
-    }
-    return (qc[k] = c);
+  if (!Object.keys(map).length) return { err: "subjects " + String(gm.err || "").slice(0, 120) };
+  let used = {}, bad = {}; try { used = (await env.STORE.get("studies:ups2:used", "json")) || {}; bad = (await env.STORE.get("studies:ups:ok", "json")) || {}; } catch {}
+  const dl = t0 + budget + 2000, norm = (q) => String(q || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 50);
+  let made = 0, ch = false;
+  const cands = async (q, more) => { // نتايج التفتيش (محفوظة)، ومنجيب الصفحة يلي بعدها إذا خلصو
+    const ck = "studies:ups2:q:" + q; let c = null; try { c = await env.STORE.get(ck, "json"); } catch {}
+    if (c && !more) return c;
+    if (c && (c.end || c.page >= 5)) return c;
+    if (rem <= 4 || waitSet) { err = err || "rate"; return c; }
+    const page = c ? c.page + 1 : 1;
+    const r = await ups(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&page=${page}&per_page=30&orientation=landscape&content_filter=high`);
+    if (!r.ok) { err = "search " + r.status; return c; }
+    const j = await r.json().catch(() => ({}));
+    const add = (j.results || []).filter((x) => x && x.urls && x.user && !x.premium && !x.plus && !UPS_BAD.test([x.description, x.alt_description, ...((x.tags || []).map((t) => t && t.title))].join(" ")))
+      .map((x) => ({ id: x.id, u: x.urls.raw, s: x.urls.small, n: String(x.user.name || x.user.username || "").slice(0, 60), p: (x.user.links && x.user.links.html) || "https://unsplash.com/", l: (x.links && x.links.html) || "", dl: (x.links && x.links.download_location) || "" }));
+    c = { page, end: (j.results || []).length < 30, items: ((c && c.items) || []).concat(add), no: (c && c.no) || [] };
+    await env.STORE.put(ck, JSON.stringify(c), { expirationTtl: 60 * 86400 });
+    return c;
   };
-  const pickFor = async (k) => {
-    const c = await cands(k); if (!c || !c.length) return null;
-    const good = c.filter((x) => ok[x.id] === 1), fresh = good.filter((x) => !use[x.id]);
-    if (fresh.length && rem > 8) return fresh[0];
-    for (const x of c.filter((x) => ok[x.id] === undefined).slice(0, 2)) { // صورة ما انفحصت: منفحصها مرة وحدة
-      if (dl - Date.now() < 9000 || rem <= 8) break;
-      const b = await fetch(x.s, { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
-      if (!b) continue;
-      const chk = await studyImgCheck(env, new Uint8Array(b), { n: 0 }, dl, true);
-      if (chk === "ok") { ok[x.id] = 1; okCh = true; return x; }
-      if (chk === "bad") { ok[x.id] = -1; okCh = true; } else break; // الفحص ما اشتغل: بالدفعة الجاية
+  const tryQ = async (q, subj) => {
+    q = norm(q); if (!q) return null;
+    for (let round = 0; round < 2; round++) {
+      const c = await cands(q, round === 1); if (!c) return null;
+      const free = c.items.filter((x) => !used[x.id] && bad[x.id] !== -1 && !c.no.includes(x.id));
+      for (const x of free.slice(0, 3)) {
+        if (dl - Date.now() < 9000 || rem <= 4 || waitSet) return null;
+        const b = await fetch(x.s, { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
+        if (!b) continue;
+        const chk = await studyImgCheck(env, new Uint8Array(b), { n: 0 }, dl, true, subj || q);
+        if (chk === "ok") return x;
+        if (chk === "bad") { bad[x.id] = -1; ch = true; }
+        else if (chk === "nomatch") { c.no.push(x.id); await env.STORE.put("studies:ups2:q:" + q, JSON.stringify(c), { expirationTtl: 60 * 86400 }); }
+        else return null; // الفحص ما اشتغل: بالدفعة الجاية
+      }
+      if (free.length > 3) return null; // لسّا في صور بالنتايج: منكمّل بالدفعة الجاية
     }
-    return good.length ? good.slice().sort((a, b) => (use[a.id] || 0) - (use[b.id] || 0))[0] : null; // منعيد استعمال صورة منيحة
+    return null;
   };
   for (const s of sts) {
     if (Date.now() - t0 > budget - 6000 || waitSet) break;
-    let k = String(map[s.id] || "").trim(); if (!UPS_TOPICS[k]) k = UPS_FALL[s.c] || "gym";
-    let x = await pickFor(k);
-    if (!x && k !== (UPS_FALL[s.c] || "gym") && !waitSet) { const c = qc[k]; if (c && !c.some((y) => ok[y.id] === undefined)) x = await pickFor(UPS_FALL[s.c] || "gym"); } // كل صور الموضوع ما بتنفع
-    if (!x) continue;
-    if (!use[x.id] && x.dl) { // أول مرة منستعمل هالصورة: «download» (شرط Unsplash)
-      if (rem <= 3) { err = err || "rate"; break; }
-      const r = await ups(x.dl).catch(() => null); if (!r || !r.ok) { err = "download " + (r ? r.status : "x"); continue; }
-    }
-    use[x.id] = (use[x.id] || 0) + 1; useCh = true;
+    const m = map[s.id] && typeof map[s.id] === "object" ? map[s.id] : { q: map[s.id] };
+    let x = await tryQ(m.q, m.s);
+    if (!x && m.q2 && Date.now() - t0 < budget - 8000) x = await tryQ(m.q2, m.s);
+    if (!x) { if (!err) { dm[s.id] = (dm[s.id] < 0 ? dm[s.id] : 0) - 1; ch = true; } continue; } // 3 مرات بلا صورة: بتضل بالشكل الملوّن
+    if (x.dl) { const r = await ups(x.dl).catch(() => null); if (!r || !r.ok) { err = "download " + (r ? r.status : "x"); continue; } } // «download» (شرط Unsplash)
+    used[x.id] = s.id; ch = true;
     let cur = null; try { cur = await env.STORE.get("study:" + s.id, "json"); } catch {}
     if (!cur) continue;
-    cur.ph = { u: x.u, n: x.n, p: x.p, l: x.l };
+    cur.ph = { u: x.u, n: x.n, p: x.p, l: x.l, v: 2 };
     await env.STORE.put("study:" + s.id, JSON.stringify(cur));
     dm[s.id] = 1; made++;
   }
-  if (made) await env.STORE.put("studies:imgs5", JSON.stringify(dm));
-  if (useCh) await env.STORE.put("studies:ups:use", JSON.stringify(use));
-  if (okCh) await env.STORE.put("studies:ups:ok", JSON.stringify(ok));
+  if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
   await env.STORE.put("studies:ups:rl", JSON.stringify({ rem, at: Date.now() }));
   if (waitSet) await env.STORE.put("studies:ups:wait", String(waitSet));
-  return { made, left: idx.filter((x) => !dm[x[0]]).length, rem, ...(err ? { err: err.slice(0, 160) } : {}) };
+  return { made, left: idx.filter((x) => !(dm[x[0]] > 0)).length, rem, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
 
 // ---------- لوغو المجلة بالدائرة جنب اسمها ----------
@@ -5861,7 +5867,7 @@ async function studiesApi(request, env, ctx) {
   const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
   if (Date.now() - at > 2 * 60e3 && ctx && ctx.waitUntil) ctx.waitUntil(studiesTick(env, 24000).catch((e) => env.STORE.put("studies:err", String((e && e.message) || e).slice(0, 300))));
   const f = c ? idx.filter((x) => x[2] === c) : idx, page = f.slice(p * per, p * per + per);
-  const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean).map((x) => ({ ...x, t: String(x.t || "").replace(/^[\s«"“']+|[\s»"”']+$/g, ""), im: /^p\d+$/.test(x.im || "") ? x.im : undefined, ...(STUDY_LOGO[x.ja] ? { lg: STUDY_LOGO[x.ja] } : {}) })); // صور حقيقية بس (p)، المرسومة (s/t) مخفية // بلا أقواس حوالين العنوان
+  const list = (await Promise.all(page.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean).map((x) => ({ ...x, t: String(x.t || "").replace(/^[\s«"“']+|[\s»"”']+$/g, ""), im: /^p\d+$/.test(x.im || "") ? x.im : undefined, ph: x.ph && x.ph.v === 2 ? x.ph : undefined, ...(STUDY_LOGO[x.ja] ? { lg: STUDY_LOGO[x.ja] } : {}) })); // صور حقيقية بس (p)، المرسومة (s/t) مخفية // بلا أقواس حوالين العنوان
   const err = idx.length ? "" : (await env.STORE.get("studies:err")) || ""; // سبب آخر فشل (للفحص، بلا أسرار)
   return new Response(JSON.stringify({ list, total: f.length, all: idx.length, more: p * per + per < f.length, at: at ? new Date(at).toISOString() : "", ...(err ? { err } : {}) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=120" } });
 }
