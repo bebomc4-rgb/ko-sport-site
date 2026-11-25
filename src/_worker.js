@@ -5805,7 +5805,7 @@ async function studyPhotos(env, t0, budget) {
   };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let dm = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; } catch {} // id → 1 (إلها صورة)، رقم سالب = محاولات فاشلة
-  const todo = idx.filter((x) => !(dm[x[0]] > 0) && !(dm[x[0]] <= -3) && (x[3] || 1) >= STUDY_PV).slice(0, 5);
+  const todo = idx.filter((x) => !(dm[x[0]] > 0) && !(dm[x[0]] <= -3) && (x[3] || 1) >= 2).slice(0, 5); // أي دراسة انكتبت (مو لازم تستنى إعادة الكتابة، موضوعها ما بيتغيّر)
   if (!todo.length) return null;
   const sts = (await Promise.all(todo.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
   const left = budget - (Date.now() - t0);
