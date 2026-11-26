@@ -1052,7 +1052,9 @@ async function acctFromTok(t, env, why) {
 // أسماء وهمية (صاحب المتجر 24/11/2026، زبون سمّى حالو «مالك اسم عندي»): الحساب بيطلعلو بطاقة «تأكيد الاسم»:
 // ما منقبل أسماء وهمية، اكتب اسمك الحقيقي وارفع صورة الهوية (بتنحذف لحالها بعد التأكيد). صاحب المتجر بيوصلو إشعار عالواتس وبيأكّد أو بيرفض
 const FAKE_NAMES = ["مالك اسم عندي", "ما الك اسم عندي"];
-const isFakeName = (n) => { const x = normAr(n); return !!x && FAKE_NAMES.some((f) => normAr(f) === x); };
+// أي اسم فيه هالعبارات وهمي (26/11/2026: واحد سجّل باسم «مالك علاقة علاقتين»)
+const FAKE_PARTS = ["مالك اسم", "ما الك اسم", "مالك علاقة", "ما الك علاقة", "مالك علاقه", "ما خصك", "مو شغلك", "مالك دخل", "ما الك دخل"];
+const isFakeName = (n) => { const x = normAr(n); return !!x && (FAKE_NAMES.some((f) => normAr(f) === x) || FAKE_PARTS.some((f) => (" " + x + " ").includes(" " + normAr(f) + " "))); };
 // 0 = ما في شي، 1 = لازم يكتب اسمو الحقيقي ويرفع الهوية، 2 = بعتهن وناطر تأكيد صاحب المتجر
 const idState = (a) => (a.idSub ? 2 : a.idReq || (!a.idOk && isFakeName(a.name)) ? 1 : 0);
 const acctOut = (a) => ({ name: a.name, phone: a.phone, governorate: a.governorate, at: a.at, av: a.av || "", id: idState(a), idRej: a.idRej ? 1 : 0 });
