@@ -5820,7 +5820,7 @@ async function studyPhotos(env, t0, budget) {
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
   let dm = {}, fl = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; fl = (await env.STORE.get("studies:ups2:fail2", "json")) || {}; } catch {} // dm: id → 1 (إلها صورة)؛ fl: كم مرة ما لقينا صورة
   // من أحدث 20 ناقصين منختار 6 عشوائي، لحتى دراسة صعبة (ما لقينالها صورة بعد) ما تسدّ الدور كل مرة
-  const todo = idx.filter((x) => !(dm[x[0]] > 0) && !((fl[x[0]] || 0) >= 3) && (x[3] || 1) >= 2).slice(0, 20).sort(() => Math.random() - 0.5).slice(0, 6); // أي دراسة انكتبت (مو لازم تستنى إعادة الكتابة، موضوعها ما بيتغيّر)
+  const todo = idx.filter((x) => !(dm[x[0]] > 0) && !((fl[x[0]] || 0) >= 6) && (x[3] || 1) >= 2).slice(0, 20).sort(() => Math.random() - 0.5).slice(0, 6); // أي دراسة انكتبت (مو لازم تستنى إعادة الكتابة، موضوعها ما بيتغيّر)
   if (!todo.length) return null;
   const sts = (await Promise.all(todo.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
   const left = budget - (Date.now() - t0);
@@ -5893,7 +5893,9 @@ async function studyPhotos(env, t0, budget) {
   const one = async (s) => {
     if (Date.now() - t0 > budget - 6000 || waitSet) { dbg.push(["stop", Date.now() - t0]); return false; }
     if (!map[s.id]) { dbg.push([s.id, "no subject"]); return true; }
-    const m = map[s.id] && typeof map[s.id] === "object" ? map[s.id] : { q: map[s.id] };
+    let m = map[s.id] && typeof map[s.id] === "object" ? map[s.id] : { q: map[s.id] };
+    // 27/11/2026: بعد 3 مرات ما لقينا صورة للشي بالزبط، منجيب صورة عامة من نفس المجال (ما بتنعاد لدراسة تانية)
+    if ((fl[s.id] || 0) >= 3) m = { q: { nutrition: "healthy food", medicine: "sports physiotherapy", training: "athlete training" }[s.c] || "athlete training", q2: { nutrition: "meal prep", medicine: "sports recovery", training: "gym workout man" }[s.c] || "gym workout man", s: "" };
     const st = { na: false }; let x = await tryQ(m.q, m.s, st);
     if (!x && m.q2 && Date.now() - t0 < budget - 8000) x = await tryQ(m.q2, m.s, st);
     dbg.push([s.id, String(m.q || "").slice(0, 24), x ? "ok" : st.na ? "na" : "miss", Date.now() - t0]);
