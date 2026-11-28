@@ -1714,6 +1714,11 @@ async function predPics(env, budget) {
       }
       return "";
     };
+    // BKFC أول: لكل مقاتل بنزال BKFC ناقصتو صورة، صفحتو بموقعهن مباشرة (أسرع من المرور على كل المصادر)
+    { const bk = [...new Set(got.filter((g) => /bkfc|bare knuckle/i.test((g.org || "") + " " + (g.league || ""))).flatMap((g) => [!g.ai && g.a, !g.bi && g.b]).filter(Boolean))].filter((n) => { const x = P2["bk|" + predNk(n)]; return !x || (!x.u && x.t < now - 864e5); }).slice(0, 40);
+      await Promise.all(bk.map(async (n) => { const slug = predNk(n).replace(/ /g, "-"); let u = "";
+        try { const r = await fetch(`https://www.bkfc.com/fighters/${slug}`, { signal: AbortSignal.timeout(8000), headers: { ...UA, accept: "text/html" } }); if (r.ok) { const h = (await r.text()).slice(0, 300000); u = [...h.matchAll(/<img[^>]+src="(https:[^"]+)"/g)].map((x) => x[1]).find((x) => x.toLowerCase().includes(slug) && /\.(webp|png|jpe?g)/i.test(x)) || ""; } } catch {}
+        P2["bk|" + predNk(n)] = { u, t: now }; if (u) P2["fighter|" + predNk(n)] = { u, t: now, v: 5 }; })); }
     for (let i = 0; i < need.length && Date.now() - t0 < budget; i += 8) await Promise.all(need.slice(i, i + 8).map(async ([k, n]) => { P2[k + "|" + predNk(n)] = { u: await find(k, n), t: now, v: 5 }; }));
     if (need.length) { await env.STORE.put("pred:pic2", JSON.stringify(P2)).catch(() => {}); errs.push(`pic2:${need.filter(([k, n]) => (P2[k + "|" + predNk(n)] || {}).u).length}/${need.length}`); }
     let ch = 0; for (const g of got) { const k = kind(g); if (!k) continue; if (!g.ai && (P2[k + "|" + predNk(g.a)] || {}).u) { g.ai = P2[k + "|" + predNk(g.a)].u; ch++; } if (!g.bi && (P2[k + "|" + predNk(g.b)] || {}).u) { g.bi = P2[k + "|" + predNk(g.b)].u; ch++; } }
