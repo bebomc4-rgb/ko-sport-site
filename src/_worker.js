@@ -1687,6 +1687,9 @@ async function predPics(env, budget) {
   { const P2 = (await env.STORE.get("pred:pic2", "json").catch(() => null)) || {}, UA = { "user-agent": "KO-SPORT/1.0 (https://ko-sport.online)" };
     const kind = (g) => (g.sport === "football" || g.sport === "basketball" ? "team" : g.sport === "ufc" || g.sport === "boxing" ? "fighter" : "");
     const tok = (x) => predNk(x).split(" ").filter((w) => w.length > 1), same = (a, b) => { const A = tok(a), B2 = tok(b); return A.length > 0 && A.every((w) => B2.includes(w)) && B2.length - A.length <= 2; };
+    // صورة «TBA» (خيال رمادي) من موقع BKFC مو صورة المقاتل: منشيلها
+    const PH = /\/TBA[-_]|placeholder|silhouette/i; let fixd = 0; for (const key in P2) if (P2[key] && P2[key].u && PH.test(P2[key].u)) { P2[key] = { u: "", t: now, v: 5 }; fixd++; }
+    for (const g of got) { if (PH.test(g.ai || "")) { g.ai = ""; fixd++; } if (PH.test(g.bi || "")) { g.bi = ""; fixd++; } }
     const miss = []; for (const g of got) { const k = kind(g); if (!k) continue; if (!g.ai && g.a) miss.push([k, g.a]); if (!g.bi && g.b) miss.push([k, g.b]); }
     const need = [...new Map(miss.map((x) => [x[0] + "|" + predNk(x[1]), x])).values()].filter(([k, n]) => { const x = P2[k + "|" + predNk(n)]; return !x || (!x.u && (x.t < now - 3 * 864e5 || ((k === "fighter" && (x.v || 0) < 5) || (k === "team" && (x.v || 0) < 3)))); }).slice(0, 60);
     const FIGHT2 = /fight|martial|box|kickbox|wrestl|karate|muay|nak muay|judo|grappl|mma|lethwei|sanda|taekwondo/i, CLUB = /football|soccer|club|basketball|team|f\.?c\.?/i;
@@ -1717,13 +1720,14 @@ async function predPics(env, budget) {
     // BKFC أول: لكل مقاتل بنزال BKFC ناقصتو صورة، صفحتو بموقعهن مباشرة (أسرع من المرور على كل المصادر)
     const bkSt = []; { const bk = [...new Set(got.filter((g) => /bkfc|bare knuckle/i.test((g.org || "") + " " + (g.league || ""))).flatMap((g) => [!g.ai && g.a, !g.bi && g.b]).filter(Boolean))].filter((n) => { const x = P2["bk3|" + predNk(n)]; return !x || (!x.u && x.t < now - 864e5); }).slice(0, 40);
       await Promise.all(bk.map(async (n) => { const slug = predNk(n).replace(/ /g, "-"); let u = "";
-        try { const r = await fetch(`https://www.bkfc.com/fighters/${slug}`, { signal: AbortSignal.timeout(8000), headers: { ...UA, accept: "text/html" } }); bkSt.push(r.status); if (r.ok) { const h = await r.text(); const all = [...h.matchAll(/https:\/\/bkfc-cdn[^"'\s)]+/g)].map((x) => x[0]).filter((x) => /\.(webp|png|jpe?g)/i.test(x) && !/logo|crowd|hero|banner|sponsor/i.test(x)), nm = (x) => x.toLowerCase().replace(/[_\s%20]+/g, "-");
+        try { const r = await fetch(`https://www.bkfc.com/fighters/${slug}`, { signal: AbortSignal.timeout(8000), headers: { ...UA, accept: "text/html" } }); bkSt.push(r.status); if (r.ok) { const h = await r.text(); const all = [...h.matchAll(/https:\/\/bkfc-cdn[^"'\s)]+/g)].map((x) => x[0]).filter((x) => /\.(webp|png|jpe?g)/i.test(x) && !/logo|crowd|hero|banner|sponsor|tba|placeholder|default|silhouette/i.test(x)), nm = (x) => x.toLowerCase().replace(/[_\s%20]+/g, "-");
           u = all.find((x) => nm(x).includes(slug)) || all.find((x) => /400x533/i.test(x)) || ""; bkSt.push(u ? "img" : "noimg:" + h.length); } } catch (e) { bkSt.push("e:" + String(e && e.name)); }
         P2["bk3|" + predNk(n)] = { u, t: now }; if (u) P2["fighter|" + predNk(n)] = { u, t: now, v: 5 }; })); }
     for (let i = 0; i < need.length && Date.now() - t0 < budget; i += 8) await Promise.all(need.slice(i, i + 8).map(async ([k, n]) => { P2[k + "|" + predNk(n)] = { u: await find(k, n), t: now, v: 5 }; }));
     if (need.length) { await env.STORE.put("pred:pic2", JSON.stringify(P2)).catch(() => {}); errs.push(`pic2:${need.filter(([k, n]) => (P2[k + "|" + predNk(n)] || {}).u).length}/${need.length}`); }
     let ch = 0; for (const g of got) { const k = kind(g); if (!k) continue; if (!g.ai && (P2[k + "|" + predNk(g.a)] || {}).u) { g.ai = P2[k + "|" + predNk(g.a)].u; ch++; } if (!g.bi && (P2[k + "|" + predNk(g.b)] || {}).u) { g.bi = P2[k + "|" + predNk(g.b)].u; ch++; } }
-    if (ch) { const cur = await predMatches(env), m2 = new Map(got.map((x) => [x.id, x])); for (const x of cur) { const y = m2.get(x.id); if (y) { if (!x.ai && y.ai) x.ai = y.ai; if (!x.bi && y.bi) x.bi = y.bi; } } await env.STORE.put("pred:matches", JSON.stringify(cur)); }
+    if (ch || fixd) { const cur = await predMatches(env), m2 = new Map(got.map((x) => [x.id, x])); for (const x of cur) { if (PH.test(x.ai || "")) x.ai = ""; if (PH.test(x.bi || "")) x.bi = ""; const y = m2.get(x.id); if (y) { if (!x.ai && y.ai) x.ai = y.ai; if (!x.bi && y.bi) x.bi = y.bi; } } await env.STORE.put("pred:matches", JSON.stringify(cur)); }
+    if (fixd && !need.length) await env.STORE.put("pred:pic2", JSON.stringify(P2)).catch(() => {});
     return { need: need.length, found: need.filter(([k, n]) => (P2[k + "|" + predNk(n)] || {}).u).length, set: ch, bk: bkSt.join(",").slice(0, 200) }; }
 }
 async function predSync(env, force) {
