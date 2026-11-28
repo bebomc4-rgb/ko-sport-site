@@ -5863,7 +5863,7 @@ async function studyPhotos(env, t0, budget) {
     return r;
   };
   let idx = []; try { idx = (await env.STORE.get("studies:idx", "json")) || []; } catch {}
-  let dm = {}, fl = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; fl = (await env.STORE.get("studies:ups2:fail2", "json")) || {}; } catch {} // dm: id → 1 (إلها صورة)؛ fl: كم مرة ما لقينا صورة
+  let dm = {}, fl = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; fl = await env.STORE.get("studies:ups2:fail3", "json"); if (!fl) { const f2 = (await env.STORE.get("studies:ups2:fail2", "json")) || {}; fl = {}; for (const k in f2) fl[k] = Math.min(f2[k], 3); } } catch {} // dm: id → 1 (إلها صورة)؛ fl: كم مرة ما لقينا صورة
   // من أحدث 20 ناقصين منختار 6 عشوائي، لحتى دراسة صعبة (ما لقينالها صورة بعد) ما تسدّ الدور كل مرة
   const todo = idx.filter((x) => !(dm[x[0]] > 0) && !((fl[x[0]] || 0) >= 6) && (x[3] || 1) >= 2).slice(0, 20).sort(() => Math.random() - 0.5).slice(0, 6); // أي دراسة انكتبت (مو لازم تستنى إعادة الكتابة، موضوعها ما بيتغيّر)
   const sts = (await Promise.all(todo.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
@@ -5997,7 +5997,7 @@ async function studyPhotos(env, t0, budget) {
     }));
   }
   if (verCh) await env.STORE.put("studies:ups2:ver", JSON.stringify(ver));
-  if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:fail2", JSON.stringify(fl)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
+  if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:fail3", JSON.stringify(fl)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
   await env.STORE.put("studies:ups:rl2", JSON.stringify(K));
   if (!sts.length && !vc.length) return null; // ما ضل شي: لا صور ناقصة ولا فحص
   return { made, left: idx.filter((x) => !(dm[x[0]] > 0)).length, rem, keys: keys.length, dbg, ...(err ? { err: err.slice(0, 160) } : {}) };
