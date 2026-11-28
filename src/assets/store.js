@@ -2142,12 +2142,12 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=473"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=474"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   // قسم التمرين الجديد (gym.js): المجسّم، التنين الأسود، آخر الدراسات، التغذية
   function gymLoad() {
     if (window.KOGym) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=473"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=474"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const gymH = () => ({ toast, auth: socAuth, sheet: openSheet, closeSheet });
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
@@ -3965,6 +3965,7 @@ ${trustH()}
     if (document.querySelector("[data-blk]")) return;
     const w = document.createElement("div");
     w.className = "idc-wrap"; w.setAttribute("data-blk", ""); w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true");
+    w.style.cssText = "background:var(--paper,#f5f3ef);backdrop-filter:none;-webkit-backdrop-filter:none;z-index:2147483000"; // ما بيبيّن شي من الموقع ورا
     w.innerHTML = `<div class="idc">
       ${preview ? `<div class="idc-pv">معاينة: هيك بتطلع للزبون المحظور</div>` : ""}
       <div class="idc-ic" aria-hidden="true">⛔</div>
@@ -3976,6 +3977,11 @@ ${trustH()}
     </div>`;
     document.body.appendChild(w); document.documentElement.classList.add("sheet-lock");
     const x = w.querySelector("[data-blk-x]"); if (x) x.onclick = () => { w.remove(); document.documentElement.classList.remove("sheet-lock"); };
+    if (!preview) { // المحظور: ما في شي يسكّرها، وإذا حدا شالها من الصفحة بترجع، وما بيمشي التنقّل بالموقع
+      document.body.style.overflow = "hidden";
+      new MutationObserver(() => { if (!document.querySelector("[data-blk]")) { document.body.appendChild(w); document.documentElement.classList.add("sheet-lock"); } }).observe(document.body, { childList: true });
+      window.addEventListener("hashchange", () => { if (!document.querySelector("[data-blk]")) document.body.appendChild(w); }, true);
+    }
   }
   if (/[?&]blkpreview=1/.test(location.search)) setTimeout(() => blockedView(true), 800); // معاينة لصاحب المتجر
 
