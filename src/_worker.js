@@ -6490,6 +6490,7 @@ const koMain = {
       }
       if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
       if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m, ctx);
+      if (path === "/api/pred-pics" && m === "GET") { const last = +((await env.STORE.get("pred:pics:at")) || 0); if (Date.now() - last < 60e3) return json({ busy: 1 }); await env.STORE.put("pred:pics:at", String(Date.now())); return json(await predPics(env, 20000).catch((e) => ({ err: String(e).slice(0, 200) })), 200, { "cache-control": "no-store" }); } // فحص يدوي (مرة بالدقيقة)
       if ((path === "/api/studies" || path === "/api/studies/tick" || path === "/api/studies/logo") && m === "GET") {
         // إشعار لصاحب المتجر لما يخلص شغل الليلة (طلبو 24/11/2026): مرة وحدة، أول ما ينفتح القسم بعد الرفع
         if (ctx && ctx.waitUntil && new URL(request.url).searchParams.get("done") === "459") ctx.waitUntil((async () => { if (await env.STORE.get("note:v459")) return; await env.STORE.put("note:v459", "1"); await ownerNotify(env, request, "🐉 خلص شغل الليلة بقسم التمرين:\n1. مجسّم العضلات (قدّام وورا): كبسة عالعضلة بتفتح تمارينها\n2. التنين الأسود: مدرّبك الصارم بنصايح وتحفيز\n3. آخر الدراسات: منشورات ملخّصة بالعربي وبتتحدّث كل ساعة\n4. التغذية: سعرات وماكروز وأكل سوري ووزن ومصروفك الحقيقي\nفوت على حسابك ← مكتبة التمارين 💪"); })().catch(() => {}));
