@@ -2282,6 +2282,8 @@ async function waLogin(env, request, ctx, d) {
 async function acctApi(request, env, path, m, ctx) {
   if (!env.STORE) return json({ error: "الحسابات مو متاحة هلق" }, 503);
   if (path === "/api/acct/orders" && m === "GET") return acctOrders(request, env);
+  // الجهاز يلي انحظر حسابو: بيسأل إذا لسا محظور (لحتى إذا شلت الحظر تروح الشاشة لحالها)
+  if (path === "/api/acct/blk") { const ph = String(new URL(request.url).searchParams.get("p") || ""); if (!ACCT_PH.test(ph)) return json({ blocked: false }); const a = await env.STORE.get("acct:" + ph, "json").catch(() => null); return json({ blocked: !!(a && a.blocked) }, 200, { "cache-control": "no-store" }); }
   if (path === "/api/acct/me") {
     const why = {}, a = await acctFromReq(request, env, why);
     if (m === "GET") stat(env, ctx, a ? "me:ok" : "me:" + (why.reason || "x"));
@@ -2553,6 +2555,8 @@ async function customersApi(request, env, m, key) {
   if (!c.name) return json({ error: "اكتب اسم العميل" }, 400);
   if (!k) return json({ error: "اكتب رقم موبايل صحيح أو إيميل" }, 400);
   if (b.oldKey && b.oldKey !== k) delete all[b.oldKey];
+  // 28/11/2026: «حظر العميل» صار يوقّف حسابو بالموقع كمان (قبل كان بس يمنع الطلبات): بيطلع منو وبتطلعلو شاشة «الحساب موقوف»
+  { const d9 = String(c.phone || "").replace(/\D/g, "").slice(-9); if (d9.length === 9) for (const ph of ["0" + d9, "+963" + d9, String(c.phone || "").replace(/[^\d+]/g, "")]) { const ak = "acct:" + ph; const a = await env.STORE.get(ak, "json").catch(() => null); if (a && !!a.blocked !== c.blocked) { if (c.blocked) a.blocked = { at: new Date().toISOString() }; else delete a.blocked; await env.STORE.put(ak, JSON.stringify(a)); } } }
   all[k] = c;
   if (Object.keys(all).length > 20000) return json({ error: "العملاء كتار كتير" }, 400);
   await env.STORE.put("customers", JSON.stringify(all));

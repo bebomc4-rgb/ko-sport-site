@@ -2142,12 +2142,12 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=472"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=473"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   // قسم التمرين الجديد (gym.js): المجسّم، التنين الأسود، آخر الدراسات، التغذية
   function gymLoad() {
     if (window.KOGym) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=472"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=473"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const gymH = () => ({ toast, auth: socAuth, sheet: openSheet, closeSheet });
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
@@ -3955,9 +3955,29 @@ ${trustH()}
     const A0 = acct();
     if (A0 && !sessionStorage.getItem("ko_me_ok")) fetch("/api/acct/me", { credentials: "same-origin", headers: { authorization: "Bearer " + A0.token } }).then((r) => {
       if (r.ok) { sessionStorage.setItem("ko_me_ok", "1"); r.json().then((j) => { if (j && j.token && j.account && acct()) { acctSet({ token: j.token, account: j.account }); idCheck(); } }).catch(() => {}); return; }
-      if (r.status === 401) r.json().then((j) => { if (j && j.logout) { acctOut(); route(null, true); } }).catch(() => {});
+      if (r.status === 401) r.json().then((j) => { if (j && j.logout) { if (j.reason === "blocked" && A0.account && A0.account.phone) { try { localStorage.setItem("ko_blk", A0.account.phone); } catch {} } acctOut(); route(null, true); if (j.reason === "blocked") blockedView(); } }).catch(() => {});
     }).catch(() => {});
+    const B0 = localStorage.getItem("ko_blk"); // جهاز حسابو محظور: الشاشة بتضل لحد ما ينشال الحظر
+    if (B0) { blockedView(); fetch("/api/acct/blk?p=" + encodeURIComponent(B0), { credentials: "same-origin" }).then((r) => r.json()).then((j) => { if (j && j.blocked === false) { localStorage.removeItem("ko_blk"); document.querySelectorAll("[data-blk]").forEach((x) => x.remove()); document.documentElement.classList.remove("sheet-lock"); } }).catch(() => {}); }
   } catch {}
+  // ---------- شاشة «الحساب موقوف» (28/11/2026): لما صاحب المتجر يحظر زبون من لوحة التحكم ----------
+  function blockedView(preview) {
+    if (document.querySelector("[data-blk]")) return;
+    const w = document.createElement("div");
+    w.className = "idc-wrap"; w.setAttribute("data-blk", ""); w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true");
+    w.innerHTML = `<div class="idc">
+      ${preview ? `<div class="idc-pv">معاينة: هيك بتطلع للزبون المحظور</div>` : ""}
+      <div class="idc-ic" aria-hidden="true">⛔</div>
+      <h2>حسابك موقوف</h2>
+      <p class="idc-txt">تم إيقاف حسابك بمتجر <bdi dir="ltr">KO&nbsp;SPORT</bdi>، وما فيك تستعمل الموقع حالياً.</p>
+      <p class="idc-txt">إذا بتعتقد إنو في غلط، تواصل معنا على واتساب.</p>
+      ${C.whatsapp ? `<a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}">💬 تواصل معنا</a>` : ""}
+      ${preview ? `<button class="idc-out" type="button" data-blk-x>سكّر المعاينة</button>` : ""}
+    </div>`;
+    document.body.appendChild(w); document.documentElement.classList.add("sheet-lock");
+    const x = w.querySelector("[data-blk-x]"); if (x) x.onclick = () => { w.remove(); document.documentElement.classList.remove("sheet-lock"); };
+  }
+  if (/[?&]blkpreview=1/.test(location.search)) setTimeout(() => blockedView(true), 800); // معاينة لصاحب المتجر
 
   // ---------- بطاقة «تأكيد الاسم» (صاحب المتجر 24/11/2026): اسم وهمي ← الاسم الحقيقي + صورة الهوية ----------
   // السيرفر بيقرّر (account.id: 1 = لازم يبعت، 2 = بعت وناطر تأكيد). البطاقة ما بتتسكّر لحتى يبعت أو يطلع من الحساب
