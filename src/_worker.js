@@ -6393,6 +6393,8 @@ const koMain = {
       }
       if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
       if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m, ctx);
+      // فحص مؤقت (28/11/2026): شو موديلات الصور المتاحة بمفاتيح Gemini (بيرجّع أسماء الموديلات بس، بدون أي مفتاح)
+      if (path === "/api/studies/gmodels" && m === "GET") { const out = []; for (const k of gemKeys(env)) { try { const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": k } }); const j = await r.json(); out.push((j.models || []).map((x) => x.name.replace("models/", "")).filter((n) => /image|imagen|flash|lite/i.test(n))); } catch (e) { out.push(String(e).slice(0, 80)); } } return json(out, 200, { "cache-control": "no-store" }); }
       if ((path === "/api/studies" || path === "/api/studies/tick" || path === "/api/studies/logo") && m === "GET") {
         // إشعار لصاحب المتجر لما يخلص شغل الليلة (طلبو 24/11/2026): مرة وحدة، أول ما ينفتح القسم بعد الرفع
         if (ctx && ctx.waitUntil && new URL(request.url).searchParams.get("done") === "459") ctx.waitUntil((async () => { if (await env.STORE.get("note:v459")) return; await env.STORE.put("note:v459", "1"); await ownerNotify(env, request, "🐉 خلص شغل الليلة بقسم التمرين:\n1. مجسّم العضلات (قدّام وورا): كبسة عالعضلة بتفتح تمارينها\n2. التنين الأسود: مدرّبك الصارم بنصايح وتحفيز\n3. آخر الدراسات: منشورات ملخّصة بالعربي وبتتحدّث كل ساعة\n4. التغذية: سعرات وماكروز وأكل سوري ووزن ومصروفك الحقيقي\nفوت على حسابك ← مكتبة التمارين 💪"); })().catch(() => {}));
