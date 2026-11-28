@@ -1688,7 +1688,7 @@ async function predPics(env, budget) {
     const kind = (g) => (g.sport === "football" || g.sport === "basketball" ? "team" : g.sport === "ufc" || g.sport === "boxing" ? "fighter" : "");
     const tok = (x) => predNk(x).split(" ").filter((w) => w.length > 1), same = (a, b) => { const A = tok(a), B2 = tok(b); return A.length > 0 && A.every((w) => B2.includes(w)) && B2.length - A.length <= 2; };
     const miss = []; for (const g of got) { const k = kind(g); if (!k) continue; if (!g.ai && g.a) miss.push([k, g.a]); if (!g.bi && g.b) miss.push([k, g.b]); }
-    const need = [...new Map(miss.map((x) => [x[0] + "|" + predNk(x[1]), x])).values()].filter(([k, n]) => { const x = P2[k + "|" + predNk(n)]; return !x || (!x.u && (x.t < now - 3 * 864e5 || (k === "fighter" && !x.v))); }).slice(0, 60);
+    const need = [...new Map(miss.map((x) => [x[0] + "|" + predNk(x[1]), x])).values()].filter(([k, n]) => { const x = P2[k + "|" + predNk(n)]; return !x || (!x.u && (x.t < now - 3 * 864e5 || ((k === "fighter" && !x.v) || (k === "team" && (x.v || 0) < 3)))); }).slice(0, 60);
     const FIGHT2 = /fight|martial|box|kickbox|wrestl|karate|muay|nak muay|judo|grappl|mma|lethwei|sanda|taekwondo/i, CLUB = /football|soccer|club|basketball|team|f\.?c\.?/i;
     const find = async (k, n) => {
       try { // 1) TheSportsDB (مجاني)
@@ -1696,7 +1696,7 @@ async function predPics(env, budget) {
         if (r.ok) { const j = await r.json().catch(() => ({})); const L2 = (k === "team" ? j.teams : j.player) || []; const it = L2.find((x) => same(n, k === "team" ? x.strTeam : x.strPlayer) && (k === "team" || FIGHT2.test(String(x.strSport || "")))); const u = it && (k === "team" ? it.strBadge || it.strLogo : it.strCutout || it.strThumb || it.strRender); if (u) return u; }
       } catch {}
       try { // 2) ويكيبيديا: بحث مرن، والصفحة لازم تكون للشخص/الفريق
-        const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrlimit=5&gsrsearch=${encodeURIComponent(n)}&prop=pageimages|description&piprop=thumbnail&pithumbsize=240&redirects=1`, { signal: AbortSignal.timeout(6000), headers: UA });
+        const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrlimit=5&gsrsearch=${encodeURIComponent(n)}&prop=pageimages|description&piprop=thumbnail&pithumbsize=240&redirects=1${k === "team" ? "&pilicense=any" : ""}`, { signal: AbortSignal.timeout(6000), headers: UA });
         if (r.ok) { const pg = Object.values((((await r.json()) || {}).query || {}).pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0)).find((p) => same(n, String(p.title || "").replace(/\s*\(.*?\)\s*$/, "")) && (k === "team" ? CLUB : FIGHT2).test(String(p.description || "") + " " + String(p.title || "")) && p.thumbnail); if (pg) return pg.thumbnail.source; }
       } catch {}
       try { // 3) ويكي داتا: الصورة (P18) أو الشعار (P154)
@@ -1714,7 +1714,7 @@ async function predPics(env, budget) {
       }
       return "";
     };
-    for (let i = 0; i < need.length && Date.now() - t0 < budget; i += 8) await Promise.all(need.slice(i, i + 8).map(async ([k, n]) => { P2[k + "|" + predNk(n)] = { u: await find(k, n), t: now, v: 2 }; }));
+    for (let i = 0; i < need.length && Date.now() - t0 < budget; i += 8) await Promise.all(need.slice(i, i + 8).map(async ([k, n]) => { P2[k + "|" + predNk(n)] = { u: await find(k, n), t: now, v: 3 }; }));
     if (need.length) { await env.STORE.put("pred:pic2", JSON.stringify(P2)).catch(() => {}); errs.push(`pic2:${need.filter(([k, n]) => (P2[k + "|" + predNk(n)] || {}).u).length}/${need.length}`); }
     let ch = 0; for (const g of got) { const k = kind(g); if (!k) continue; if (!g.ai && (P2[k + "|" + predNk(g.a)] || {}).u) { g.ai = P2[k + "|" + predNk(g.a)].u; ch++; } if (!g.bi && (P2[k + "|" + predNk(g.b)] || {}).u) { g.bi = P2[k + "|" + predNk(g.b)].u; ch++; } }
     if (ch) { const cur = await predMatches(env), m2 = new Map(got.map((x) => [x.id, x])); for (const x of cur) { const y = m2.get(x.id); if (y) { if (!x.ai && y.ai) x.ai = y.ai; if (!x.bi && y.bi) x.bi = y.bi; } } await env.STORE.put("pred:matches", JSON.stringify(cur)); }
