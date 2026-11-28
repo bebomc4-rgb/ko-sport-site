@@ -2142,12 +2142,12 @@
   // الأيقونات (exlib.js) بتنحمّل مرة وحدة لما تنفتح المكتبة
   function exlLoad() {
     if (window.KOExl) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=474"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/exlib.js?v=475"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   // قسم التمرين الجديد (gym.js): المجسّم، التنين الأسود، آخر الدراسات، التغذية
   function gymLoad() {
     if (window.KOGym) return Promise.resolve();
-    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=474"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+    return new Promise((res) => { const sc = document.createElement("script"); sc.src = "/assets/gym.js?v=475"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
   }
   const gymH = () => ({ toast, auth: socAuth, sheet: openSheet, closeSheet });
   const exlI = (t, k) => (window.KOExl ? `<i class="exl-ic">${window.KOExl[t](k)}</i>` : "");
@@ -3984,6 +3984,7 @@ ${trustH()}
     }
   }
   if (/[?&]blkpreview=1/.test(location.search)) setTimeout(() => blockedView(true), 800); // معاينة لصاحب المتجر
+  if (/[?&]idpreview=1/.test(location.search)) setTimeout(() => idCard({ name: "مالك علاقة علاقتين" }, true), 800); // معاينة بطاقة «تأكيد الاسم»
 
   // ---------- بطاقة «تأكيد الاسم» (صاحب المتجر 24/11/2026): اسم وهمي ← الاسم الحقيقي + صورة الهوية ----------
   // السيرفر بيقرّر (account.id: 1 = لازم يبعت، 2 = بعت وناطر تأكيد). البطاقة ما بتتسكّر لحتى يبعت أو يطلع من الحساب
@@ -4026,6 +4027,7 @@ ${trustH()}
           <label class="idc-up"><input id="idc-file" type="file" accept="image/*" data-idc-file><span class="idc-up-t" data-idc-pv>${UP}</span></label>
           <div class="msg"></div></div>
         <p class="idc-note">🔒 صورة الهوية ما بيشوفها غير صاحب المتجر، وبتنحذف لحالها بعد التأكيد.</p>
+        <p class="idc-warn" style="margin:8px 0 0;padding:8px 10px;border-radius:10px;background:#fdecec;color:#8a1c1c;font-size:13px;font-weight:700;line-height:1.6">⚠️ تنبيه: إذا رفعت اسم أو صورة هوية غلط أو مو إلك، رح ينحظر حسابك.</p>
         <button class="btn btn-red idc-send" type="submit">إرسال</button>
         <button class="idc-out" type="button" data-idc-out>مو حسابي؟ اطلع منو</button>
       </form>
