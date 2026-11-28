@@ -5821,10 +5821,9 @@ async function studyPhotos(env, t0, budget) {
   let dm = {}, fl = {}; try { dm = (await env.STORE.get("studies:imgs6", "json")) || {}; fl = (await env.STORE.get("studies:ups2:fail2", "json")) || {}; } catch {} // dm: id → 1 (إلها صورة)؛ fl: كم مرة ما لقينا صورة
   // من أحدث 20 ناقصين منختار 6 عشوائي، لحتى دراسة صعبة (ما لقينالها صورة بعد) ما تسدّ الدور كل مرة
   const todo = idx.filter((x) => !(dm[x[0]] > 0) && !((fl[x[0]] || 0) >= 6) && (x[3] || 1) >= 2).slice(0, 20).sort(() => Math.random() - 0.5).slice(0, 6); // أي دراسة انكتبت (مو لازم تستنى إعادة الكتابة، موضوعها ما بيتغيّر)
-  if (!todo.length) return null;
   const sts = (await Promise.all(todo.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter(Boolean);
   const left = budget - (Date.now() - t0);
-  if (!sts.length || left < 14000) return null;
+  if (left < 14000) return null;
   // شو لازم يبين بالصورة (pq) بينحفظ بالدراسة، فمنسأل مرة وحدة بس لكل دراسة
   // إذا Gemini خالص حدّو (الملخّصات واقفة بـ studies:wait)، ما منضيّع وقت الدفعة بـ 20 محاولة 429: Workers AI على طول
   const noGem = Date.now() < +((await env.STORE.get("studies:wait")) || 0);
@@ -5849,7 +5848,7 @@ async function studyPhotos(env, t0, budget) {
   }
     for (const s of need) { const v = map[s.id]; if (v && typeof v === "object" && v.q) { const cur = await env.STORE.get("study:" + s.id, "json").catch(() => null); if (cur) { cur.pq = { q: String(v.q).slice(0, 60), q2: String(v.q2 || "").slice(0, 60), s: String(v.s || "").slice(0, 80) }; await env.STORE.put("study:" + s.id, JSON.stringify(cur)); } } }
   }
-  if (!Object.keys(map).length) return { err: ("subjects " + String(gm.err || "").slice(0, 60) + wErr).slice(0, 300) };
+  if (sts.length && !Object.keys(map).length) return { err: ("subjects " + String(gm.err || "").slice(0, 60) + wErr).slice(0, 300) };
   let used = {}, bad = {}; try { used = (await env.STORE.get("studies:ups2:used", "json")) || {}; bad = (await env.STORE.get("studies:ups:ok", "json")) || {}; } catch {}
   const dl = t0 + budget + 2000, norm = (q) => String(q || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 50);
   let made = 0, ch = false, na = false;
@@ -5894,8 +5893,22 @@ async function studyPhotos(env, t0, budget) {
     if (Date.now() - t0 > budget - 6000 || waitSet) { dbg.push(["stop", Date.now() - t0]); return false; }
     if (!map[s.id]) { dbg.push([s.id, "no subject"]); return true; }
     let m = map[s.id] && typeof map[s.id] === "object" ? map[s.id] : { q: map[s.id] };
-    // 27/11/2026: بعد 3 مرات ما لقينا صورة للشي بالزبط، منجيب صورة عامة من نفس المجال (ما بتنعاد لدراسة تانية)
-    if ((fl[s.id] || 0) >= 3) m = { q: { nutrition: "healthy food", medicine: "sports physiotherapy", training: "athlete training" }[s.c] || "athlete training", q2: { nutrition: "meal prep", medicine: "sports recovery", training: "gym workout man" }[s.c] || "gym workout man", s: "" };
+    // 28/11/2026 صاحب المتجر: «الصورة يلي ما بتلاقيها صمّمها» → بعد 3 مرات ما لقينا صورة حقيقية للشي بالزبط، منصمّمها
+    // (الشي أو الأكل أو المكمّل بس، بدون ناس ولا إيدين، فما في أخطاء رسم)، وبتنفحص إنها بتبيّن الشي قبل ما تنعرض
+    if ((fl[s.id] || 0) >= 3) {
+      if (dl - Date.now() < 14000) return false;
+      const subj = String(m.s || m.q || "").slice(0, 80), cost = { n: 0 };
+      const d = await studyDraw(env, `Realistic professional photograph of ${subj}, close-up, the subject fills the frame, clean simple neutral background, soft natural light, sharp focus, high detail. No people, no hands, no faces, no body parts, no text, no letters, no logos, no watermark.`, cost, dl);
+      if (!d.b) { dbg.push([s.id, "gen", "draw fail"]); return true; }
+      const chk = await studyImgCheck(env, d.b, cost, dl, false, subj, noGem);
+      dbg.push([s.id, "gen " + subj.slice(0, 20), chk, Date.now() - t0]);
+      if (chk === "ok") {
+        await env.STORE.put("img:p" + s.id, d.b, { metadata: { type: imgType(d.b) } });
+        const cur = await env.STORE.get("study:" + s.id, "json").catch(() => null);
+        if (cur) { cur.im = "p" + s.id; delete cur.ph; await env.STORE.put("study:" + s.id, JSON.stringify(cur)); dm[s.id] = 1; made++; ch = true; }
+      } else if (chk !== "na") { fl[s.id] = (fl[s.id] || 0) + 1; ch = true; }
+      return true;
+    }
     const st = { na: false }; let x = await tryQ(m.q, m.s, st);
     if (!x && m.q2 && Date.now() - t0 < budget - 8000) x = await tryQ(m.q2, m.s, st);
     dbg.push([s.id, String(m.q || "").slice(0, 24), x ? "ok" : st.na ? "na" : "miss", Date.now() - t0]);
@@ -5912,8 +5925,36 @@ async function studyPhotos(env, t0, budget) {
   };
   // 3 خطوط سوا (الفحص بياخد كم ثانية لكل صورة)
   await Promise.all([0, 1, 2].map(async () => { while (qi < sts.length) { const s = sts[qi++]; if (!(await one(s))) break; } }));
+  // فحص الصور يلي انحطّت قبل (صاحب المتجر لقى كرياتين بصورة طحين، وجوز بصورة أكل): Gemma بيشوف إذا الصورة فعلاً بتبيّن الشي؛
+  // إذا لا بتنشال وبترجع الدراسة تدوّر (ومرة وحدة بعدها بتتصمّم). كل صورة بتنفحص مرة وحدة (studies:ups2:ver)
+  let ver = {}; try { ver = (await env.STORE.get("studies:ups2:ver", "json")) || {}; } catch {}
+  let verCh = false;
+  const vc = idx.filter((x) => dm[x[0]] > 0 && !ver[x[0]]).slice(0, 4);
+  if (vc.length && dl - Date.now() > 12000 && env.AI) {
+    const vs = (await Promise.all(vc.map((x) => env.STORE.get("study:" + x[0], "json").catch(() => null)))).filter((x) => x && x.ph && x.ph.u);
+    const noS = vs.filter((x) => !(x.pq && x.pq.q));
+    if (noS.length) try { // شو لازم يبين بالصورة، لهالدراسات يلي انحطّلها صورة قبل ما نصير نحفظو
+      const out = await exlRace(env.AI.run(AI_TR_MODELS[2], { messages: [{ role: "system", content: UPS_SYS }, { role: "user", content: noS.map((s) => `${s.id}: ${String(s.t || "").slice(0, 160)} | ${(s.tags || []).join(", ")} | ${s.c}`).join("\n") }], max_tokens: 500, temperature: 0.2 }), 9000);
+      const raw = String(exlAiText(out) || ""); const o = {}; for (const mm of raw.matchAll(/"(\d{5,10})"\s*:\s*(\{[^{}]*\})/g)) { try { o[mm[1]] = JSON.parse(mm[2]); } catch {} }
+      for (const x of noS) if (o[x.id] && o[x.id].q) x.pq = { q: String(o[x.id].q).slice(0, 60), q2: String(o[x.id].q2 || "").slice(0, 60), s: String(o[x.id].s || "").slice(0, 80) };
+    } catch {}
+    await Promise.all(vs.map(async (x) => {
+      if (!(x.pq && x.pq.q) || dl - Date.now() < 6000) return;
+      const b = await fetch(x.ph.u + (x.ph.u.includes("?") ? "&" : "?") + "w=400&fm=jpg&q=70", { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
+      if (!b) return;
+      const chk = await studyImgCheck(env, new Uint8Array(b), { n: 0 }, dl, false, x.pq.s || x.pq.q, true);
+      dbg.push([x.id, "verify " + String(x.pq.q).slice(0, 18), chk]);
+      if (chk === "ok") { ver[x.id] = 1; verCh = true; }
+      else if (chk === "nomatch" || chk === "bad") {
+        delete x.ph; await env.STORE.put("study:" + x.id, JSON.stringify(x));
+        delete dm[x.id]; fl[x.id] = Math.max(fl[x.id] || 0, 2); ver[x.id] = -1; verCh = true; ch = true;
+      }
+    }));
+  }
+  if (verCh) await env.STORE.put("studies:ups2:ver", JSON.stringify(ver));
   if (ch) { await env.STORE.put("studies:imgs6", JSON.stringify(dm)); await env.STORE.put("studies:ups2:fail2", JSON.stringify(fl)); await env.STORE.put("studies:ups2:used", JSON.stringify(used)); await env.STORE.put("studies:ups:ok", JSON.stringify(bad)); }
   await env.STORE.put("studies:ups:rl2", JSON.stringify(K));
+  if (!sts.length && !vc.length) return null; // ما ضل شي: لا صور ناقصة ولا فحص
   return { made, left: idx.filter((x) => !(dm[x[0]] > 0)).length, rem, keys: keys.length, dbg, ...(err ? { err: err.slice(0, 160) } : {}) };
 }
 
@@ -6393,9 +6434,6 @@ const koMain = {
       }
       if (path === "/api/bot/job" && m === "POST") return botJob(request, env);
       if (path === "/api/pred" || path.startsWith("/api/pred/")) return predApi(request, env, path, m, ctx);
-      // فحص مؤقت (28/11/2026): شو موديلات الصور المتاحة بمفاتيح Gemini (بيرجّع أسماء الموديلات بس، بدون أي مفتاح)
-      if (path === "/api/studies/gmodels" && m === "GET") { const out = []; const keys = gemKeys(env); for (let i = 0; i < keys.length; i++) { const k = keys[i]; try { const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": k } }); const t = await r.text(); out.push({ key: i + 1, status: r.status, err: r.ok ? undefined : t.slice(0, 160) }); } catch (e) { out.push({ key: i + 1, err: String(e).slice(0, 80) }); } }
-        const img = []; for (const mdl of ["gemini-3.1-flash-lite-image", "gemini-3.1-flash-image", "gemini-2.5-flash-image"]) { for (let i = 0; i < keys.length; i++) { try { const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mdl}:generateContent`, { method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": keys[i] }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "A realistic product photo of a scoop of white creatine powder on a dark wooden table, wide 16:7" }] }] }), signal: AbortSignal.timeout(40000) }); const t = await r.text(); const ok = r.ok && /inlineData/.test(t); img.push({ mdl, key: i + 1, status: r.status, ok, err: ok ? undefined : t.slice(0, 140) }); if (ok) break; } catch (e) { img.push({ mdl, key: i + 1, err: String(e).slice(0, 60) }); } } } return json({ out, img }, 200, { "cache-control": "no-store" }); }
       if ((path === "/api/studies" || path === "/api/studies/tick" || path === "/api/studies/logo") && m === "GET") {
         // إشعار لصاحب المتجر لما يخلص شغل الليلة (طلبو 24/11/2026): مرة وحدة، أول ما ينفتح القسم بعد الرفع
         if (ctx && ctx.waitUntil && new URL(request.url).searchParams.get("done") === "459") ctx.waitUntil((async () => { if (await env.STORE.get("note:v459")) return; await env.STORE.put("note:v459", "1"); await ownerNotify(env, request, "🐉 خلص شغل الليلة بقسم التمرين:\n1. مجسّم العضلات (قدّام وورا): كبسة عالعضلة بتفتح تمارينها\n2. التنين الأسود: مدرّبك الصارم بنصايح وتحفيز\n3. آخر الدراسات: منشورات ملخّصة بالعربي وبتتحدّث كل ساعة\n4. التغذية: سعرات وماكروز وأكل سوري ووزن ومصروفك الحقيقي\nفوت على حسابك ← مكتبة التمارين 💪"); })().catch(() => {}));
