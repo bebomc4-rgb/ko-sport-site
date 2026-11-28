@@ -1678,6 +1678,40 @@ async function psFetch(env, lg, from, to, errs) {
   } catch (e) { errs.push(lg.k + ":" + (e && e.message || "err")); }
   return out;
 }
+// صاحب المتجر (28/11/2026): «بقسم التوقعات ابحث عن صور اللاعبين، لا ترجع بدون صور» → للي لسا بلا صورة (مقاتلين وفرق)
+  // منفتّش بكذا مصدر بالدور: TheSportsDB، ويكيبيديا (تطابق مرن للاسم)، ويكي داتا (صورة الشخص/شعار الفريق). الجواب بـ pred:pic2،
+  // والفاضي بينعاد فحصو بعد 3 أيام. 120 اسم بكل مزامنة.
+async function predPics(env, budget) {
+  const now = Date.now(), t0 = now, errs = [];
+  const L = await predMatches(env), got = L;
+  { const P2 = (await env.STORE.get("pred:pic2", "json").catch(() => null)) || {}, UA = { "user-agent": "KO-SPORT/1.0 (https://ko-sport.online)" };
+    const kind = (g) => (g.sport === "football" || g.sport === "basketball" ? "team" : g.sport === "ufc" || g.sport === "boxing" ? "fighter" : "");
+    const tok = (x) => predNk(x).split(" ").filter((w) => w.length > 1), same = (a, b) => { const A = tok(a), B2 = tok(b); return A.length > 0 && A.every((w) => B2.includes(w)) && B2.length - A.length <= 2; };
+    const miss = []; for (const g of got) { const k = kind(g); if (!k) continue; if (!g.ai && g.a) miss.push([k, g.a]); if (!g.bi && g.b) miss.push([k, g.b]); }
+    const need = [...new Map(miss.map((x) => [x[0] + "|" + predNk(x[1]), x])).values()].filter(([k, n]) => { const x = P2[k + "|" + predNk(n)]; return !x || (!x.u && x.t < now - 3 * 864e5); }).slice(0, 60);
+    const FIGHT2 = /fight|martial|box|kickbox|wrestl|karate|muay|nak muay|judo|grappl|mma|lethwei|sanda|taekwondo/i, CLUB = /football|soccer|club|basketball|team|f\.?c\.?/i;
+    const find = async (k, n) => {
+      try { // 1) TheSportsDB (مجاني)
+        const r = await fetch(k === "team" ? `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(n)}` : `https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(n)}`, { signal: AbortSignal.timeout(6000), headers: UA, cf: { cacheTtl: 86400 } });
+        if (r.ok) { const j = await r.json().catch(() => ({})); const L2 = (k === "team" ? j.teams : j.player) || []; const it = L2.find((x) => same(n, k === "team" ? x.strTeam : x.strPlayer) && (k === "team" || FIGHT2.test(String(x.strSport || "")))); const u = it && (k === "team" ? it.strBadge || it.strLogo : it.strCutout || it.strThumb || it.strRender); if (u) return u; }
+      } catch {}
+      try { // 2) ويكيبيديا: بحث مرن، والصفحة لازم تكون للشخص/الفريق
+        const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrlimit=5&gsrsearch=${encodeURIComponent(n)}&prop=pageimages|description&piprop=thumbnail&pithumbsize=240&redirects=1`, { signal: AbortSignal.timeout(6000), headers: UA });
+        if (r.ok) { const pg = Object.values((((await r.json()) || {}).query || {}).pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0)).find((p) => same(n, String(p.title || "").replace(/\s*\(.*?\)\s*$/, "")) && (k === "team" ? CLUB : FIGHT2).test(String(p.description || "") + " " + String(p.title || "")) && p.thumbnail); if (pg) return pg.thumbnail.source; }
+      } catch {}
+      try { // 3) ويكي داتا: الصورة (P18) أو الشعار (P154)
+        const r = await fetch(`https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=en&type=item&limit=5&search=${encodeURIComponent(n)}`, { signal: AbortSignal.timeout(6000), headers: UA });
+        if (r.ok) { const S = ((await r.json()) || {}).search || []; const it = S.find((x) => same(n, x.label || "") && (k === "team" ? CLUB : FIGHT2).test(String(x.description || "")));
+          if (it) { const e = await (await fetch(`https://www.wikidata.org/wiki/Special:EntityData/${it.id}.json`, { signal: AbortSignal.timeout(6000), headers: UA })).json().catch(() => ({})); const cl = (((e.entities || {})[it.id] || {}).claims) || {}; const f = ((k === "team" ? cl.P154 || cl.P18 : cl.P18) || [])[0]; const fn = f && f.mainsnak && f.mainsnak.datavalue && f.mainsnak.datavalue.value; if (fn) return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(String(fn).replace(/ /g, "_"))}?width=240`; } }
+      } catch {}
+      return "";
+    };
+    for (let i = 0; i < need.length && Date.now() - t0 < budget; i += 8) await Promise.all(need.slice(i, i + 8).map(async ([k, n]) => { P2[k + "|" + predNk(n)] = { u: await find(k, n), t: now }; }));
+    if (need.length) { await env.STORE.put("pred:pic2", JSON.stringify(P2)).catch(() => {}); errs.push(`pic2:${need.filter(([k, n]) => (P2[k + "|" + predNk(n)] || {}).u).length}/${need.length}`); }
+    let ch = 0; for (const g of got) { const k = kind(g); if (!k) continue; if (!g.ai && (P2[k + "|" + predNk(g.a)] || {}).u) { g.ai = P2[k + "|" + predNk(g.a)].u; ch++; } if (!g.bi && (P2[k + "|" + predNk(g.b)] || {}).u) { g.bi = P2[k + "|" + predNk(g.b)].u; ch++; } }
+    if (ch) { const cur = await predMatches(env), m2 = new Map(got.map((x) => [x.id, x])); for (const x of cur) { const y = m2.get(x.id); if (y) { if (!x.ai && y.ai) x.ai = y.ai; if (!x.bi && y.bi) x.bi = y.bi; } } await env.STORE.put("pred:matches", JSON.stringify(cur)); }
+    return { need: need.length, found: need.filter(([k, n]) => (P2[k + "|" + predNk(n)] || {}).u).length, set: ch }; }
+}
 async function predSync(env, force) {
   const now = Date.now(), last = +(await env.STORE.get("pred:sync").catch(() => 0)) || 0;
   if (!force && now - last < 20 * 60e3) return { skipped: true };
@@ -1739,33 +1773,8 @@ async function predSync(env, force) {
       } catch (e) { errs.push("wn:" + (e && e.name || e)); } }));
     if (need.length) await env.STORE.put("pred:wn", JSON.stringify(WN)).catch(() => {});
     for (const g of fs) { if (!g.ai) g.ai = (WN[predNk(g.a)] || {}).u || ""; if (!g.bi) g.bi = (WN[predNk(g.b)] || {}).u || ""; } }
-  // صاحب المتجر (28/11/2026): «بقسم التوقعات ابحث عن صور اللاعبين، لا ترجع بدون صور» → للي لسا بلا صورة (مقاتلين وفرق)
-  // منفتّش بكذا مصدر بالدور: TheSportsDB، ويكيبيديا (تطابق مرن للاسم)، ويكي داتا (صورة الشخص/شعار الفريق). الجواب بـ pred:pic2،
-  // والفاضي بينعاد فحصو بعد 3 أيام. 120 اسم بكل مزامنة.
-  { const P2 = (await env.STORE.get("pred:pic2", "json").catch(() => null)) || {}, UA = { "user-agent": "KO-SPORT/1.0 (https://ko-sport.online)" };
-    const kind = (g) => (g.sport === "football" || g.sport === "basketball" ? "team" : g.sport === "ufc" || g.sport === "boxing" ? "fighter" : "");
-    const tok = (x) => predNk(x).split(" ").filter((w) => w.length > 1), same = (a, b) => { const A = tok(a), B2 = tok(b); return A.length > 0 && A.every((w) => B2.includes(w)) && B2.length - A.length <= 2; };
-    const miss = []; for (const g of got) { const k = kind(g); if (!k) continue; if (!g.ai && g.a) miss.push([k, g.a]); if (!g.bi && g.b) miss.push([k, g.b]); }
-    const need = [...new Map(miss.map((x) => [x[0] + "|" + predNk(x[1]), x])).values()].filter(([k, n]) => { const x = P2[k + "|" + predNk(n)]; return !x || (!x.u && x.t < now - 3 * 864e5); }).slice(0, 120);
-    const FIGHT2 = /fight|martial|box|kickbox|wrestl|karate|muay|nak muay|judo|grappl|mma|lethwei|sanda|taekwondo/i, CLUB = /football|soccer|club|basketball|team|f\.?c\.?/i;
-    const find = async (k, n) => {
-      try { // 1) TheSportsDB (مجاني)
-        const r = await fetch(k === "team" ? `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(n)}` : `https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(n)}`, { signal: AbortSignal.timeout(6000), headers: UA, cf: { cacheTtl: 86400 } });
-        if (r.ok) { const j = await r.json().catch(() => ({})); const L2 = (k === "team" ? j.teams : j.player) || []; const it = L2.find((x) => same(n, k === "team" ? x.strTeam : x.strPlayer) && (k === "team" || FIGHT2.test(String(x.strSport || "")))); const u = it && (k === "team" ? it.strBadge || it.strLogo : it.strCutout || it.strThumb || it.strRender); if (u) return u; }
-      } catch {}
-      try { // 2) ويكيبيديا: بحث مرن، والصفحة لازم تكون للشخص/الفريق
-        const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrlimit=5&gsrsearch=${encodeURIComponent(n)}&prop=pageimages|description&piprop=thumbnail&pithumbsize=240&redirects=1`, { signal: AbortSignal.timeout(6000), headers: UA });
-        if (r.ok) { const pg = Object.values((((await r.json()) || {}).query || {}).pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0)).find((p) => same(n, String(p.title || "").replace(/\s*\(.*?\)\s*$/, "")) && (k === "team" ? CLUB : FIGHT2).test(String(p.description || "") + " " + String(p.title || "")) && p.thumbnail); if (pg) return pg.thumbnail.source; }
-      } catch {}
-      try { // 3) ويكي داتا: الصورة (P18) أو الشعار (P154)
-        const r = await fetch(`https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=en&type=item&limit=5&search=${encodeURIComponent(n)}`, { signal: AbortSignal.timeout(6000), headers: UA });
-        if (r.ok) { const S = ((await r.json()) || {}).search || []; const it = S.find((x) => same(n, x.label || "") && (k === "team" ? CLUB : FIGHT2).test(String(x.description || "")));
-          if (it) { const e = await (await fetch(`https://www.wikidata.org/wiki/Special:EntityData/${it.id}.json`, { signal: AbortSignal.timeout(6000), headers: UA })).json().catch(() => ({})); const cl = (((e.entities || {})[it.id] || {}).claims) || {}; const f = ((k === "team" ? cl.P154 || cl.P18 : cl.P18) || [])[0]; const fn = f && f.mainsnak && f.mainsnak.datavalue && f.mainsnak.datavalue.value; if (fn) return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(String(fn).replace(/ /g, "_"))}?width=240`; } }
-      } catch {}
-      return "";
-    };
-    for (let i = 0; i < need.length; i += 6) await Promise.all(need.slice(i, i + 6).map(async ([k, n]) => { P2[k + "|" + predNk(n)] = { u: await find(k, n), t: now }; }));
-    if (need.length) await env.STORE.put("pred:pic2", JSON.stringify(P2)).catch(() => {});
+  // صور اللاعبين/الفرق يلي لقيناها بـ predPics (pred:pic2): منطبّقها بس هون (بلا تفتيش، المزامنة لازم تخلص بـ 30 ثانية)
+  { const P2 = (await env.STORE.get("pred:pic2", "json").catch(() => null)) || {}, kind = (g) => (g.sport === "football" || g.sport === "basketball" ? "team" : g.sport === "ufc" || g.sport === "boxing" ? "fighter" : "");
     for (const g of got) { const k = kind(g); if (!k) continue; if (!g.ai) g.ai = (P2[k + "|" + predNk(g.a)] || {}).u || ""; if (!g.bi) g.bi = (P2[k + "|" + predNk(g.b)] || {}).u || ""; } }
   const L = await predMatches(env), byId = new Map(L.map((x) => [x.id, x])), B = (await env.STORE.get("pred:board", "json").catch(() => null)) || {};
   let boardDirty = false;
@@ -6018,6 +6027,8 @@ async function studiesApi(request, env, ctx) {
     const at = Date.parse((await env.STORE.get("studies:at")) || 0) || 0;
     if (Date.now() - at < 15000) return json({ busy: 1 }, 200, { "cache-control": "no-store" });
     let r; try { r = await studiesTick(env, 24000, u.searchParams.get("first")); } catch (e) { r = { error: String((e && e.message) || e).slice(0, 200) }; }
+    // صور التوقعات الناقصة: كل 5 دقايق من نفس التِك (البوت بيستنى، مو waitUntil)
+    if (+((await env.STORE.get("pred:pics:at")) || 0) < Date.now() - 5 * 60e3) { await env.STORE.put("pred:pics:at", String(Date.now())); try { r.pics = await predPics(env, 12000); } catch (e) { r.pics = { err: String((e && e.message) || e).slice(0, 120) }; } }
     // صاحب المتجر (25/11/2026): «بس تخلص بعتلي عالواتس» → لما تخلص كل الدراسات والكتابة الجديدة والصور، رسالة وحدة عالواتس
     if (r && r.done && r.img == null && ctx && ctx.waitUntil) ctx.waitUntil((async () => {
       if (await env.STORE.get("note:studies-all")) return; await env.STORE.put("note:studies-all", "1");
